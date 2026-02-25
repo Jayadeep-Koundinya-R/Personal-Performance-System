@@ -225,26 +225,32 @@
     <!-- ── REFLECTIONS ── -->
     <section id="reflectionSection" class="section">
       <div class="dashboard-header">
-        <div>
-          <h1>Reflections</h1>
-          <div class="page-sub">Write, reflect, grow</div>
-        </div>
+        <div><h1>Daily Reflections</h1><div class="page-sub">Write, reflect, grow</div></div>
       </div>
+
+      <!-- Write form — always visible at the top -->
       <div class="card" style="margin-bottom:20px;">
         <h3>Today's Reflection</h3>
-        <textarea id="reflectionText" class="mt-8" style="height:100px;width:100%;"
-          placeholder="How did today go? What went well? What to improve?"></textarea>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:12px;">
-          <span class="text-muted" style="font-size:13px;">Mood:</span>
-          <span class="mood-pick" data-mood="great"  style="font-size:22px;cursor:pointer;">😊</span>
-          <span class="mood-pick" data-mood="okay"   style="font-size:22px;cursor:pointer;opacity:.4;">😐</span>
-          <span class="mood-pick" data-mood="low"    style="font-size:22px;cursor:pointer;opacity:.4;">😔</span>
-          <span class="mood-pick" data-mood="stress" style="font-size:22px;cursor:pointer;opacity:.4;">😤</span>
-          <button class="primary-btn" style="margin-left:auto;margin-top:0;" id="saveReflectionBtn">Save</button>
+        <textarea id="rfl_text" style="width:100%;height:100px;margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13.5px;font-family:inherit;resize:none;" placeholder="How did today go? What went well? What to improve?"></textarea>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap;">
+          <span style="font-size:13px;color:var(--muted);">Mood:</span>
+          <span id="rfl_m_great"  onclick="rfl_setMood(this, 'great')"  style="font-size:24px;cursor:pointer;opacity:1;  transition:opacity .15s;">😊</span>
+          <span id="rfl_m_okay"   onclick="rfl_setMood(this, 'okay')"   style="font-size:24px;cursor:pointer;opacity:.4;transition:opacity .15s;">😐</span>
+          <span id="rfl_m_low"    onclick="rfl_setMood(this, 'low')"    style="font-size:24px;cursor:pointer;opacity:.4;transition:opacity .15s;">😔</span>
+          <span id="rfl_m_stress" onclick="rfl_setMood(this, 'stress')" style="font-size:24px;cursor:pointer;opacity:.4;transition:opacity .15s;">😤</span>
+          <button class="primary-btn" style="margin-left:auto;" onclick="rfl_save()">Save Entry</button>
+          <span id="rfl_status" style="font-size:12px;font-weight:600;min-width:60px;"></span>
         </div>
       </div>
-      <h3 style="margin-bottom:12px;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em;">Past Entries</h3>
-      <div id="reflectionList"></div>
+
+      <!-- Past entries list -->
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">Past Entries</div>
+      <div id="rfl_list">
+        <div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">
+          <div style="font-size:32px;margin-bottom:10px;">📝</div>
+          No reflections yet — write your first one above.
+        </div>
+      </div>
     </section>
 
     <!-- ── HABIT MANAGER ── -->
@@ -303,23 +309,35 @@
     <!-- ── REMINDERS ── -->
     <section id="reminderSection" class="section">
       <div class="dashboard-header">
-        <div>
-          <h1>Reminders</h1>
-          <div class="page-sub">Set times to be nudged</div>
-        </div>
+        <div><h1>Reminders</h1><div class="page-sub">Set times to be nudged</div></div>
       </div>
+
+      <!-- Active list -->
       <div class="card" style="margin-bottom:20px;">
         <h3>Active Reminders</h3>
-        <div id="reminderList"><p class="empty-text">No reminders set yet.</p></div>
+        <div id="rem_list">
+          <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">
+            <div style="font-size:28px;margin-bottom:8px;">🔔</div>
+            No reminders yet — add one below.
+          </div>
+        </div>
       </div>
-      <!-- Add form always visible like in blueprint -->
-      <div class="card" id="reminderForm">
+
+      <!-- Add form — always visible -->
+      <div class="card">
         <h3>Add New Reminder</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:8px;margin-bottom:16px;">
-          <div class="form-group"><label>Label</label><input type="text" id="reminderLabel" placeholder="e.g. Morning routine"></div>
-          <div class="form-group"><label>Time</label><input type="time" id="reminderTime"></div>
-          <div class="form-group"><label>Repeat</label>
-            <select id="reminderRepeat">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:14px;margin-bottom:18px;">
+          <div class="form-group">
+            <label>Label</label>
+            <input type="text" id="rem_label" placeholder="e.g. Morning routine">
+          </div>
+          <div class="form-group">
+            <label>Time</label>
+            <input type="time" id="rem_time">
+          </div>
+          <div class="form-group">
+            <label>Repeat</label>
+            <select id="rem_repeat">
               <option>Every Day</option>
               <option>Weekdays</option>
               <option>Weekends</option>
@@ -327,7 +345,10 @@
             </select>
           </div>
         </div>
-        <button class="primary-btn" id="saveReminderBtn">Save Reminder</button>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <button class="primary-btn" onclick="rem_save()">Save Reminder</button>
+          <span id="rem_status" style="font-size:12px;font-weight:600;"></span>
+        </div>
       </div>
     </section>
 
@@ -474,9 +495,229 @@
 <script src="js/habits.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/dashboard.js"></script>
-<script src="js/reflections.js"></script>
-<script src="js/reminders.js"></script>
 <script src="js/main.js"></script>
 
+
+<!-- ═══════════════════════════════════════════════════
+     REFLECTIONS & REMINDERS — Self-contained inline JS
+     No external files. All logic here.
+═══════════════════════════════════════════════════ -->
+<script>
+/* ---------- HELPERS ---------- */
+function _getUser() {
+    try { return JSON.parse(localStorage.getItem("currentUser") || "{}"); }
+    catch(e) { return {}; }
+}
+function _rflKey() { var u = _getUser(); return "reflections_" + (u.email || "guest"); }
+function _remKey() { var u = _getUser(); return "reminders_"   + (u.email || "guest"); }
+
+function _showStatus(id, msg, ok) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = ok ? "#22c55e" : "#ef4444";
+    clearTimeout(el._t);
+    el._t = setTimeout(function() { el.textContent = ""; }, 3000);
+}
+
+/* ---------- REFLECTIONS ---------- */
+var rfl_mood = "great";
+
+function rfl_setMood(el, mood) {
+    rfl_mood = mood;
+    var ids = ["rfl_m_great", "rfl_m_okay", "rfl_m_low", "rfl_m_stress"];
+    ids.forEach(function(id) {
+        var e = document.getElementById(id);
+        if (e) e.style.opacity = "0.4";
+    });
+    el.style.opacity = "1";
+}
+
+function rfl_save() {
+    var ta   = document.getElementById("rfl_text");
+    var text = ta ? ta.value.trim() : "";
+    if (!text) { _showStatus("rfl_status", "Write something first.", false); return; }
+
+    var key   = _rflKey();
+    var list  = [];
+    try { list = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+
+    var today = new Date().toISOString().split("T")[0];
+    var idx   = -1;
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].date === today) { idx = i; break; }
+    }
+
+    /* snapshot habit completions */
+    var habLog = [];
+    try {
+        if (typeof habits !== "undefined") {
+            habits.forEach(function(h) {
+                habLog.push({ name: h.name, completed: (h.completedDates || []).indexOf(today) >= 0 });
+            });
+        }
+    } catch(e) {}
+
+    var entry = { date: today, text: text, mood: rfl_mood || "great", habitsLog: habLog };
+    if (idx >= 0) list[idx] = entry;
+    else          list.unshift(entry);
+
+    localStorage.setItem(key, JSON.stringify(list));
+
+    /* clear + reset */
+    if (ta) ta.value = "";
+    rfl_mood = "great";
+    ["rfl_m_great","rfl_m_okay","rfl_m_low","rfl_m_stress"].forEach(function(id, i) {
+        var e = document.getElementById(id);
+        if (e) e.style.opacity = i === 0 ? "1" : "0.4";
+    });
+
+    _showStatus("rfl_status", "Saved ✓", true);
+    rfl_render();
+}
+
+function rfl_render() {
+    var container = document.getElementById("rfl_list");
+    if (!container) return;
+
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(_rflKey())) || []; } catch(e) {}
+
+    if (list.length === 0) {
+        container.innerHTML =
+            "<div style=\"text-align:center;padding:32px;color:#64748b;font-size:13px;\">" +
+            "<div style=\"font-size:32px;margin-bottom:10px;\">📝</div>" +
+            "No reflections yet — write your first one above.</div>";
+        return;
+    }
+
+    var moodLabel = { great: "😊 Great", okay: "😐 Okay", low: "😔 Low", stress: "😤 Stressed" };
+    var html = "";
+    list.forEach(function(entry) {
+        var d    = new Date(entry.date + "T12:00:00");
+        var dstr = d.toLocaleDateString("en-GB", { weekday:"long", day:"2-digit", month:"long", year:"numeric" });
+        var chips = "";
+        (entry.habitsLog || []).forEach(function(h) {
+            chips += "<span class=\"mood-chip\">" + h.name + " " + (h.completed ? "✅" : "❌") + "</span>";
+        });
+        var ml = moodLabel[entry.mood] || entry.mood;
+
+        html +=
+            "<div class=\"reflection-card\">" +
+            "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;\">" +
+            "<div class=\"reflection-date\">" + dstr + "</div>" +
+            "<button class=\"danger-btn\" style=\"padding:3px 10px;font-size:11px;\"" +
+            " data-date=\"" + entry.date + "\" onclick=\"rfl_delete(this.dataset.date)\">Delete</button>" +
+            "</div>" +
+            "<div class=\"reflection-text\">" + entry.text + "</div>" +
+            "<div class=\"mood-row\" style=\"margin-top:10px;\">" +
+            "<span class=\"mood-chip\">" + ml + "</span>" + chips +
+            "</div></div>";
+    });
+    container.innerHTML = html;
+}
+
+function rfl_delete(date) {
+    if (!confirm("Delete this reflection?")) return;
+    var key  = _rflKey();
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+    list = list.filter(function(r) { return r.date !== date; });
+    localStorage.setItem(key, JSON.stringify(list));
+    rfl_render();
+}
+
+/* ---------- REMINDERS ---------- */
+function rem_save() {
+    var labelEl  = document.getElementById("rem_label");
+    var timeEl   = document.getElementById("rem_time");
+    var repeatEl = document.getElementById("rem_repeat");
+
+    var label  = labelEl  ? labelEl.value.trim() : "";
+    var time   = timeEl   ? timeEl.value         : "";
+    var repeat = repeatEl ? repeatEl.value       : "Every Day";
+
+    if (!label) { _showStatus("rem_status", "Enter a label.", false); return; }
+    if (!time)  { _showStatus("rem_status", "Pick a time.",   false); return; }
+
+    var key  = _remKey();
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+
+    list.push({ id: Date.now(), label: label, time: time, repeat: repeat, enabled: true });
+    localStorage.setItem(key, JSON.stringify(list));
+
+    if (labelEl) labelEl.value = "";
+    if (timeEl)  timeEl.value  = "";
+    _showStatus("rem_status", "Saved ✓", true);
+    rem_render();
+}
+
+function rem_render() {
+    var container = document.getElementById("rem_list");
+    if (!container) return;
+
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(_remKey())) || []; } catch(e) {}
+
+    if (list.length === 0) {
+        container.innerHTML =
+            "<div style=\"text-align:center;padding:24px;color:#64748b;font-size:13px;\">" +
+            "<div style=\"font-size:28px;margin-bottom:8px;\">🔔</div>" +
+            "No reminders yet — add one below.</div>";
+        return;
+    }
+
+    var html = "";
+    list.forEach(function(r) {
+        var parts = (r.time || "00:00").split(":").map(Number);
+        var hh = parts[0], mm = parts[1];
+        var ampm = hh >= 12 ? "PM" : "AM";
+        var h12  = hh % 12 || 12;
+        var tstr = (h12 < 10 ? "0" : "") + h12 + ":" + (mm < 10 ? "0" : "") + mm + " " + ampm;
+
+        html +=
+            "<div class=\"reminder-row\">" +
+            "<div>" +
+            "<div style=\"font-size:14px;font-weight:600;\">" + r.label + "</div>" +
+            "<div style=\"font-size:12px;color:#64748b;\">" + r.repeat + "</div>" +
+            "</div>" +
+            "<div style=\"display:flex;align-items:center;gap:16px;\">" +
+            "<span class=\"reminder-time\">" + tstr + "</span>" +
+            "<div class=\"toggle " + (r.enabled ? "on" : "") + "\" data-id=\"" + r.id + "\" onclick=\"rem_toggle(this)\" style=\"cursor:pointer;\">" +
+            "<div class=\"toggle-dot\"></div></div>" +
+            "<button class=\"danger-btn\" style=\"padding:4px 10px;font-size:11px;\" data-id=\"" + r.id + "\" onclick=\"rem_delete(this)\">✕</button>" +
+            "</div></div>";
+    });
+    container.innerHTML = html;
+}
+
+function rem_toggle(el) {
+    var id   = Number(el.dataset.id);
+    var key  = _remKey();
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+    list.forEach(function(r) { if (r.id === id) r.enabled = !r.enabled; });
+    localStorage.setItem(key, JSON.stringify(list));
+    rem_render();
+}
+
+function rem_delete(el) {
+    var id = Number(el.dataset.id);
+    if (!confirm("Delete this reminder?")) return;
+    var key  = _remKey();
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+    list = list.filter(function(r) { return r.id !== id; });
+    localStorage.setItem(key, JSON.stringify(list));
+    rem_render();
+}
+
+/* ---------- Init on page load ---------- */
+document.addEventListener("DOMContentLoaded", function() {
+    rfl_render();
+    rem_render();
+});
+</script>
 </body>
 </html>

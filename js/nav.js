@@ -44,7 +44,7 @@ function setupNavigation() {
                     break;
 
                 case "reflectionSection":
-                    renderReflections();
+                    rfl_render();
                     break;
 
                 case "habitManagerSection":
@@ -52,7 +52,7 @@ function setupNavigation() {
                     break;
 
                 case "reminderSection":
-                    renderReminders();
+                    rem_render();
                     break;
 
                 case "settingsSection":

@@ -1,143 +1,127 @@
-/* ================= REMINDERS ================= */
+/* ============================================================
+   REMINDERS
+   No addEventListener — buttons call functions directly via
+   onclick attributes in HTML. Nothing can silently un-wire.
+   ============================================================ */
 
-let reminderKey = "";
+/* ── KEY ── derived fresh every call ── */
+function getReminderKey() {
+    try {
+        const u = JSON.parse(localStorage.getItem("currentUser") || "{}");
+        return "reminders_" + (u.email || "guest");
+    } catch(e) { return "reminders_guest"; }
+}
 
-/* ─────────────────────────────────────
-   SETUP
-───────────────────────────────────── */
-function setupReminders(user) {
-    const uid    = (user && user.email) ? user.email : "guest";
-    reminderKey  = "reminders_" + uid;
-
+/* ── INIT ── just renders the list on load ── */
+function setupReminders() {
     renderReminders();
-
-    // Save
-    document.getElementById("saveReminderBtn")
-        ?.addEventListener("click", saveReminder);
 }
 
-/* ─────────────────────────────────────
-   GET / PERSIST
-───────────────────────────────────── */
+/* ── GET ── */
 function getReminders() {
-    if (!reminderKey) return [];
-    try { return JSON.parse(localStorage.getItem(reminderKey)) || []; }
-    catch(e) { return []; }
+    try {
+        return JSON.parse(localStorage.getItem(getReminderKey())) || [];
+    } catch(e) { return []; }
 }
 
-function persistReminders(list) {
-    localStorage.setItem(reminderKey, JSON.stringify(list));
+/* ── PERSIST ── */
+function saveRemindersToStorage(list) {
+    localStorage.setItem(getReminderKey(), JSON.stringify(list));
 }
 
-/* ─────────────────────────────────────
-   SAVE NEW REMINDER
-───────────────────────────────────── */
+/* ── SAVE ── called by onclick on Save Reminder button ── */
 function saveReminder() {
     const labelEl  = document.getElementById("reminderLabel");
     const timeEl   = document.getElementById("reminderTime");
     const repeatEl = document.getElementById("reminderRepeat");
 
-    const label  = labelEl?.value.trim();
-    const time   = timeEl?.value;
-    const repeat = repeatEl?.value || "Every Day";
+    const label  = labelEl  ? labelEl.value.trim() : "";
+    const time   = timeEl   ? timeEl.value          : "";
+    const repeat = repeatEl ? repeatEl.value        : "Every Day";
 
-    if (!label) { alert("Please enter a label."); return; }
-    if (!time)  { alert("Please pick a time.");   return; }
+    if (!label) { setReminderStatus("Please enter a label.", false); return; }
+    if (!time)  { setReminderStatus("Please pick a time.",   false); return; }
 
     const list = getReminders();
     list.push({ id: Date.now(), label, time, repeat, enabled: true });
-    persistReminders(list);
-    renderReminders();
+    saveRemindersToStorage(list);
 
-    // Reset inputs
+    // Clear inputs
     if (labelEl) labelEl.value = "";
     if (timeEl)  timeEl.value  = "";
 
-    // Keep form open so user can add more if needed
-    showReminderMsg("Reminder saved ✓");
+    setReminderStatus("Reminder saved ✓", true);
+    renderReminders();
 }
 
-/* ─────────────────────────────────────
-   RENDER LIST
-───────────────────────────────────── */
+/* ── STATUS MESSAGE ── */
+function setReminderStatus(msg, ok) {
+    const el = document.getElementById("reminderStatus");
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = ok ? "var(--green)" : "var(--red)";
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.textContent = ""; }, 3000);
+}
+
+/* ── RENDER ── */
 function renderReminders() {
-    const list = document.getElementById("reminderList");
-    if (!list) return;
+    const listEl = document.getElementById("reminderList");
+    if (!listEl) return;
 
     const reminders = getReminders();
-
     if (reminders.length === 0) {
-        list.innerHTML = `
-            <div style="text-align:center; padding:28px; color:var(--muted); font-size:13px;">
-                <div style="font-size:28px; margin-bottom:8px;">🔔</div>
+        listEl.innerHTML = `
+            <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">
+                <div style="font-size:28px;margin-bottom:8px;">🔔</div>
                 No reminders yet. Add one below.
             </div>`;
         return;
     }
 
-    list.innerHTML = "";
+    listEl.innerHTML = "";
     reminders.forEach(r => {
         const row = document.createElement("div");
         row.className = "reminder-row";
         row.innerHTML = `
             <div>
-                <div style="font-size:14px; font-weight:600;">${r.label}</div>
-                <div style="font-size:12px; color:var(--muted);">${r.repeat}</div>
+                <div style="font-size:14px;font-weight:600;">${r.label}</div>
+                <div style="font-size:12px;color:var(--muted);">${r.repeat}</div>
             </div>
-            <div style="display:flex; align-items:center; gap:16px;">
-                <span class="reminder-time">${formatTime(r.time)}</span>
-                <div class="toggle ${r.enabled ? "on" : ""}" data-id="${r.id}">
+            <div style="display:flex;align-items:center;gap:16px;">
+                <span class="reminder-time">${formatReminderTime(r.time)}</span>
+                <div class="toggle ${r.enabled ? "on" : ""}"
+                    onclick="toggleReminder(${r.id})">
                     <div class="toggle-dot"></div>
                 </div>
-                <button class="danger-btn"
-                    style="padding:4px 10px; font-size:11px;"
-                    data-id="${r.id}">✕</button>
+                <button class="danger-btn" style="padding:4px 10px;font-size:11px;"
+                    onclick="deleteReminder(${r.id})">✕</button>
             </div>`;
-
-        row.querySelector(".toggle")
-            .addEventListener("click", () => {
-                const updated = getReminders().map(x => {
-                    if (x.id === r.id) x.enabled = !x.enabled;
-                    return x;
-                });
-                persistReminders(updated);
-                renderReminders();
-            });
-
-        row.querySelector(".danger-btn")
-            .addEventListener("click", () => {
-                if (!confirm(`Delete "${r.label}"?`)) return;
-                persistReminders(getReminders().filter(x => x.id !== r.id));
-                renderReminders();
-            });
-
-        list.appendChild(row);
+        listEl.appendChild(row);
     });
 }
 
-/* ─────────────────────────────────────
-   FEEDBACK MESSAGE
-───────────────────────────────────── */
-function showReminderMsg(text) {
-    let el = document.getElementById("reminderSaveMsg");
-    if (!el) {
-        el = document.createElement("span");
-        el.id = "reminderSaveMsg";
-        el.style.cssText = "font-size:12px; color:var(--green); margin-left:12px;";
-        const btn = document.getElementById("saveReminderBtn");
-        if (btn) btn.parentNode.appendChild(el);
-    }
-    el.textContent = text;
-    setTimeout(() => { el.textContent = ""; }, 2500);
+/* ── TOGGLE ── */
+function toggleReminder(id) {
+    const list = getReminders().map(r => {
+        if (r.id === id) r.enabled = !r.enabled;
+        return r;
+    });
+    saveRemindersToStorage(list);
+    renderReminders();
 }
 
-/* ─────────────────────────────────────
-   FORMAT TIME  "07:30" → "07:30 AM"
-───────────────────────────────────── */
-function formatTime(str) {
+/* ── DELETE ── */
+function deleteReminder(id) {
+    if (!confirm("Delete this reminder?")) return;
+    saveRemindersToStorage(getReminders().filter(r => r.id !== id));
+    renderReminders();
+}
+
+/* ── FORMAT TIME "07:30" → "07:30 AM" ── */
+function formatReminderTime(str) {
     if (!str) return "";
     const [h, m] = str.split(":").map(Number);
-    const period = h >= 12 ? "PM" : "AM";
-    const hour   = h % 12 || 12;
-    return String(hour).padStart(2, "0") + ":" + String(m).padStart(2, "0") + " " + period;
+    return (h % 12 || 12).toString().padStart(2, "0") + ":" +
+           m.toString().padStart(2, "0") + " " + (h >= 12 ? "PM" : "AM");
 }
