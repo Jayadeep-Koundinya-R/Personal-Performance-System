@@ -1,100 +1,64 @@
 /* ================= REFLECTIONS ================= */
 
-let selectedMood     = "great";
-let reflectionKey    = "";
+let selectedMood  = "great";
+let reflectionKey = "";
 
-/* ─────────────────────────────────────
-   INIT
-───────────────────────────────────── */
 function setupReflections(user) {
     reflectionKey = `reflections_${user.email || "guest"}`;
-
     setupMoodPicker();
     renderReflections();
-
-    const saveBtn = document.getElementById("saveReflectionBtn");
-    if (saveBtn) {
-        saveBtn.addEventListener("click", saveReflection);
-    }
+    document.getElementById("saveReflectionBtn")
+        ?.addEventListener("click", saveReflection);
 }
 
-/* ─────────────────────────────────────
-   MOOD PICKER
-───────────────────────────────────── */
 function setupMoodPicker() {
-    const moodPicks = document.querySelectorAll(".mood-pick");
-
-    moodPicks.forEach(el => {
+    const picks = document.querySelectorAll(".mood-pick");
+    picks.forEach(el => {
         el.addEventListener("click", () => {
-            // dim all
-            moodPicks.forEach(m => m.style.opacity = "0.4");
-            // highlight selected
+            picks.forEach(m => m.style.opacity = "0.4");
             el.style.opacity = "1";
             selectedMood = el.dataset.mood;
         });
     });
 }
 
-/* ─────────────────────────────────────
-   SAVE
-───────────────────────────────────── */
 function saveReflection() {
     const text = document.getElementById("reflectionText")?.value.trim();
-
-    if (!text) {
-        alert("Write something before saving.");
-        return;
-    }
+    if(!text){ alert("Write something before saving."); return; }
 
     const reflections = getReflections();
     const todayStr    = new Date().toISOString().split("T")[0];
-
-    // one entry per day — overwrite if exists
-    const existingIdx = reflections.findIndex(r => r.date === todayStr);
+    const idx         = reflections.findIndex(r => r.date === todayStr);
 
     const entry = {
         date:      todayStr,
         text:      text,
         mood:      selectedMood,
-        habitsLog: buildHabitsLog()   // snapshot of today's habit completions
+        habitsLog: habits.map(h => ({
+            name:      h.name,
+            completed: h.completedDates.includes(todayStr)
+        }))
     };
 
-    if (existingIdx >= 0) {
-        reflections[existingIdx] = entry;
-    } else {
-        reflections.unshift(entry); // newest first
-    }
+    if(idx >= 0) reflections[idx] = entry;
+    else         reflections.unshift(entry);
 
     localStorage.setItem(reflectionKey, JSON.stringify(reflections));
 
-    // clear textarea
-    const textarea = document.getElementById("reflectionText");
-    if (textarea) textarea.value = "";
+    document.getElementById("reflectionText").value = "";
+    // Reset mood to default
+    document.querySelectorAll(".mood-pick").forEach(m => m.style.opacity = "0.4");
+    const defaultMood = document.querySelector('.mood-pick[data-mood="great"]');
+    if(defaultMood) defaultMood.style.opacity = "1";
+    selectedMood = "great";
 
     renderReflections();
 }
 
-/* ─────────────────────────────────────
-   GET ALL REFLECTIONS
-───────────────────────────────────── */
 function getReflections() {
     return JSON.parse(localStorage.getItem(reflectionKey)) || [];
 }
 
-/* ─────────────────────────────────────
-   HABITS SNAPSHOT FOR TODAY
-───────────────────────────────────── */
-function buildHabitsLog() {
-    const todayStr = new Date().toISOString().split("T")[0];
-    return habits.map(h => ({
-        name:      h.name,
-        completed: h.completedDates.includes(todayStr)
-    }));
-}
-
-/* ─────────────────────────────────────
-   MOOD EMOJI MAP
-───────────────────────────────────── */
 const moodMap = {
     great:  "😊 Great",
     okay:   "😐 Okay",
@@ -102,65 +66,49 @@ const moodMap = {
     stress: "😤 Stressed"
 };
 
-/* ─────────────────────────────────────
-   RENDER PAST ENTRIES
-───────────────────────────────────── */
 function renderReflections() {
     const list = document.getElementById("reflectionList");
-    if (!list) return;
+    if(!list) return;
 
     const reflections = getReflections();
-
-    if (reflections.length === 0) {
+    if(reflections.length === 0) {
         list.innerHTML = `<p class="empty-text">No reflections yet — write your first one above.</p>`;
         return;
     }
 
     list.innerHTML = "";
-
     reflections.forEach(entry => {
         const card = document.createElement("div");
         card.className = "reflection-card";
 
-        // format date nicely
         const dateLabel = new Date(entry.date + "T00:00:00")
-            .toLocaleDateString(undefined, {
-                weekday: "long", year: "numeric",
-                month:   "long", day: "numeric"
+            .toLocaleDateString("en-GB", {
+                weekday:"long", day:"2-digit", month:"long", year:"numeric"
             });
 
-        // habits chips
-        const habitChips = (entry.habitsLog || []).map(h => `
-            <div class="mood-chip">${h.name} ${h.completed ? "✅" : "❌"}</div>
-        `).join("");
+        const habitChips = (entry.habitsLog||[]).map(h =>
+            `<div class="mood-chip">${h.name} ${h.completed?"✅":"❌"}</div>`
+        ).join("");
 
         card.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
                 <div class="reflection-date">${dateLabel}</div>
-                <button class="danger-btn" style="padding:3px 10px; font-size:11px;"
+                <button class="danger-btn" style="padding:3px 10px;font-size:11px;"
                     data-date="${entry.date}">Delete</button>
             </div>
             <div class="reflection-text">${entry.text}</div>
             <div class="mood-row">
                 <div class="mood-chip">${moodMap[entry.mood] || entry.mood}</div>
                 ${habitChips}
-            </div>
-        `;
+            </div>`;
 
         card.querySelector(".danger-btn").addEventListener("click", () => {
-            deleteReflection(entry.date);
+            if(!confirm("Delete this reflection?")) return;
+            const updated = getReflections().filter(r => r.date !== entry.date);
+            localStorage.setItem(reflectionKey, JSON.stringify(updated));
+            renderReflections();
         });
 
         list.appendChild(card);
     });
-}
-
-/* ─────────────────────────────────────
-   DELETE ENTRY
-───────────────────────────────────── */
-function deleteReflection(date) {
-    if (!confirm("Delete this reflection?")) return;
-    const reflections = getReflections().filter(r => r.date !== date);
-    localStorage.setItem(reflectionKey, JSON.stringify(reflections));
-    renderReflections();
 }

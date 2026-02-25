@@ -6,18 +6,58 @@ function setupNavigation() {
 
     navItems.forEach(item => {
         item.addEventListener("click", () => {
-            navItems.forEach(nav => nav.classList.remove("active"));
-            sections.forEach(section => section.classList.remove("active-section"));
 
+            // Remove active from all
+            navItems.forEach(n => n.classList.remove("active"));
+            sections.forEach(s => s.classList.remove("active-section"));
+
+            // Set active
             item.classList.add("active");
-
             const sectionId = item.dataset.section;
-            const selectedSection = document.getElementById(sectionId);
-            if (selectedSection) selectedSection.classList.add("active-section");
+            const target = document.getElementById(sectionId);
+            if (target) target.classList.add("active-section");
 
-            // Re-render dashboard when opened
-            if (sectionId === "dashboardSection") {
-                renderDashboard();
+            // ── Re-render the correct section on every visit ──
+            // This is the professional pattern: each section renders
+            // fresh data when you navigate to it, not just on load.
+            switch (sectionId) {
+
+                case "dashboardSection":
+                    renderDashboard();
+                    break;
+
+                case "dailyTrackerSection":
+                    renderDailyTracker();
+                    updateProgressWidget();
+                    break;
+
+                case "analyticsSection":
+                    renderHabitSuccessRates();
+                    updateWeeklyChart();
+                    updateCompletionStats();
+                    break;
+
+                case "streakSection":
+                    // THIS was the bug — never called on nav
+                    renderStreakSection();
+                    updateCompletionStats();
+                    break;
+
+                case "reflectionSection":
+                    renderReflections();
+                    break;
+
+                case "habitManagerSection":
+                    renderHabits();
+                    break;
+
+                case "reminderSection":
+                    renderReminders();
+                    break;
+
+                case "settingsSection":
+                    // nothing dynamic to re-render
+                    break;
             }
         });
     });

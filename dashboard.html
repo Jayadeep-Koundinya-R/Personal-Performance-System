@@ -1,502 +1,482 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PPS — Personal Performance System</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css"/>
 </head>
 <body>
 
-  <div class="app-container">
+<div class="app-container">
 
-    <!-- ══════════════════════════════════
-         SIDEBAR
-    ══════════════════════════════════ -->
-    <aside class="sidebar">
-      <div class="logo">PPS<span>.</span></div>
-      <nav>
-        <ul>
-          <li class="nav-item active" data-section="dashboardSection">⚡ Dashboard</li>
-          <li class="nav-item" data-section="dailyTrackerSection">📋 Daily Tracker</li>
-          <li class="nav-item" data-section="analyticsSection">📊 Analytics</li>
-          <li class="nav-item" data-section="streakSection">🔥 Streak Engine</li>
-          <li class="nav-item" data-section="reflectionSection">📝 Reflections</li>
-          <li class="nav-item" data-section="habitManagerSection">⚙️ Habit Manager</li>
-          <li class="nav-item" data-section="reminderSection">🔔 Reminders</li>
-          <li class="nav-item" data-section="settingsSection">🛠 Settings</li>
-        </ul>
-      </nav>
-      <div class="sidebar-footer">
-        <div class="user-chip">
-          <div class="avatar" id="userAvatar">U</div>
-          <div>
-            <div class="user-name"  id="userNameDisplay">User</div>
-            <div class="user-level" id="userLevelDisplay">Level 1 • 0 XP</div>
+  <!-- ═══════════════════════════════
+       SIDEBAR
+  ═══════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="logo">PPS<span>.</span></div>
+    <nav>
+      <ul>
+        <li class="nav-item active" data-section="dashboardSection">⚡ Dashboard</li>
+        <li class="nav-item" data-section="dailyTrackerSection">📋 Daily Tracker</li>
+        <li class="nav-item" data-section="analyticsSection">📊 Analytics</li>
+        <li class="nav-item" data-section="streakSection">🔥 Streak Engine</li>
+        <li class="nav-item" data-section="reflectionSection">📝 Reflections</li>
+        <li class="nav-item" data-section="habitManagerSection">⚙️ Habit Manager</li>
+        <li class="nav-item" data-section="reminderSection">🔔 Reminders</li>
+        <li class="nav-item" data-section="settingsSection">🛠 Settings</li>
+      </ul>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar" id="userAvatar">U</div>
+        <div>
+          <div class="user-name"  id="userNameDisplay">User</div>
+          <div class="user-level" id="userLevelDisplay">Level 1 • 0 XP</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════
+       MAIN CONTENT
+  ═══════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- ── DASHBOARD ── -->
+    <section id="dashboardSection" class="section active-section">
+      <div class="dashboard-header">
+        <div>
+          <h1>Dashboard</h1>
+          <div class="page-sub" id="dashboardDate"></div>
+        </div>
+        <select class="global-filter" id="globalFilter">
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+        </select>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card purple">
+          <div class="stat-num" id="completionRate">0%</div>
+          <div class="stat-label">Completion Rate</div>
+          <div class="stat-badge">Today's habits</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-num" id="currentStreak">🔥 0</div>
+          <div class="stat-label">Current Streak</div>
+          <div class="stat-badge">Keep going!</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-num" id="freezeCreditsDisplay">0</div>
+          <div class="stat-label">Freeze Credits</div>
+          <div class="stat-badge">Saves your streak</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-num" id="weeklyPoints">0</div>
+          <div class="stat-label">Points This Week</div>
+          <div class="stat-badge">+10 XP per habit</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="left-column">
+          <div class="card critical-card">
+            <h3>🔴 Critical Tasks</h3>
+            <div id="criticalList"></div>
+          </div>
+          <div class="card high-card">
+            <h3>🟠 High Priority</h3>
+            <div id="highList"></div>
+          </div>
+          <div class="card medium-card">
+            <h3>🟡 Medium Focus</h3>
+            <div id="mediumList"></div>
+          </div>
+          <div class="card upcoming-card">
+            <div class="card-header">
+              <h3>🟢 Upcoming</h3>
+              <span class="toggle-btn">Show More</span>
+            </div>
+            <div id="upcomingList"></div>
+          </div>
+        </div>
+
+        <div class="right-column">
+          <div class="widget-card">
+            <h4>Today's Progress</h4>
+            <div class="stat-value" id="todayProgress">0/0</div>
+            <div class="text-muted mt-4" style="font-size:12px;">habits completed</div>
+            <div class="prog-wrap">
+              <div class="prog-fill" id="todayProgressBar" style="width:0%;"></div>
+            </div>
+          </div>
+          <div class="widget-card">
+            <h4>Weekly Snapshot</h4>
+            <div class="bar-chart" id="weeklyChart"></div>
+          </div>
+          <div class="widget-card">
+            <h4>Level Progress</h4>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span class="stat-value" id="userLevel" style="font-size:20px;">Lv. 1</span>
+              <span class="text-muted mono" id="xpDisplay" style="font-size:12px;">0 / 100 XP</span>
+            </div>
+            <div class="prog-wrap">
+              <div class="prog-fill" id="xpBar" style="width:0%;"></div>
+            </div>
+            <div class="text-muted mt-4" style="font-size:11px;" id="xpToNext">100 XP to next level</div>
           </div>
         </div>
       </div>
-    </aside>
+    </section>
 
-    <!-- ══════════════════════════════════
-         MAIN CONTENT
-    ══════════════════════════════════ -->
-    <main class="main-content">
-
-      <!-- ─────────────────────────────
-           DASHBOARD
-      ───────────────────────────────── -->
-      <section id="dashboardSection" class="section active-section">
-
-        <div class="dashboard-header">
-          <div>
-            <h1>Dashboard</h1>
-            <div class="page-sub" id="dashboardDate"></div>
-          </div>
-          <select class="global-filter" id="globalFilter">
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
+    <!-- ── DAILY TRACKER ── -->
+    <section id="dailyTrackerSection" class="section">
+      <div class="dashboard-header">
+        <div>
+          <h1>Daily Tracker</h1>
+          <div class="page-sub">Check off as you go — XP updates automatically</div>
         </div>
-
-        <!-- Stat Cards -->
-        <div class="stats-row">
-          <div class="stat-card purple">
-            <div class="stat-num"   id="completionRate">0%</div>
-            <div class="stat-label">Completion Rate</div>
-            <div class="stat-badge">Today's habits</div>
-          </div>
-          <div class="stat-card orange">
-            <div class="stat-num"   id="currentStreak">🔥 0</div>
-            <div class="stat-label">Current Streak</div>
-            <div class="stat-badge">Keep going!</div>
-          </div>
-          <div class="stat-card cyan">
-            <div class="stat-num"   id="freezeCreditsDisplay">0</div>
-            <div class="stat-label">Freeze Credits</div>
-            <div class="stat-badge">Total across habits</div>
-          </div>
-          <div class="stat-card green">
-            <div class="stat-num"   id="weeklyPoints">0</div>
-            <div class="stat-label">Points This Week</div>
-            <div class="stat-badge">+10 XP per habit</div>
+        <div class="mono text-muted" id="trackerDate" style="font-size:13px;"></div>
+      </div>
+      <div class="card" style="display:flex;align-items:center;gap:24px;margin-bottom:20px;">
+        <div>
+          <div class="stat-value" id="trackerProgress">0/0</div>
+          <div class="text-muted" style="font-size:12px;">Done today</div>
+        </div>
+        <div style="flex:1;">
+          <div class="prog-wrap" style="height:10px;">
+            <div class="prog-fill" id="trackerProgressBar" style="width:0%;height:10px;"></div>
           </div>
         </div>
+        <div class="text-muted" id="trackerPercent" style="font-size:13px;">0% complete</div>
+      </div>
+      <div id="trackerList"></div>
+    </section>
 
-        <!-- Grid -->
-        <div class="dashboard-grid">
-
-          <!-- LEFT: Priority Columns -->
-          <div class="left-column">
-            <div class="card critical-card">
-              <h3>🔴 Critical Tasks</h3>
-              <div id="criticalList"></div>
-            </div>
-            <div class="card high-card">
-              <h3>🟠 High Priority</h3>
-              <div id="highList"></div>
-            </div>
-            <div class="card medium-card">
-              <h3>🟡 Medium Focus</h3>
-              <div id="mediumList"></div>
-            </div>
-            <div class="card upcoming-card">
-              <div class="card-header">
-                <h3>🟢 Upcoming</h3>
-                <span class="toggle-btn">Show More</span>
-              </div>
-              <div id="upcomingList"></div>
-            </div>
-          </div>
-
-          <!-- RIGHT: Widgets -->
-          <div class="right-column">
-
-            <div class="widget-card">
-              <h4>Today's Progress</h4>
-              <div class="stat-value" id="todayProgress">0/0</div>
-              <div class="text-muted mt-4" style="font-size:12px;">habits completed</div>
-              <div class="prog-wrap">
-                <div class="prog-fill" id="todayProgressBar" style="width:0%;"></div>
-              </div>
-            </div>
-
-            <div class="widget-card">
-              <h4>Weekly Snapshot</h4>
-              <div class="bar-chart" id="weeklyChart"></div>
-            </div>
-
-            <div class="widget-card">
-              <h4>Level Progress</h4>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span class="stat-value" id="userLevel" style="font-size:20px;">Lv. 1</span>
-                <span class="text-muted mono" id="xpDisplay" style="font-size:12px;">0 / 100 XP</span>
-              </div>
-              <div class="prog-wrap">
-                <div class="prog-fill" id="xpBar" style="width:0%;"></div>
-              </div>
-              <div class="text-muted mt-4" style="font-size:11px;" id="xpToNext">100 XP to next level</div>
-            </div>
-
-          </div>
+    <!-- ── ANALYTICS ── -->
+    <section id="analyticsSection" class="section">
+      <div class="dashboard-header">
+        <div>
+          <h1>Analytics</h1>
+          <div class="page-sub">Your performance over time</div>
         </div>
-      </section>
+        <select class="global-filter">
+          <option>Last 7 Days</option>
+          <option>Last 30 Days</option>
+          <option>All Time</option>
+        </select>
+      </div>
 
-      <!-- ─────────────────────────────
-           DAILY TRACKER
-      ───────────────────────────────── -->
-      <section id="dailyTrackerSection" class="section">
-        <div class="dashboard-header">
-          <div>
-            <h1>Daily Tracker</h1>
-            <div class="page-sub">Check off as you go — XP updates automatically</div>
-          </div>
-          <div class="mono text-muted" id="trackerDate" style="font-size:13px;"></div>
-        </div>
+      <div class="stats-row" style="margin-bottom:20px;">
+        <div class="stat-card purple"><div class="stat-num" id="avgCompletion">0%</div><div class="stat-label">Avg Completion</div></div>
+        <div class="stat-card orange"><div class="stat-num" id="bestStreak">0</div><div class="stat-label">Best Streak</div></div>
+        <div class="stat-card green"> <div class="stat-num" id="totalXP">0</div><div class="stat-label">Total XP</div></div>
+        <div class="stat-card cyan">  <div class="stat-num" id="totalDone">0</div><div class="stat-label">Habits Completed</div></div>
+      </div>
 
-        <!-- Progress bar -->
-        <div class="card" style="display:flex; align-items:center; gap:24px; margin-bottom:20px;">
-          <div>
-            <div class="stat-value" id="trackerProgress">0/0</div>
-            <div class="text-muted" style="font-size:12px;">Done today</div>
-          </div>
-          <div style="flex:1;">
-            <div class="prog-wrap" style="height:10px;">
-              <div class="prog-fill" id="trackerProgressBar" style="width:0%; height:10px;"></div>
-            </div>
-          </div>
-          <div class="text-muted" id="trackerPercent" style="font-size:13px;">0% complete</div>
-        </div>
-
-        <div id="trackerList"></div>
-      </section>
-
-      <!-- ─────────────────────────────
-           ANALYTICS
-      ───────────────────────────────── -->
-      <section id="analyticsSection" class="section">
-        <div class="dashboard-header">
-          <div>
-            <h1>Analytics</h1>
-            <div class="page-sub">Your performance over time</div>
-          </div>
-          <select class="global-filter">
-            <option>Last 7 Days</option>
-            <option>Last 30 Days</option>
-            <option>All Time</option>
-          </select>
-        </div>
-
-        <div class="stats-row" style="margin-bottom:20px;">
-          <div class="stat-card purple"><div class="stat-num" id="avgCompletion">0%</div><div class="stat-label">Avg Completion</div></div>
-          <div class="stat-card orange"><div class="stat-num" id="bestStreak">0</div><div class="stat-label">Best Streak</div></div>
-          <div class="stat-card green"> <div class="stat-num" id="totalXP">0</div><div class="stat-label">Total XP</div></div>
-          <div class="stat-card cyan">  <div class="stat-num" id="totalDone">0</div><div class="stat-label">Habits Completed</div></div>
-        </div>
-
-        <div class="dashboard-grid" style="margin-bottom:20px;">
-          <div class="card">
-            <h3>Weekly Completion Rate</h3>
-            <div class="bar-chart" id="analyticsWeekChart" style="height:150px;"></div>
-          </div>
-          <div class="card">
-            <h3>Per Habit Success Rate</h3>
-            <div id="habitSuccessRates"></div>
-          </div>
-        </div>
-
+      <div class="dashboard-grid" style="margin-bottom:20px;">
         <div class="card">
-          <h3>Activity Heatmap</h3>
-          <div id="heatmapGrid" style="display:grid; grid-template-columns:repeat(26,1fr); gap:3px; margin-top:10px;"></div>
-          <div style="display:flex; gap:8px; align-items:center; margin-top:12px; font-size:11px; color:var(--muted);">
-            <span>Less</span>
-            <div style="width:12px;height:12px;border-radius:2px;background:var(--surface);border:1px solid var(--border);"></div>
-            <div style="width:12px;height:12px;border-radius:2px;background:#1e3a5f;"></div>
-            <div style="width:12px;height:12px;border-radius:2px;background:#2563eb;"></div>
-            <div style="width:12px;height:12px;border-radius:2px;background:#6366f1;"></div>
-            <span>More</span>
-          </div>
+          <h3>Weekly Completion Rate</h3>
+          <div class="bar-chart" id="analyticsWeekChart" style="height:150px;"></div>
         </div>
-      </section>
-
-      <!-- ─────────────────────────────
-           STREAK ENGINE
-      ───────────────────────────────── -->
-      <section id="streakSection" class="section">
-        <div class="dashboard-header">
-          <div>
-            <h1>Streak Engine</h1>
-            <div class="page-sub">Don't break the chain</div>
-          </div>
-        </div>
-
-        <div class="streak-hero">
-          <div style="font-size:32px;">🔥</div>
-          <div class="streak-num" id="heroStreak">0</div>
-          <div class="text-muted mt-4">Day Streak</div>
-          <div class="streak-stats">
-            <div class="streak-stat-item">
-              <div class="s-num" id="heroFreeze">0</div>
-              <div class="s-label">Freeze Credits</div>
-            </div>
-            <div class="streak-stat-item">
-              <div class="s-num" id="heroBest">0</div>
-              <div class="s-label">Best Streak</div>
-            </div>
-            <div class="streak-stat-item">
-              <div class="s-num" id="heroTotal">0</div>
-              <div class="s-label">Total Completions</div>
-            </div>
-          </div>
-        </div>
-
-        <div id="habitStreakList" style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:20px;"></div>
-      </section>
-
-      <!-- ─────────────────────────────
-           REFLECTIONS
-      ───────────────────────────────── -->
-      <section id="reflectionSection" class="section">
-        <div class="dashboard-header">
-          <div>
-            <h1>Reflections</h1>
-            <div class="page-sub">Write, reflect, grow</div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-bottom:20px;">
-          <h3>Today's Reflection</h3>
-          <textarea id="reflectionText" class="mt-8"
-            style="height:100px; width:100%;"
-            placeholder="How did today go? What went well? What to improve?">
-          </textarea>
-          <div style="display:flex; align-items:center; gap:12px; margin-top:12px;">
-            <span class="text-muted" style="font-size:13px;">Mood:</span>
-            <span class="mood-pick" data-mood="great"  style="font-size:22px; cursor:pointer;">😊</span>
-            <span class="mood-pick" data-mood="okay"   style="font-size:22px; cursor:pointer; opacity:.4;">😐</span>
-            <span class="mood-pick" data-mood="low"    style="font-size:22px; cursor:pointer; opacity:.4;">😔</span>
-            <span class="mood-pick" data-mood="stress" style="font-size:22px; cursor:pointer; opacity:.4;">😤</span>
-            <button class="primary-btn" style="margin-left:auto; margin-top:0;" id="saveReflectionBtn">Save</button>
-          </div>
-        </div>
-
-        <h3 style="margin-bottom:12px; color:var(--muted); font-size:13px; text-transform:uppercase; letter-spacing:.06em;">Past Entries</h3>
-        <div id="reflectionList"></div>
-      </section>
-
-      <!-- ─────────────────────────────
-           HABIT MANAGER
-      ───────────────────────────────── -->
-      <section id="habitManagerSection" class="section">
-        <div class="dashboard-header">
-          <div>
-            <h1>Habit Manager</h1>
-            <div class="page-sub">Add, edit or remove habits</div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-bottom:20px;">
-          <h3>Add New Habit</h3>
-
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-
-            <div class="form-group">
-              <label>Habit Name</label>
-              <input type="text" id="habitName" placeholder="e.g. Workout 30 mins">
-              <small class="field-error" id="habitError">Habit name is required</small>
-            </div>
-
-            <div class="form-group">
-              <label>Category</label>
-              <input type="text" id="habitCategory" placeholder="e.g. Fitness">
-            </div>
-
-            <div class="form-group">
-              <label>Period</label>
-              <select id="habitPeriod">
-                <option value="Daily">Daily</option>
-                <option value="Weekly">Weekly</option>
-                <option value="Monthly">Monthly</option>
-                <option value="Today">Today Only</option>
-              </select>
-            </div>
-
-            <!-- ✅ NEW: Start Date field -->
-            <div class="form-group">
-              <label>Start Date <span class="text-muted" style="font-size:10px;">(optional — defaults to today)</span></label>
-              <input type="date" id="habitStartDate">
-            </div>
-
-            <div class="form-group" style="grid-column: span 2;">
-              <label>Priority</label>
-              <div class="priority-options">
-                <label class="priority high">
-                  <input type="radio" name="priority" value="High" checked>
-                  <span>High</span>
-                </label>
-                <label class="priority medium">
-                  <input type="radio" name="priority" value="Medium">
-                  <span>Medium</span>
-                </label>
-                <label class="priority low">
-                  <input type="radio" name="priority" value="Low">
-                  <span>Low</span>
-                </label>
-                <label class="priority optional">
-                  <input type="radio" name="priority" value="Optional">
-                  <span>Optional</span>
-                </label>
-              </div>
-            </div>
-
-          </div>
-
-          <button class="primary-btn mt-12" id="addHabitBtn">+ Add Habit</button>
-        </div>
-
         <div class="card">
-          <h3>Your Habits (<span id="habitCount">0</span>)</h3>
-          <div id="habitList"></div>
+          <h3>Per Habit Success Rate</h3>
+          <div id="habitSuccessRates"></div>
         </div>
-      </section>
+      </div>
 
-      <!-- ─────────────────────────────
-           REMINDERS
-      ───────────────────────────────── -->
-      <section id="reminderSection" class="section">
-        <div class="dashboard-header">
-          <div>
-            <h1>Reminders</h1>
-            <div class="page-sub">Set times to be nudged</div>
+      <div class="card">
+        <h3>Activity Heatmap</h3>
+        <div id="heatmapGrid" style="display:grid;grid-template-columns:repeat(26,1fr);gap:3px;margin-top:10px;"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:11px;color:var(--muted);">
+          <span>Less</span>
+          <div style="width:12px;height:12px;border-radius:2px;background:var(--surface);border:1px solid var(--border);"></div>
+          <div style="width:12px;height:12px;border-radius:2px;background:#1e3a5f;"></div>
+          <div style="width:12px;height:12px;border-radius:2px;background:#2563eb;"></div>
+          <div style="width:12px;height:12px;border-radius:2px;background:#6366f1;"></div>
+          <span>More</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── STREAK ENGINE ── -->
+    <section id="streakSection" class="section">
+      <div class="dashboard-header">
+        <div>
+          <h1>Streak Engine</h1>
+          <div class="page-sub">Don't break the chain</div>
+        </div>
+      </div>
+      <div class="streak-hero">
+        <div style="font-size:32px;">🔥</div>
+        <div class="streak-num" id="heroStreak">0</div>
+        <div class="text-muted mt-4">Day Streak</div>
+        <div class="streak-stats">
+          <div class="streak-stat-item"><div class="s-num" id="heroFreeze">0</div><div class="s-label">Freeze Credits</div></div>
+          <div class="streak-stat-item"><div class="s-num" id="heroBest">0</div><div class="s-label">Best Streak</div></div>
+          <div class="streak-stat-item"><div class="s-num" id="heroTotal">0</div><div class="s-label">Total Completions</div></div>
+        </div>
+      </div>
+      <div id="habitStreakList" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px;"></div>
+    </section>
+
+    <!-- ── REFLECTIONS ── -->
+    <section id="reflectionSection" class="section">
+      <div class="dashboard-header">
+        <div>
+          <h1>Reflections</h1>
+          <div class="page-sub">Write, reflect, grow</div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:20px;">
+        <h3>Today's Reflection</h3>
+        <textarea id="reflectionText" class="mt-8" style="height:100px;width:100%;"
+          placeholder="How did today go? What went well? What to improve?"></textarea>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:12px;">
+          <span class="text-muted" style="font-size:13px;">Mood:</span>
+          <span class="mood-pick" data-mood="great"  style="font-size:22px;cursor:pointer;">😊</span>
+          <span class="mood-pick" data-mood="okay"   style="font-size:22px;cursor:pointer;opacity:.4;">😐</span>
+          <span class="mood-pick" data-mood="low"    style="font-size:22px;cursor:pointer;opacity:.4;">😔</span>
+          <span class="mood-pick" data-mood="stress" style="font-size:22px;cursor:pointer;opacity:.4;">😤</span>
+          <button class="primary-btn" style="margin-left:auto;margin-top:0;" id="saveReflectionBtn">Save</button>
+        </div>
+      </div>
+      <h3 style="margin-bottom:12px;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em;">Past Entries</h3>
+      <div id="reflectionList"></div>
+    </section>
+
+    <!-- ── HABIT MANAGER ── -->
+    <section id="habitManagerSection" class="section">
+      <div class="dashboard-header">
+        <div>
+          <h1>Habit Manager</h1>
+          <div class="page-sub">Add, edit or remove habits</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <h3>Add New Habit</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label>Habit Name</label>
+            <input type="text" id="habitName" placeholder="e.g. Workout 30 mins">
+            <small class="field-error" id="habitError">Habit name is required</small>
           </div>
-          <button class="primary-btn" id="addReminderBtn">+ Add Reminder</button>
+          <div class="form-group">
+            <label>Category</label>
+            <input type="text" id="habitCategory" placeholder="e.g. Fitness">
+          </div>
+          <div class="form-group">
+            <label>Period</label>
+            <select id="habitPeriod">
+              <option value="Daily">Daily</option>
+              <option value="Weekly">Weekly</option>
+              <option value="Monthly">Monthly</option>
+              <option value="Today">Today Only</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Start Date <span class="text-muted" style="font-size:10px;text-transform:none;">(optional)</span></label>
+            <input type="date" id="habitStartDate">
+          </div>
+          <div class="form-group" style="grid-column:span 2;">
+            <label>Priority</label>
+            <div class="priority-options">
+              <label class="priority high">  <input type="radio" name="priority" value="High" checked><span>High</span></label>
+              <label class="priority medium"><input type="radio" name="priority" value="Medium"><span>Medium</span></label>
+              <label class="priority low">   <input type="radio" name="priority" value="Low"><span>Low</span></label>
+              <label class="priority optional"><input type="radio" name="priority" value="Optional"><span>Optional</span></label>
+            </div>
+          </div>
+        </div>
+        <button class="primary-btn mt-12" id="addHabitBtn">+ Add Habit</button>
+      </div>
+
+      <div class="card">
+        <h3>Your Habits (<span id="habitCount">0</span>)</h3>
+        <div id="habitList"></div>
+      </div>
+    </section>
+
+    <!-- ── REMINDERS ── -->
+    <section id="reminderSection" class="section">
+      <div class="dashboard-header">
+        <div>
+          <h1>Reminders</h1>
+          <div class="page-sub">Set times to be nudged</div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:20px;">
+        <h3>Active Reminders</h3>
+        <div id="reminderList"><p class="empty-text">No reminders set yet.</p></div>
+      </div>
+      <!-- Add form always visible like in blueprint -->
+      <div class="card" id="reminderForm">
+        <h3>Add New Reminder</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:8px;margin-bottom:16px;">
+          <div class="form-group"><label>Label</label><input type="text" id="reminderLabel" placeholder="e.g. Morning routine"></div>
+          <div class="form-group"><label>Time</label><input type="time" id="reminderTime"></div>
+          <div class="form-group"><label>Repeat</label>
+            <select id="reminderRepeat">
+              <option>Every Day</option>
+              <option>Weekdays</option>
+              <option>Weekends</option>
+              <option>Custom</option>
+            </select>
+          </div>
+        </div>
+        <button class="primary-btn" id="saveReminderBtn">Save Reminder</button>
+      </div>
+    </section>
+
+    <!-- ── SETTINGS ── -->
+    <section id="settingsSection" class="section">
+      <div class="dashboard-header">
+        <div>
+          <h1>Settings</h1>
+          <div class="page-sub">Customize your experience</div>
+        </div>
+      </div>
+
+      <div class="msg" id="settingsMsg"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+
+        <!-- Account -->
+        <div class="card">
+          <h3>Account</h3>
+          <div class="settings-row">
+            <div><div class="settings-label">Email</div><div class="settings-desc" id="settingsEmail">—</div></div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">Display Name</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="settingsName" placeholder="Your name" style="width:140px;">
+              <button class="ghost-btn" id="saveNameBtn">Save</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">Sign Out</div>
+            <button class="danger-btn" id="logoutBtn">Log Out</button>
+          </div>
         </div>
 
-        <div class="card" style="margin-bottom:20px;">
-          <h3>Active Reminders</h3>
-          <div id="reminderList">
-            <p class="empty-text">No reminders set yet.</p>
+        <!-- Change Password -->
+        <div class="card">
+          <h3>Change Password</h3>
+          <div class="form-group mt-8">
+            <label>Current Password</label>
+            <input type="password" id="currentPassword" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="newPassword" placeholder="Min 6 characters">
+          </div>
+          <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="confirmPassword" placeholder="Repeat new password">
+          </div>
+          <button class="primary-btn" id="changePasswordBtn">Update Password</button>
+        </div>
+
+        <!-- Preferences -->
+        <div class="card">
+          <h3>Preferences</h3>
+          <div class="settings-row">
+            <div><div class="settings-label">XP per Habit</div><div class="settings-desc">Points per completion</div></div>
+            <input type="number" id="xpPerHabit" value="10" style="width:60px;text-align:center;">
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-label">Default Freeze Credits</div><div class="settings-desc">Per new habit</div></div>
+            <input type="number" id="defaultFreeze" value="2" style="width:60px;text-align:center;">
           </div>
         </div>
 
-        <!-- Add form — hidden by default -->
-        <div class="card" id="reminderForm" style="display:none;">
-          <h3>New Reminder</h3>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:8px;">
-            <div class="form-group">
-              <label>Label</label>
-              <input type="text" id="reminderLabel" placeholder="e.g. Morning routine">
-            </div>
-            <div class="form-group">
-              <label>Time</label>
-              <input type="time" id="reminderTime">
-            </div>
-            <div class="form-group">
-              <label>Repeat</label>
-              <select id="reminderRepeat">
-                <option>Every Day</option>
-                <option>Weekdays</option>
-                <option>Weekends</option>
-              </select>
-            </div>
+        <!-- Data -->
+        <div class="card">
+          <h3>Data</h3>
+          <div class="settings-row">
+            <div><div class="settings-label">Export Habits</div><div class="settings-desc">Download as JSON</div></div>
+            <button class="ghost-btn" id="exportBtn">Export</button>
           </div>
-          <button class="primary-btn" id="saveReminderBtn">Save Reminder</button>
-        </div>
-      </section>
-
-      <!-- ─────────────────────────────
-           SETTINGS
-      ───────────────────────────────── -->
-      <section id="settingsSection" class="section">
-        <div class="dashboard-header">
-          <div>
-            <h1>Settings</h1>
-            <div class="page-sub">Customize your experience</div>
+          <div class="settings-row">
+            <div><div class="settings-label">Reset All Data</div><div class="settings-desc" style="color:var(--red);">Cannot be undone</div></div>
+            <button class="danger-btn" id="resetBtn">Reset</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">Storage Used</div>
+            <span class="text-muted" id="storageUsed">~0 KB</span>
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start;">
+      </div>
+    </section>
 
-          <div class="card">
-            <h3>Account</h3>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Logged in as</div>
-                <div class="settings-desc" id="settingsEmail">—</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div class="settings-label">Sign Out</div>
-              <button class="danger-btn" id="logoutBtn">Log Out</button>
-            </div>
-          </div>
+  </main>
+</div>
 
-          <div class="card">
-            <h3>Preferences</h3>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">XP per Habit</div>
-                <div class="settings-desc">Points earned per completion</div>
-              </div>
-              <input type="number" id="xpPerHabit" value="10" style="width:60px; text-align:center;">
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Default Freeze Credits</div>
-                <div class="settings-desc">Given to each new habit</div>
-              </div>
-              <input type="number" id="defaultFreeze" value="2" style="width:60px; text-align:center;">
-            </div>
-          </div>
-
-          <div class="card">
-            <h3>Data</h3>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Export Habits</div>
-                <div class="settings-desc">Download as JSON</div>
-              </div>
-              <button class="ghost-btn" id="exportBtn">Export</button>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Reset All Data</div>
-                <div class="settings-desc" style="color:var(--red);">Cannot be undone</div>
-              </div>
-              <button class="danger-btn" id="resetBtn">Reset</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <h3>App Info</h3>
-            <div class="settings-row">
-              <div class="settings-label">Version</div>
-              <span class="mono text-muted">v0.1.0</span>
-            </div>
-            <div class="settings-row">
-              <div class="settings-label">Storage Used</div>
-              <span class="text-muted" id="storageUsed">~0 KB</span>
-            </div>
-          </div>
-
+<!-- ═══════════════════════════════
+     EDIT HABIT MODAL
+═══════════════════════════════ -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Edit Habit</h2>
+      <button class="modal-close" id="editModalClose">✕</button>
+    </div>
+    <input type="hidden" id="editHabitId">
+    <div class="modal-grid">
+      <div class="form-group">
+        <label>Habit Name</label>
+        <input type="text" id="editHabitName" placeholder="e.g. Workout 30 mins">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <input type="text" id="editHabitCategory" placeholder="e.g. Fitness">
+      </div>
+      <div class="form-group">
+        <label>Period</label>
+        <select id="editHabitPeriod">
+          <option value="Daily">Daily</option>
+          <option value="Weekly">Weekly</option>
+          <option value="Monthly">Monthly</option>
+          <option value="Today">Today Only</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" id="editHabitDate">
+      </div>
+      <div class="form-group" style="grid-column:span 2;">
+        <label>Priority</label>
+        <div class="priority-options">
+          <label class="priority high">  <input type="radio" name="editPriority" value="High"><span>High</span></label>
+          <label class="priority medium"><input type="radio" name="editPriority" value="Medium"><span>Medium</span></label>
+          <label class="priority low">   <input type="radio" name="editPriority" value="Low"><span>Low</span></label>
+          <label class="priority optional"><input type="radio" name="editPriority" value="Optional"><span>Optional</span></label>
         </div>
-      </section>
-
-    </main>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="ghost-btn"   id="cancelEditBtn" onclick="closeEditModal()">Cancel</button>
+      <button class="primary-btn" id="saveEditBtn">Save Changes</button>
+    </div>
   </div>
+</div>
 
-  <!-- ══════════════════════════════════
-       SCRIPTS — ORDER MATTERS
-  ══════════════════════════════════ -->
-  <script src="js/utils.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/habits.js"></script>
-  <script src="js/nav.js"></script>
-  <script src="js/dashboard.js"></script>
-  <script src="js/reflections.js"></script>
-  <script src="js/reminders.js"></script>
-  <script src="js/main.js"></script>
+<!-- ═══════════════════════════════
+     SCRIPTS — ORDER MATTERS
+═══════════════════════════════ -->
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/habits.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/reflections.js"></script>
+<script src="js/reminders.js"></script>
+<script src="js/main.js"></script>
 
 </body>
 </html>
