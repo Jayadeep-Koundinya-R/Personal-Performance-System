@@ -733,3 +733,90 @@ button {
     padding: 16px 12px;
   }
 }
+
+/* ── MOBILE HEADER & HAMBURGER ── */
+.mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.hamburger {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 28px;
+  cursor: pointer;
+  padding: 0 8px;
+}
+
+.app-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.sidebar-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ── Slide-in behavior ── */
+@media (max-width: 768px) {
+  .mobile-header { display: flex; }
+
+  .sidebar {
+    position: fixed;
+    left: -var(--sidebar-w);
+    top: 0;
+    bottom: 0;
+    width: var(--sidebar-w);
+    z-index: 999;
+    transition: left 0.3s ease;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  nav ul {
+    flex-direction: column;
+    padding: 16px 0;
+    gap: 4px;
+  }
+
+  .nav-item {
+    padding: 14px 24px;
+    font-size: 15px;
+    border-radius: 0;
+    border-left: none;
+  }
+
+  .nav-item.active {
+    background: var(--accent);
+    color: white;
+    border-left: none;
+  }
+
+  .sidebar-footer {
+    padding: 20px 24px;
+  }
+}

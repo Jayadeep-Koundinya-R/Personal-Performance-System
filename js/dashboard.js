@@ -582,3 +582,30 @@ function setBar(id, pct, gradient) {
 }
 function getTodayStr() { return new Date().toISOString().split("T")[0]; }
 function getToday()    { const d=new Date(); d.setHours(0,0,0,0); return d; }
+
+// Hamburger menu
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const sidebar = document.querySelector('.sidebar');
+const overlay = document.getElementById('sidebarOverlay');
+
+if (hamburgerBtn) {
+  hamburgerBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+  });
+
+  overlay.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+  });
+
+  // Close on nav item click (mobile)
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+      }
+    });
+  });
+}
