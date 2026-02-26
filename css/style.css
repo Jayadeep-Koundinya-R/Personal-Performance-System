@@ -604,6 +604,8 @@ button {
 .text-accent{ color:var(--accent); }
 .text-green { color:var(--green); }
 .text-red   { color:var(--red); }
+/* When sidebar is open on mobile we prevent body scroll */
+body.no-scroll { height: 100vh; overflow: hidden; }
 /* ============================================
    RESPONSIVE DESIGN — MOBILE + TABLET
    ============================================ */
