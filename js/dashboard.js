@@ -146,33 +146,143 @@ function updateProgressWidget() {
    Today's bar is cyan, past days are purple.
 ───────────────────────────────────── */
 function updateWeeklyChart() {
-    const chartEl = document.getElementById("weeklyChart");
-    if (!chartEl) return;
-
     const labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
     const counts = new Array(7).fill(0);
     const today  = new Date();
 
-    for(let i=6; i>=0; i--){
+    for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
-        d.setDate(today.getDate()-i);
+        d.setDate(today.getDate() - i);
         const dateStr = d.toISOString().split("T")[0];
-        const idx     = 6-i;
-        habits.forEach(h => { if(h.completedDates.includes(dateStr)) counts[idx]++; });
+        const idx     = 6 - i;
+        habits.forEach(h => { if (h.completedDates.includes(dateStr)) counts[idx]++; });
     }
 
     const max = Math.max(...counts, 1);
-    chartEl.innerHTML = labels.map((label,i) => {
-        const h      = Math.max(Math.round((counts[i]/max)*100), 4);
-        const color  = i===6
+    const barHTML = labels.map((label, i) => {
+        const h     = Math.max(Math.round((counts[i] / max) * 100), 4);
+        const color = i === 6
             ? "linear-gradient(180deg,#22d3ee,#0891b2)"
             : "linear-gradient(180deg,#6366f1,#4338ca)";
-        return `
-            <div class="bar-col">
-                <div class="bar" style="height:${h}%;background:${color};"></div>
-                <div class="bar-label">${label}</div>
-            </div>`;
+        return `<div class="bar-col">
+                    <div class="bar" style="height:${h}%;background:${color};"></div>
+                    <div class="bar-label">${label}</div>
+                </div>`;
     }).join("");
+
+    // Dashboard mini chart
+    const dashChart = document.getElementById("weeklyChart");
+    if (dashChart) dashChart.innerHTML = barHTML;
+
+    // Analytics full chart — was pointing to wrong ID before
+    const analyticsChart = document.getElementById("analyticsWeekChart");
+    if (analyticsChart) analyticsChart.innerHTML = barHTML;
+}
+
+/* ─────────────────────────────────────
+   ACTIVITY HEATMAP
+   Range: 91 / 182 / 365 days (user picks)
+   Columns = weeks, rows = days (Mon-Sun)
+   Color = proportion of habits done that day
+───────────────────────────────────── */
+function renderHeatmap() {
+    const grid   = document.getElementById("heatmapGrid");
+    const months = document.getElementById("heatmapMonths");
+    const total  = document.getElementById("heatmapTotal");
+    if (!grid) return;
+
+    // Read selected range from dropdown (default 182)
+    const rangeEl = document.getElementById("heatmapRange");
+    const DAYS    = rangeEl ? parseInt(rangeEl.value) : 182;
+    const WEEKS   = Math.ceil(DAYS / 7);
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const habitTotal = habits.length || 1;
+
+    // Build map: "YYYY-MM-DD" -> completions count
+    const countMap = {};
+    let grandTotal = 0;
+    habits.forEach(h => {
+        (h.completedDates || []).forEach(d => {
+            countMap[d] = (countMap[d] || 0) + 1;
+            grandTotal++;
+        });
+    });
+
+    // ── Build grid cells — column by column (week by week) ──
+    // Start from the Monday of the week DAYS ago
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - DAYS + 1);
+    // Rewind to Monday of that week
+    const dow = startDate.getDay(); // 0=Sun
+    startDate.setDate(startDate.getDate() - (dow === 0 ? 6 : dow - 1));
+
+    let cellsHTML = "";
+    const monthsSeen = {};   // track for month label row
+    const monthCols  = [];   // [{label, col}]
+
+    let col = 0;
+    let d   = new Date(startDate);
+
+    while (d <= today) {
+        const weekCells = [];
+        for (let day = 0; day < 7; day++) {
+            if (d > today) { weekCells.push('<div class="hm-cell" style="visibility:hidden;"></div>'); }
+            else {
+                const ds    = d.toISOString().split("T")[0];
+                const count = countMap[ds] || 0;
+                const ratio = count / habitTotal;
+                let lv = "";
+                if      (count === 0)   lv = "";
+                else if (ratio <= 0.25) lv = "l1";
+                else if (ratio <= 0.50) lv = "l2";
+                else if (ratio <= 0.75) lv = "l3";
+                else                    lv = "l4";
+
+                const isToday = ds === today.toISOString().split("T")[0];
+                const tip     = ds + (count > 0 ? " · " + count + " habit" + (count > 1 ? "s" : "") + " done" : " · nothing done");
+                const outline = isToday ? "outline:2px solid var(--accent2);outline-offset:1px;" : "";
+                weekCells.push(`<div class="hm-cell ${lv}" title="${tip}" style="${outline}"></div>`);
+
+                // Track month changes for label row
+                const monthKey = d.getFullYear() + "-" + d.getMonth();
+                if (!monthsSeen[monthKey]) {
+                    monthsSeen[monthKey] = true;
+                    monthCols.push({ label: d.toLocaleString("default",{month:"short"}), col });
+                }
+            }
+            d.setDate(d.getDate() + 1);
+        }
+        // Each column is a week (7 cells stacked vertically)
+        cellsHTML += `<div style="display:flex;flex-direction:column;gap:3px;">${weekCells.join("")}</div>`;
+        col++;
+    }
+
+    // Apply grid
+    grid.style.display = "flex";
+    grid.style.gap     = "3px";
+    grid.innerHTML     = cellsHTML;
+
+    // ── Month labels above grid ──
+    if (months) {
+        let labHTML = "";
+        const totalCols = col;
+        monthCols.forEach((m, i) => {
+            const nextCol = monthCols[i+1] ? monthCols[i+1].col : totalCols;
+            const span    = nextCol - m.col;
+            const w       = (span / totalCols * 100).toFixed(1);
+            labHTML += `<span style="width:${w}%;overflow:hidden;white-space:nowrap;">${m.label}</span>`;
+        });
+        months.innerHTML = labHTML;
+    }
+
+    // ── Total completions counter ──
+    if (total) {
+        const doneInRange = Object.entries(countMap)
+            .filter(([ds]) => new Date(ds) >= startDate)
+            .reduce((s,[,v]) => s+v, 0);
+        total.textContent = doneInRange + " completions in range";
+    }
 }
 
 /* ─────────────────────────────────────

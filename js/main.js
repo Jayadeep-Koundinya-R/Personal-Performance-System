@@ -15,4 +15,5 @@ document.addEventListener("DOMContentLoaded", () => {
     renderDailyTracker();
     renderStreakSection();
     renderHabitSuccessRates();
+    renderHeatmap();
 });

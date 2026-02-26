@@ -188,8 +188,21 @@
       </div>
 
       <div class="card">
-        <h3>Activity Heatmap</h3>
-        <div id="heatmapGrid" style="display:grid;grid-template-columns:repeat(26,1fr);gap:3px;margin-top:10px;"></div>
+        <!-- Heatmap header with range selector -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h3 style="margin-bottom:0;">Activity Heatmap</h3>
+          <select id="heatmapRange" class="global-filter" onchange="renderHeatmap()"
+            style="font-size:12px;padding:5px 10px;">
+            <option value="91">Last 3 Months</option>
+            <option value="182" selected>Last 6 Months</option>
+            <option value="365">Last 1 Year</option>
+          </select>
+        </div>
+        <!-- Month labels -->
+        <div id="heatmapMonths" style="display:flex;gap:0;margin-bottom:4px;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;"></div>
+        <!-- Grid -->
+        <div id="heatmapGrid" style="gap:3px;margin-top:2px;"></div>
+        <!-- Legend -->
         <div style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:11px;color:var(--muted);">
           <span>Less</span>
           <div style="width:12px;height:12px;border-radius:2px;background:var(--surface);border:1px solid var(--border);"></div>
@@ -197,6 +210,7 @@
           <div style="width:12px;height:12px;border-radius:2px;background:#2563eb;"></div>
           <div style="width:12px;height:12px;border-radius:2px;background:#6366f1;"></div>
           <span>More</span>
+          <span id="heatmapTotal" style="margin-left:auto;font-family:'JetBrains Mono',monospace;color:var(--accent);"></span>
         </div>
       </div>
     </section>

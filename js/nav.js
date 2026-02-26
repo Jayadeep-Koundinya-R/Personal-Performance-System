@@ -35,6 +35,7 @@ function setupNavigation() {
                     renderHabitSuccessRates();
                     updateWeeklyChart();
                     updateCompletionStats();
+                    renderHeatmap();
                     break;
 
                 case "streakSection":

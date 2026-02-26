@@ -604,3 +604,132 @@ button {
 .text-accent{ color:var(--accent); }
 .text-green { color:var(--green); }
 .text-red   { color:var(--red); }
+/* ============================================
+   RESPONSIVE DESIGN — MOBILE + TABLET
+   ============================================ */
+
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .logo {
+    padding: 16px 20px;
+    font-size: 22px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  nav ul {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 8px 16px;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  nav ul::-webkit-scrollbar { display: none; }
+
+  .nav-item {
+    padding: 10px 18px;
+    font-size: 13px;
+    white-space: nowrap;
+    border-radius: 9999px;
+    border-left: none;
+    min-width: fit-content;
+  }
+
+  .nav-item.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 3px 8px rgba(99,102,241,0.4);
+  }
+
+  .sidebar-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .user-chip {
+    width: 100%;
+  }
+
+  .main-content {
+    padding: 20px 16px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  /* ── Layout fixes ── */
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .card, .widget-card {
+    padding: 16px;
+  }
+
+  .stat-num { font-size: 26px; }
+
+  .streak-hero { padding: 24px; }
+  .streak-num { font-size: 40px; }
+
+  .habit-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .habit-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .task-item {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  /* ── Modal & forms ── */
+  .modal-box {
+    width: 95vw;
+    max-width: none;
+    padding: 24px 20px;
+  }
+
+  .modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .priority-options { flex-wrap: wrap; }
+}
+
+@media (max-width: 480px) {
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .nav-item {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .main-content {
+    padding: 16px 12px;
+  }
+}
