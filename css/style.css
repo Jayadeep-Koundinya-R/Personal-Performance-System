@@ -744,7 +744,7 @@ button {
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 1002;
 }
 
 .hamburger {
@@ -768,7 +768,7 @@ button {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.6);
-  z-index: 998;
+  z-index: 1000;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s;
@@ -785,16 +785,19 @@ button {
 
   .sidebar {
     position: fixed;
-    left: -var(--sidebar-w);
     top: 0;
     bottom: 0;
-    width: var(--sidebar-w);
-    z-index: 999;
-    transition: left 0.3s ease;
+    left: 0;
+    /* on small screens the sidebar should not take the full width — use a capped width */
+    width: min(80vw, var(--sidebar-w));
+    z-index: 1001;
+    /* use transform for smoother GPU-accelerated animations */
+    transform: translateX(-110%);
+    transition: transform 0.28s ease;
   }
 
   .sidebar.open {
-    left: 0;
+    transform: translateX(0);
   }
 
   nav ul {
