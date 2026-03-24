@@ -7,19 +7,24 @@
   <link rel="stylesheet" href="css/style.css"/>
 </head>
 <body>
-<!-- Hamburger & Overlay (mobile only) -->
-<div class="mobile-header" id="mobileHeader">
-  <button class="hamburger" id="hamburgerBtn">☰</button>
-  <div class="app-title">PPS</div>
-</div>
 
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
 <div class="app-container">
+
+  <!-- ── MOBILE HAMBURGER TOPBAR ── -->
+  <div class="mobile-topbar">
+    <div class="logo" style="padding:0;border:none;font-size:18px;">PPS<span>.</span></div>
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMobileSidebar()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <!-- ── SIDEBAR OVERLAY (mobile tap-to-close) ── -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
   <!-- ═══════════════════════════════
        SIDEBAR
   ═══════════════════════════════ -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="logo">PPS<span>.</span></div>
     <nav>
       <ul>
@@ -332,6 +337,25 @@
         <div><h1>Reminders</h1><div class="page-sub">Set times to be nudged</div></div>
       </div>
 
+      <!-- Notification permission banner -->
+      <div class="card" style="margin-bottom:20px;background:linear-gradient(135deg,#1e1b4b,#312e81);border:1px solid #4338ca;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px;">🔔 Notification Control</div>
+            <div style="font-size:12px;color:#a5b4fc;">Allow PPS to send you a popup when a reminder time is reached.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span id="notif_status" style="font-size:12px;font-weight:600;"></span>
+            <button class="primary-btn" onclick="notif_requestPermission()" style="white-space:nowrap;">
+              Enable Notifications
+            </button>
+            <button class="danger-btn" onclick="notif_stop()" style="white-space:nowrap;">
+              Stop Notifications
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Active list -->
       <div class="card" style="margin-bottom:20px;">
         <h3>Active Reminders</h3>
@@ -439,8 +463,8 @@
         <div class="card">
           <h3>Data</h3>
           <div class="settings-row">
-            <div><div class="settings-label">Export Habits</div><div class="settings-desc">Download as JSON</div></div>
-            <button class="ghost-btn" id="exportBtn">Export</button>
+            <div><div class="settings-label">Export PDF Report</div><div class="settings-desc">Download your full performance report</div></div>
+            <button class="primary-btn" onclick="exportToPDF()" style="padding:7px 16px;font-size:12.5px;">📄 Export PDF</button>
           </div>
           <div class="settings-row">
             <div><div class="settings-label">Reset All Data</div><div class="settings-desc" style="color:var(--red);">Cannot be undone</div></div>
@@ -515,6 +539,7 @@
 <script src="js/habits.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/dashboard.js"></script>
+<script src="js/notifications.js"></script>
 <script src="js/main.js"></script>
 
 
@@ -739,5 +764,7 @@ document.addEventListener("DOMContentLoaded", function() {
     rem_render();
 });
 </script>
+
+<script src="js/app.js"></script>
 </body>
 </html>

@@ -1,5 +1,41 @@
 /* ================= DASHBOARD RENDERING ================= */
+// Global state
+let currentFilter = "today"; // "today" | "week" | "month"
 
+// Listener (inside DOMContentLoaded or setupNavigation)
+const filterSelect = document.getElementById("globalFilter");
+if (filterSelect) {
+    filterSelect.value = currentFilter;
+    filterSelect.addEventListener("change", (e) => {
+        currentFilter = e.target.value;
+        renderDashboard(); // Re-render dashboard
+        updateWeeklyChart(); // If exists
+        renderHeatmap(); // If exists
+    });
+}
+
+// Helper: Filter dates
+function isInCurrentFilter(dateStr) {
+    const date = new Date(dateStr);
+    const today = getToday();
+    const startOfWeek = new Date(today); startOfWeek.setDate(today.getDate() - 6); // Last 7 days
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    switch (currentFilter) {
+        case "today": return date.toDateString() === today.toDateString();
+        case "week": return date >= startOfWeek;
+        case "month": return date >= startOfMonth;
+        default: return true;
+    }
+}
+
+// Update in updatePeriodPoints() or calculateWeeklyPoints()
+function calculatePeriodPoints(habits) { // Rename from calculateWeeklyPoints in utils.js
+    let points = 0;
+    habits.forEach(habit => {
+        points += habit.completedDates.filter(d => isInCurrentFilter(d)).length * CONFIG.XP_PER_COMPLETION;
+    });
+    return points;
+}
 /* ─────────────────────────────────────
    MAIN RENDER
 ───────────────────────────────────── */
