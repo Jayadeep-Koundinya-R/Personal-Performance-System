@@ -204,7 +204,8 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { getData, saveData, removeData } from './js/storageService.js';
     /* ══════════════════════════════════════
        TAB SWITCHING
     ══════════════════════════════════════ */
@@ -241,15 +242,15 @@
        Users stored as:  pps_users  →  [{email, password}]
     ══════════════════════════════════════ */
     function getUsers() {
-      return JSON.parse(localStorage.getItem("pps_users")) || [];
+      return getData("pps_users", []);
     }
 
     function saveUsers(users) {
-      localStorage.setItem("pps_users", JSON.stringify(users));
+      saveData("pps_users", users);
     }
 
     function setCurrentUser(user) {
-      localStorage.setItem("currentUser", JSON.stringify(user));
+      saveData("currentUser", user);
     }
 
     /* ══════════════════════════════════════
@@ -354,18 +355,24 @@
        AUTO-REDIRECT if already logged in
     ══════════════════════════════════════ */
     (function checkAlreadyLoggedIn() {
-      const user = JSON.parse(localStorage.getItem("currentUser"));
+      const user = getData("currentUser");
       if (!user) return;
 
       // guest expired?
       if (user.isGuest && Date.now() > user.expiry) {
-        localStorage.removeItem("currentUser");
+        removeData("currentUser");
         return;
       }
 
       // already logged in — skip login page
       window.location.href = "dashboard.html";
     })();
+
+    // Explicitly attach scoped functions to window for HTML onclicks
+    window.switchTab = switchTab;
+    window.handleSignIn = handleSignIn;
+    window.handleSignUp = handleSignUp;
+    window.handleGuest = handleGuest;
   </script>
 
 </body>

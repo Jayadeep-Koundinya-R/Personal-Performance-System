@@ -10,31 +10,22 @@
 
 <div class="app-container">
 
-  <!-- ── FLOATING MOBILE HAMBURGER
-       Exists OUTSIDE the sidebar so it stays visible when
-       the sidebar is off-screen on mobile.
-       Hidden on desktop via CSS (display:none in base styles,
-       display:flex only inside @media ≤768px).
-  ── -->
-  <button class="mobile-hamburger" id="mobileHamburgerBtn"
-          onclick="toggleMobileSidebar()" aria-label="Open menu">
-    <span></span><span></span><span></span>
-  </button>
+  <!-- ── MOBILE HAMBURGER TOPBAR ── -->
+  <div class="mobile-topbar">
+    <div class="logo" style="padding:0;border:none;font-size:18px;">PPS<span>.</span></div>
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMobileSidebar()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
 
-  <!-- ── SIDEBAR OVERLAY (tap-to-close on any screen) ── -->
+  <!-- ── SIDEBAR OVERLAY (mobile tap-to-close) ── -->
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
   <!-- ═══════════════════════════════
        SIDEBAR
   ═══════════════════════════════ -->
   <aside class="sidebar" id="sidebar">
-    <!-- Logo row: hamburger always here, on every screen size -->
-    <div class="sidebar-header">
-      <div class="logo-inline">PPS<span>.</span></div>
-      <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMobileSidebar()" aria-label="Toggle sidebar">
-        <span></span><span></span><span></span>
-      </button>
-    </div>
+    <div class="logo">PPS<span>.</span></div>
     <nav>
       <ul>
         <li class="nav-item active" data-section="dashboardSection">⚡ Dashboard</li>
@@ -70,14 +61,11 @@
           <h1>Dashboard</h1>
           <div class="page-sub" id="dashboardDate"></div>
         </div>
-        <div style="display:flex; gap:10px; align-items:center;">
-          <input type="date" id="appDateSetter" class="global-filter" onchange="setTimeSetter(this.value)" title="View different days" style="padding:4px 8px; font-size:12px;">
-          <select class="global-filter" id="globalFilter">
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
-        </div>
+        <select class="global-filter" id="globalFilter">
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+        </select>
       </div>
 
       <div class="stats-row">
@@ -318,7 +306,6 @@
               <option value="Weekly">Weekly</option>
               <option value="Monthly">Monthly</option>
               <option value="Today">Today Only</option>
-              <option value="Custom">Custom</option>
             </select>
           </div>
           <div class="form-group">
@@ -521,7 +508,6 @@
           <option value="Weekly">Weekly</option>
           <option value="Monthly">Monthly</option>
           <option value="Today">Today Only</option>
-          <option value="Custom">Custom</option>
         </select>
       </div>
       <div class="form-group">
@@ -545,7 +531,240 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js"></script>
+<!-- ═══════════════════════════════
+     SCRIPTS — ORDER MATTERS
+═══════════════════════════════ -->
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/habits.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/main.js"></script>
 
+
+<!-- ═══════════════════════════════════════════════════
+     REFLECTIONS & REMINDERS — Self-contained inline JS
+     No external files. All logic here.
+═══════════════════════════════════════════════════ -->
+<script>
+/* ---------- HELPERS ---------- */
+function _getUser() {
+    try { return JSON.parse(localStorage.getItem("currentUser") || "{}"); }
+    catch(e) { return {}; }
+}
+function _rflKey() { var u = _getUser(); return "reflections_" + (u.email || "guest"); }
+function _remKey() { var u = _getUser(); return "reminders_"   + (u.email || "guest"); }
+
+function _showStatus(id, msg, ok) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = ok ? "#22c55e" : "#ef4444";
+    clearTimeout(el._t);
+    el._t = setTimeout(function() { el.textContent = ""; }, 3000);
+}
+
+/* ---------- REFLECTIONS ---------- */
+var rfl_mood = "great";
+
+function rfl_setMood(el, mood) {
+    rfl_mood = mood;
+    var ids = ["rfl_m_great", "rfl_m_okay", "rfl_m_low", "rfl_m_stress"];
+    ids.forEach(function(id) {
+        var e = document.getElementById(id);
+        if (e) e.style.opacity = "0.4";
+    });
+    el.style.opacity = "1";
+}
+
+function rfl_save() {
+    var ta   = document.getElementById("rfl_text");
+    var text = ta ? ta.value.trim() : "";
+    if (!text) { _showStatus("rfl_status", "Write something first.", false); return; }
+
+    var key   = _rflKey();
+    var list  = [];
+    try { list = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+
+    var today = new Date().toISOString().split("T")[0];
+    var idx   = -1;
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].date === today) { idx = i; break; }
+    }
+
+    /* snapshot habit completions */
+    var habLog = [];
+    try {
+        if (typeof habits !== "undefined") {
+            habits.forEach(function(h) {
+                habLog.push({ name: h.name, completed: (h.completedDates || []).indexOf(today) >= 0 });
+            });
+        }
+    } catch(e) {}
+
+    var entry = { date: today, text: text, mood: rfl_mood || "great", habitsLog: habLog };
+    if (idx >= 0) list[idx] = entry;
+    else          list.unshift(entry);
+
+    localStorage.setItem(key, JSON.stringify(list));
+
+    /* clear + reset */
+    if (ta) ta.value = "";
+    rfl_mood = "great";
+    ["rfl_m_great","rfl_m_okay","rfl_m_low","rfl_m_stress"].forEach(function(id, i) {
+        var e = document.getElementById(id);
+        if (e) e.style.opacity = i === 0 ? "1" : "0.4";
+    });
+
+    _showStatus("rfl_status", "Saved ✓", true);
+    rfl_render();
+}
+
+function rfl_render() {
+    var container = document.getElementById("rfl_list");
+    if (!container) return;
+
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(_rflKey())) || []; } catch(e) {}
+
+    if (list.length === 0) {
+        container.innerHTML =
+            "<div style=\"text-align:center;padding:32px;color:#64748b;font-size:13px;\">" +
+            "<div style=\"font-size:32px;margin-bottom:10px;\">📝</div>" +
+            "No reflections yet — write your first one above.</div>";
+        return;
+    }
+
+    var moodLabel = { great: "😊 Great", okay: "😐 Okay", low: "😔 Low", stress: "😤 Stressed" };
+    var html = "";
+    list.forEach(function(entry) {
+        var d    = new Date(entry.date + "T12:00:00");
+        var dstr = d.toLocaleDateString("en-GB", { weekday:"long", day:"2-digit", month:"long", year:"numeric" });
+        var chips = "";
+        (entry.habitsLog || []).forEach(function(h) {
+            chips += "<span class=\"mood-chip\">" + h.name + " " + (h.completed ? "✅" : "❌") + "</span>";
+        });
+        var ml = moodLabel[entry.mood] || entry.mood;
+
+        html +=
+            "<div class=\"reflection-card\">" +
+            "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;\">" +
+            "<div class=\"reflection-date\">" + dstr + "</div>" +
+            "<button class=\"danger-btn\" style=\"padding:3px 10px;font-size:11px;\"" +
+            " data-date=\"" + entry.date + "\" onclick=\"rfl_delete(this.dataset.date)\">Delete</button>" +
+            "</div>" +
+            "<div class=\"reflection-text\">" + entry.text + "</div>" +
+            "<div class=\"mood-row\" style=\"margin-top:10px;\">" +
+            "<span class=\"mood-chip\">" + ml + "</span>" + chips +
+            "</div></div>";
+    });
+    container.innerHTML = html;
+}
+
+function rfl_delete(date) {
+    if (!confirm("Delete this reflection?")) return;
+    var key  = _rflKey();
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+    list = list.filter(function(r) { return r.date !== date; });
+    localStorage.setItem(key, JSON.stringify(list));
+    rfl_render();
+}
+
+/* ---------- REMINDERS ---------- */
+function rem_save() {
+    var labelEl  = document.getElementById("rem_label");
+    var timeEl   = document.getElementById("rem_time");
+    var repeatEl = document.getElementById("rem_repeat");
+
+    var label  = labelEl  ? labelEl.value.trim() : "";
+    var time   = timeEl   ? timeEl.value         : "";
+    var repeat = repeatEl ? repeatEl.value       : "Every Day";
+
+    if (!label) { _showStatus("rem_status", "Enter a label.", false); return; }
+    if (!time)  { _showStatus("rem_status", "Pick a time.",   false); return; }
+
+    var key  = _remKey();
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+
+    list.push({ id: Date.now(), label: label, time: time, repeat: repeat, enabled: true });
+    localStorage.setItem(key, JSON.stringify(list));
+
+    if (labelEl) labelEl.value = "";
+    if (timeEl)  timeEl.value  = "";
+    _showStatus("rem_status", "Saved ✓", true);
+    rem_render();
+}
+
+function rem_render() {
+    var container = document.getElementById("rem_list");
+    if (!container) return;
+
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(_remKey())) || []; } catch(e) {}
+
+    if (list.length === 0) {
+        container.innerHTML =
+            "<div style=\"text-align:center;padding:24px;color:#64748b;font-size:13px;\">" +
+            "<div style=\"font-size:28px;margin-bottom:8px;\">🔔</div>" +
+            "No reminders yet — add one below.</div>";
+        return;
+    }
+
+    var html = "";
+    list.forEach(function(r) {
+        var parts = (r.time || "00:00").split(":").map(Number);
+        var hh = parts[0], mm = parts[1];
+        var ampm = hh >= 12 ? "PM" : "AM";
+        var h12  = hh % 12 || 12;
+        var tstr = (h12 < 10 ? "0" : "") + h12 + ":" + (mm < 10 ? "0" : "") + mm + " " + ampm;
+
+        html +=
+            "<div class=\"reminder-row\">" +
+            "<div>" +
+            "<div style=\"font-size:14px;font-weight:600;\">" + r.label + "</div>" +
+            "<div style=\"font-size:12px;color:#64748b;\">" + r.repeat + "</div>" +
+            "</div>" +
+            "<div style=\"display:flex;align-items:center;gap:16px;\">" +
+            "<span class=\"reminder-time\">" + tstr + "</span>" +
+            "<div class=\"toggle " + (r.enabled ? "on" : "") + "\" data-id=\"" + r.id + "\" onclick=\"rem_toggle(this)\" style=\"cursor:pointer;\">" +
+            "<div class=\"toggle-dot\"></div></div>" +
+            "<button class=\"danger-btn\" style=\"padding:4px 10px;font-size:11px;\" data-id=\"" + r.id + "\" onclick=\"rem_delete(this)\">✕</button>" +
+            "</div></div>";
+    });
+    container.innerHTML = html;
+}
+
+function rem_toggle(el) {
+    var id   = Number(el.dataset.id);
+    var key  = _remKey();
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+    list.forEach(function(r) { if (r.id === id) r.enabled = !r.enabled; });
+    localStorage.setItem(key, JSON.stringify(list));
+    rem_render();
+}
+
+function rem_delete(el) {
+    var id = Number(el.dataset.id);
+    if (!confirm("Delete this reminder?")) return;
+    var key  = _remKey();
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+    list = list.filter(function(r) { return r.id !== id; });
+    localStorage.setItem(key, JSON.stringify(list));
+    rem_render();
+}
+
+/* ---------- Init on page load ---------- */
+document.addEventListener("DOMContentLoaded", function() {
+    rfl_render();
+    rem_render();
+});
+</script>
+
+<script src="js/app.js"></script>
 </body>
 </html>

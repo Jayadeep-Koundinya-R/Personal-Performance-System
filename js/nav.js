@@ -1,25 +1,31 @@
-/* ================= NAVIGATION ================= */
+import { renderDashboard, renderDailyTracker, renderHabitSuccessRates, updateWeeklyChart, updateCompletionStats, renderHeatmap, renderStreakSection } from './dashboard.js';
+import { renderHabits } from './habits.js';
+import { rfl_render } from './reflection.js';
+import { rem_render } from './reminder.js';
 
-function setupNavigation() {
-    const navItems = document.querySelectorAll(".nav-item");
-    const sections = document.querySelectorAll(".section");
+/* ================= NAVIGATION =================
+   FIX: your friend's nav.js called rfl_render() / rem_render()
+   (inline-script names) but reflection.js / reminder.js define
+   renderReflections() / renderReminders().  Unified here.
+   ================================================ */
 
-    navItems.forEach(item => {
-        item.addEventListener("click", () => {
+export function setupNavigation() {
+    var navItems = document.querySelectorAll(".nav-item");
+    var sections = document.querySelectorAll(".section");
 
-            // Remove active from all
-            navItems.forEach(n => n.classList.remove("active"));
-            sections.forEach(s => s.classList.remove("active-section"));
+    navItems.forEach(function (item) {
+        item.addEventListener("click", function () {
 
-            // Set active
+            navItems.forEach(function (n) { n.classList.remove("active"); });
+            sections.forEach(function (s) { s.classList.remove("active-section"); });
+
             item.classList.add("active");
-            const sectionId = item.dataset.section;
-            const target = document.getElementById(sectionId);
+
+            var sectionId = item.dataset.section;
+            var target    = document.getElementById(sectionId);
             if (target) target.classList.add("active-section");
 
-            // ── Re-render the correct section on every visit ──
-            // This is the professional pattern: each section renders
-            // fresh data when you navigate to it, not just on load.
+            /* Re-render section on every visit — fresh data guaranteed */
             switch (sectionId) {
 
                 case "dashboardSection":
@@ -39,13 +45,12 @@ function setupNavigation() {
                     break;
 
                 case "streakSection":
-                    // THIS was the bug — never called on nav
                     renderStreakSection();
                     updateCompletionStats();
                     break;
 
                 case "reflectionSection":
-                    rfl_render();
+                    if (typeof rfl_render === "function") rfl_render();
                     break;
 
                 case "habitManagerSection":
@@ -53,13 +58,58 @@ function setupNavigation() {
                     break;
 
                 case "reminderSection":
-                    rem_render();
+                    if (typeof rem_render === "function") rem_render();
                     break;
 
                 case "settingsSection":
-                    // nothing dynamic to re-render
+                    /* nothing dynamic */
                     break;
             }
+
+            /* Close mobile sidebar after navigation */
+            if (window.innerWidth <= 768) closeMobileSidebar();
         });
     });
 }
+
+/* ── Mobile sidebar ── */
+export function toggleMobileSidebar() {
+    var sidebar = document.getElementById("sidebar");
+    var overlay = document.getElementById("sidebarOverlay");
+    if (!sidebar || !overlay) return;
+    var isOpen = sidebar.classList.contains("open");
+    if (isOpen) closeMobileSidebar();
+    else        openMobileSidebar();
+}
+
+export function openMobileSidebar() {
+    var sidebar = document.getElementById("sidebar");
+    var overlay = document.getElementById("sidebarOverlay");
+    if (sidebar) sidebar.classList.add("open");
+    if (overlay) overlay.classList.add("open");
+    document.body.style.overflow = "hidden";
+}
+
+export function closeMobileSidebar() {
+    var sidebar = document.getElementById("sidebar");
+    var overlay = document.getElementById("sidebarOverlay");
+    if (sidebar) sidebar.classList.remove("open");
+    if (overlay) overlay.classList.remove("open");
+    document.body.style.overflow = "";
+}
+
+/* Close on overlay tap */
+document.addEventListener("DOMContentLoaded", function () {
+    var overlay = document.getElementById("sidebarOverlay");
+    if (overlay) overlay.addEventListener("click", closeMobileSidebar);
+
+    /* Close on ESC */
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closeMobileSidebar();
+    });
+
+    /* Close when viewport widens past mobile breakpoint */
+    window.addEventListener("resize", function () {
+        if (window.innerWidth > 768) closeMobileSidebar();
+    });
+});

@@ -1,19 +1,22 @@
 /* ================= HABIT STORAGE & MANAGEMENT ================= */
-
-let habits     = [];
-let storageKey = "";
+import { getData, saveData } from './storageService.js';
+import { generateInitialDueDate, updateNextDueDate, calculateWeeklyPoints, getToday } from './utils.js';
+import { renderDashboard, renderDailyTracker } from './dashboard.js';
+import { getState, updateState } from './state.js';
 
 /* ─────────────────────────────────────
    INIT & SAVE
 ───────────────────────────────────── */
 function initHabits(user) {
-    storageKey = `habits_${user.email || "guest"}`;
-    habits     = JSON.parse(localStorage.getItem(storageKey)) || [];
+    const storageKey = `habits_${user.email || "guest"}`;
+    const loadedHabits = getData(storageKey, []);
+    updateState({ habits: loadedHabits, storageKey: storageKey });
     dailyReset();
-    return habits;
+    return getState().habits;
 }
 function saveHabits() {
-    localStorage.setItem(storageKey, JSON.stringify(habits));
+    const { habits, storageKey } = getState();
+    saveData(storageKey, habits);
 }
 
 /* ─────────────────────────────────────
@@ -22,6 +25,7 @@ function saveHabits() {
 function dailyReset() {
     const today = getToday ? getToday() : (() => { const d=new Date(); d.setHours(0,0,0,0); return d; })();
     let changed = false;
+    const { habits } = getState();
 
     habits.forEach(habit => {
         if(habit.period === "Today") return;
@@ -67,7 +71,9 @@ function addHabit(name, category, period, priority, startDate) {
         lastCompletedDate: null,
         freezeCredits:     2
     };
+    const { habits } = getState();
     habits.push(newHabit);
+    updateState({ habits });
     saveHabits();
     return newHabit;
 }
@@ -76,7 +82,9 @@ function addHabit(name, category, period, priority, startDate) {
    DELETE
 ───────────────────────────────────── */
 function deleteHabit(id) {
-    habits = habits.filter(h => h.id !== id);
+    const { habits } = getState();
+    const filtered = habits.filter(h => h.id !== id);
+    updateState({ habits: filtered });
     saveHabits();
 }
 
@@ -156,6 +164,8 @@ function renderHabits() {
     const habitList  = document.getElementById("habitList");
     const habitCount = document.getElementById("habitCount");
     if(!habitList) return;
+
+    const { habits } = getState();
 
     if(habitCount) habitCount.textContent = habits.length;
 
@@ -309,3 +319,17 @@ function setupAddHabitButton() {
         if(hr) hr.checked = true;
     });
 }
+
+export {
+    initHabits,
+    saveHabits,
+    addHabit,
+    deleteHabit,
+    isHabitDueToday,
+    updateHabitCompletion,
+    renderHabits,
+    openEditModal,
+    closeEditModal,
+    setupEditModal,
+    setupAddHabitButton
+};

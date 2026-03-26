@@ -1,16 +1,16 @@
-/* ================= AUTH CHECK ================= */
+import { getData, removeData } from './storageService.js';
 
-function checkAuth() {
-    const user = JSON.parse(localStorage.getItem("currentUser"));
+export function checkAuth() {
+    const user = getData("currentUser");
 
     if (!user) {
         window.location.href = "login.html";
         return null;
     }
 
+    // Guest session expiry check
     if (user.isGuest && Date.now() > user.expiry) {
-        alert("Guest session expired");
-        localStorage.removeItem("currentUser");
+        removeData("currentUser");
         window.location.href = "login.html";
         return null;
     }

@@ -9,11 +9,13 @@
    5. User can Stop notifications anytime
 ================================================= */
 
+import { getData } from './storageService.js';
+
 var notif_interval = null;
 var notif_running  = false;
 
 /* ── Enable ── */
-function notif_requestPermission() {
+export function notif_requestPermission() {
     if (!("Notification" in window)) {
         notif_setStatus("❌ Browser does not support notifications.", false);
         return;
@@ -42,14 +44,14 @@ function notif_requestPermission() {
 }
 
 /* ── Stop ── */
-function notif_stop() {
+export function notif_stop() {
     if (notif_interval) { clearInterval(notif_interval); notif_interval = null; }
     notif_running = false;
     notif_setStatus("🔕 Notifications stopped.", false);
 }
 
 /* ── Start checker — every 10 seconds ── */
-function notif_startChecker() {
+export function notif_startChecker() {
     if (notif_running) return;
     notif_running = true;
     notif_checkReminders();
@@ -70,8 +72,7 @@ function notif_checkReminders() {
     var isWeekend = day === 0 || day === 6;
     var today = now.toISOString().split("T")[0];
 
-    var list = [];
-    try { list = JSON.parse(localStorage.getItem(notif_getKey())) || []; } catch(e) {}
+    var list = getData(notif_getKey(), []);
 
     list.forEach(function(r) {
         if (!r.enabled || r.time !== time) return;
@@ -117,8 +118,8 @@ function notif_setStatus(msg, ok) {
 
 /* ── localStorage key ── */
 function notif_getKey() {
-    try { var u = JSON.parse(localStorage.getItem("currentUser")||"{}"); return "reminders_"+(u.email||"guest"); }
-    catch(e) { return "reminders_guest"; }
+    var u = getData("currentUser", {});
+    return "reminders_" + (u.email || "guest");
 }
 
 /* ── Auto-start on load if permission already granted ── */

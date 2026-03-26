@@ -1,4 +1,9 @@
 /* ================= DASHBOARD RENDERING ================= */
+import { getData, saveData, removeData } from './storageService.js';
+import { CONFIG } from './config.js';
+import { getState } from './state.js';
+import { isHabitDueToday, updateHabitCompletion, saveHabits, renderHabits } from './habits.js';
+import { getToday, getTodayStr, calculateWeeklyPoints, calculateTotalXP, calculateLevel, setEl, setBar } from './utils.js';
 // Global state
 let currentFilter = "today"; // "today" | "week" | "month"
 
@@ -40,6 +45,7 @@ function calculatePeriodPoints(habits) { // Rename from calculateWeeklyPoints in
    MAIN RENDER
 ───────────────────────────────────── */
 function renderDashboard() {
+    const { habits } = getState();
     const criticalList = document.getElementById("criticalList");
     const highList     = document.getElementById("highList");
     const mediumList   = document.getElementById("mediumList");
@@ -124,6 +130,7 @@ function updateAllStats() {
    - Credits do NOT recover (for now — future feature)
 ───────────────────────────────────── */
 function updateCompletionStats() {
+    const { habits } = getState();
     const todayStr = getTodayStr();
     let due=0, done=0, freeze=0, maxStreak=0;
 
@@ -160,6 +167,7 @@ function updateCompletionStats() {
    TODAY'S PROGRESS WIDGET
 ───────────────────────────────────── */
 function updateProgressWidget() {
+    const { habits } = getState();
     const todayStr = getTodayStr();
     let due=0, done=0;
     habits.forEach(h => {
@@ -182,6 +190,7 @@ function updateProgressWidget() {
    Today's bar is cyan, past days are purple.
 ───────────────────────────────────── */
 function updateWeeklyChart() {
+    const { habits } = getState();
     const labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
     const counts = new Array(7).fill(0);
     const today  = new Date();
@@ -327,6 +336,7 @@ function renderHeatmap() {
    grouped by category
 ───────────────────────────────────── */
 function renderDailyTracker() {
+    const { habits } = getState();
     const list = document.getElementById("trackerList");
     if (!list) return;
     list.innerHTML = "";
@@ -395,6 +405,7 @@ function renderDailyTracker() {
    own streak, progress bar, and freeze info
 ───────────────────────────────────── */
 function renderStreakSection() {
+    const { habits } = getState();
     const container = document.getElementById("habitStreakList");
     if(!container) return;
     container.innerHTML = "";
@@ -446,6 +457,7 @@ function renderStreakSection() {
    ANALYTICS — PER HABIT SUCCESS RATES
 ───────────────────────────────────── */
 function renderHabitSuccessRates() {
+    const { habits } = getState();
     const container = document.getElementById("habitSuccessRates");
     if(!container) return;
 
@@ -483,6 +495,7 @@ function renderHabitSuccessRates() {
    LEVEL + XP WIDGET
 ───────────────────────────────────── */
 function updateLevelWidget() {
+    const { habits } = getState();
     const xp        = calculateTotalXP(habits);
     const level     = calculateLevel(habits);
     const xpInLevel = xp % 100;
@@ -516,11 +529,12 @@ function updateDateDisplay() {
    SETTINGS WIRING
 ───────────────────────────────────── */
 function setupSettings(user) {
+    const { habits } = getState();
     // Email display
     setEl("settingsEmail", user.email || "Guest");
 
     // Display Name — read from localStorage or derive from email
-    const storedName = localStorage.getItem(`pps_name_${user.email||"guest"}`) || "";
+    const storedName = getData(`pps_name_${user.email||"guest"}`, "") || "";
     const displayName = storedName || (user.email ? user.email.split("@")[0] : "Guest");
 
     // Sidebar
@@ -536,7 +550,7 @@ function setupSettings(user) {
     document.getElementById("saveNameBtn")?.addEventListener("click", () => {
         const newName = document.getElementById("settingsName")?.value.trim();
         if(!newName){ alert("Name cannot be empty."); return; }
-        localStorage.setItem(`pps_name_${user.email||"guest"}`, newName);
+        saveData(`pps_name_${user.email||"guest"}`, newName);
         setEl("userNameDisplay", newName);
         if(avatarEl) avatarEl.textContent = newName[0].toUpperCase();
         showSettingsMsg("Name saved!", "success");
@@ -552,12 +566,12 @@ function setupSettings(user) {
         if(newPass.length<6){ showSettingsMsg("New password must be at least 6 characters."); return; }
         if(newPass!==confirm){ showSettingsMsg("Passwords do not match."); return; }
 
-        const users = JSON.parse(localStorage.getItem("pps_users")||"[]");
+        const users = getData("pps_users", []);
         const idx   = users.findIndex(u=>u.email===user.email&&u.password===current);
         if(idx===-1){ showSettingsMsg("Current password is incorrect."); return; }
 
         users[idx].password = newPass;
-        localStorage.setItem("pps_users", JSON.stringify(users));
+        saveData("pps_users", users);
 
         document.getElementById("currentPassword").value = "";
         document.getElementById("newPassword").value     = "";
@@ -567,7 +581,7 @@ function setupSettings(user) {
 
     // Logout
     document.getElementById("logoutBtn")?.addEventListener("click", () => {
-        localStorage.removeItem("currentUser");
+        removeData("currentUser");
         window.location.href = "login.html";
     });
 
@@ -590,7 +604,7 @@ function setupSettings(user) {
     });
 
     // Storage
-    const bytes = new Blob([localStorage.getItem(storageKey)||""]).size;
+    const bytes = new Blob([JSON.stringify(habits) || ""]).size;
     setEl("storageUsed", `~${(bytes/1024).toFixed(1)} KB`);
 }
 
@@ -604,20 +618,8 @@ function showSettingsMsg(text, type="error") {
 }
 
 /* ─────────────────────────────────────
-   TINY DOM HELPERS
+   TINY DOM HELPERS FROM UTILS
 ───────────────────────────────────── */
-function setEl(id, value) {
-    const el = document.getElementById(id);
-    if(el) el.textContent = value;
-}
-function setBar(id, pct, gradient) {
-    const el = document.getElementById(id);
-    if(!el) return;
-    el.style.width = pct + "%";
-    if(gradient) el.style.background = gradient;
-}
-function getTodayStr() { return new Date().toISOString().split("T")[0]; }
-function getToday()    { const d=new Date(); d.setHours(0,0,0,0); return d; }
 
 // Hamburger menu
 const hamburgerBtn = document.getElementById('hamburgerBtn');
@@ -667,3 +669,14 @@ if (hamburgerBtn) {
         if (e.key === 'Escape') closeSidebar();
     });
 }
+
+export {
+    renderDashboard,
+    renderDailyTracker,
+    renderStreakSection,
+    renderHabitSuccessRates,
+    renderHeatmap,
+    setupSettings,
+    updateWeeklyChart,
+    updateCompletionStats
+};

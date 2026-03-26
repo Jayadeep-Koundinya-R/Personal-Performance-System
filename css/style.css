@@ -41,20 +41,69 @@ body {
 /* ============================================
    LAYOUT
    ============================================ */
-.app-container { display:flex; height:100vh; overflow:hidden; }
+.app-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
 
 /* ============================================
-   SIDEBAR
+   SIDEBAR — Desktop: always visible in flex row
+   Mobile: hidden overlay that slides in
    ============================================ */
 .sidebar {
   width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  height: 100vh;
   background: var(--surface);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+  transition: width .25s ease, min-width .25s ease;
 }
 
+/* Desktop collapsed — shrinks to just the hamburger button */
+.sidebar.collapsed {
+  width: 58px;
+  min-width: 58px;
+}
+.sidebar.collapsed nav,
+.sidebar.collapsed .sidebar-footer {
+  opacity: 0;
+  pointer-events: none;
+}
+.sidebar.collapsed .logo-inline {
+  opacity: 0;
+  overflow: hidden;
+  width: 0;
+}
+
+/* ── Sidebar header row: logo + hamburger always together ── */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 0 20px;
+  height: 60px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.logo-inline {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+.logo-inline span { color: var(--accent2); }
+
+/* Keep .logo for login page */
 .logo {
   font-family: 'JetBrains Mono', monospace;
   font-size: 20px;
@@ -111,7 +160,13 @@ nav ul { list-style: none; padding: 12px 0; }
 /* ============================================
    MAIN CONTENT
    ============================================ */
-.main-content { flex:1; padding:28px 32px; overflow-y:auto; }
+.main-content {
+  flex: 1;
+  padding: 28px 32px;
+  overflow-y: auto;
+  width: 100%;
+  min-width: 0;
+}
 
 .section        { display: none; }
 .active-section { display: block; }
@@ -606,164 +661,204 @@ button {
 .text-red   { color:var(--red); }
 
 /* ============================================
-   MOBILE TOPBAR & HAMBURGER
+   HAMBURGER — always visible in sidebar header
+   Works on desktop (collapses sidebar) and
+   mobile (overlays sidebar). No separate topbar.
    ============================================ */
-.mobile-topbar {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 56px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  z-index: 200;
-  padding: 0 18px;
-  align-items: center;
-  justify-content: space-between;
-}
 
+/* Hamburger button — always in .sidebar-header */
 .hamburger-btn {
-  width: 36px; height: 36px;
+  width: 34px; height: 34px;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 5px;
-  cursor: pointer; padding: 6px;
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 6px;
+  flex-shrink: 0;
+  transition: border-color .15s, background .15s;
+}
+.hamburger-btn:hover {
+  background: #ffffff08;
+  border-color: var(--accent);
 }
 .hamburger-btn span {
   display: block;
-  width: 18px; height: 2px;
-  background: var(--text);
+  width: 16px; height: 2px;
+  background: var(--muted);
   border-radius: 2px;
-  transition: all .2s;
+  transition: background .15s, transform .22s ease, opacity .18s;
+}
+.hamburger-btn:hover span { background: var(--accent); }
+
+/* Animate to X when sidebar is collapsed on desktop */
+.sidebar.collapsed .hamburger-btn span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+.sidebar.collapsed .hamburger-btn span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.sidebar.collapsed .hamburger-btn span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
 }
 
-/* Overlay that dims content when sidebar open on mobile */
+/* Overlay — dims content when sidebar is open as overlay (mobile) */
 .sidebar-overlay {
   display: none;
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.55);
-  z-index: 149;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 299;
+  cursor: pointer;
 }
 .sidebar-overlay.open { display: block; }
 
 /* ============================================
-   RESPONSIVE — TABLET (max 768px)
+   FLOATING MOBILE HAMBURGER
+   Visible ONLY on mobile (≤768px).
+   Fixed to top-left corner, always on top,
+   independent of the sidebar entirely.
+   ============================================ */
+.mobile-hamburger {
+  display: none; /* hidden on desktop — desktop uses sidebar-header button */
+}
+/* ============================================
+   RESPONSIVE — TABLET + MOBILE (max 768px)
    ============================================ */
 @media (max-width: 768px) {
 
-  /* Show topbar, hide desktop sidebar by default */
-  .mobile-topbar  { display: flex; }
-
-  /* Sidebar slides in from left */
-  .sidebar {
+  /* ── Fixed floating hamburger button — top-left, always visible ── */
+  .mobile-hamburger {
+    display: flex;
     position: fixed;
-    top: 0; left: 0; bottom: 0;
-    z-index: 150;
-    transform: translateX(-100%);
-    transition: transform .25s ease;
-    width: 240px;
+    top: 12px;
+    left: 14px;
+    z-index: 400; /* above sidebar overlay (299) and sidebar (300) */
+    width: 42px;
+    height: 42px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    transition: border-color .15s, background .15s;
   }
-  .sidebar.open { transform: translateX(0); }
+  .mobile-hamburger:hover,
+  .mobile-hamburger:active {
+    border-color: var(--accent);
+    background: var(--card);
+  }
+  .mobile-hamburger span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: var(--text);
+    border-radius: 2px;
+    transition: background .15s, transform .22s ease, opacity .18s;
+  }
+  .mobile-hamburger:hover span  { background: var(--accent); }
 
-  /* Main content fills full width, push down for topbar */
+  /* Animate to X when sidebar overlay is open */
+  .mobile-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .mobile-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+  .mobile-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  /* ── Thin branded topbar strip so content doesn't sit at raw top edge ── */
+  .main-content::before {
+    content: 'PPS.';
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2px;
+    padding: 14px 16px 14px 68px; /* 68px left = clear of the hamburger */
+    margin: -24px -16px 20px -16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  /* App container — full width, sidebar out of flow */
+  .app-container { position: relative; }
+
+  /* Sidebar: fixed overlay, slides in from left */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 260px !important;
+    height: 100vh !important;
+    z-index: 300 !important;
+    transform: translateX(-100%) !important;
+    transition: transform .28s ease !important;
+    min-width: unset !important;
+  }
+  .sidebar.open {
+    transform: translateX(0) !important;
+    box-shadow: 6px 0 40px rgba(0,0,0,0.6) !important;
+  }
+
+  /* Main content — full width with space for sticky topbar strip */
   .main-content {
-    padding: 80px 16px 24px;
-    width: 100%;
+    padding: 24px 16px 24px !important;
+    width: 100% !important;
   }
 
-  /* Stats row: 2 columns on tablet */
-  .stats-row {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
+  /* Stats: 2 columns */
+  .stats-row { grid-template-columns: repeat(2,1fr); gap: 10px; }
 
-  /* Dashboard grid: stack columns */
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
+  /* Dashboard grid: stack */
+  .dashboard-grid { grid-template-columns: 1fr; }
 
-  /* Page header: stack title and button */
-  .dashboard-header {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
+  /* Header wrap */
+  .dashboard-header { flex-wrap: wrap; gap: 10px; }
 
-  /* Habit manager form: 1 column */
-  #habitManagerSection .card > div[style*="grid"] {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Priority options wrap */
-  .priority-options {
-    flex-wrap: wrap;
-  }
-
-  /* Reminders form: 1 column */
+  /* Forms: 1 column */
+  #habitManagerSection .card > div[style*="grid"],
   #reminderSection .card > div[style*="grid"] {
     grid-template-columns: 1fr !important;
   }
 
-  /* Streak grid: 1 column */
-  #habitStreakList {
-    grid-template-columns: 1fr !important;
-  }
+  /* Streak: 1 column */
+  #habitStreakList { grid-template-columns: 1fr !important; }
 
-  /* Heatmap: reduce cells */
-  #heatmapGrid { overflow-x: auto; }
+  /* Priority wrap */
+  .priority-options { flex-wrap: wrap; }
 
-  /* Analytics layout: stack */
-  #analyticsSection .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* Modal full width */
+  /* Modal */
   .modal-box { width: 95vw; padding: 20px; }
   .modal-grid { grid-template-columns: 1fr; }
 
-  /* Habit card wrap actions */
-  .habit-card { flex-wrap: wrap; gap: 10px; }
+  /* Habit card */
+  .habit-card { flex-wrap: wrap; }
   .habit-actions { flex-wrap: wrap; }
 
-  /* Reflection card */
-  .reflection-card { padding: 12px; }
-
-  /* Reminder row wrap */
-  .reminder-row { flex-wrap: wrap; gap: 10px; }
-
-  /* Buttons full width where needed */
-  .primary-btn, .ghost-btn, .danger-btn {
-    white-space: nowrap;
-  }
-
-  /* Login box full width */
-  .login-box { width: 95vw; padding: 28px 20px; }
+  /* Reminder */
+  .reminder-row { flex-wrap: wrap; gap: 8px; }
 }
 
 /* ============================================
-   RESPONSIVE — PHONE (max 480px)
+   RESPONSIVE — PHONE ONLY (max 480px)
    ============================================ */
 @media (max-width: 480px) {
-
-  /* Stats: single column */
   .stats-row { grid-template-columns: 1fr; }
-
-  /* Smaller heading */
   .dashboard-header h1 { font-size: 18px; }
-
-  /* Stat card numbers smaller */
   .stat-num { font-size: 22px; }
   .streak-num { font-size: 36px; }
-
-  /* Bar chart shorter */
   .bar-chart { height: 90px; }
-
-  /* Reduce card padding */
   .card { padding: 14px; }
-
-  /* Heatmap range selector full width */
-  #heatmapRange { width: 100%; }
-
-  /* Settings row wrap */
-  .settings-row { flex-wrap: wrap; gap: 8px; }
 }

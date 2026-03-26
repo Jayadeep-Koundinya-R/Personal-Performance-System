@@ -1,63 +1,173 @@
-/* MOBILE SIDEBAR */
-function toggleMobileSidebar() {
-    var sidebar = document.getElementById("sidebar");
-    var overlay = document.getElementById("sidebarOverlay");
-    if (!sidebar || !overlay) return;
-    sidebar.classList.toggle("open");
-    overlay.classList.toggle("open");
+import { getData, saveData } from './storageService.js';
+/* ================================================
+   app.js  —  Sidebar hamburger + PDF Export
+
+   HOW THE HAMBURGER WORKS (unified, any screen):
+   ─────────────────────────────────────────────
+   The hamburger button lives permanently in
+   .sidebar-header — top-left of the sidebar on
+   every screen size. There is no separate mobile
+   topbar at all.
+
+   DESKTOP (> 768px)
+     Sidebar is a normal flex item (always rendered).
+     Click hamburger → toggles .collapsed on sidebar.
+     Collapsed = sidebar shrinks to 58px (icon-only).
+     Expanded  = sidebar restores to full --sidebar-w.
+     Overlay is never shown on desktop.
+
+   MOBILE (≤ 768px)
+     Sidebar is a fixed overlay, starts off-screen.
+     Click hamburger → .open → slides in.
+     Tap overlay / nav item / ESC → closes.
+     .collapsed class unused on mobile.
+================================================ */
+
+var MOBILE_BP = 768;
+
+function isMobile() {
+    return window.innerWidth <= MOBILE_BP;
 }
-function closeMobileSidebar() {
+
+/* ── Main toggle — called by onclick on hamburger button ── */
+export function toggleMobileSidebar() {
+    if (isMobile()) {
+        _mobileToggle();
+    } else {
+        _desktopToggle();
+    }
+}
+
+/* ── Desktop: collapse / expand sidebar ── */
+function _desktopToggle() {
+    var sidebar = document.getElementById("sidebar");
+    if (!sidebar) return;
+    sidebar.classList.toggle("collapsed");
+    saveData("pps_sidebar_collapsed", sidebar.classList.contains("collapsed") ? "1" : "0");
+}
+
+/* ── Mobile: slide overlay in/out ── */
+function _mobileToggle() {
     var sidebar = document.getElementById("sidebar");
     var overlay = document.getElementById("sidebarOverlay");
+    var fab = document.getElementById("mobileHamburgerBtn");
+    if (!sidebar) return;
+    if (sidebar.classList.contains("open")) {
+        _mobileClose();
+    } else {
+        sidebar.classList.remove("collapsed");
+        sidebar.classList.add("open");
+        if (overlay) overlay.classList.add("open");
+        if (fab) fab.classList.add("open");    /* animate FAB to X */
+        document.body.style.overflow = "hidden";
+    }
+}
+
+/* ── Mobile: close overlay ── */
+function _mobileClose() {
+    var sidebar = document.getElementById("sidebar");
+    var overlay = document.getElementById("sidebarOverlay");
+    var fab = document.getElementById("mobileHamburgerBtn");
     if (sidebar) sidebar.classList.remove("open");
     if (overlay) overlay.classList.remove("open");
+    if (fab) fab.classList.remove("open");     /* restore FAB to bars */
+    document.body.style.overflow = "";
 }
-document.addEventListener("DOMContentLoaded", function() {
-    document.querySelectorAll(".nav-item").forEach(function(item) {
-        item.addEventListener("click", function() {
-            if (window.innerWidth <= 768) closeMobileSidebar();
+
+/* ── Public close function (called by nav.js too) ── */
+export function closeMobileSidebar() {
+    if (isMobile()) _mobileClose();
+}
+
+/* ── Init ── */
+document.addEventListener("DOMContentLoaded", function () {
+    var sidebar = document.getElementById("sidebar");
+    var overlay = document.getElementById("sidebarOverlay");
+
+    /* Restore desktop collapsed state from last session */
+    if (sidebar && !isMobile()) {
+        if (getData("pps_sidebar_collapsed") === "1") {
+            sidebar.classList.add("collapsed");
+        }
+    }
+
+    /* Overlay tap closes on mobile */
+    if (overlay) {
+        overlay.addEventListener("click", function () { _mobileClose(); });
+    }
+
+    /* Nav item click closes overlay on mobile */
+    document.querySelectorAll(".nav-item").forEach(function (item) {
+        item.addEventListener("click", function () {
+            if (isMobile()) _mobileClose();
         });
+    });
+
+    /* Resize: clean up stray classes when crossing breakpoint */
+    window.addEventListener("resize", function () {
+        if (!isMobile()) {
+            _mobileClose();
+            document.body.style.overflow = "";
+        } else {
+            if (sidebar) sidebar.classList.remove("collapsed");
+        }
+    });
+
+    /* ESC: close mobile overlay, or expand collapsed desktop sidebar */
+    document.addEventListener("keydown", function (e) {
+        if (e.key !== "Escape") return;
+        if (isMobile()) {
+            _mobileClose();
+        } else if (sidebar && sidebar.classList.contains("collapsed")) {
+            sidebar.classList.remove("collapsed");
+            saveData("pps_sidebar_collapsed", "0");
+        }
     });
 });
 
-/* PDF EXPORT */
-function exportToPDF() {
-    var user = {};
-    try { user = JSON.parse(localStorage.getItem("currentUser") || "{}"); } catch(e) {}
-    var name  = user.name || user.email || "User";
-    var today = new Date().toLocaleDateString("en-GB", {weekday:"long",day:"2-digit",month:"long",year:"numeric"});
+
+/* ================================================
+   PDF EXPORT
+================================================ */
+export function exportToPDF() {
+    var user = getData("currentUser", {});
+    var name = user.name || user.email || "User";
+    var today = new Date().toLocaleDateString("en-GB", {
+        weekday: "long", day: "2-digit", month: "long", year: "numeric"
+    });
 
     var habitsKey = "habits_" + (user.email || "guest");
-    var habitList = [];
-    try { habitList = JSON.parse(localStorage.getItem(habitsKey)) || []; } catch(e) {}
+    var habitList = getData(habitsKey, []);
 
-    var totalXP    = habitList.reduce(function(s,h){ return s+(h.completedDates||[]).length*10; },0);
-    var level      = Math.floor(totalXP/100)+1;
-    var bestStreak = habitList.reduce(function(s,h){ return Math.max(s,h.streak||0); },0);
-    var totalDone  = habitList.reduce(function(s,h){ return s+(h.completedDates||[]).length; },0);
+    var totalXP = habitList.reduce(function (s, h) { return s + (h.completedDates || []).length * 10; }, 0);
+    var level = Math.floor(totalXP / 100) + 1;
+    var bestStreak = habitList.reduce(function (s, h) { return Math.max(s, h.streak || 0); }, 0);
+    var totalDone = habitList.reduce(function (s, h) { return s + (h.completedDates || []).length; }, 0);
 
-    var habitRows = habitList.map(function(h) {
-        var done = (h.completedDates||[]).length;
-        var rate = done > 0 ? Math.min(100, Math.round((done/7)*100)) : 0;
-        var priColor = h.priority==="High" ? "#ef4444"
-                     : h.priority==="Medium" ? "#eab308"
-                     : h.priority==="Low" ? "#22c55e" : "#94a3b8";
+    var habitRows = habitList.map(function (h) {
+        var done = (h.completedDates || []).length;
+        var rate = done > 0 ? Math.min(100, Math.round((done / 7) * 100)) : 0;
+        var priColor = h.priority === "High" ? "#ef4444"
+            : h.priority === "Medium" ? "#eab308"
+                : h.priority === "Low" ? "#22c55e" : "#94a3b8";
         return "<tr>" +
             "<td>" + h.name + "</td>" +
-            "<td>" + (h.category||"-") + "</td>" +
-            "<td>" + (h.period||"Daily") + "</td>" +
-            "<td style='color:" + priColor + ";font-weight:600;'>" + (h.priority||"-") + "</td>" +
-            "<td>" + (h.streak||0) + " days</td>" +
+            "<td>" + (h.category || "-") + "</td>" +
+            "<td>" + (h.period || "Daily") + "</td>" +
+            "<td style='color:" + priColor + ";font-weight:600;'>" + (h.priority || "-") + "</td>" +
+            "<td>" + (h.streak || 0) + " days</td>" +
             "<td>" + done + " times</td>" +
             "<td>" +
-                "<div style='background:#e2e8f0;border-radius:4px;height:8px;width:80px;display:inline-block;vertical-align:middle;'>" +
-                "<div style='background:#6366f1;border-radius:4px;height:8px;width:" + rate + "%;'></div>" +
-                "</div> " + rate + "%" +
-            "</td>" +
-            "</tr>";
+            "<div style='background:#e2e8f0;border-radius:4px;height:8px;width:80px;" +
+            "display:inline-block;vertical-align:middle;'>" +
+            "<div style='background:#6366f1;border-radius:4px;height:8px;width:" + rate + "%;'></div>" +
+            "</div> " + rate + "%" +
+            "</td></tr>";
     }).join("");
 
-    if (!habitRows) habitRows = "<tr><td colspan='7' style='text-align:center;color:#94a3b8;'>No habits yet.</td></tr>";
+    if (!habitRows) {
+        habitRows = "<tr><td colspan='7' style='text-align:center;color:#94a3b8;'>No habits yet.</td></tr>";
+    }
 
     var css = [
         "body{font-family:Arial,sans-serif;background:#f8fafc;color:#1e293b;margin:0;padding:0;}",
@@ -99,26 +209,21 @@ function exportToPDF() {
         "<th>Habit</th><th>Category</th><th>Period</th><th>Priority</th><th>Streak</th><th>Completions</th><th>Success Rate</th>" +
         "</tr></thead><tbody>" + habitRows + "</tbody></table>" +
         "</div>" +
-        "<div class='footer'>Generated by PPS - Personal Performance System | " + today + "</div>" +
+        "<div class='footer'>Generated by PPS — Personal Performance System | " + today + "</div>" +
         "</body></html>";
 
-    // Method 1: open new tab and print
     try {
         var win = window.open("", "_blank");
         if (!win) throw new Error("popup blocked");
         win.document.open();
         win.document.write(reportHTML);
         win.document.close();
-        setTimeout(function() { win.focus(); win.print(); }, 800);
-    } catch(e) {
-        // Method 2: fallback - download as HTML file
-        var blob = new Blob([reportHTML], {type: "text/html"});
-        var url  = URL.createObjectURL(blob);
-        var a    = document.createElement("a");
-        a.href     = url;
-        a.download = "PPS_Report.html";
-        a.click();
+        setTimeout(function () { win.focus(); win.print(); }, 800);
+    } catch (e) {
+        var blob = new Blob([reportHTML], { type: "text/html" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url; a.download = "PPS_Report.html"; a.click();
         URL.revokeObjectURL(url);
-        alert("Popup was blocked. Your report has been Downloaded as PPS_Report.html - open it in browser and press Ctrl+P to save as PDF.");
     }
 }

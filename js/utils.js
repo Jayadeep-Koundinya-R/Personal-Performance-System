@@ -1,97 +1,90 @@
-/* ================= PRIORITY SETTINGS ================= */
+/* ================= UTILS / PURE HELPERS ================= */
+import { CONFIG } from './config.js';
+import { getState } from './state.js';
 
-function getPriorityColor(priority) {
+/* ── Priority ── */
+export function getPriorityColor(priority) {
     switch (priority) {
-        case "High": return "#dc3545";
-        case "Medium": return "#ffc107";
-        case "Low": return "#28a745";
-        default: return "#6c757d";
+        case "High": return "#ef4444";
+        case "Medium": return "#eab308";
+        case "Low": return "#22c55e";
+        default: return "#64748b";
     }
 }
 
-const priorityOrder = {
-    "High": 1,
-    "Medium": 2,
-    "Low": 3,
-    "Optional": 4
-};
+export const priorityOrder = { High: 1, Medium: 2, Low: 3, Optional: 4 };
 
-/* ================= DUE DATE GENERATOR ================= */
-
-function generateInitialDueDate(period) {
-    const today = new Date();
-    if (period === "Today") {
-        return today.toISOString();
-    }
-
-    if (period === "Daily") {
-        return today.toISOString();
-    }
-
-    if (period === "Weekly") {
-        today.setDate(today.getDate() + 7);
-        return today.toISOString();
-    }
-
-    if (period === "Monthly") {
-        today.setMonth(today.getMonth() + 1);
-        return today.toISOString();
-    }
-
-    return today.toISOString();
+/* ── Due-date generators ── */
+export function generateInitialDueDate(period) {
+    var d = new Date();
+    if (period === "Weekly") d.setDate(d.getDate() + 7);
+    if (period === "Monthly") d.setMonth(d.getMonth() + 1);
+    return d.toISOString();
 }
 
-function updateNextDueDate(habit) {
-    const currentDue = new Date(habit.dueDate);
-
-    if (habit.period === "Daily") {
-        currentDue.setDate(currentDue.getDate() + 1);
-    }
-    else if (habit.period === "Weekly") {
-        currentDue.setDate(currentDue.getDate() + 7);
-    }
-    else if (habit.period === "Monthly") {
-        currentDue.setMonth(currentDue.getMonth() + 1);
-    }
-    else {
-        return; // "Today" or no period
-    }
-
-    habit.dueDate = currentDue.toISOString();
+export function updateNextDueDate(habit) {
+    var d = new Date(habit.dueDate);
+    if (habit.period === "Daily") d.setDate(d.getDate() + 1);
+    else if (habit.period === "Weekly") d.setDate(d.getDate() + 7);
+    else if (habit.period === "Monthly") d.setMonth(d.getMonth() + 1);
+    else return;          // "Today" — never advances
+    habit.dueDate = d.toISOString();
 }
 
-/* ================= CALCULATIONS ================= */
+/* ── XP / Level ── */
+export let XP_PER = CONFIG.XP_PER_COMPLETION || 10;
+export let LVL_XP = CONFIG.LEVEL_XP_THRESHOLD || 100;
 
-function calculateWeeklyPoints(habits) {
-    let points = 0;
-
-    const today = new Date();
-    const weekAgo = new Date();
-    weekAgo.setDate(today.getDate() - 7);
-
-    habits.forEach(habit => {
-        habit.completedDates.forEach(dateStr => {
-            const completedDate = new Date(dateStr);
-            if (completedDate >= weekAgo) {
-                points += 10;
-            }
+export function calculateWeeklyPoints(habits) {
+    var cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    var pts = 0;
+    habits.forEach(function (h) {
+        h.completedDates.forEach(function (ds) {
+            if (new Date(ds) >= cutoff) pts += XP_PER;
         });
     });
-
-    return points;
+    return pts;
 }
 
-function calculateTotalXP(habits) {
-    let total = 0;
+export function calculateTotalXP(habits) {
+    return habits.reduce(function (sum, h) {
+        return sum + h.completedDates.length * XP_PER;
+    }, 0);
+}
 
-    habits.forEach(habit => {
-        total += habit.completedDates.length * 10;
+export function calculateLevel(habits) {
+    return Math.floor(calculateTotalXP(habits) / LVL_XP) + 1;
+}
+
+/* ── Date helpers ── */
+export function getTodayStr() {
+    return getState()?.selectedDate || new Date().toISOString().split("T")[0];
+}
+
+export function getToday() {
+    var str = getTodayStr();
+    var d = new Date(str + "T00:00:00");
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+export function formatDateDMY(isoStr) {
+    if (!isoStr) return "—";
+    return new Date(isoStr).toLocaleDateString("en-GB", {
+        day: "2-digit", month: "2-digit", year: "numeric"
     });
-
-    return total;
 }
 
-function calculateLevel(habits) {
-    const xp = calculateTotalXP(habits);
-    return Math.floor(xp / 100) + 1;
+/* ── DOM helpers ── */
+export function setEl(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+export function setBar(id, pct, gradient) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.style.width = Math.min(pct, 100) + "%";
+    if (gradient) el.style.background = gradient;
 }
