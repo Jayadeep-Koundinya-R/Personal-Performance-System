@@ -1,119 +1,146 @@
-/* ================= HABIT STORAGE & MANAGEMENT ================= */
+/**
+ * habits.js
+ * Habit data management — CRUD, streak logic, daily reset, and the
+ * Habit Manager UI renderer.
+ *
+ * ARCHITECTURE NOTE:
+ * This module never imports from dashboard.js. When habit data changes,
+ * it fires a "habitsUpdated" CustomEvent on document. dashboard.js and
+ * any other UI module listen for that event and re-render themselves.
+ * This breaks the circular dependency that existed before.
+ */
+
 import { getData, saveData } from './storageService.js';
-import { generateInitialDueDate, updateNextDueDate, calculateWeeklyPoints, getToday } from './utils.js';
-import { renderDashboard, renderDailyTracker } from './dashboard.js';
 import { getState, updateState } from './state.js';
+import {
+    generateInitialDueDate, updateNextDueDate,
+    calculateWeeklyPoints, getToday, formatDateDMY
+} from './utils.js';
+
+/* ── Notify all listeners that habit data has changed ── */
+function notifyHabitsUpdated() {
+    document.dispatchEvent(new CustomEvent("habitsUpdated"));
+}
 
 /* ─────────────────────────────────────
    INIT & SAVE
 ───────────────────────────────────── */
-function initHabits(user) {
-    const storageKey = `habits_${user.email || "guest"}`;
+export function initHabits(user) {
+    const storageKey  = `habits_${user.email || "guest"}`;
     const loadedHabits = getData(storageKey, []);
-    updateState({ habits: loadedHabits, storageKey: storageKey });
+    updateState({ habits: loadedHabits, storageKey });
     dailyReset();
     return getState().habits;
 }
-function saveHabits() {
+
+export function saveHabits() {
     const { habits, storageKey } = getState();
     saveData(storageKey, habits);
 }
 
 /* ─────────────────────────────────────
-   DAILY RESET — runs on every app open
+   DAILY RESET
+   Runs on every app open. Advances due dates that have passed and
+   burns freeze credits (or resets streaks) for missed days.
 ───────────────────────────────────── */
 function dailyReset() {
-    const today = getToday ? getToday() : (() => { const d=new Date(); d.setHours(0,0,0,0); return d; })();
-    let changed = false;
+    const today   = getToday();
+    let   changed = false;
     const { habits } = getState();
 
     habits.forEach(habit => {
-        if(habit.period === "Today") return;
+        if (habit.period === "Today") return;
 
-        const dueDate = new Date(habit.dueDate); dueDate.setHours(0,0,0,0);
-        if(dueDate < today) {
+        const dueDate = new Date(habit.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+
+        if (dueDate < today) {
             const dueDateStr   = dueDate.toISOString().split("T")[0];
             const wasCompleted = habit.completedDates.includes(dueDateStr);
 
-            if(!wasCompleted && habit.streak > 0) {
-                if(habit.freezeCredits > 0) habit.freezeCredits--;
-                else                        habit.streak = 0;
+            if (!wasCompleted && habit.streak > 0) {
+                if (habit.freezeCredits > 0) habit.freezeCredits--;
+                else                         habit.streak = 0;
             }
 
-            while(dueDate < today) {
+            // Advance due date until it's >= today
+            while (dueDate < today) {
                 updateNextDueDate(habit);
                 dueDate.setTime(new Date(habit.dueDate).getTime());
-                dueDate.setHours(0,0,0,0);
+                dueDate.setHours(0, 0, 0, 0);
             }
             changed = true;
         }
     });
-    if(changed) saveHabits();
+
+    if (changed) saveHabits();
 }
 
 /* ─────────────────────────────────────
    ADD HABIT
 ───────────────────────────────────── */
-function addHabit(name, category, period, priority, startDate) {
+export function addHabit(name, category, period, priority, startDate) {
     const dueDate = startDate
         ? new Date(startDate + "T12:00:00").toISOString()
         : generateInitialDueDate(period);
 
     const newHabit = {
         id:                Date.now(),
-        name:              name,
+        name,
         category:          category || "Uncategorized",
-        priority:          priority,
-        period:            period,
-        dueDate:           dueDate,
+        priority,
+        period,
+        dueDate,
         completedDates:    [],
         streak:            0,
         lastCompletedDate: null,
         freezeCredits:     2
     };
+
     const { habits } = getState();
     habits.push(newHabit);
     updateState({ habits });
     saveHabits();
+    notifyHabitsUpdated();
     return newHabit;
 }
 
 /* ─────────────────────────────────────
-   DELETE
+   DELETE HABIT
 ───────────────────────────────────── */
-function deleteHabit(id) {
+export function deleteHabit(id) {
     const { habits } = getState();
-    const filtered = habits.filter(h => h.id !== id);
-    updateState({ habits: filtered });
+    updateState({ habits: habits.filter(h => h.id !== id) });
     saveHabits();
+    notifyHabitsUpdated();
 }
 
 /* ─────────────────────────────────────
    IS HABIT DUE TODAY?
 ───────────────────────────────────── */
-function isHabitDueToday(habit) {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const due   = new Date(habit.dueDate); due.setHours(0,0,0,0);
+export function isHabitDueToday(habit) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const due   = new Date(habit.dueDate); due.setHours(0, 0, 0, 0);
     return (due - today) / 864e5 <= 0;
 }
 
 /* ─────────────────────────────────────
    COMPLETION LOGIC
 ───────────────────────────────────── */
-function updateHabitCompletion(habit, isCompleted) {
+export function updateHabitCompletion(habit, isCompleted) {
     const todayStr = new Date().toISOString().split("T")[0];
 
-    if(isCompleted) {
-        if(!habit.completedDates.includes(todayStr))
+    if (isCompleted) {
+        if (!habit.completedDates.includes(todayStr))
             habit.completedDates.push(todayStr);
 
-        if(habit.lastCompletedDate) {
+        if (habit.lastCompletedDate) {
             const diff = Math.round(
                 (new Date(todayStr) - new Date(habit.lastCompletedDate)) / 864e5
             );
-            if(diff === 1)      habit.streak++;
-            else if(diff === 0) { /* same day, do nothing */ }
-            else                habit.streak = 1; // gap — dailyReset handles freeze
+            if      (diff === 1) habit.streak++;
+            else if (diff === 0) { /* same day — no change */ }
+            else                 habit.streak = 1;
         } else {
             habit.streak = 1;
         }
@@ -121,67 +148,56 @@ function updateHabitCompletion(habit, isCompleted) {
 
     } else {
         habit.completedDates = habit.completedDates.filter(d => d !== todayStr);
-        if(habit.completedDates.length > 0) {
+        if (habit.completedDates.length > 0) {
             habit.completedDates.sort();
-            habit.lastCompletedDate = habit.completedDates[habit.completedDates.length-1];
-            habit.streak = calculateStreakFromDates(habit.completedDates);
+            habit.lastCompletedDate = habit.completedDates[habit.completedDates.length - 1];
+            habit.streak = _calcStreakFromDates(habit.completedDates);
         } else {
             habit.lastCompletedDate = null;
             habit.streak = 0;
         }
     }
+
     saveHabits();
+    notifyHabitsUpdated();
 }
 
-function calculateStreakFromDates(dates) {
-    if(!dates||!dates.length) return 0;
+function _calcStreakFromDates(dates) {
+    if (!dates || !dates.length) return 0;
     const sorted = [...dates].sort().reverse();
     let streak = 1;
-    for(let i=0; i<sorted.length-1; i++){
-        const diff = Math.round((new Date(sorted[i])-new Date(sorted[i+1]))/864e5);
-        if(diff===1) streak++;
+    for (let i = 0; i < sorted.length - 1; i++) {
+        const diff = Math.round((new Date(sorted[i]) - new Date(sorted[i + 1])) / 864e5);
+        if (diff === 1) streak++;
         else break;
     }
     return streak;
 }
 
 /* ─────────────────────────────────────
-   FORMAT DATE → DD/MM/YYYY
-   The input[type=date] value is always YYYY-MM-DD internally
-   (browser standard). We convert for display only.
-───────────────────────────────────── */
-function formatDateDMY(isoString) {
-    if(!isoString) return "—";
-    return new Date(isoString).toLocaleDateString("en-GB", {
-        day:"2-digit", month:"2-digit", year:"numeric"
-    }); // outputs DD/MM/YYYY
-}
-
-/* ─────────────────────────────────────
    RENDER HABIT LIST (Habit Manager)
 ───────────────────────────────────── */
-function renderHabits() {
+export function renderHabits() {
     const habitList  = document.getElementById("habitList");
     const habitCount = document.getElementById("habitCount");
-    if(!habitList) return;
+    if (!habitList) return;
 
     const { habits } = getState();
+    if (habitCount) habitCount.textContent = habits.length;
 
-    if(habitCount) habitCount.textContent = habits.length;
-
-    if(habits.length === 0) {
+    if (habits.length === 0) {
         habitList.innerHTML = `<p class="empty-text">No habits yet — add one above.</p>`;
         return;
     }
 
     habitList.innerHTML = "";
     habits.forEach(habit => {
-        const card     = document.createElement("div");
+        const card = document.createElement("div");
         card.className = "habit-card";
 
         const priClass = {
-            High:"pri-high", Medium:"pri-medium",
-            Low:"pri-low",   Optional:"pri-optional"
+            High: "pri-high", Medium: "pri-medium",
+            Low:  "pri-low",  Optional: "pri-optional"
         }[habit.priority] || "pri-optional";
 
         card.innerHTML = `
@@ -196,17 +212,16 @@ function renderHabits() {
             </div>
             <div class="habit-actions">
                 <span class="pri-badge ${priClass}">${habit.priority}</span>
-                <button class="ghost-btn  edit-btn"   data-id="${habit.id}">Edit</button>
+                <button class="ghost-btn edit-btn"   data-id="${habit.id}">Edit</button>
                 <button class="danger-btn delete-btn" data-id="${habit.id}">Delete</button>
             </div>`;
 
         card.querySelector(".delete-btn").addEventListener("click", () => {
-            if(!confirm(`Delete "${habit.name}"?`)) return;
+            if (!confirm(`Delete "${habit.name}"?`)) return;
             deleteHabit(habit.id);
-            renderHabits(); renderDashboard(); renderDailyTracker();
+            renderHabits();
         });
 
-        // PROFESSIONAL EDIT: opens a modal pre-filled with all habit fields
         card.querySelector(".edit-btn").addEventListener("click", () => {
             openEditModal(habit);
         });
@@ -214,53 +229,46 @@ function renderHabits() {
         habitList.appendChild(card);
     });
 
+    // Update weekly points wherever it's displayed
     document.querySelectorAll("#weeklyPoints").forEach(el => {
         el.textContent = calculateWeeklyPoints(habits);
     });
 }
 
 /* ─────────────────────────────────────
-   EDIT MODAL — opens with all fields
-   Professional pattern: edit in-place modal,
-   not a prompt(). Saves on confirm, discards on cancel.
+   EDIT MODAL
 ───────────────────────────────────── */
-function openEditModal(habit) {
-    // Pre-fill fields
+export function openEditModal(habit) {
     document.getElementById("editHabitId").value       = habit.id;
     document.getElementById("editHabitName").value     = habit.name;
     document.getElementById("editHabitCategory").value = habit.category;
     document.getElementById("editHabitPeriod").value   = habit.period;
 
-    // Convert ISO date to YYYY-MM-DD for the input[type=date]
     const dueDateInput = habit.dueDate
         ? new Date(habit.dueDate).toISOString().split("T")[0]
         : "";
     document.getElementById("editHabitDate").value = dueDateInput;
 
-    // Set priority radio
-    const radios = document.querySelectorAll('input[name="editPriority"]');
-    radios.forEach(r => { r.checked = r.value === habit.priority; });
+    document.querySelectorAll('input[name="editPriority"]').forEach(r => {
+        r.checked = r.value === habit.priority;
+    });
 
-    // Open modal
     document.getElementById("editModal").classList.add("open");
 }
 
-function closeEditModal() {
+export function closeEditModal() {
     document.getElementById("editModal").classList.remove("open");
 }
 
-function setupEditModal() {
-    // Close on X button
+export function setupEditModal() {
     document.getElementById("editModalClose")
         ?.addEventListener("click", closeEditModal);
 
-    // Close on backdrop click
     document.getElementById("editModal")
-        ?.addEventListener("click", function(e) {
-            if(e.target === this) closeEditModal();
+        ?.addEventListener("click", function (e) {
+            if (e.target === this) closeEditModal();
         });
 
-    // Save
     document.getElementById("saveEditBtn")
         ?.addEventListener("click", () => {
             const id       = parseInt(document.getElementById("editHabitId").value);
@@ -270,31 +278,31 @@ function setupEditModal() {
             const dateVal  = document.getElementById("editHabitDate").value;
             const priority = document.querySelector('input[name="editPriority"]:checked')?.value || "Optional";
 
-            if(!name){ alert("Habit name is required."); return; }
+            if (!name) { alert("Habit name is required."); return; }
 
+            const { habits } = getState();
             const habit = habits.find(h => h.id === id);
-            if(!habit) return;
+            if (!habit) return;
 
             habit.name     = name;
             habit.category = category || "Uncategorized";
             habit.period   = period;
             habit.priority = priority;
-            if(dateVal) habit.dueDate = new Date(dateVal+"T12:00:00").toISOString();
+            if (dateVal) habit.dueDate = new Date(dateVal + "T12:00:00").toISOString();
 
             saveHabits();
             renderHabits();
-            renderDashboard();
-            renderDailyTracker();
+            notifyHabitsUpdated();
             closeEditModal();
         });
 }
 
 /* ─────────────────────────────────────
-   SETUP ADD HABIT BUTTON
+   ADD HABIT BUTTON
 ───────────────────────────────────── */
-function setupAddHabitButton() {
+export function setupAddHabitButton() {
     const btn = document.getElementById("addHabitBtn");
-    if(!btn) return;
+    if (!btn) return;
 
     btn.addEventListener("click", () => {
         const name      = document.getElementById("habitName")?.value.trim();
@@ -304,32 +312,19 @@ function setupAddHabitButton() {
         const startDate = document.getElementById("habitStartDate")?.value || null;
 
         const errorEl = document.getElementById("habitError");
-        if(!name){ if(errorEl) errorEl.style.display="block"; return; }
-        if(errorEl) errorEl.style.display = "none";
+        if (!name) { if (errorEl) errorEl.style.display = "block"; return; }
+        if (errorEl) errorEl.style.display = "none";
 
         addHabit(name, category, period, priority, startDate);
-        renderHabits(); renderDashboard(); renderDailyTracker();
+        renderHabits();
 
+        // Reset form
         document.getElementById("habitName").value     = "";
         document.getElementById("habitCategory").value = "";
         document.getElementById("habitPeriod").value   = "Daily";
         const sd = document.getElementById("habitStartDate");
-        if(sd) sd.value = "";
+        if (sd) sd.value = "";
         const hr = document.querySelector('input[name="priority"][value="High"]');
-        if(hr) hr.checked = true;
+        if (hr) hr.checked = true;
     });
 }
-
-export {
-    initHabits,
-    saveHabits,
-    addHabit,
-    deleteHabit,
-    isHabitDueToday,
-    updateHabitCompletion,
-    renderHabits,
-    openEditModal,
-    closeEditModal,
-    setupEditModal,
-    setupAddHabitButton
-};

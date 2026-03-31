@@ -1,10 +1,11 @@
 /* ================= CONFIG =================
-   Global constants
+   Global constants — single source of truth.
+   Import this anywhere you need app-wide settings.
    ================================================== */
 
 export const CONFIG = {
-    XP_PER_COMPLETION: 10,
-    LEVEL_XP_THRESHOLD: 100,
-    MAX_FREEZE_CREDITS: 2,
-    STREAK_RESET_HOUR: 0   // midnight
+    XP_PER_COMPLETION:   10,
+    LEVEL_XP_THRESHOLD:  100,
+    MAX_FREEZE_CREDITS:  2,
+    STREAK_RESET_HOUR:   0   // midnight
 };

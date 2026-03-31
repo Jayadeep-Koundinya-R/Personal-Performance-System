@@ -1,51 +1,91 @@
-/* ================= DASHBOARD RENDERING ================= */
-import { getData, saveData, removeData } from './storageService.js';
+/**
+ * dashboard.js
+ * All dashboard UI rendering. Reads from state — never writes to it.
+ *
+ * ARCHITECTURE NOTE:
+ * This module does NOT import from habits.js. It listens for the
+ * "habitsUpdated" CustomEvent fired by habits.js and re-renders.
+ * This eliminates the circular dependency.
+ */
+
+import { getData, saveData } from './storageService.js';
 import { CONFIG } from './config.js';
 import { getState } from './state.js';
-import { isHabitDueToday, updateHabitCompletion, saveHabits, renderHabits } from './habits.js';
-import { getToday, getTodayStr, calculateWeeklyPoints, calculateTotalXP, calculateLevel, setEl, setBar } from './utils.js';
-// Global state
+import { isHabitDueToday, updateHabitCompletion } from './habits.js';
+import {
+    getToday, getTodayStr,
+    calculateWeeklyPoints, calculateTotalXP, calculateLevel,
+    setEl, setBar
+} from './utils.js';
+
+/* ─────────────────────────────────────
+   FILTER STATE
+   Shared by dashboard stats and analytics.
+───────────────────────────────────── */
 let currentFilter = "today"; // "today" | "week" | "month"
 
-// Listener (inside DOMContentLoaded or setupNavigation)
-const filterSelect = document.getElementById("globalFilter");
-if (filterSelect) {
-    filterSelect.value = currentFilter;
-    filterSelect.addEventListener("change", (e) => {
-        currentFilter = e.target.value;
-        renderDashboard(); // Re-render dashboard
-        updateWeeklyChart(); // If exists
-        renderHeatmap(); // If exists
-    });
-}
-
-// Helper: Filter dates
-function isInCurrentFilter(dateStr) {
-    const date = new Date(dateStr);
+function isInFilter(dateStr) {
+    const date  = new Date(dateStr);
     const today = getToday();
-    const startOfWeek = new Date(today); startOfWeek.setDate(today.getDate() - 6); // Last 7 days
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
     switch (currentFilter) {
-        case "today": return date.toDateString() === today.toDateString();
-        case "week": return date >= startOfWeek;
-        case "month": return date >= startOfMonth;
+        case "today": {
+            return date.toDateString() === today.toDateString();
+        }
+        case "week": {
+            const start = new Date(today);
+            start.setDate(today.getDate() - 6);
+            return date >= start;
+        }
+        case "month": {
+            const start = new Date(today.getFullYear(), today.getMonth(), 1);
+            return date >= start;
+        }
         default: return true;
     }
 }
 
-// Update in updatePeriodPoints() or calculateWeeklyPoints()
-function calculatePeriodPoints(habits) { // Rename from calculateWeeklyPoints in utils.js
-    let points = 0;
-    habits.forEach(habit => {
-        points += habit.completedDates.filter(d => isInCurrentFilter(d)).length * CONFIG.XP_PER_COMPLETION;
-    });
-    return points;
-}
 /* ─────────────────────────────────────
-   MAIN RENDER
+   WIRE GLOBAL FILTER DROPDOWN
+   Called once from main.js after DOM ready.
 ───────────────────────────────────── */
-function renderDashboard() {
+export function setupDashboardFilter() {
+    const sel = document.getElementById("globalFilter");
+    if (!sel) return;
+    sel.value = currentFilter;
+    sel.addEventListener("change", e => {
+        currentFilter = e.target.value;
+        renderDashboard();
+        updateWeeklyChart();
+        renderHeatmap();
+    });
+}
+
+/* ─────────────────────────────────────
+   WIRE ANALYTICS FILTER DROPDOWN
+   The analytics section has its own filter select.
+───────────────────────────────────── */
+export function setupAnalyticsFilter() {
+    const sel = document.getElementById("analyticsFilter");
+    if (!sel) return;
+    sel.addEventListener("change", e => {
+        const val = e.target.value;
+        // Map analytics dropdown values to shared filter keys
+        if      (val === "7")  currentFilter = "week";
+        else if (val === "30") currentFilter = "month";
+        else                   currentFilter = "all";
+        renderHabitSuccessRates();
+        updateWeeklyChart();
+        updateCompletionStats();
+    });
+}
+
+/* ─────────────────────────────────────
+   MAIN DASHBOARD RENDER
+───────────────────────────────────── */
+export function renderDashboard() {
     const { habits } = getState();
+
     const criticalList = document.getElementById("criticalList");
     const highList     = document.getElementById("highList");
     const mediumList   = document.getElementById("mediumList");
@@ -59,60 +99,54 @@ function renderDashboard() {
     const today    = getToday();
 
     habits.forEach(habit => {
-        const dueDate  = new Date(habit.dueDate); dueDate.setHours(0,0,0,0);
+        const dueDate  = new Date(habit.dueDate); dueDate.setHours(0, 0, 0, 0);
         const diffDays = (dueDate - today) / 864e5;
         const isDueToday       = isHabitDueToday(habit);
         const isCompletedToday = habit.completedDates.includes(todayStr);
 
-        // Tag
         let tagClass = "tag-upcoming";
-        let tagText  = "Due " + dueDate.toLocaleDateString(undefined,{weekday:"long"});
-        if      (diffDays < 0)        { tagClass="tag-overdue";  tagText="Overdue"; }
-        else if (diffDays === 0)      { tagClass = isCompletedToday ? "tag-done" : "tag-today";
-                                        tagText  = isCompletedToday ? "Done ✓"  : "Due Today"; }
-        else if (diffDays === 1)      { tagClass="tag-tomorrow"; tagText="Due Tomorrow"; }
+        let tagText  = "Due " + dueDate.toLocaleDateString(undefined, { weekday: "long" });
+        if      (diffDays < 0)   { tagClass = "tag-overdue";  tagText = "Overdue"; }
+        else if (diffDays === 0) {
+            tagClass = isCompletedToday ? "tag-done"  : "tag-today";
+            tagText  = isCompletedToday ? "Done ✓"    : "Due Today";
+        }
+        else if (diffDays === 1) { tagClass = "tag-tomorrow"; tagText = "Due Tomorrow"; }
 
         const taskDiv = document.createElement("div");
         taskDiv.className = "task-item";
         taskDiv.innerHTML = `
             <div class="task-left">
-                <input type="checkbox" data-id="${habit.id}" ${isCompletedToday?"checked":""}>
-                <span class="${isCompletedToday?"task-done":""}">${habit.name}</span>
+                <input type="checkbox" data-id="${habit.id}" ${isCompletedToday ? "checked" : ""}>
+                <span class="${isCompletedToday ? "task-done" : ""}">${habit.name}</span>
             </div>
-            <span class="status-tag ${tagClass}">${tagText}</span>
-        `;
+            <span class="status-tag ${tagClass}">${tagText}</span>`;
 
         taskDiv.querySelector("input[type='checkbox']")
-            .addEventListener("change", function(){
+            .addEventListener("change", function () {
                 updateHabitCompletion(habit, this.checked);
-                renderDashboard();
-                renderDailyTracker();
-                updateAllStats();
+                // habitsUpdated event will trigger full re-render via main.js
             });
 
-        if (isDueToday) {
-            criticalList.appendChild(taskDiv);
-        } else {
-            switch(habit.priority){
-                case "High":   highList.appendChild(taskDiv);    break;
-                case "Medium": mediumList.appendChild(taskDiv);  break;
-                default:       upcomingList.appendChild(taskDiv);
-            }
-        }
+        if (isDueToday)              criticalList.appendChild(taskDiv);
+        else if (habit.priority === "High")   highList.appendChild(taskDiv);
+        else if (habit.priority === "Medium") mediumList.appendChild(taskDiv);
+        else                                  upcomingList.appendChild(taskDiv);
     });
 
-    if(!criticalList.innerHTML) criticalList.innerHTML=`<div class="task-item"><span>No critical tasks 🎉</span></div>`;
-    if(!highList.innerHTML)     highList.innerHTML    =`<div class="task-item"><span>No high priority tasks</span></div>`;
-    if(!mediumList.innerHTML)   mediumList.innerHTML  =`<div class="task-item"><span>No medium tasks</span></div>`;
-    if(!upcomingList.innerHTML) upcomingList.innerHTML=`<div class="task-item"><span>No upcoming tasks</span></div>`;
+    const empty = (el, msg) => { if (!el.innerHTML) el.innerHTML = `<div class="task-item"><span>${msg}</span></div>`; };
+    empty(criticalList, "No critical tasks 🎉");
+    empty(highList,     "No high priority tasks");
+    empty(mediumList,   "No medium tasks");
+    empty(upcomingList, "No upcoming tasks");
 
     updateAllStats();
 }
 
 /* ─────────────────────────────────────
-   UPDATE ALL STATS AT ONCE
+   UPDATE ALL STATS
 ───────────────────────────────────── */
-function updateAllStats() {
+export function updateAllStats() {
     updateCompletionStats();
     updateProgressWidget();
     updateWeeklyChart();
@@ -122,76 +156,71 @@ function updateAllStats() {
 
 /* ─────────────────────────────────────
    COMPLETION STATS
-   FREEZE CREDIT LOGIC EXPLAINED:
-   - Each habit starts with 2 freeze credits
-   - If you MISS a day (dailyReset detects it), 1 credit is burned to save streak
-   - If 0 credits left and you miss → streak resets to 0
-   - Credits are PER HABIT — not shared
-   - Credits do NOT recover (for now — future feature)
 ───────────────────────────────────── */
-function updateCompletionStats() {
+export function updateCompletionStats() {
     const { habits } = getState();
     const todayStr = getTodayStr();
-    let due=0, done=0, freeze=0, maxStreak=0;
+    let due = 0, done = 0, freeze = 0, maxStreak = 0;
 
     habits.forEach(h => {
-        if(isHabitDueToday(h)){
+        if (isHabitDueToday(h)) {
             due++;
-            if(h.completedDates.includes(todayStr)) done++;
+            if (h.completedDates.includes(todayStr)) done++;
         }
         freeze    += h.freezeCredits || 0;
         maxStreak  = Math.max(maxStreak, h.streak || 0);
     });
 
-    const pct = due > 0 ? Math.round((done/due)*100) : 0;
+    const pct = due > 0 ? Math.round((done / due) * 100) : 0;
 
-    setEl("completionRate",       pct + "%");
-    setEl("freezeCreditsDisplay", freeze);
-    setEl("currentStreak",        "🔥 " + maxStreak);
-    setEl("weeklyPoints",         calculateWeeklyPoints(habits));
+    setEl("completionRate",        pct + "%");
+    setEl("freezeCreditsDisplay",  freeze);
+    setEl("currentStreak",         "🔥 " + maxStreak);
+    setEl("weeklyPoints",          calculateWeeklyPoints(habits));
 
-    // Streak section
+    // Streak section hero
     setEl("heroStreak", maxStreak);
     setEl("heroFreeze", freeze);
     setEl("heroBest",   maxStreak);
-    setEl("heroTotal",  habits.reduce((s,h)=>s+h.completedDates.length, 0));
+    setEl("heroTotal",  habits.reduce((s, h) => s + h.completedDates.length, 0));
 
-    // Analytics
+    // Analytics cards
     setEl("avgCompletion", pct + "%");
     setEl("bestStreak",    maxStreak);
     setEl("totalXP",       calculateTotalXP(habits));
-    setEl("totalDone",     habits.reduce((s,h)=>s+h.completedDates.length,0));
+    setEl("totalDone",     habits.reduce((s, h) => s + h.completedDates.length, 0));
 }
 
 /* ─────────────────────────────────────
    TODAY'S PROGRESS WIDGET
 ───────────────────────────────────── */
-function updateProgressWidget() {
+export function updateProgressWidget() {
     const { habits } = getState();
     const todayStr = getTodayStr();
-    let due=0, done=0;
-    habits.forEach(h => {
-        if(isHabitDueToday(h)){ due++; if(h.completedDates.includes(todayStr)) done++; }
-    });
-    const pct = due>0 ? Math.round((done/due)*100) : 0;
+    let due = 0, done = 0;
 
-    setEl("todayProgress",  `${done}/${due}`);
+    habits.forEach(h => {
+        if (isHabitDueToday(h)) {
+            due++;
+            if (h.completedDates.includes(todayStr)) done++;
+        }
+    });
+
+    const pct = due > 0 ? Math.round((done / due) * 100) : 0;
+
+    setEl("todayProgress",    `${done}/${due}`);
     setBar("todayProgressBar", pct);
-    setEl("trackerProgress", `${done}/${due}`);
+    setEl("trackerProgress",  `${done}/${due}`);
     setBar("trackerProgressBar", pct);
-    setEl("trackerPercent",  pct + "% complete");
+    setEl("trackerPercent",   pct + "% complete");
 }
 
 /* ─────────────────────────────────────
    WEEKLY SNAPSHOT BAR CHART
-   What it shows: how many habits you completed
-   on each of the last 7 days (Mon→today).
-   Bar height = completions that day / max any day.
-   Today's bar is cyan, past days are purple.
 ───────────────────────────────────── */
-function updateWeeklyChart() {
+export function updateWeeklyChart() {
     const { habits } = getState();
-    const labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const counts = new Array(7).fill(0);
     const today  = new Date();
 
@@ -203,7 +232,7 @@ function updateWeeklyChart() {
         habits.forEach(h => { if (h.completedDates.includes(dateStr)) counts[idx]++; });
     }
 
-    const max = Math.max(...counts, 1);
+    const max    = Math.max(...counts, 1);
     const barHTML = labels.map((label, i) => {
         const h     = Math.max(Math.round((counts[i] / max) * 100), 4);
         const color = i === 6
@@ -215,36 +244,30 @@ function updateWeeklyChart() {
                 </div>`;
     }).join("");
 
-    // Dashboard mini chart
-    const dashChart = document.getElementById("weeklyChart");
-    if (dashChart) dashChart.innerHTML = barHTML;
-
-    // Analytics full chart — was pointing to wrong ID before
+    const dashChart      = document.getElementById("weeklyChart");
     const analyticsChart = document.getElementById("analyticsWeekChart");
+    if (dashChart)      dashChart.innerHTML      = barHTML;
     if (analyticsChart) analyticsChart.innerHTML = barHTML;
 }
 
 /* ─────────────────────────────────────
    ACTIVITY HEATMAP
-   Range: 91 / 182 / 365 days (user picks)
-   Columns = weeks, rows = days (Mon-Sun)
-   Color = proportion of habits done that day
 ───────────────────────────────────── */
-function renderHeatmap() {
+export function renderHeatmap() {
     const grid   = document.getElementById("heatmapGrid");
     const months = document.getElementById("heatmapMonths");
     const total  = document.getElementById("heatmapTotal");
     if (!grid) return;
 
-    // Read selected range from dropdown (default 182)
-    const rangeEl = document.getElementById("heatmapRange");
-    const DAYS    = rangeEl ? parseInt(rangeEl.value) : 182;
-    const WEEKS   = Math.ceil(DAYS / 7);
+    const { habits } = getState();
 
-    const today = new Date(); today.setHours(0,0,0,0);
+    const rangeEl    = document.getElementById("heatmapRange");
+    const DAYS       = rangeEl ? parseInt(rangeEl.value) : 182;
     const habitTotal = habits.length || 1;
 
-    // Build map: "YYYY-MM-DD" -> completions count
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    // Build date → completion count map
     const countMap = {};
     let grandTotal = 0;
     habits.forEach(h => {
@@ -254,26 +277,24 @@ function renderHeatmap() {
         });
     });
 
-    // ── Build grid cells — column by column (week by week) ──
-    // Start from the Monday of the week DAYS ago
+    // Start from Monday of the week DAYS ago
     const startDate = new Date(today);
     startDate.setDate(today.getDate() - DAYS + 1);
-    // Rewind to Monday of that week
-    const dow = startDate.getDay(); // 0=Sun
+    const dow = startDate.getDay();
     startDate.setDate(startDate.getDate() - (dow === 0 ? 6 : dow - 1));
 
     let cellsHTML = "";
-    const monthsSeen = {};   // track for month label row
-    const monthCols  = [];   // [{label, col}]
-
+    const monthsSeen = {};
+    const monthCols  = [];
     let col = 0;
     let d   = new Date(startDate);
 
     while (d <= today) {
         const weekCells = [];
         for (let day = 0; day < 7; day++) {
-            if (d > today) { weekCells.push('<div class="hm-cell" style="visibility:hidden;"></div>'); }
-            else {
+            if (d > today) {
+                weekCells.push('<div class="hm-cell" style="visibility:hidden;"></div>');
+            } else {
                 const ds    = d.toISOString().split("T")[0];
                 const count = countMap[ds] || 0;
                 const ratio = count / habitTotal;
@@ -285,57 +306,47 @@ function renderHeatmap() {
                 else                    lv = "l4";
 
                 const isToday = ds === today.toISOString().split("T")[0];
-                const tip     = ds + (count > 0 ? " · " + count + " habit" + (count > 1 ? "s" : "") + " done" : " · nothing done");
+                const tip     = ds + (count > 0 ? ` · ${count} habit${count > 1 ? "s" : ""} done` : " · nothing done");
                 const outline = isToday ? "outline:2px solid var(--accent2);outline-offset:1px;" : "";
                 weekCells.push(`<div class="hm-cell ${lv}" title="${tip}" style="${outline}"></div>`);
 
-                // Track month changes for label row
                 const monthKey = d.getFullYear() + "-" + d.getMonth();
                 if (!monthsSeen[monthKey]) {
                     monthsSeen[monthKey] = true;
-                    monthCols.push({ label: d.toLocaleString("default",{month:"short"}), col });
+                    monthCols.push({ label: d.toLocaleString("default", { month: "short" }), col });
                 }
             }
             d.setDate(d.getDate() + 1);
         }
-        // Each column is a week (7 cells stacked vertically)
         cellsHTML += `<div style="display:flex;flex-direction:column;gap:3px;">${weekCells.join("")}</div>`;
         col++;
     }
 
-    // Apply grid
     grid.style.display = "flex";
     grid.style.gap     = "3px";
     grid.innerHTML     = cellsHTML;
 
-    // ── Month labels above grid ──
     if (months) {
-        let labHTML = "";
         const totalCols = col;
-        monthCols.forEach((m, i) => {
-            const nextCol = monthCols[i+1] ? monthCols[i+1].col : totalCols;
-            const span    = nextCol - m.col;
-            const w       = (span / totalCols * 100).toFixed(1);
-            labHTML += `<span style="width:${w}%;overflow:hidden;white-space:nowrap;">${m.label}</span>`;
-        });
-        months.innerHTML = labHTML;
+        months.innerHTML = monthCols.map((m, i) => {
+            const nextCol = monthCols[i + 1] ? monthCols[i + 1].col : totalCols;
+            const w = ((nextCol - m.col) / totalCols * 100).toFixed(1);
+            return `<span style="width:${w}%;overflow:hidden;white-space:nowrap;">${m.label}</span>`;
+        }).join("");
     }
 
-    // ── Total completions counter ──
     if (total) {
         const doneInRange = Object.entries(countMap)
             .filter(([ds]) => new Date(ds) >= startDate)
-            .reduce((s,[,v]) => s+v, 0);
+            .reduce((s, [, v]) => s + v, 0);
         total.textContent = doneInRange + " completions in range";
     }
 }
 
 /* ─────────────────────────────────────
-   DAILY TRACKER SECTION
-   Only shows habits due today (isHabitDueToday)
-   grouped by category
+   DAILY TRACKER
 ───────────────────────────────────── */
-function renderDailyTracker() {
+export function renderDailyTracker() {
     const { habits } = getState();
     const list = document.getElementById("trackerList");
     if (!list) return;
@@ -344,7 +355,7 @@ function renderDailyTracker() {
     const todayStr    = getTodayStr();
     const todayHabits = habits.filter(h => isHabitDueToday(h));
 
-    if(todayHabits.length === 0){
+    if (todayHabits.length === 0) {
         list.innerHTML = `<p class="empty-text">No habits due today 🎉 Add habits in Habit Manager.</p>`;
         updateProgressWidget();
         return;
@@ -354,7 +365,7 @@ function renderDailyTracker() {
     const grouped = {};
     todayHabits.forEach(h => {
         const c = h.category || "Uncategorized";
-        if(!grouped[c]) grouped[c] = [];
+        if (!grouped[c]) grouped[c] = [];
         grouped[c].push(h);
     });
 
@@ -368,29 +379,28 @@ function renderDailyTracker() {
         section.appendChild(title);
 
         grouped[cat].forEach(habit => {
-            const done = habit.completedDates.includes(todayStr);
-            const priClass = { High:"pri-high", Medium:"pri-medium", Low:"pri-low", Optional:"pri-optional" }[habit.priority] || "pri-optional";
+            const done     = habit.completedDates.includes(todayStr);
+            const priClass = { High: "pri-high", Medium: "pri-medium", Low: "pri-low", Optional: "pri-optional" }[habit.priority] || "pri-optional";
 
             const row = document.createElement("div");
             row.className = "task-item";
             row.innerHTML = `
                 <div class="task-left">
-                    <input type="checkbox" data-id="${habit.id}" ${done?"checked":""}>
-                    <span class="${done?"task-done":""}">${habit.name}</span>
+                    <input type="checkbox" data-id="${habit.id}" ${done ? "checked" : ""}>
+                    <span class="${done ? "task-done" : ""}">${habit.name}</span>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <span class="status-tag ${priClass}">${habit.priority}</span>
-                    <span class="status-tag ${done?"tag-done":"tag-today"}">
-                        ${done?"+10 XP ✓":"+10 XP"}
+                    <span class="status-tag ${done ? "tag-done" : "tag-today"}">
+                        ${done ? "+10 XP ✓" : "+10 XP"}
                     </span>
                 </div>`;
 
             row.querySelector("input[type='checkbox']")
-                .addEventListener("change", function(){
+                .addEventListener("change", function () {
                     updateHabitCompletion(habit, this.checked);
-                    renderDailyTracker();
-                    updateAllStats();
                 });
+
             section.appendChild(row);
         });
         list.appendChild(section);
@@ -401,27 +411,24 @@ function renderDailyTracker() {
 
 /* ─────────────────────────────────────
    STREAK SECTION
-   Shows each habit individually with its
-   own streak, progress bar, and freeze info
 ───────────────────────────────────── */
-function renderStreakSection() {
+export function renderStreakSection() {
     const { habits } = getState();
     const container = document.getElementById("habitStreakList");
-    if(!container) return;
+    if (!container) return;
     container.innerHTML = "";
 
-    if(habits.length === 0){
+    if (habits.length === 0) {
         container.innerHTML = `<p class="empty-text">No habits yet.</p>`;
         return;
     }
 
     habits.forEach(habit => {
         const streak = habit.streak || 0;
-        const pct    = Math.min(streak*10, 100); // full bar at 10 days
-
+        const pct    = Math.min(streak * 10, 100);
         let color = "#6366f1", icon = "🔥";
-        if(streak === 0)    { color="#ef4444"; icon="💀"; }
-        else if(streak>=7)  { color="#f97316"; }
+        if (streak === 0)   { color = "#ef4444"; icon = "💀"; }
+        else if (streak >= 7) { color = "#f97316"; }
 
         const card = document.createElement("div");
         card.className = "card";
@@ -436,18 +443,15 @@ function renderStreakSection() {
             </div>
             <div class="text-muted" style="font-size:12px;margin-top:4px;">day streak</div>
             <div class="prog-wrap mt-8">
-                <div class="prog-fill"
-                    style="width:${pct}%;
-                           background:linear-gradient(90deg,${color},${color}88);">
-                </div>
+                <div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}88);"></div>
             </div>
             <div style="display:flex;justify-content:space-between;
                         font-size:11px;color:var(--muted);margin-top:6px;">
                 <span>${habit.category || "—"} • ${habit.period}</span>
                 <span>🧊 ${habit.freezeCredits} freeze</span>
             </div>
-            <div style="font-size:11px;margin-top:4px;color:${streak===0?"var(--red)":"var(--muted)"};">
-                ${streak===0?"Start today to build your streak!":"Keep going — don't break it!"}
+            <div style="font-size:11px;margin-top:4px;color:${streak === 0 ? "var(--red)" : "var(--muted)"};">
+                ${streak === 0 ? "Start today to build your streak!" : "Keep going — don't break it!"}
             </div>`;
         container.appendChild(card);
     });
@@ -455,37 +459,42 @@ function renderStreakSection() {
 
 /* ─────────────────────────────────────
    ANALYTICS — PER HABIT SUCCESS RATES
+   Respects the analytics filter dropdown.
 ───────────────────────────────────── */
-function renderHabitSuccessRates() {
+export function renderHabitSuccessRates() {
     const { habits } = getState();
     const container = document.getElementById("habitSuccessRates");
-    if(!container) return;
+    if (!container) return;
 
-    if(habits.length === 0){
+    if (habits.length === 0) {
         container.innerHTML = `<p class="empty-text">No habits yet.</p>`;
         return;
     }
     container.innerHTML = "";
 
-    const today   = new Date();
-    const weekAgo = new Date(); weekAgo.setDate(today.getDate()-7);
+    // Determine date range from currentFilter
+    const today  = new Date();
+    let   cutoff = new Date(today);
+    let   days   = 7;
+
+    if      (currentFilter === "week")  { cutoff.setDate(today.getDate() - 7);  days = 7;  }
+    else if (currentFilter === "month") { cutoff = new Date(today.getFullYear(), today.getMonth(), 1); days = today.getDate(); }
+    else if (currentFilter === "all")   { cutoff = new Date(0); days = Math.max(1, Math.ceil((today - cutoff) / 864e5)); }
+    else                                { cutoff.setDate(today.getDate() - 7);  days = 7;  } // default: week
 
     habits.forEach(h => {
-        const done = h.completedDates.filter(d=>new Date(d)>=weekAgo).length;
-        const pct  = Math.min(Math.round((done/7)*100),100);
-        let color  = pct>=80 ? "#22c55e" : pct>=50 ? "#eab308" : "#ef4444";
+        const done = h.completedDates.filter(d => new Date(d) >= cutoff).length;
+        const pct  = Math.min(Math.round((done / days) * 100), 100);
+        const color = pct >= 80 ? "#22c55e" : pct >= 50 ? "#eab308" : "#ef4444";
 
         container.innerHTML += `
             <div style="margin-bottom:14px;">
-                <div style="display:flex;justify-content:space-between;
-                            font-size:13px;margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
                     <span>${h.name}</span>
                     <span style="color:${color};font-family:'JetBrains Mono',monospace;">${pct}%</span>
                 </div>
                 <div class="prog-wrap">
-                    <div class="prog-fill"
-                        style="width:${pct}%;background:linear-gradient(90deg,${color},${color}88);">
-                    </div>
+                    <div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}88);"></div>
                 </div>
             </div>`;
     });
@@ -494,189 +503,135 @@ function renderHabitSuccessRates() {
 /* ─────────────────────────────────────
    LEVEL + XP WIDGET
 ───────────────────────────────────── */
-function updateLevelWidget() {
+export function updateLevelWidget() {
     const { habits } = getState();
     const xp        = calculateTotalXP(habits);
     const level     = calculateLevel(habits);
     const xpInLevel = xp % 100;
 
-    setEl("userLevel",  "Lv. " + level);
-    setEl("xpDisplay",  `${xpInLevel} / 100 XP`);
-    setBar("xpBar",     xpInLevel, "linear-gradient(90deg,#f97316,#fbbf24)");
-    setEl("xpToNext",   `${100-xpInLevel} XP to Level ${level+1}`);
+    setEl("userLevel",        "Lv. " + level);
+    setEl("xpDisplay",        `${xpInLevel} / 100 XP`);
+    setBar("xpBar",           xpInLevel, "linear-gradient(90deg,#f97316,#fbbf24)");
+    setEl("xpToNext",         `${100 - xpInLevel} XP to Level ${level + 1}`);
     setEl("userLevelDisplay", `Level ${level} • ${xp} XP`);
 }
 
 /* ─────────────────────────────────────
    DATE DISPLAY
-   FIX: shows "· X habits active" chip next to date
 ───────────────────────────────────── */
-function updateDateDisplay() {
-    const dateStr = new Date().toLocaleDateString(undefined,{
-        weekday:"long", year:"numeric", month:"long", day:"numeric"
+export function updateDateDisplay() {
+    const { habits } = getState();
+    const dateStr = new Date().toLocaleDateString(undefined, {
+        weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
     const activeCount = habits.filter(h => isHabitDueToday(h)).length;
-    const chipHtml = `<span class="habits-active-chip">${activeCount} habit${activeCount!==1?"s":""} active</span>`;
+    const chipHtml = `<span class="habits-active-chip">${activeCount} habit${activeCount !== 1 ? "s" : ""} active</span>`;
 
     const dashDate = document.getElementById("dashboardDate");
-    if(dashDate) dashDate.innerHTML = dateStr + chipHtml;
+    if (dashDate) dashDate.innerHTML = dateStr + chipHtml;
 
     const trackerDate = document.getElementById("trackerDate");
-    if(trackerDate) trackerDate.textContent = dateStr;
+    if (trackerDate) trackerDate.textContent = dateStr;
 }
 
 /* ─────────────────────────────────────
    SETTINGS WIRING
 ───────────────────────────────────── */
-function setupSettings(user) {
+export function setupSettings(user) {
     const { habits } = getState();
-    // Email display
+
     setEl("settingsEmail", user.email || "Guest");
 
-    // Display Name — read from localStorage or derive from email
-    const storedName = getData(`pps_name_${user.email||"guest"}`, "") || "";
+    const storedName  = getData(`pps_name_${user.email || "guest"}`, "");
     const displayName = storedName || (user.email ? user.email.split("@")[0] : "Guest");
 
-    // Sidebar
     const avatarEl = document.getElementById("userAvatar");
-    if(avatarEl) avatarEl.textContent = displayName[0].toUpperCase();
+    if (avatarEl) avatarEl.textContent = displayName[0].toUpperCase();
     setEl("userNameDisplay", displayName);
 
-    // Settings name field
     const nameInput = document.getElementById("settingsName");
-    if(nameInput) nameInput.value = displayName;
+    if (nameInput) nameInput.value = displayName;
 
-    // Save name
     document.getElementById("saveNameBtn")?.addEventListener("click", () => {
         const newName = document.getElementById("settingsName")?.value.trim();
-        if(!newName){ alert("Name cannot be empty."); return; }
-        saveData(`pps_name_${user.email||"guest"}`, newName);
+        if (!newName) { alert("Name cannot be empty."); return; }
+        saveData(`pps_name_${user.email || "guest"}`, newName);
         setEl("userNameDisplay", newName);
-        if(avatarEl) avatarEl.textContent = newName[0].toUpperCase();
-        showSettingsMsg("Name saved!", "success");
+        if (avatarEl) avatarEl.textContent = newName[0].toUpperCase();
+        _showSettingsMsg("Name saved!", "success");
     });
 
-    // Change password
-    document.getElementById("changePasswordBtn")?.addEventListener("click", () => {
-        const current  = document.getElementById("currentPassword")?.value;
-        const newPass  = document.getElementById("newPassword")?.value;
-        const confirm  = document.getElementById("confirmPassword")?.value;
+    document.getElementById("changePasswordBtn")?.addEventListener("click", async () => {
+        const current = document.getElementById("currentPassword")?.value;
+        const newPass = document.getElementById("newPassword")?.value;
+        const confirm = document.getElementById("confirmPassword")?.value;
 
-        if(!current||!newPass||!confirm){ showSettingsMsg("Fill in all password fields."); return; }
-        if(newPass.length<6){ showSettingsMsg("New password must be at least 6 characters."); return; }
-        if(newPass!==confirm){ showSettingsMsg("Passwords do not match."); return; }
+        if (!current || !newPass || !confirm) { _showSettingsMsg("Fill in all password fields."); return; }
+        if (newPass.length < 6)               { _showSettingsMsg("New password must be at least 6 characters."); return; }
+        if (newPass !== confirm)               { _showSettingsMsg("Passwords do not match."); return; }
 
-        const users = getData("pps_users", []);
-        const idx   = users.findIndex(u=>u.email===user.email&&u.password===current);
-        if(idx===-1){ showSettingsMsg("Current password is incorrect."); return; }
+        // Import hashPassword lazily to avoid circular deps
+        const { hashPassword } = await import('./auth.js');
+        const hashedCurrent = await hashPassword(current);
+        const hashedNew     = await hashPassword(newPass);
 
-        users[idx].password = newPass;
-        saveData("pps_users", users);
+        const { getData: gd, saveData: sd } = await import('./storageService.js');
+        const users = gd("pps_users", []);
+        const idx   = users.findIndex(u => u.email === user.email && u.password === hashedCurrent);
+        if (idx === -1) { _showSettingsMsg("Current password is incorrect."); return; }
 
-        document.getElementById("currentPassword").value = "";
-        document.getElementById("newPassword").value     = "";
-        document.getElementById("confirmPassword").value = "";
-        showSettingsMsg("Password changed successfully!", "success");
+        users[idx].password = hashedNew;
+        sd("pps_users", users);
+
+        ["currentPassword", "newPassword", "confirmPassword"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+        });
+        _showSettingsMsg("Password changed successfully!", "success");
     });
 
-    // Logout
     document.getElementById("logoutBtn")?.addEventListener("click", () => {
-        removeData("currentUser");
-        window.location.href = "login.html";
-    });
-
-    // Export
-    document.getElementById("exportBtn")?.addEventListener("click", () => {
-        const blob = new Blob([JSON.stringify(habits,null,2)],{type:"application/json"});
-        const a    = document.createElement("a");
-        a.href     = URL.createObjectURL(blob);
-        a.download = "pps-habits.json";
-        a.click(); URL.revokeObjectURL(a.href);
-    });
-
-    // Reset
-    document.getElementById("resetBtn")?.addEventListener("click", () => {
-        if(!confirm("Reset ALL data? This cannot be undone.")) return;
-        habits = []; saveHabits();
-        renderHabits(); renderDashboard();
-        renderDailyTracker(); renderStreakSection();
-        showSettingsMsg("All data reset.", "success");
-    });
-
-    // Storage
-    const bytes = new Blob([JSON.stringify(habits) || ""]).size;
-    setEl("storageUsed", `~${(bytes/1024).toFixed(1)} KB`);
-}
-
-function showSettingsMsg(text, type="error") {
-    const el = document.getElementById("settingsMsg");
-    if(!el) return;
-    el.textContent   = text;
-    el.className     = `msg ${type}`;
-    el.style.display = "block";
-    setTimeout(()=>{ el.style.display="none"; }, 3000);
-}
-
-/* ─────────────────────────────────────
-   TINY DOM HELPERS FROM UTILS
-───────────────────────────────────── */
-
-// Hamburger menu
-const hamburgerBtn = document.getElementById('hamburgerBtn');
-const sidebar = document.querySelector('.sidebar');
-const overlay = document.getElementById('sidebarOverlay');
-
-// Helper to close sidebar and cleanup
-function closeSidebar() {
-    if (!sidebar) return;
-    sidebar.classList.remove('open');
-    overlay?.classList.remove('active');
-    document.body.classList.remove('no-scroll');
-}
-
-// Helper to open sidebar
-function openSidebar() {
-    if (!sidebar) return;
-    sidebar.classList.add('open');
-    overlay?.classList.add('active');
-    document.body.classList.add('no-scroll');
-}
-
-if (hamburgerBtn) {
-    hamburgerBtn.addEventListener('click', () => {
-        if (sidebar.classList.contains('open')) closeSidebar();
-        else openSidebar();
-    });
-
-    overlay?.addEventListener('click', () => {
-        closeSidebar();
-    });
-
-    // Close on nav item click (mobile)
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', () => {
-            if (sidebar.classList.contains('open')) closeSidebar();
+        import('./storageService.js').then(({ removeData }) => {
+            removeData("currentUser");
+            window.location.href = "login.html";
         });
     });
 
-    // Close when resizing beyond mobile breakpoint
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 768) closeSidebar();
+    document.getElementById("exportBtn")?.addEventListener("click", () => {
+        const { habits: h } = getState();
+        const blob = new Blob([JSON.stringify(h, null, 2)], { type: "application/json" });
+        const a    = document.createElement("a");
+        a.href     = URL.createObjectURL(blob);
+        a.download = "pps-habits.json";
+        a.click();
+        URL.revokeObjectURL(a.href);
     });
 
-    // Close on ESC
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeSidebar();
+    document.getElementById("resetBtn")?.addEventListener("click", () => {
+        if (!confirm("Reset ALL data? This cannot be undone.")) return;
+        import('./state.js').then(({ updateState }) => {
+            import('./storageService.js').then(({ saveData: sd }) => {
+                const { storageKey } = getState();
+                updateState({ habits: [] });
+                sd(storageKey, []);
+                document.dispatchEvent(new CustomEvent("habitsUpdated"));
+                _showSettingsMsg("All data reset.", "success");
+            });
+        });
+    });
+
+    // Storage used
+    import('./storageService.js').then(({ getStorageSize }) => {
+        const bytes = getStorageSize();
+        setEl("storageUsed", `~${(bytes / 1024).toFixed(1)} KB`);
     });
 }
 
-export {
-    renderDashboard,
-    renderDailyTracker,
-    renderStreakSection,
-    renderHabitSuccessRates,
-    renderHeatmap,
-    setupSettings,
-    updateWeeklyChart,
-    updateCompletionStats
-};
+function _showSettingsMsg(text, type = "error") {
+    const el = document.getElementById("settingsMsg");
+    if (!el) return;
+    el.textContent   = text;
+    el.className     = `msg ${type}`;
+    el.style.display = "block";
+    setTimeout(() => { el.style.display = "none"; }, 3000);
+}

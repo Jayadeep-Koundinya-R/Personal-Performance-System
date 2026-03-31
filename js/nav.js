@@ -1,115 +1,147 @@
-import { renderDashboard, renderDailyTracker, renderHabitSuccessRates, updateWeeklyChart, updateCompletionStats, renderHeatmap, renderStreakSection } from './dashboard.js';
+/**
+ * nav.js
+ * Sidebar navigation — section switching and mobile sidebar toggle.
+ * All sidebar open/close logic lives here. app.js delegates to these.
+ */
+
+import {
+    renderDashboard, renderDailyTracker, renderHabitSuccessRates,
+    updateWeeklyChart, updateCompletionStats, renderHeatmap,
+    renderStreakSection, updateProgressWidget
+} from './dashboard.js';
 import { renderHabits } from './habits.js';
-import { rfl_render } from './reflection.js';
-import { rem_render } from './reminder.js';
+import { rfl_render }   from './reflection.js';
+import { rem_render }   from './reminder.js';
 
-/* ================= NAVIGATION =================
-   FIX: your friend's nav.js called rfl_render() / rem_render()
-   (inline-script names) but reflection.js / reminder.js define
-   renderReflections() / renderReminders().  Unified here.
-   ================================================ */
+const MOBILE_BP = 768;
 
+/* ─────────────────────────────────────
+   SECTION NAVIGATION
+───────────────────────────────────── */
 export function setupNavigation() {
-    var navItems = document.querySelectorAll(".nav-item");
-    var sections = document.querySelectorAll(".section");
+    const navItems = document.querySelectorAll(".nav-item");
+    const sections = document.querySelectorAll(".section");
 
-    navItems.forEach(function (item) {
-        item.addEventListener("click", function () {
-
-            navItems.forEach(function (n) { n.classList.remove("active"); });
-            sections.forEach(function (s) { s.classList.remove("active-section"); });
+    navItems.forEach(item => {
+        item.addEventListener("click", () => {
+            navItems.forEach(n => n.classList.remove("active"));
+            sections.forEach(s => s.classList.remove("active-section"));
 
             item.classList.add("active");
 
-            var sectionId = item.dataset.section;
-            var target    = document.getElementById(sectionId);
+            const sectionId = item.dataset.section;
+            const target    = document.getElementById(sectionId);
             if (target) target.classList.add("active-section");
 
-            /* Re-render section on every visit — fresh data guaranteed */
             switch (sectionId) {
-
                 case "dashboardSection":
                     renderDashboard();
                     break;
-
                 case "dailyTrackerSection":
                     renderDailyTracker();
-                    updateProgressWidget();
                     break;
-
                 case "analyticsSection":
                     renderHabitSuccessRates();
                     updateWeeklyChart();
                     updateCompletionStats();
                     renderHeatmap();
                     break;
-
                 case "streakSection":
                     renderStreakSection();
                     updateCompletionStats();
                     break;
-
                 case "reflectionSection":
-                    if (typeof rfl_render === "function") rfl_render();
+                    rfl_render();
                     break;
-
                 case "habitManagerSection":
                     renderHabits();
                     break;
-
                 case "reminderSection":
-                    if (typeof rem_render === "function") rem_render();
-                    break;
-
-                case "settingsSection":
-                    /* nothing dynamic */
+                    rem_render();
                     break;
             }
 
-            /* Close mobile sidebar after navigation */
-            if (window.innerWidth <= 768) closeMobileSidebar();
+            if (window.innerWidth <= MOBILE_BP) closeMobileSidebar();
         });
     });
 }
 
-/* ── Mobile sidebar ── */
+/* ─────────────────────────────────────
+   MOBILE SIDEBAR
+───────────────────────────────────── */
 export function toggleMobileSidebar() {
-    var sidebar = document.getElementById("sidebar");
-    var overlay = document.getElementById("sidebarOverlay");
-    if (!sidebar || !overlay) return;
-    var isOpen = sidebar.classList.contains("open");
-    if (isOpen) closeMobileSidebar();
-    else        openMobileSidebar();
+    const sidebar = document.getElementById("sidebar");
+    if (!sidebar) return;
+    if (sidebar.classList.contains("open")) closeMobileSidebar();
+    else                                    openMobileSidebar();
 }
 
 export function openMobileSidebar() {
-    var sidebar = document.getElementById("sidebar");
-    var overlay = document.getElementById("sidebarOverlay");
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
     if (sidebar) sidebar.classList.add("open");
     if (overlay) overlay.classList.add("open");
     document.body.style.overflow = "hidden";
 }
 
 export function closeMobileSidebar() {
-    var sidebar = document.getElementById("sidebar");
-    var overlay = document.getElementById("sidebarOverlay");
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
     if (sidebar) sidebar.classList.remove("open");
     if (overlay) overlay.classList.remove("open");
     document.body.style.overflow = "";
 }
 
-/* Close on overlay tap */
-document.addEventListener("DOMContentLoaded", function () {
-    var overlay = document.getElementById("sidebarOverlay");
+/* ─────────────────────────────────────
+   DESKTOP SIDEBAR COLLAPSE
+───────────────────────────────────── */
+export function toggleDesktopSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    if (!sidebar) return;
+    const collapsed = sidebar.classList.toggle("collapsed");
+    import('./storageService.js').then(({ saveData }) => {
+        saveData("pps_sidebar_collapsed", collapsed ? "1" : "0");
+    });
+}
+
+/* ─────────────────────────────────────
+   UNIFIED HAMBURGER HANDLER
+   Called by both the sidebar-header button (desktop)
+   and the floating mobile button.
+───────────────────────────────────── */
+export function handleHamburger() {
+    if (window.innerWidth <= MOBILE_BP) toggleMobileSidebar();
+    else                                toggleDesktopSidebar();
+}
+
+/* ─────────────────────────────────────
+   DOM INIT
+───────────────────────────────────── */
+document.addEventListener("DOMContentLoaded", () => {
+    // Restore desktop collapsed state
+    const sidebar = document.getElementById("sidebar");
+    if (sidebar && window.innerWidth > MOBILE_BP) {
+        import('./storageService.js').then(({ getData }) => {
+            if (getData("pps_sidebar_collapsed") === "1") {
+                sidebar.classList.add("collapsed");
+            }
+        });
+    }
+
+    // Overlay tap closes sidebar
+    const overlay = document.getElementById("sidebarOverlay");
     if (overlay) overlay.addEventListener("click", closeMobileSidebar);
 
-    /* Close on ESC */
-    document.addEventListener("keydown", function (e) {
+    // ESC closes sidebar
+    document.addEventListener("keydown", e => {
         if (e.key === "Escape") closeMobileSidebar();
     });
 
-    /* Close when viewport widens past mobile breakpoint */
-    window.addEventListener("resize", function () {
-        if (window.innerWidth > 768) closeMobileSidebar();
+    // Resize cleanup
+    window.addEventListener("resize", () => {
+        if (window.innerWidth > MOBILE_BP) {
+            closeMobileSidebar();
+            document.body.style.overflow = "";
+        }
     });
 });

@@ -206,18 +206,17 @@
 
   <script type="module">
     import { getData, saveData, removeData } from './js/storageService.js';
+    import { hashPassword, getUsers, saveUsers, setCurrentUser } from './js/auth.js';
+
     /* ══════════════════════════════════════
        TAB SWITCHING
     ══════════════════════════════════════ */
     function switchTab(tab) {
       const isSignIn = tab === "signin";
-
       document.getElementById("signinForm").style.display = isSignIn ? "block" : "none";
       document.getElementById("signupForm").style.display = isSignIn ? "none"  : "block";
-
       document.getElementById("tabSignIn").classList.toggle("active",  isSignIn);
       document.getElementById("tabSignUp").classList.toggle("active", !isSignIn);
-
       clearMsg();
     }
 
@@ -237,87 +236,60 @@
       el.textContent   = "";
     }
 
-    /* ══════════════════════════════════════
-       USER STORAGE HELPERS
-       Users stored as:  pps_users  →  [{email, password}]
-    ══════════════════════════════════════ */
-    function getUsers() {
-      return getData("pps_users", []);
+    function showMsg(text, type = "error") {
+      const el = document.getElementById("authMsg");
+      el.textContent   = text;
+      el.className     = `msg ${type}`;
+      el.style.display = "block";
     }
 
-    function saveUsers(users) {
-      saveData("pps_users", users);
-    }
-
-    function setCurrentUser(user) {
-      saveData("currentUser", user);
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
     /* ══════════════════════════════════════
-       SIGN IN
+       SIGN IN — passwords compared as SHA-256 hashes
     ══════════════════════════════════════ */
-    function handleSignIn() {
+    async function handleSignIn() {
       const email    = document.getElementById("signinEmail").value.trim().toLowerCase();
       const password = document.getElementById("signinPassword").value;
 
-      if (!email || !password) {
-        showMsg("Please fill in all fields.");
-        return;
-      }
+      if (!email || !password) { showMsg("Please fill in all fields."); return; }
 
-      const users      = getUsers();
-      const matchedUser = users.find(u => u.email === email && u.password === password);
+      const hashed = await hashPassword(password);
+      const users  = getUsers();
+      const match  = users.find(u => u.email === email && u.password === hashed);
 
-      if (!matchedUser) {
-        showMsg("Incorrect email or password.");
-        return;
-      }
+      if (!match) { showMsg("Incorrect email or password."); return; }
 
-      setCurrentUser({ email: matchedUser.email, isGuest: false });
+      setCurrentUser({ email: match.email, isGuest: false });
       window.location.href = "dashboard.html";
     }
 
     /* ══════════════════════════════════════
-       SIGN UP
+       SIGN UP — password stored as SHA-256 hash
     ══════════════════════════════════════ */
-    function handleSignUp() {
+    async function handleSignUp() {
       const email    = document.getElementById("signupEmail").value.trim().toLowerCase();
       const password = document.getElementById("signupPassword").value;
       const confirm  = document.getElementById("signupConfirm").value;
 
-      if (!email || !password || !confirm) {
-        showMsg("Please fill in all fields.");
-        return;
-      }
-
-      if (!isValidEmail(email)) {
-        showMsg("Enter a valid email address.");
-        return;
-      }
-
-      if (password.length < 6) {
-        showMsg("Password must be at least 6 characters.");
-        return;
-      }
-
-      if (password !== confirm) {
-        showMsg("Passwords do not match.");
-        return;
-      }
+      if (!email || !password || !confirm) { showMsg("Please fill in all fields."); return; }
+      if (!isValidEmail(email))            { showMsg("Enter a valid email address."); return; }
+      if (password.length < 6)             { showMsg("Password must be at least 6 characters."); return; }
+      if (password !== confirm)            { showMsg("Passwords do not match."); return; }
 
       const users = getUsers();
-
       if (users.find(u => u.email === email)) {
         showMsg("An account with this email already exists.");
         return;
       }
 
-      // save new user
-      users.push({ email, password });
+      const hashed = await hashPassword(password);
+      users.push({ email, password: hashed });
       saveUsers(users);
 
       showMsg("Account created! Signing you in…", "success");
-
       setTimeout(() => {
         setCurrentUser({ email, isGuest: false });
         window.location.href = "dashboard.html";
@@ -328,23 +300,17 @@
        GUEST SESSION (24h)
     ══════════════════════════════════════ */
     function handleGuest() {
-      const guestUser = {
+      setCurrentUser({
         email:   null,
         isGuest: true,
-        expiry:  Date.now() + 24 * 60 * 60 * 1000   // 24 hours
-      };
-      setCurrentUser(guestUser);
+        expiry:  Date.now() + 24 * 60 * 60 * 1000
+      });
       window.location.href = "dashboard.html";
     }
 
     /* ══════════════════════════════════════
-       HELPERS
+       ENTER KEY SUPPORT
     ══════════════════════════════════════ */
-    function isValidEmail(email) {
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
-
-    // Allow pressing Enter to submit
     document.addEventListener("keydown", e => {
       if (e.key !== "Enter") return;
       const signinVisible = document.getElementById("signinForm").style.display !== "none";
@@ -357,22 +323,14 @@
     (function checkAlreadyLoggedIn() {
       const user = getData("currentUser");
       if (!user) return;
-
-      // guest expired?
-      if (user.isGuest && Date.now() > user.expiry) {
-        removeData("currentUser");
-        return;
-      }
-
-      // already logged in — skip login page
+      if (user.isGuest && Date.now() > user.expiry) { removeData("currentUser"); return; }
       window.location.href = "dashboard.html";
     })();
 
-    // Explicitly attach scoped functions to window for HTML onclicks
-    window.switchTab = switchTab;
+    window.switchTab    = switchTab;
     window.handleSignIn = handleSignIn;
     window.handleSignUp = handleSignUp;
-    window.handleGuest = handleGuest;
+    window.handleGuest  = handleGuest;
   </script>
 
 </body>
