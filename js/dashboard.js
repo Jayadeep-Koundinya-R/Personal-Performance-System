@@ -220,9 +220,10 @@ export function updateProgressWidget() {
 ───────────────────────────────────── */
 export function updateWeeklyChart() {
     const { habits } = getState();
-    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
     const counts = new Array(7).fill(0);
-    const today  = new Date();
+    // Use global selected date as "today" rather than real clock
+    const today  = getToday();
 
     for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
@@ -232,7 +233,7 @@ export function updateWeeklyChart() {
         habits.forEach(h => { if (h.completedDates.includes(dateStr)) counts[idx]++; });
     }
 
-    const max    = Math.max(...counts, 1);
+    const max = Math.max(...counts, 1);
     const barHTML = labels.map((label, i) => {
         const h     = Math.max(Math.round((counts[i] / max) * 100), 4);
         const color = i === 6
@@ -244,9 +245,12 @@ export function updateWeeklyChart() {
                 </div>`;
     }).join("");
 
-    const dashChart      = document.getElementById("weeklyChart");
+    // Dashboard mini chart
+    const dashChart = document.getElementById("weeklyChart");
+    if (dashChart) dashChart.innerHTML = barHTML;
+
+    // Analytics full chart
     const analyticsChart = document.getElementById("analyticsWeekChart");
-    if (dashChart)      dashChart.innerHTML      = barHTML;
     if (analyticsChart) analyticsChart.innerHTML = barHTML;
 }
 
@@ -259,13 +263,15 @@ export function renderHeatmap() {
     const total  = document.getElementById("heatmapTotal");
     if (!grid) return;
 
+    // Read selected range from dropdown (default 182)
+    const rangeEl = document.getElementById("heatmapRange");
+    const DAYS    = rangeEl ? parseInt(rangeEl.value) : 182;
+    const WEEKS   = Math.ceil(DAYS / 7);
+
+    // Use global selected date as today
+    const today = getToday();
     const { habits } = getState();
-
-    const rangeEl    = document.getElementById("heatmapRange");
-    const DAYS       = rangeEl ? parseInt(rangeEl.value) : 182;
     const habitTotal = habits.length || 1;
-
-    const today = new Date(); today.setHours(0, 0, 0, 0);
 
     // Build date → completion count map
     const countMap = {};
@@ -464,37 +470,34 @@ export function renderStreakSection() {
 export function renderHabitSuccessRates() {
     const { habits } = getState();
     const container = document.getElementById("habitSuccessRates");
-    if (!container) return;
+    if(!container) return;
 
-    if (habits.length === 0) {
+    if(habits.length === 0){
         container.innerHTML = `<p class="empty-text">No habits yet.</p>`;
         return;
     }
     container.innerHTML = "";
 
-    // Determine date range from currentFilter
-    const today  = new Date();
-    let   cutoff = new Date(today);
-    let   days   = 7;
-
-    if      (currentFilter === "week")  { cutoff.setDate(today.getDate() - 7);  days = 7;  }
-    else if (currentFilter === "month") { cutoff = new Date(today.getFullYear(), today.getMonth(), 1); days = today.getDate(); }
-    else if (currentFilter === "all")   { cutoff = new Date(0); days = Math.max(1, Math.ceil((today - cutoff) / 864e5)); }
-    else                                { cutoff.setDate(today.getDate() - 7);  days = 7;  } // default: week
+    // Use global selected date so success rates respect the Time Setter
+    const today   = getToday();
+    const weekAgo = new Date(today); weekAgo.setDate(today.getDate()-7);
 
     habits.forEach(h => {
-        const done = h.completedDates.filter(d => new Date(d) >= cutoff).length;
-        const pct  = Math.min(Math.round((done / days) * 100), 100);
-        const color = pct >= 80 ? "#22c55e" : pct >= 50 ? "#eab308" : "#ef4444";
+        const done = h.completedDates.filter(d=>new Date(d)>=weekAgo).length;
+        const pct  = Math.min(Math.round((done/7)*100),100);
+        let color  = pct>=80 ? "#22c55e" : pct>=50 ? "#eab308" : "#ef4444";
 
         container.innerHTML += `
             <div style="margin-bottom:14px;">
-                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;
+                            font-size:13px;margin-bottom:4px;">
                     <span>${h.name}</span>
                     <span style="color:${color};font-family:'JetBrains Mono',monospace;">${pct}%</span>
                 </div>
                 <div class="prog-wrap">
-                    <div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}88);"></div>
+                    <div class="prog-fill"
+                        style="width:${pct}%;background:linear-gradient(90deg,${color},${color}88);">
+                    </div>
                 </div>
             </div>`;
     });
@@ -520,18 +523,21 @@ export function updateLevelWidget() {
    DATE DISPLAY
 ───────────────────────────────────── */
 export function updateDateDisplay() {
-    const { habits } = getState();
-    const dateStr = new Date().toLocaleDateString(undefined, {
-        weekday: "long", year: "numeric", month: "long", day: "numeric"
+    // Use global selected date for display, not the raw system clock
+    const todayStr = getTodayStr();
+    const todayDate = getToday();
+    const dateStr = todayDate.toLocaleDateString(undefined,{
+        weekday:"long", year:"numeric", month:"long", day:"numeric"
     });
+    const { habits } = getState();
     const activeCount = habits.filter(h => isHabitDueToday(h)).length;
-    const chipHtml = `<span class="habits-active-chip">${activeCount} habit${activeCount !== 1 ? "s" : ""} active</span>`;
+    const chipHtml = `<span class="habits-active-chip">${activeCount} habit${activeCount!==1?"s":""} active</span>`;
 
     const dashDate = document.getElementById("dashboardDate");
-    if (dashDate) dashDate.innerHTML = dateStr + chipHtml;
+    if(dashDate) dashDate.innerHTML = dateStr + chipHtml;
 
     const trackerDate = document.getElementById("trackerDate");
-    if (trackerDate) trackerDate.textContent = dateStr;
+    if(trackerDate) trackerDate.textContent = dateStr;
 }
 
 /* ─────────────────────────────────────

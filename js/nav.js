@@ -50,6 +50,12 @@ export function setupNavigation() {
                     renderStreakSection();
                     updateCompletionStats();
                     break;
+                case "achievementsSection":
+                    import('./achievements.js').then(m => m.renderAchievements());
+                    break;
+                case "socialSection":
+                    import('./social.js').then(m => m.renderSocial());
+                    break;
                 case "reflectionSection":
                     rfl_render();
                     break;

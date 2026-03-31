@@ -17,8 +17,9 @@ export const priorityOrder = { High: 1, Medium: 2, Low: 3, Optional: 4 };
 
 /* ── Due-date generators ── */
 export function generateInitialDueDate(period) {
-    const d = new Date();
-    if (period === "Weekly")  d.setDate(d.getDate() + 7);
+    // Use the global selected date as the base for new habit due dates
+    var d = getToday();
+    if (period === "Weekly") d.setDate(d.getDate() + 7);
     if (period === "Monthly") d.setMonth(d.getMonth() + 1);
     return d.toISOString();
 }
@@ -45,11 +46,12 @@ export function calculateLevel(habits) {
 }
 
 export function calculateWeeklyPoints(habits) {
-    const cutoff = new Date();
+    // Use global date so the weekly window respects the Time Setter
+    var cutoff = getToday();
     cutoff.setDate(cutoff.getDate() - 7);
-    let pts = 0;
-    habits.forEach(h => {
-        h.completedDates.forEach(ds => {
+    var pts = 0;
+    habits.forEach(function (h) {
+        h.completedDates.forEach(function (ds) {
             if (new Date(ds) >= cutoff) pts += XP_PER;
         });
     });

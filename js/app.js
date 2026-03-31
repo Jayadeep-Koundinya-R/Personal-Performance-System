@@ -5,6 +5,7 @@
  */
 
 import { getData } from './storageService.js';
+import { getToday } from './utils.js';
 
 /* ─────────────────────────────────────
    PDF / PRINT REPORT EXPORT
@@ -12,7 +13,7 @@ import { getData } from './storageService.js';
 export function exportToPDF() {
     const user  = getData("currentUser", {});
     const name  = user.name || user.email || "User";
-    const today = new Date().toLocaleDateString("en-GB", {
+    const today = getToday().toLocaleDateString("en-GB", {
         weekday: "long", day: "2-digit", month: "long", year: "numeric"
     });
 

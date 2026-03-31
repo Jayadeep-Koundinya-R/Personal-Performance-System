@@ -1,246 +1,150 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PPS — Login</title>
+  <title>PPS - Login</title>
   <link rel="stylesheet" href="css/style.css" />
-  <style>
-    /* ── extra styles only needed on login page ── */
-    .login-page {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--bg);
-    }
-
-    .login-box {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 32px 24px;
-  width: 90%;
-  max-width: 380px;
-  margin: 0 auto;
-}
-
-    .login-logo {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 30px;
-      font-weight: 700;
-      color: var(--accent);
-      letter-spacing: 3px;
-      margin-bottom: 4px;
-    }
-
-    .login-logo span { color: var(--accent2); }
-
-    .login-tagline {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 32px;
-    }
-
-    /* tab switcher */
-    .auth-tabs {
-      display: flex;
-      background: var(--surface);
-      border-radius: 8px;
-      padding: 4px;
-      margin-bottom: 24px;
-    }
-
-    .auth-tab {
-      flex: 1;
-      text-align: center;
-      padding: 8px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      color: var(--muted);
-      transition: all 0.15s;
-    }
-
-    .auth-tab.active {
-      background: var(--card);
-      color: var(--text);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-
-    /* error / success messages */
-    .msg {
-      font-size: 12px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      margin-bottom: 14px;
-      display: none;
-    }
-
-    .msg.error   { background: #ef444420; color: #ef4444; border: 1px solid #ef444435; }
-    .msg.success { background: #22c55e20; color: #22c55e; border: 1px solid #22c55e35; }
-
-    /* divider */
-    .divider {
-      text-align: center;
-      color: var(--muted);
-      font-size: 12px;
-      margin: 18px 0;
-      position: relative;
-    }
-
-    .divider::before,
-    .divider::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      width: 40%;
-      height: 1px;
-      background: var(--border);
-    }
-
-    .divider::before { left: 0; }
-    .divider::after  { right: 0; }
-
-    .guest-btn {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--muted);
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .guest-btn:hover {
-      color: var(--text);
-      border-color: var(--muted);
-    }
-
-    .login-footer {
-      text-align: center;
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 20px;
-    }
-  </style>
 </head>
 <body>
 
   <div class="login-page">
-    <div class="login-box">
+    <div class="login-shell">
+      <section class="login-aside">
+        <div>
+          <div class="login-actions-top">
+            <a href="index.html" class="nav-link">Back to Home</a>
+            <div class="theme-panel" data-theme-panel>
+              <span class="theme-panel-title">Theme</span>
+              <button class="theme-toggle-btn" type="button" data-theme-toggle>
+                <span class="theme-toggle-name" data-theme-name>Dark</span>
+              </button>
+            </div>
+          </div>
 
-      <!-- Logo -->
-      <div class="login-logo">PPS<span>.</span></div>
-      <div class="login-tagline">Personal Performance System</div>
+          <div class="login-kicker">Personal Performance System</div>
+          <h1 class="login-title">Your habits deserve a workspace that feels focused and premium.</h1>
+          <p class="login-copy">
+            Sign in to continue building streaks, unlocking achievements, and tracking consistent growth across every day.
+          </p>
 
-      <!-- Tab Switcher: Sign In / Sign Up -->
-      <div class="auth-tabs">
-        <div class="auth-tab active" id="tabSignIn"  onclick="switchTab('signin')">Sign In</div>
-        <div class="auth-tab"        id="tabSignUp"  onclick="switchTab('signup')">Sign Up</div>
-      </div>
+          <div class="login-points">
+            <div class="login-point">
+              <div style="font-size:20px;">XP</div>
+              <div>
+                <strong>Gamified progress</strong>
+                <span>See your level, weekly points, and all-time completions rise together.</span>
+              </div>
+            </div>
+            <div class="login-point">
+              <div style="font-size:20px;">🔥</div>
+              <div>
+                <strong>Momentum by design</strong>
+                <span>Track streaks, protect them with freeze credits, and keep your system moving.</span>
+              </div>
+            </div>
+            <div class="login-point">
+              <div style="font-size:20px;">🏆</div>
+              <div>
+                <strong>Rewarding consistency</strong>
+                <span>Unlock badges and compare progress inside a social-ready dashboard shell.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <!-- Message box (error / success) -->
-      <div class="msg" id="authMsg"></div>
+      <div class="login-box" id="loginBox">
+        <a href="index.html" style="text-decoration:none;">
+          <div class="login-logo">PPS<span>.</span></div>
+        </a>
+        <div class="login-tagline">Personal Performance System</div>
 
-      <!-- ── SIGN IN FORM ── -->
-      <div id="signinForm">
-
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="signinEmail" placeholder="you@email.com" autocomplete="email">
+        <div class="auth-tabs">
+          <div class="auth-tab active" id="tabSignIn" onclick="switchTab('signin')">Sign In</div>
+          <div class="auth-tab" id="tabSignUp" onclick="switchTab('signup')">Sign Up</div>
         </div>
 
-        <div class="form-group" style="margin-top:12px;">
-          <label>Password</label>
-          <input type="password" id="signinPassword" placeholder="••••••••" autocomplete="current-password">
+        <div class="msg" id="authMsg"></div>
+
+        <div id="signinForm">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="signinEmail" placeholder="you@email.com" autocomplete="email">
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Password</label>
+            <input type="password" id="signinPassword" placeholder="••••••••" autocomplete="current-password">
+          </div>
+
+          <button class="primary-btn" style="width:100%; margin-top:20px;" onclick="handleSignIn()">
+            Sign In
+          </button>
         </div>
 
-        <button class="primary-btn" style="width:100%; margin-top:20px;" onclick="handleSignIn()">
-          Sign In
+        <div id="signupForm" style="display:none;">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email">
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Password</label>
+            <input type="password" id="signupPassword" placeholder="Min 6 characters" autocomplete="new-password">
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Confirm Password</label>
+            <input type="password" id="signupConfirm" placeholder="Repeat password" autocomplete="new-password">
+          </div>
+
+          <button class="primary-btn" style="width:100%; margin-top:20px;" onclick="handleSignUp()">
+            Create Account
+          </button>
+        </div>
+
+        <div class="divider">or</div>
+
+        <button class="guest-btn" onclick="handleGuest()">
+          Continue as Guest · 24h session
         </button>
 
-      </div>
-
-      <!-- ── SIGN UP FORM ── -->
-      <div id="signupForm" style="display:none;">
-
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email">
+        <div class="login-footer">
+          Your data is stored locally on this device only.
         </div>
-
-        <div class="form-group" style="margin-top:12px;">
-          <label>Password</label>
-          <input type="password" id="signupPassword" placeholder="Min 6 characters" autocomplete="new-password">
-        </div>
-
-        <div class="form-group" style="margin-top:12px;">
-          <label>Confirm Password</label>
-          <input type="password" id="signupConfirm" placeholder="Repeat password" autocomplete="new-password">
-        </div>
-
-        <button class="primary-btn" style="width:100%; margin-top:20px;" onclick="handleSignUp()">
-          Create Account
-        </button>
-
       </div>
-
-      <!-- Divider + Guest -->
-      <div class="divider">or</div>
-
-      <button class="guest-btn" onclick="handleGuest()">
-        Continue as Guest &nbsp;·&nbsp; 24h session
-      </button>
-
-      <div class="login-footer">
-        Your data is stored locally on this device only.
-      </div>
-
     </div>
   </div>
 
   <script type="module">
-    import { getData, saveData, removeData } from './js/storageService.js';
+    import { getData, removeData } from './js/storageService.js';
     import { hashPassword, getUsers, saveUsers, setCurrentUser } from './js/auth.js';
+    import { initTheme, bindThemeToggles } from './js/theme.js';
 
-    /* ══════════════════════════════════════
-       TAB SWITCHING
-    ══════════════════════════════════════ */
+    initTheme();
+    bindThemeToggles();
+
     function switchTab(tab) {
-      const isSignIn = tab === "signin";
-      document.getElementById("signinForm").style.display = isSignIn ? "block" : "none";
-      document.getElementById("signupForm").style.display = isSignIn ? "none"  : "block";
-      document.getElementById("tabSignIn").classList.toggle("active",  isSignIn);
-      document.getElementById("tabSignUp").classList.toggle("active", !isSignIn);
+      const isSignIn = tab === 'signin';
+      document.getElementById('signinForm').style.display = isSignIn ? 'block' : 'none';
+      document.getElementById('signupForm').style.display = isSignIn ? 'none' : 'block';
+      document.getElementById('tabSignIn').classList.toggle('active', isSignIn);
+      document.getElementById('tabSignUp').classList.toggle('active', !isSignIn);
       clearMsg();
     }
 
-    /* ══════════════════════════════════════
-       MESSAGES
-    ══════════════════════════════════════ */
-    function showMsg(text, type = "error") {
-      const el = document.getElementById("authMsg");
-      el.textContent    = text;
-      el.className      = `msg ${type}`;
-      el.style.display  = "block";
-    }
-
     function clearMsg() {
-      const el = document.getElementById("authMsg");
-      el.style.display = "none";
-      el.textContent   = "";
+      const el = document.getElementById('authMsg');
+      el.style.display = 'none';
+      el.textContent = '';
     }
 
-    function showMsg(text, type = "error") {
-      const el = document.getElementById("authMsg");
-      el.textContent   = text;
-      el.className     = `msg ${type}`;
-      el.style.display = "block";
+    function showMsg(text, type = 'error') {
+      const el = document.getElementById('authMsg');
+      el.textContent = text;
+      el.className = `msg ${type}`;
+      el.style.display = 'block';
     }
 
     function isValidEmail(email) {
@@ -248,56 +152,62 @@
     }
 
     async function handleSignIn() {
-      const email    = document.getElementById("signinEmail").value.trim().toLowerCase();
-      const password = document.getElementById("signinPassword").value;
-      if (!email || !password) { showMsg("Please fill in all fields."); return; }
+      const email = document.getElementById('signinEmail').value.trim().toLowerCase();
+      const password = document.getElementById('signinPassword').value;
+      if (!email || !password) { showMsg('Please fill in all fields.'); return; }
       const hashed = await hashPassword(password);
-      const users  = getUsers();
-      const match  = users.find(u => u.email === email && u.password === hashed);
-      if (!match) { showMsg("Incorrect email or password."); return; }
+      const users = getUsers();
+      const match = users.find(u => u.email === email && u.password === hashed);
+      if (!match) { showMsg('Incorrect email or password.'); return; }
       setCurrentUser({ email: match.email, isGuest: false });
-      window.location.href = "dashboard.html";
+      window.location.href = 'dashboard.html';
     }
 
     async function handleSignUp() {
-      const email    = document.getElementById("signupEmail").value.trim().toLowerCase();
-      const password = document.getElementById("signupPassword").value;
-      const confirm  = document.getElementById("signupConfirm").value;
-      if (!email || !password || !confirm) { showMsg("Please fill in all fields."); return; }
-      if (!isValidEmail(email))            { showMsg("Enter a valid email address."); return; }
-      if (password.length < 6)             { showMsg("Password must be at least 6 characters."); return; }
-      if (password !== confirm)            { showMsg("Passwords do not match."); return; }
+      const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+      const password = document.getElementById('signupPassword').value;
+      const confirm = document.getElementById('signupConfirm').value;
+      if (!email || !password || !confirm) { showMsg('Please fill in all fields.'); return; }
+      if (!isValidEmail(email)) { showMsg('Enter a valid email address.'); return; }
+      if (password.length < 6) { showMsg('Password must be at least 6 characters.'); return; }
+      if (password !== confirm) { showMsg('Passwords do not match.'); return; }
       const users = getUsers();
-      if (users.find(u => u.email === email)) { showMsg("An account with this email already exists."); return; }
+      if (users.find(u => u.email === email)) { showMsg('An account with this email already exists.'); return; }
       const hashed = await hashPassword(password);
       users.push({ email, password: hashed });
       saveUsers(users);
-      showMsg("Account created! Signing you in…", "success");
-      setTimeout(() => { setCurrentUser({ email, isGuest: false }); window.location.href = "dashboard.html"; }, 800);
+      showMsg('Account created! Signing you in...', 'success');
+      setTimeout(() => {
+        setCurrentUser({ email, isGuest: false });
+        window.location.href = 'dashboard.html';
+      }, 800);
     }
 
     function handleGuest() {
       setCurrentUser({ email: null, isGuest: true, expiry: Date.now() + 24 * 60 * 60 * 1000 });
-      window.location.href = "dashboard.html";
+      window.location.href = 'dashboard.html';
     }
 
-    document.addEventListener("keydown", e => {
-      if (e.key !== "Enter") return;
-      const signinVisible = document.getElementById("signinForm").style.display !== "none";
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const signinVisible = document.getElementById('signinForm').style.display !== 'none';
       signinVisible ? handleSignIn() : handleSignUp();
     });
 
     (function checkAlreadyLoggedIn() {
-      const user = getData("currentUser");
+      const user = getData('currentUser');
       if (!user) return;
-      if (user.isGuest && Date.now() > user.expiry) { removeData("currentUser"); return; }
-      window.location.href = "dashboard.html";
+      if (user.isGuest && Date.now() > user.expiry) {
+        removeData('currentUser');
+        return;
+      }
+      window.location.href = 'dashboard.html';
     })();
 
-    window.switchTab    = switchTab;
+    window.switchTab = switchTab;
     window.handleSignIn = handleSignIn;
     window.handleSignUp = handleSignUp;
-    window.handleGuest  = handleGuest;
+    window.handleGuest = handleGuest;
   </script>
 
 </body>

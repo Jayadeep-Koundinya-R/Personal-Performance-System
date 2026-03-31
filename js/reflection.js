@@ -1,5 +1,6 @@
 import { getState } from './state.js';
 import { getData, saveData } from './storageService.js';
+import { getTodayStr } from './utils.js';
 
 /* ---------- HELPERS ---------- */
 function _getUser() {
@@ -37,7 +38,8 @@ export function rfl_save() {
     var key   = _rflKey();
     var list = getData(key, []);
 
-    var today = new Date().toISOString().split("T")[0];
+    // Use global selected date so reflections are tied to the Time Setter date
+    var today = getTodayStr();
     var idx   = -1;
     for (var i = 0; i < list.length; i++) {
         if (list[i].date === today) { idx = i; break; }

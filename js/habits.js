@@ -14,7 +14,7 @@ import { getData, saveData } from './storageService.js';
 import { getState, updateState } from './state.js';
 import {
     generateInitialDueDate, updateNextDueDate,
-    calculateWeeklyPoints, getToday, formatDateDMY
+    calculateWeeklyPoints, getToday, getTodayStr, formatDateDMY
 } from './utils.js';
 
 /* ── Notify all listeners that habit data has changed ── */
@@ -119,8 +119,9 @@ export function deleteHabit(id) {
    IS HABIT DUE TODAY?
 ───────────────────────────────────── */
 export function isHabitDueToday(habit) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const due   = new Date(habit.dueDate); due.setHours(0, 0, 0, 0);
+    // Use global date so Time Setter affects due-today checks
+    const today = getToday();
+    const due   = new Date(habit.dueDate); due.setHours(0,0,0,0);
     return (due - today) / 864e5 <= 0;
 }
 
@@ -128,7 +129,8 @@ export function isHabitDueToday(habit) {
    COMPLETION LOGIC
 ───────────────────────────────────── */
 export function updateHabitCompletion(habit, isCompleted) {
-    const todayStr = new Date().toISOString().split("T")[0];
+    // Always use the global selected date, not real system clock
+    const todayStr = getTodayStr();
 
     if (isCompleted) {
         if (!habit.completedDates.includes(todayStr))
