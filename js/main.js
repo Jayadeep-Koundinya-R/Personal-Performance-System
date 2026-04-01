@@ -18,7 +18,7 @@ import {
     updateWeeklyChart, updateAllStats, setupDashboardFilter,
     setupAnalyticsFilter
 } from './dashboard.js';
-import { notif_requestPermission, notif_stop } from './notifications.js';
+import { notif_requestPermission, notif_startChecker, notif_stop } from './notifications.js';
 import { initTheme, bindThemeToggles } from './theme.js';
 import { renderAchievements } from './achievements.js';
 import { renderSocial } from './social.js';
@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSettings(user);
     setupReflections();
     setupReminders();
+    notif_startChecker();
 
     const dateSetter = document.getElementById('appDateSetter');
     if (dateSetter) dateSetter.value = getTodayStr();
@@ -48,6 +49,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('habitsUpdated', () => {
+    _renderAll();
+});
+
+document.addEventListener('remindersUpdated', () => {
+    _renderAll();
+});
+
+document.addEventListener('notificationAlertsUpdated', () => {
     _renderAll();
 });
 
@@ -82,8 +91,13 @@ function _updateGreeting(user) {
     else if (hour < 18) greet = 'Good Afternoon';
     else greet = 'Good Evening';
 
-    const name = user.isGuest ? 'Guest' : user.email.split('@')[0];
-    el.innerHTML = `${greet}, <span style="color:var(--accent);">${name}</span>! 👋`;
+    const storedName = !user.isGuest && user.email
+        ? getData(`pps_name_${user.email}`, '')
+        : getData('pps_name_guest', '');
+    const displayName = user.isGuest
+        ? (storedName || 'Guest')
+        : (storedName || user.name || user.email.split('@')[0]);
+    el.innerHTML = `${greet}, <span style="color:var(--accent);">${displayName}</span>! 👋`;
 }
 
 function _updateDashboardExtras() {
@@ -104,7 +118,7 @@ function _updateDashboardExtras() {
 
     let totalDone = 0;
     habits.forEach(h => {
-        if (h.completedDays) totalDone += Object.values(h.completedDays).filter(v => v === true).length;
+        totalDone += (h.completedDates || []).length;
     });
     const allDoneEl = document.getElementById('allTimeDoneDisplay');
     if (allDoneEl) allDoneEl.textContent = `${totalDone} completions`;

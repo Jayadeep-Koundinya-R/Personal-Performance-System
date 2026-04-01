@@ -1,134 +1,175 @@
-/* =================================================
-   NOTIFICATIONS.JS — PPS Reminder Notifications
+﻿import { getData, saveData } from './storageService.js';
+import { doesReminderMatchDay, formatReminderTime, getReminders } from './reminder.js';
 
-   How it works:
-   1. User clicks Enable → browser asks permission
-   2. Every 10 seconds we check current time (HH:MM)
-   3. If time matches an enabled reminder → show popup
-   4. Each reminder fires only ONCE per minute
-   5. User can Stop notifications anytime
-================================================= */
+let notifInterval = null;
+let notifRunning = false;
 
-import { getData } from './storageService.js';
+function getCurrentUser() {
+    return getData('currentUser', {});
+}
 
-var notif_interval = null;
-var notif_running  = false;
+function getAlertStorageKey() {
+    const user = getCurrentUser();
+    return `pps_alerts_${user.email || 'guest'}`;
+}
 
-/* ── Enable ── */
+function setStatus(message, ok) {
+    const el = document.getElementById('notif_status');
+    if (!el) return;
+    el.textContent = message;
+    el.style.color = ok ? '#22c55e' : '#ef4444';
+}
+
+function notifyAlertChange() {
+    document.dispatchEvent(new CustomEvent('notificationAlertsUpdated'));
+}
+
+export function getNotificationAlerts() {
+    return getData(getAlertStorageKey(), []).sort((a, b) => new Date(b.firedAt) - new Date(a.firedAt));
+}
+
+function saveNotificationAlerts(list) {
+    saveData(getAlertStorageKey(), list.slice(0, 50));
+    notifyAlertChange();
+}
+
+export function getUnreadAlertCount() {
+    return getNotificationAlerts().filter(alert => !alert.read).length;
+}
+
+export function markAlertRead(alertId) {
+    const updated = getNotificationAlerts().map(alert => (
+        alert.id === alertId ? { ...alert, read: true } : alert
+    ));
+    saveNotificationAlerts(updated);
+}
+
+export function markAllAlertsRead() {
+    const updated = getNotificationAlerts().map(alert => ({ ...alert, read: true }));
+    saveNotificationAlerts(updated);
+}
+
+export function clearNotificationAlerts() {
+    saveNotificationAlerts([]);
+}
+
+function pushAlert(reminder, firedAt) {
+    const alerts = getNotificationAlerts();
+    const exists = alerts.some(alert => alert.reminderId === reminder.id && alert.minuteKey === firedAt.minuteKey);
+    if (exists) return;
+
+    alerts.unshift({
+        id: `${reminder.id}-${firedAt.minuteKey}`,
+        reminderId: reminder.id,
+        label: reminder.label,
+        repeat: reminder.repeat || 'Every Day',
+        time: reminder.time,
+        minuteKey: firedAt.minuteKey,
+        firedAt: firedAt.iso,
+        read: false
+    });
+
+    saveNotificationAlerts(alerts);
+}
+
+function fireBrowserNotification(reminder) {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+
+    const notification = new Notification(`⏰ ${reminder.label}`, {
+        body: `Reminder: ${formatReminderTime(reminder.time)} • ${reminder.repeat || 'Every Day'}`,
+        tag: `pps-${reminder.id}`
+    });
+
+    setTimeout(() => notification.close(), 8000);
+    notification.onclick = () => {
+        window.focus();
+        notification.close();
+    };
+}
+
+function checkReminders() {
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const today = now.toISOString().split('T')[0];
+
+    getReminders().forEach(reminder => {
+        if (!reminder.enabled || reminder.time !== time) return;
+        if (!doesReminderMatchDay(reminder, now)) return;
+
+        const minuteKey = `${today}-${time}`;
+        const fireKey = `pps_notif_${reminder.id}_${minuteKey}`;
+        if (sessionStorage.getItem(fireKey)) return;
+        sessionStorage.setItem(fireKey, '1');
+
+        const firedAt = {
+            iso: now.toISOString(),
+            minuteKey
+        };
+
+        pushAlert(reminder, firedAt);
+        fireBrowserNotification(reminder);
+    });
+}
+
 export function notif_requestPermission() {
-    if (!("Notification" in window)) {
-        notif_setStatus("❌ Browser does not support notifications.", false);
+    if (typeof Notification === 'undefined') {
+        setStatus('In-app alerts only. Browser notifications are unavailable.', false);
         return;
     }
-    if (Notification.permission === "denied") {
-        notif_setStatus("❌ Blocked. Chrome Settings → Site Settings → Notifications → Allow this site.", false);
+
+    if (Notification.permission === 'denied') {
+        setStatus('Browser notifications are blocked. In-app alerts still work.', false);
         return;
     }
-    if (Notification.permission === "granted") {
-        notif_setStatus("✅ Notifications are enabled!", true);
+
+    if (Notification.permission === 'granted') {
+        setStatus('Browser and in-app alerts are active.', true);
         notif_startChecker();
         return;
     }
-    Notification.requestPermission().then(function(result) {
-        if (result === "granted") {
-            notif_setStatus("✅ Notifications enabled!", true);
+
+    Notification.requestPermission().then(result => {
+        if (result === 'granted') {
+            setStatus('Browser and in-app alerts are active.', true);
             notif_startChecker();
-            new Notification("PPS Notifications ON 🔔", {
-                body: "You will get a popup at your reminder times.",
-                icon: "https://cdn.jsdelivr.net/npm/emoji-datasource-apple/img/apple/64/1f514.png"
+            fireBrowserNotification({
+                id: 'pps-on',
+                label: 'PPS notifications enabled',
+                time: new Date().toTimeString().slice(0, 5),
+                repeat: 'One time'
             });
         } else {
-            notif_setStatus("❌ Permission denied. Reminders won't ring.", false);
+            setStatus('In-app alerts stay on, but browser popups were denied.', false);
         }
     });
 }
 
-/* ── Stop ── */
 export function notif_stop() {
-    if (notif_interval) { clearInterval(notif_interval); notif_interval = null; }
-    notif_running = false;
-    notif_setStatus("🔕 Notifications stopped.", false);
-}
-
-/* ── Start checker — every 10 seconds ── */
-export function notif_startChecker() {
-    if (notif_running) return;
-    notif_running = true;
-    notif_checkReminders();
-    notif_interval = setInterval(notif_checkReminders, 10000);
-    console.log("PPS: Notification checker started.");
-}
-
-/* ── Check current time vs reminders ── */
-function notif_checkReminders() {
-    if (Notification.permission !== "granted") return;
-
-    var now  = new Date();
-    var hh   = now.getHours();
-    var mm   = now.getMinutes();
-    var time = (hh < 10 ? "0" : "") + hh + ":" + (mm < 10 ? "0" : "") + mm;
-    var day  = now.getDay();
-    var isWeekday = day >= 1 && day <= 5;
-    var isWeekend = day === 0 || day === 6;
-    var today = now.toISOString().split("T")[0];
-
-    var list = getData(notif_getKey(), []);
-
-    list.forEach(function(r) {
-        if (!r.enabled || r.time !== time) return;
-
-        var rep = r.repeat || "Every Day";
-        var ok  = rep === "Every Day" ? true
-                : rep === "Weekdays"  ? isWeekday
-                : rep === "Weekends"  ? isWeekend : true;
-        if (!ok) return;
-
-        var fKey = "pps_notif_" + r.id + "_" + today + "_" + time;
-        if (sessionStorage.getItem(fKey)) return;
-        sessionStorage.setItem(fKey, "1");
-
-        notif_fire(r.label, rep, time);
-    });
-}
-
-/* ── Show notification ── */
-function notif_fire(label, repeat, timeStr) {
-    var p    = timeStr.split(":").map(Number);
-    var ampm = p[0] >= 12 ? "PM" : "AM";
-    var h12  = p[0] % 12 || 12;
-    var nice = (h12 < 10 ? "0" : "") + h12 + ":" + (p[1] < 10 ? "0" : "") + p[1] + " " + ampm;
-
-    var n = new Notification("⏰ " + label, {
-        body: "Reminder: " + nice + "  •  " + repeat,
-        icon: "https://cdn.jsdelivr.net/npm/emoji-datasource-apple/img/apple/64/23f0.png",
-        tag:  "pps-" + label
-    });
-    setTimeout(function() { n.close(); }, 8000);
-    n.onclick = function() { window.focus(); n.close(); };
-    console.log("PPS Notification fired:", label, "@", nice);
-}
-
-/* ── Status text in banner ── */
-function notif_setStatus(msg, ok) {
-    var el = document.getElementById("notif_status");
-    if (!el) return;
-    el.textContent = msg;
-    el.style.color = ok ? "#22c55e" : "#ef4444";
-}
-
-/* ── localStorage key ── */
-function notif_getKey() {
-    var u = getData("currentUser", {});
-    return "reminders_" + (u.email || "guest");
-}
-
-/* ── Auto-start on load if permission already granted ── */
-document.addEventListener("DOMContentLoaded", function() {
-    if (typeof Notification === "undefined") return;
-    if (Notification.permission === "granted") {
-        notif_startChecker();
-        notif_setStatus("✅ Notifications are enabled!", true);
-    } else if (Notification.permission === "denied") {
-        notif_setStatus("❌ Notifications blocked by browser.", false);
+    if (notifInterval) {
+        clearInterval(notifInterval);
+        notifInterval = null;
     }
+    notifRunning = false;
+    setStatus('Reminder alert checks stopped.', false);
+}
+
+export function notif_startChecker() {
+    if (notifRunning) return;
+    notifRunning = true;
+    checkReminders();
+    notifInterval = setInterval(checkReminders, 10000);
+
+    if (typeof Notification === 'undefined') {
+        setStatus('In-app alerts are active.', true);
+    } else if (Notification.permission === 'granted') {
+        setStatus('Browser and in-app alerts are active.', true);
+    } else if (Notification.permission === 'denied') {
+        setStatus('In-app alerts are active. Browser notifications are blocked.', false);
+    } else {
+        setStatus('In-app alerts are active. Enable browser notifications if you want popups.', true);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    notif_startChecker();
 });

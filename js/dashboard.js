@@ -1,643 +1,928 @@
-/**
+﻿/**
  * dashboard.js
- * All dashboard UI rendering. Reads from state — never writes to it.
- *
- * ARCHITECTURE NOTE:
- * This module does NOT import from habits.js. It listens for the
- * "habitsUpdated" CustomEvent fired by habits.js and re-renders.
- * This eliminates the circular dependency.
+ * Dashboard, analytics, reminders, notifications, and settings UI rendering.
  */
 
-import { getData, saveData } from './storageService.js';
+import { getData, getStorageSize, saveData } from './storageService.js';
 import { CONFIG } from './config.js';
-import { getState } from './state.js';
+import { getState, updateState } from './state.js';
 import { isHabitDueToday, updateHabitCompletion } from './habits.js';
 import {
-    getToday, getTodayStr,
-    calculateWeeklyPoints, calculateTotalXP, calculateLevel,
-    setEl, setBar
+    calculateLevel,
+    calculateTotalXP,
+    calculateWeeklyPoints,
+    getToday,
+    getTodayStr,
+    setBar,
+    setEl
 } from './utils.js';
+import { formatReminderTime, getReminders, getUpcomingReminders } from './reminder.js';
+import {
+    clearNotificationAlerts,
+    getNotificationAlerts,
+    getUnreadAlertCount,
+    markAlertRead,
+    markAllAlertsRead
+} from './notifications.js';
 
-/* ─────────────────────────────────────
-   FILTER STATE
-   Shared by dashboard stats and analytics.
-───────────────────────────────────── */
-let currentFilter = "today"; // "today" | "week" | "month"
+let notificationCenterBound = false;
 
-function isInFilter(dateStr) {
-    const date  = new Date(dateStr);
-    const today = getToday();
-
-    switch (currentFilter) {
-        case "today": {
-            return date.toDateString() === today.toDateString();
-        }
-        case "week": {
-            const start = new Date(today);
-            start.setDate(today.getDate() - 6);
-            return date >= start;
-        }
-        case "month": {
-            const start = new Date(today.getFullYear(), today.getMonth(), 1);
-            return date >= start;
-        }
-        default: return true;
-    }
+function getAnalyticsFilterValue() {
+    return document.getElementById('analyticsFilter')?.value || '7';
 }
 
-/* ─────────────────────────────────────
-   WIRE GLOBAL FILTER DROPDOWN
-   Called once from main.js after DOM ready.
-───────────────────────────────────── */
-export function setupDashboardFilter() {
-    const sel = document.getElementById("globalFilter");
-    if (!sel) return;
-    sel.value = currentFilter;
-    sel.addEventListener("change", e => {
-        currentFilter = e.target.value;
-        renderDashboard();
-        updateWeeklyChart();
-        renderHeatmap();
-    });
+function getAnalyticsRangeDays() {
+    const value = getAnalyticsFilterValue();
+    if (value === 'all') return null;
+    return Number(value);
 }
 
-/* ─────────────────────────────────────
-   WIRE ANALYTICS FILTER DROPDOWN
-   The analytics section has its own filter select.
-───────────────────────────────────── */
-export function setupAnalyticsFilter() {
-    const sel = document.getElementById("analyticsFilter");
-    if (!sel) return;
-    sel.addEventListener("change", e => {
-        const val = e.target.value;
-        // Map analytics dropdown values to shared filter keys
-        if      (val === "7")  currentFilter = "week";
-        else if (val === "30") currentFilter = "month";
-        else                   currentFilter = "all";
-        renderHabitSuccessRates();
-        updateWeeklyChart();
-        updateCompletionStats();
-    });
+function getAllCompletedDates(habits) {
+    return habits.flatMap(habit => habit.completedDates || []).sort();
 }
 
-/* ─────────────────────────────────────
-   MAIN DASHBOARD RENDER
-───────────────────────────────────── */
-export function renderDashboard() {
+function getAnalyticsRange() {
     const { habits } = getState();
+    const end = getToday();
+    const days = getAnalyticsRangeDays();
 
-    const criticalList = document.getElementById("criticalList");
-    const highList     = document.getElementById("highList");
-    const mediumList   = document.getElementById("mediumList");
-    const upcomingList = document.getElementById("upcomingList");
-    if (!criticalList) return;
+    if (days) {
+        const start = new Date(end);
+        start.setDate(end.getDate() - days + 1);
+        start.setHours(0, 0, 0, 0);
+        return { start, end, days };
+    }
 
-    criticalList.innerHTML = highList.innerHTML =
-    mediumList.innerHTML   = upcomingList.innerHTML = "";
+    const allDates = getAllCompletedDates(habits);
+    const start = allDates.length
+        ? new Date(`${allDates[0]}T00:00:00`)
+        : new Date(end.getFullYear(), end.getMonth(), end.getDate() - 29);
 
-    const todayStr = getTodayStr();
-    const today    = getToday();
+    start.setHours(0, 0, 0, 0);
+    return {
+        start,
+        end,
+        days: Math.max(1, Math.round((end - start) / 86400000) + 1)
+    };
+}
+
+function isDateWithinRange(dateStr, start, end) {
+    const date = new Date(`${dateStr}T00:00:00`);
+    return date >= start && date <= end;
+}
+
+function getDateRangeArray(start, end) {
+    const dates = [];
+    const current = new Date(start);
+    current.setHours(0, 0, 0, 0);
+
+    while (current <= end) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+    }
+
+    return dates;
+}
+
+function getCompletionMap(habits) {
+    const map = {};
+    habits.forEach(habit => {
+        (habit.completedDates || []).forEach(dateStr => {
+            map[dateStr] = (map[dateStr] || 0) + 1;
+        });
+    });
+    return map;
+}
+
+function estimateHabitTargetInRange(habit, days) {
+    if (habit.period === 'Daily') return days;
+    if (habit.period === 'Weekly') return Math.max(1, Math.ceil(days / 7));
+    if (habit.period === 'Monthly') return Math.max(1, Math.ceil(days / 30));
+    return 1;
+}
+
+function getAnalyticsSnapshot() {
+    const { habits } = getState();
+    const { start, end, days } = getAnalyticsRange();
+
+    let totalDone = 0;
+    let totalTarget = 0;
+    let bestStreak = 0;
 
     habits.forEach(habit => {
-        const dueDate  = new Date(habit.dueDate); dueDate.setHours(0, 0, 0, 0);
-        const diffDays = (dueDate - today) / 864e5;
-        const isDueToday       = isHabitDueToday(habit);
-        const isCompletedToday = habit.completedDates.includes(todayStr);
-
-        let tagClass = "tag-upcoming";
-        let tagText  = "Due " + dueDate.toLocaleDateString(undefined, { weekday: "long" });
-        if      (diffDays < 0)   { tagClass = "tag-overdue";  tagText = "Overdue"; }
-        else if (diffDays === 0) {
-            tagClass = isCompletedToday ? "tag-done"  : "tag-today";
-            tagText  = isCompletedToday ? "Done ✓"    : "Due Today";
-        }
-        else if (diffDays === 1) { tagClass = "tag-tomorrow"; tagText = "Due Tomorrow"; }
-
-        const taskDiv = document.createElement("div");
-        taskDiv.className = "task-item";
-        taskDiv.innerHTML = `
-            <div class="task-left">
-                <input type="checkbox" data-id="${habit.id}" ${isCompletedToday ? "checked" : ""}>
-                <span class="${isCompletedToday ? "task-done" : ""}">${habit.name}</span>
-            </div>
-            <span class="status-tag ${tagClass}">${tagText}</span>`;
-
-        taskDiv.querySelector("input[type='checkbox']")
-            .addEventListener("change", function () {
-                updateHabitCompletion(habit, this.checked);
-                // habitsUpdated event will trigger full re-render via main.js
-            });
-
-        if (isDueToday)              criticalList.appendChild(taskDiv);
-        else if (habit.priority === "High")   highList.appendChild(taskDiv);
-        else if (habit.priority === "Medium") mediumList.appendChild(taskDiv);
-        else                                  upcomingList.appendChild(taskDiv);
+        const done = (habit.completedDates || []).filter(dateStr => isDateWithinRange(dateStr, start, end)).length;
+        totalDone += done;
+        totalTarget += estimateHabitTargetInRange(habit, days);
+        bestStreak = Math.max(bestStreak, habit.streak || 0);
     });
 
-    const empty = (el, msg) => { if (!el.innerHTML) el.innerHTML = `<div class="task-item"><span>${msg}</span></div>`; };
-    empty(criticalList, "No critical tasks 🎉");
-    empty(highList,     "No high priority tasks");
-    empty(mediumList,   "No medium tasks");
-    empty(upcomingList, "No upcoming tasks");
+    return {
+        start,
+        end,
+        days,
+        totalDone,
+        avgCompletion: totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0,
+        bestStreak,
+        totalXP: totalDone * (CONFIG.XP_PER_COMPLETION || 10)
+    };
+}
 
+function formatRelativeMinutes(minutes) {
+    if (minutes <= 0) return 'now';
+    if (minutes < 60) return `in ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const remainder = minutes % 60;
+    if (!remainder) return `in ${hours} hr`;
+    return `in ${hours} hr ${remainder} min`;
+}
+
+function buildTaskItem(habit, today, todayStr) {
+    const dueDate = new Date(habit.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((dueDate - today) / 86400000);
+    const isCompletedToday = habit.completedDates.includes(todayStr);
+
+    let tagClass = 'tag-upcoming';
+    let tagText = `Due ${dueDate.toLocaleDateString(undefined, { weekday: 'long' })}`;
+
+    if (diffDays < 0) {
+        tagClass = 'tag-overdue';
+        tagText = 'Overdue';
+    } else if (diffDays === 0) {
+        tagClass = isCompletedToday ? 'tag-done' : 'tag-today';
+        tagText = isCompletedToday ? 'Done ✓' : 'Due Today';
+    } else if (diffDays === 1) {
+        tagClass = 'tag-tomorrow';
+        tagText = 'Due Tomorrow';
+    }
+
+    return `
+        <div class="task-item">
+            <div class="task-left">
+                <input type="checkbox" data-task-checkbox data-id="${habit.id}" ${isCompletedToday ? 'checked' : ''}>
+                <span class="${isCompletedToday ? 'task-done' : ''}">${habit.name}</span>
+            </div>
+            <span class="status-tag ${tagClass}">${tagText}</span>
+        </div>
+    `;
+}
+
+function bindTaskCheckboxes(root, habits) {
+    root.querySelectorAll('[data-task-checkbox]').forEach(input => {
+        input.addEventListener('change', event => {
+            const id = Number(event.currentTarget.dataset.id);
+            const habit = habits.find(item => item.id === id);
+            if (!habit) return;
+            updateHabitCompletion(habit, event.currentTarget.checked);
+        });
+    });
+}
+
+export function setupDashboardFilter() {
+    const sel = document.getElementById('globalFilter');
+    if (!sel || sel.dataset.bound === 'true') return;
+    sel.dataset.bound = 'true';
+    sel.addEventListener('change', () => {
+        renderDashboard();
+        renderDailyTracker();
+        renderStreakSection();
+        renderAnalyticsSection();
+    });
+}
+
+export function setupAnalyticsFilter() {
+    const sel = document.getElementById('analyticsFilter');
+    if (!sel || sel.dataset.bound === 'true') return;
+    sel.dataset.bound = 'true';
+    sel.addEventListener('change', () => {
+        renderAnalyticsSection();
+    });
+}
+
+export function renderDashboard() {
+    const { habits } = getState();
+    const criticalList = document.getElementById('criticalList');
+    const highList = document.getElementById('highList');
+    const mediumList = document.getElementById('mediumList');
+    const upcomingList = document.getElementById('upcomingList');
+    if (!criticalList || !highList || !mediumList || !upcomingList) return;
+
+    const today = getToday();
+    const todayStr = getTodayStr();
+    const critical = [];
+    const high = [];
+    const medium = [];
+    const upcoming = [];
+
+    habits.forEach(habit => {
+        if (isHabitDueToday(habit)) critical.push(habit);
+        else if (habit.priority === 'High') high.push(habit);
+        else if (habit.priority === 'Medium') medium.push(habit);
+        else upcoming.push(habit);
+    });
+
+    [
+        { list: criticalList, items: critical, empty: 'No critical tasks today.' },
+        { list: highList, items: high, empty: 'No high-priority habits queued.' },
+        { list: mediumList, items: medium, empty: 'No medium-focus items right now.' },
+        { list: upcomingList, items: upcoming, empty: 'No upcoming habits waiting.' }
+    ].forEach(group => {
+        if (group.items.length === 0) {
+            group.list.innerHTML = `<div class="task-item"><span>${group.empty}</span></div>`;
+            return;
+        }
+
+        group.list.innerHTML = group.items.map(habit => buildTaskItem(habit, today, todayStr)).join('');
+        bindTaskCheckboxes(group.list, habits);
+    });
+
+    setupNotificationCenter();
+    renderDashboardReminderWidget();
+    renderNotificationCenter();
     updateAllStats();
 }
 
-/* ─────────────────────────────────────
-   UPDATE ALL STATS
-───────────────────────────────────── */
 export function updateAllStats() {
     updateCompletionStats();
     updateProgressWidget();
     updateWeeklyChart();
     updateLevelWidget();
     updateDateDisplay();
+    renderDashboardReminderWidget();
+    renderNotificationCenter();
 }
-
-/* ─────────────────────────────────────
-   COMPLETION STATS
-───────────────────────────────────── */
 export function updateCompletionStats() {
     const { habits } = getState();
     const todayStr = getTodayStr();
-    let due = 0, done = 0, freeze = 0, maxStreak = 0;
 
-    habits.forEach(h => {
-        if (isHabitDueToday(h)) {
-            due++;
-            if (h.completedDates.includes(todayStr)) done++;
+    let dueToday = 0;
+    let doneToday = 0;
+    let freezeCredits = 0;
+    let maxStreak = 0;
+
+    habits.forEach(habit => {
+        if (isHabitDueToday(habit)) {
+            dueToday += 1;
+            if (habit.completedDates.includes(todayStr)) doneToday += 1;
         }
-        freeze    += h.freezeCredits || 0;
-        maxStreak  = Math.max(maxStreak, h.streak || 0);
+
+        freezeCredits += habit.freezeCredits || 0;
+        maxStreak = Math.max(maxStreak, habit.streak || 0);
     });
 
-    const pct = due > 0 ? Math.round((done / due) * 100) : 0;
+    const todayCompletion = dueToday > 0 ? Math.round((doneToday / dueToday) * 100) : 0;
+    const totalXP = calculateTotalXP(habits);
+    const level = calculateLevel(habits);
+    const weeklyPoints = calculateWeeklyPoints(habits);
+    const totalDoneAllTime = habits.reduce((sum, habit) => sum + (habit.completedDates || []).length, 0);
+    const analytics = getAnalyticsSnapshot();
 
-    setEl("completionRate",        pct + "%");
-    setEl("freezeCreditsDisplay",  freeze);
-    setEl("currentStreak",         "🔥 " + maxStreak);
-    setEl("weeklyPoints",          calculateWeeklyPoints(habits));
+    setEl('completionRate', `${todayCompletion}%`);
+    setEl('freezeCreditsDisplay', freezeCredits);
+    setEl('currentStreak', `🔥 ${maxStreak}`);
+    setEl('weeklyPoints', weeklyPoints);
 
-    // Streak section hero
-    setEl("heroStreak", maxStreak);
-    setEl("heroFreeze", freeze);
-    setEl("heroBest",   maxStreak);
-    setEl("heroTotal",  habits.reduce((s, h) => s + h.completedDates.length, 0));
+    setEl('heroStreak', maxStreak);
+    setEl('heroFreeze', freezeCredits);
+    setEl('heroBest', maxStreak);
+    setEl('heroTotal', totalDoneAllTime);
 
-    // Analytics cards
-    setEl("avgCompletion", pct + "%");
-    setEl("bestStreak",    maxStreak);
-    setEl("totalXP",       calculateTotalXP(habits));
-    setEl("totalDone",     habits.reduce((s, h) => s + h.completedDates.length, 0));
+    setEl('avgCompletion', `${analytics.avgCompletion}%`);
+    setEl('bestStreak', analytics.bestStreak);
+    setEl('totalXP', analytics.totalXP);
+    setEl('totalDone', analytics.totalDone);
+
+    updateState({
+        stats: {
+            totalXP,
+            level,
+            streak: maxStreak,
+            freezeCredits
+        }
+    });
 }
 
-/* ─────────────────────────────────────
-   TODAY'S PROGRESS WIDGET
-───────────────────────────────────── */
 export function updateProgressWidget() {
     const { habits } = getState();
     const todayStr = getTodayStr();
-    let due = 0, done = 0;
 
-    habits.forEach(h => {
-        if (isHabitDueToday(h)) {
-            due++;
-            if (h.completedDates.includes(todayStr)) done++;
-        }
+    let due = 0;
+    let done = 0;
+
+    habits.forEach(habit => {
+        if (!isHabitDueToday(habit)) return;
+        due += 1;
+        if (habit.completedDates.includes(todayStr)) done += 1;
     });
 
     const pct = due > 0 ? Math.round((done / due) * 100) : 0;
-
-    setEl("todayProgress",    `${done}/${due}`);
-    setBar("todayProgressBar", pct);
-    setEl("trackerProgress",  `${done}/${due}`);
-    setBar("trackerProgressBar", pct);
-    setEl("trackerPercent",   pct + "% complete");
+    setEl('todayProgress', `${done}/${due}`);
+    setBar('todayProgressBar', pct);
+    setEl('trackerProgress', `${done}/${due}`);
+    setBar('trackerProgressBar', pct);
+    setEl('trackerPercent', `${pct}% complete`);
 }
 
-/* ─────────────────────────────────────
-   WEEKLY SNAPSHOT BAR CHART
-───────────────────────────────────── */
+function renderBarChart(containerId, bars) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const max = Math.max(...bars.map(bar => bar.value), 1);
+    container.innerHTML = bars.map(bar => {
+        const height = Math.max(10, Math.round((bar.value / max) * 100));
+        return `
+            <div class="bar-col">
+                <div class="bar" style="height:${height}%; background:${bar.gradient};"></div>
+                <div class="bar-value">${bar.value}</div>
+                <div class="bar-label">${bar.label}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getAnalyticsChartBars() {
+    const { habits } = getState();
+    const filter = getAnalyticsFilterValue();
+    const today = getToday();
+    const completionMap = getCompletionMap(habits);
+
+    if (filter === '7') {
+        return Array.from({ length: 7 }, (_, index) => {
+            const date = new Date(today);
+            date.setDate(today.getDate() - (6 - index));
+            const dateStr = date.toISOString().split('T')[0];
+            return {
+                label: date.toLocaleDateString(undefined, { weekday: 'short' }),
+                value: completionMap[dateStr] || 0,
+                gradient: 'linear-gradient(180deg, #38bdf8, #2563eb)'
+            };
+        });
+    }
+
+    if (filter === '30') {
+        return Array.from({ length: 5 }, (_, index) => {
+            const bucketEnd = new Date(today);
+            bucketEnd.setDate(today.getDate() - ((4 - index) * 7));
+            const bucketStart = new Date(bucketEnd);
+            bucketStart.setDate(bucketEnd.getDate() - 6);
+
+            let value = 0;
+            getDateRangeArray(bucketStart, bucketEnd).forEach(date => {
+                const dateStr = date.toISOString().split('T')[0];
+                value += completionMap[dateStr] || 0;
+            });
+
+            return {
+                label: `W${index + 1}`,
+                value,
+                gradient: 'linear-gradient(180deg, #8b5cf6, #4338ca)'
+            };
+        });
+    }
+
+    const { start } = getAnalyticsRange();
+    const bars = [];
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const end = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    while (cursor <= end) {
+        const year = cursor.getFullYear();
+        const month = cursor.getMonth();
+        let value = 0;
+
+        Object.entries(completionMap).forEach(([dateStr, count]) => {
+            const date = new Date(`${dateStr}T00:00:00`);
+            if (date.getFullYear() === year && date.getMonth() === month) {
+                value += count;
+            }
+        });
+
+        bars.push({
+            label: cursor.toLocaleDateString(undefined, { month: 'short' }),
+            value,
+            gradient: 'linear-gradient(180deg, #14b8a6, #0f766e)'
+        });
+
+        cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    return bars.slice(-8);
+}
+
 export function updateWeeklyChart() {
     const { habits } = getState();
-    const labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-    const counts = new Array(7).fill(0);
-    // Use global selected date as "today" rather than real clock
-    const today  = getToday();
-
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
-        const dateStr = d.toISOString().split("T")[0];
-        const idx     = 6 - i;
-        habits.forEach(h => { if (h.completedDates.includes(dateStr)) counts[idx]++; });
-    }
-
-    const max = Math.max(...counts, 1);
-    const barHTML = labels.map((label, i) => {
-        const h     = Math.max(Math.round((counts[i] / max) * 100), 4);
-        const color = i === 6
-            ? "linear-gradient(180deg,#22d3ee,#0891b2)"
-            : "linear-gradient(180deg,#6366f1,#4338ca)";
-        return `<div class="bar-col">
-                    <div class="bar" style="height:${h}%;background:${color};"></div>
-                    <div class="bar-label">${label}</div>
-                </div>`;
-    }).join("");
-
-    // Dashboard mini chart
-    const dashChart = document.getElementById("weeklyChart");
-    if (dashChart) dashChart.innerHTML = barHTML;
-
-    // Analytics full chart
-    const analyticsChart = document.getElementById("analyticsWeekChart");
-    if (analyticsChart) analyticsChart.innerHTML = barHTML;
-}
-
-/* ─────────────────────────────────────
-   ACTIVITY HEATMAP
-───────────────────────────────────── */
-export function renderHeatmap() {
-    const grid   = document.getElementById("heatmapGrid");
-    const months = document.getElementById("heatmapMonths");
-    const total  = document.getElementById("heatmapTotal");
-    if (!grid) return;
-
-    // Read selected range from dropdown (default 182)
-    const rangeEl = document.getElementById("heatmapRange");
-    const DAYS    = rangeEl ? parseInt(rangeEl.value) : 182;
-    const WEEKS   = Math.ceil(DAYS / 7);
-
-    // Use global selected date as today
+    const completionMap = getCompletionMap(habits);
     const today = getToday();
-    const { habits } = getState();
-    const habitTotal = habits.length || 1;
 
-    // Build date → completion count map
-    const countMap = {};
-    let grandTotal = 0;
-    habits.forEach(h => {
-        (h.completedDates || []).forEach(d => {
-            countMap[d] = (countMap[d] || 0) + 1;
-            grandTotal++;
-        });
+    const dashboardBars = Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(today);
+        date.setDate(today.getDate() - (6 - index));
+        const dateStr = date.toISOString().split('T')[0];
+        return {
+            label: date.toLocaleDateString(undefined, { weekday: 'short' }),
+            value: completionMap[dateStr] || 0,
+            gradient: index === 6
+                ? 'linear-gradient(180deg, #2dd4bf, #0f766e)'
+                : 'linear-gradient(180deg, #60a5fa, #1d4ed8)'
+        };
     });
 
-    // Start from Monday of the week DAYS ago
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - DAYS + 1);
-    const dow = startDate.getDay();
-    startDate.setDate(startDate.getDate() - (dow === 0 ? 6 : dow - 1));
+    renderBarChart('weeklyChart', dashboardBars);
+    renderBarChart('analyticsWeekChart', getAnalyticsChartBars());
+}
+export function renderHeatmap() {
+    const grid = document.getElementById('heatmapGrid');
+    const months = document.getElementById('heatmapMonths');
+    const total = document.getElementById('heatmapTotal');
+    if (!grid || !months || !total) return;
 
-    let cellsHTML = "";
-    const monthsSeen = {};
-    const monthCols  = [];
-    let col = 0;
-    let d   = new Date(startDate);
+    const rangeDays = Number(document.getElementById('heatmapRange')?.value || 182);
+    const today = getToday();
+    const { habits } = getState();
+    const completionMap = getCompletionMap(habits);
 
-    while (d <= today) {
-        const weekCells = [];
-        for (let day = 0; day < 7; day++) {
-            if (d > today) {
-                weekCells.push('<div class="hm-cell" style="visibility:hidden;"></div>');
-            } else {
-                const ds    = d.toISOString().split("T")[0];
-                const count = countMap[ds] || 0;
-                const ratio = count / habitTotal;
-                let lv = "";
-                if      (count === 0)   lv = "";
-                else if (ratio <= 0.25) lv = "l1";
-                else if (ratio <= 0.50) lv = "l2";
-                else if (ratio <= 0.75) lv = "l3";
-                else                    lv = "l4";
+    const start = new Date(today);
+    start.setDate(today.getDate() - rangeDays + 1);
+    start.setHours(0, 0, 0, 0);
 
-                const isToday = ds === today.toISOString().split("T")[0];
-                const tip     = ds + (count > 0 ? ` · ${count} habit${count > 1 ? "s" : ""} done` : " · nothing done");
-                const outline = isToday ? "outline:2px solid var(--accent2);outline-offset:1px;" : "";
-                weekCells.push(`<div class="hm-cell ${lv}" title="${tip}" style="${outline}"></div>`);
+    const startDay = start.getDay();
+    const alignedStart = new Date(start);
+    alignedStart.setDate(start.getDate() - (startDay === 0 ? 6 : startDay - 1));
 
-                const monthKey = d.getFullYear() + "-" + d.getMonth();
-                if (!monthsSeen[monthKey]) {
-                    monthsSeen[monthKey] = true;
-                    monthCols.push({ label: d.toLocaleString("default", { month: "short" }), col });
-                }
-            }
-            d.setDate(d.getDate() + 1);
+    const dates = [];
+    const cursor = new Date(alignedStart);
+    while (cursor <= today) {
+        dates.push(new Date(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const weeks = [];
+    for (let index = 0; index < dates.length; index += 7) {
+        weeks.push(dates.slice(index, index + 7));
+    }
+
+    const countsInRange = Object.entries(completionMap)
+        .filter(([dateStr]) => isDateWithinRange(dateStr, start, today))
+        .map(([, count]) => count);
+    const maxCount = Math.max(...countsInRange, 1);
+
+    const monthEntries = [];
+    weeks.forEach((week, index) => {
+        const firstVisible = week.find(date => date >= start && date <= today);
+        if (!firstVisible) return;
+        const label = firstVisible.toLocaleDateString(undefined, { month: 'short' });
+        const monthKey = `${firstVisible.getFullYear()}-${firstVisible.getMonth()}`;
+        if (!monthEntries.some(entry => entry.key === monthKey)) {
+            monthEntries.push({ key: monthKey, label, index });
         }
-        cellsHTML += `<div style="display:flex;flex-direction:column;gap:3px;">${weekCells.join("")}</div>`;
-        col++;
-    }
+    });
 
-    grid.style.display = "flex";
-    grid.style.gap     = "3px";
-    grid.innerHTML     = cellsHTML;
+    months.className = 'heatmap-months';
+    months.style.gridTemplateColumns = `repeat(${weeks.length}, minmax(0, 1fr))`;
+    months.innerHTML = monthEntries.map((entry, index) => {
+        const nextIndex = monthEntries[index + 1]?.index ?? weeks.length;
+        return `<span style="grid-column:${entry.index + 1} / span ${Math.max(1, nextIndex - entry.index)};">${entry.label}</span>`;
+    }).join('');
 
-    if (months) {
-        const totalCols = col;
-        months.innerHTML = monthCols.map((m, i) => {
-            const nextCol = monthCols[i + 1] ? monthCols[i + 1].col : totalCols;
-            const w = ((nextCol - m.col) / totalCols * 100).toFixed(1);
-            return `<span style="width:${w}%;overflow:hidden;white-space:nowrap;">${m.label}</span>`;
-        }).join("");
-    }
+    grid.className = 'heatmap-grid';
+    grid.innerHTML = weeks.map(week => `
+        <div class="heatmap-week">
+            ${week.map(date => {
+                const dateStr = date.toISOString().split('T')[0];
+                if (date < start || date > today) {
+                    return '<div class="heatmap-cell heatmap-cell-empty"></div>';
+                }
 
-    if (total) {
-        const doneInRange = Object.entries(countMap)
-            .filter(([ds]) => new Date(ds) >= startDate)
-            .reduce((s, [, v]) => s + v, 0);
-        total.textContent = doneInRange + " completions in range";
-    }
+                const count = completionMap[dateStr] || 0;
+                const ratio = count / maxCount;
+                let level = 0;
+                if (count > 0) {
+                    if (ratio <= 0.25) level = 1;
+                    else if (ratio <= 0.5) level = 2;
+                    else if (ratio <= 0.75) level = 3;
+                    else level = 4;
+                }
+
+                const todayClass = dateStr === today.toISOString().split('T')[0] ? ' heatmap-cell-today' : '';
+                const title = count > 0
+                    ? `${dateStr} • ${count} completion${count === 1 ? '' : 's'}`
+                    : `${dateStr} • No completions`;
+
+                return `<div class="heatmap-cell level-${level}${todayClass}" title="${title}"></div>`;
+            }).join('')}
+        </div>
+    `).join('');
+
+    const totalInRange = countsInRange.reduce((sum, count) => sum + count, 0);
+    total.textContent = `${totalInRange} completions in range`;
 }
 
-/* ─────────────────────────────────────
-   DAILY TRACKER
-───────────────────────────────────── */
 export function renderDailyTracker() {
     const { habits } = getState();
-    const list = document.getElementById("trackerList");
+    const list = document.getElementById('trackerList');
     if (!list) return;
-    list.innerHTML = "";
 
-    const todayStr    = getTodayStr();
-    const todayHabits = habits.filter(h => isHabitDueToday(h));
+    const todayStr = getTodayStr();
+    const todayHabits = habits.filter(habit => isHabitDueToday(habit));
 
     if (todayHabits.length === 0) {
-        list.innerHTML = `<p class="empty-text">No habits due today 🎉 Add habits in Habit Manager.</p>`;
+        list.innerHTML = '<p class="empty-text">No habits due today. Add habits in Habit Manager.</p>';
         updateProgressWidget();
         return;
     }
 
-    // Group by category
     const grouped = {};
-    todayHabits.forEach(h => {
-        const c = h.category || "Uncategorized";
-        if (!grouped[c]) grouped[c] = [];
-        grouped[c].push(h);
+    todayHabits.forEach(habit => {
+        const category = habit.category || 'Uncategorized';
+        if (!grouped[category]) grouped[category] = [];
+        grouped[category].push(habit);
     });
 
-    Object.keys(grouped).forEach(cat => {
-        const section = document.createElement("div");
-        section.className = "card";
-        section.style.marginBottom = "16px";
+    list.innerHTML = Object.entries(grouped).map(([category, categoryHabits]) => `
+        <div class="card tracker-group-card">
+            <h3>${category}</h3>
+            ${categoryHabits.map(habit => {
+                const done = habit.completedDates.includes(todayStr);
+                const priorityClass = {
+                    High: 'pri-high',
+                    Medium: 'pri-medium',
+                    Low: 'pri-low',
+                    Optional: 'pri-optional'
+                }[habit.priority] || 'pri-optional';
 
-        const title = document.createElement("h3");
-        title.textContent = cat;
-        section.appendChild(title);
+                return `
+                    <div class="task-item">
+                        <div class="task-left">
+                            <input type="checkbox" data-tracker-checkbox data-id="${habit.id}" ${done ? 'checked' : ''}>
+                            <span class="${done ? 'task-done' : ''}">${habit.name}</span>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="status-tag ${priorityClass}">${habit.priority}</span>
+                            <span class="status-tag ${done ? 'tag-done' : 'tag-today'}">${done ? `+${CONFIG.XP_PER_COMPLETION} XP ✓` : `+${CONFIG.XP_PER_COMPLETION} XP`}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `).join('');
 
-        grouped[cat].forEach(habit => {
-            const done     = habit.completedDates.includes(todayStr);
-            const priClass = { High: "pri-high", Medium: "pri-medium", Low: "pri-low", Optional: "pri-optional" }[habit.priority] || "pri-optional";
-
-            const row = document.createElement("div");
-            row.className = "task-item";
-            row.innerHTML = `
-                <div class="task-left">
-                    <input type="checkbox" data-id="${habit.id}" ${done ? "checked" : ""}>
-                    <span class="${done ? "task-done" : ""}">${habit.name}</span>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <span class="status-tag ${priClass}">${habit.priority}</span>
-                    <span class="status-tag ${done ? "tag-done" : "tag-today"}">
-                        ${done ? "+10 XP ✓" : "+10 XP"}
-                    </span>
-                </div>`;
-
-            row.querySelector("input[type='checkbox']")
-                .addEventListener("change", function () {
-                    updateHabitCompletion(habit, this.checked);
-                });
-
-            section.appendChild(row);
+    list.querySelectorAll('[data-tracker-checkbox]').forEach(input => {
+        input.addEventListener('change', event => {
+            const id = Number(event.currentTarget.dataset.id);
+            const habit = habits.find(item => item.id === id);
+            if (!habit) return;
+            updateHabitCompletion(habit, event.currentTarget.checked);
         });
-        list.appendChild(section);
     });
 
     updateProgressWidget();
 }
 
-/* ─────────────────────────────────────
-   STREAK SECTION
-───────────────────────────────────── */
 export function renderStreakSection() {
     const { habits } = getState();
-    const container = document.getElementById("habitStreakList");
+    const container = document.getElementById('habitStreakList');
     if (!container) return;
-    container.innerHTML = "";
 
     if (habits.length === 0) {
-        container.innerHTML = `<p class="empty-text">No habits yet.</p>`;
+        container.innerHTML = '<p class="empty-text">No habits yet.</p>';
         return;
     }
 
-    habits.forEach(habit => {
+    container.innerHTML = habits.map(habit => {
         const streak = habit.streak || 0;
-        const pct    = Math.min(streak * 10, 100);
-        let color = "#6366f1", icon = "🔥";
-        if (streak === 0)   { color = "#ef4444"; icon = "💀"; }
-        else if (streak >= 7) { color = "#f97316"; }
+        const pct = Math.min(streak * 10, 100);
+        const tone = streak >= 7 ? 'ember' : streak === 0 ? 'reset' : 'surge';
+        const icon = streak >= 7 ? '⚡' : streak === 0 ? '○' : '🔥';
+        const message = streak === 0
+            ? 'Start today and build the chain.'
+            : 'Stay consistent and keep the streak alive.';
 
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-            <div style="font-size:11px;font-weight:600;color:var(--muted);
-                        text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">
-                ${habit.name}
-            </div>
-            <div style="font-size:26px;font-weight:700;color:${color};
-                        font-family:'JetBrains Mono',monospace;">
-                ${icon} ${streak}
-            </div>
-            <div class="text-muted" style="font-size:12px;margin-top:4px;">day streak</div>
-            <div class="prog-wrap mt-8">
-                <div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}88);"></div>
-            </div>
-            <div style="display:flex;justify-content:space-between;
-                        font-size:11px;color:var(--muted);margin-top:6px;">
-                <span>${habit.category || "—"} • ${habit.period}</span>
-                <span>🧊 ${habit.freezeCredits} freeze</span>
-            </div>
-            <div style="font-size:11px;margin-top:4px;color:${streak === 0 ? "var(--red)" : "var(--muted)"};">
-                ${streak === 0 ? "Start today to build your streak!" : "Keep going — don't break it!"}
-            </div>`;
-        container.appendChild(card);
-    });
+        return `
+            <article class="streak-card tone-${tone}">
+                <div class="streak-card-head">
+                    <span class="streak-card-title">${habit.name}</span>
+                    <span class="streak-card-chip">${habit.period}</span>
+                </div>
+                <div class="streak-card-value">
+                    <span>${icon}</span>
+                    <strong>${streak}</strong>
+                </div>
+                <div class="streak-card-copy">${message}</div>
+                <div class="prog-wrap mt-12">
+                    <div class="prog-fill" style="width:${pct}%;"></div>
+                </div>
+                <div class="streak-card-meta">
+                    <span>${habit.category || 'General'}</span>
+                    <span>🧊 ${habit.freezeCredits || 0} freeze</span>
+                </div>
+            </article>
+        `;
+    }).join('');
 }
 
-/* ─────────────────────────────────────
-   ANALYTICS — PER HABIT SUCCESS RATES
-   Respects the analytics filter dropdown.
-───────────────────────────────────── */
 export function renderHabitSuccessRates() {
     const { habits } = getState();
-    const container = document.getElementById("habitSuccessRates");
-    if(!container) return;
+    const container = document.getElementById('habitSuccessRates');
+    if (!container) return;
 
-    if(habits.length === 0){
-        container.innerHTML = `<p class="empty-text">No habits yet.</p>`;
+    if (habits.length === 0) {
+        container.innerHTML = '<p class="empty-text">No habits yet.</p>';
         return;
     }
-    container.innerHTML = "";
 
-    // Use global selected date so success rates respect the Time Setter
-    const today   = getToday();
-    const weekAgo = new Date(today); weekAgo.setDate(today.getDate()-7);
+    const { start, end, days } = getAnalyticsRange();
+    container.innerHTML = habits.map(habit => {
+        const done = (habit.completedDates || []).filter(dateStr => isDateWithinRange(dateStr, start, end)).length;
+        const target = estimateHabitTargetInRange(habit, days);
+        const pct = target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
+        const tone = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
 
-    habits.forEach(h => {
-        const done = h.completedDates.filter(d=>new Date(d)>=weekAgo).length;
-        const pct  = Math.min(Math.round((done/7)*100),100);
-        let color  = pct>=80 ? "#22c55e" : pct>=50 ? "#eab308" : "#ef4444";
-
-        container.innerHTML += `
-            <div style="margin-bottom:14px;">
-                <div style="display:flex;justify-content:space-between;
-                            font-size:13px;margin-bottom:4px;">
-                    <span>${h.name}</span>
-                    <span style="color:${color};font-family:'JetBrains Mono',monospace;">${pct}%</span>
+        return `
+            <div class="success-rate-row">
+                <div class="success-rate-meta">
+                    <span>${habit.name}</span>
+                    <span style="color:${tone};">${pct}%</span>
                 </div>
                 <div class="prog-wrap">
-                    <div class="prog-fill"
-                        style="width:${pct}%;background:linear-gradient(90deg,${color},${color}88);">
-                    </div>
+                    <div class="prog-fill" style="width:${pct}%; background:linear-gradient(90deg, ${tone}, color-mix(in srgb, ${tone} 62%, white));"></div>
                 </div>
-            </div>`;
+            </div>
+        `;
+    }).join('');
+}
+function renderDashboardReminderWidget() {
+    const countEl = document.getElementById('dashboardReminderCount');
+    const headlineEl = document.getElementById('dashboardReminderHeadline');
+    const listEl = document.getElementById('dashboardReminderList');
+    if (!countEl || !headlineEl || !listEl) return;
+
+    const reminders = getReminders();
+    const enabled = reminders.filter(reminder => reminder.enabled !== false);
+    const upcoming = getUpcomingReminders(3);
+
+    countEl.textContent = `${enabled.length} enabled`;
+
+    if (enabled.length === 0) {
+        headlineEl.textContent = 'No active reminders yet';
+        listEl.innerHTML = '<div class="widget-empty">Add a reminder to surface it here and in the alert bell.</div>';
+        return;
+    }
+
+    const nextReminder = upcoming[0];
+    headlineEl.textContent = nextReminder
+        ? `${nextReminder.label} ${formatRelativeMinutes(nextReminder.nextInMinutes)}`
+        : 'No reminder is scheduled next.';
+
+    listEl.innerHTML = upcoming.map(reminder => `
+        <div class="dashboard-reminder-item">
+            <div>
+                <div class="dashboard-reminder-label">${reminder.label}</div>
+                <div class="dashboard-reminder-meta">${reminder.repeat}</div>
+            </div>
+            <div class="dashboard-reminder-time-wrap">
+                <strong>${formatReminderTime(reminder.time)}</strong>
+                <span>${formatRelativeMinutes(reminder.nextInMinutes)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function setNotificationPanelState(open) {
+    const bell = document.getElementById('notificationBell');
+    const panel = document.getElementById('notificationPanel');
+    if (!bell || !panel) return;
+
+    bell.setAttribute('aria-expanded', open ? 'true' : 'false');
+    panel.classList.toggle('open', open);
+}
+
+function setupNotificationCenter() {
+    if (notificationCenterBound) return;
+
+    const bell = document.getElementById('notificationBell');
+    const panel = document.getElementById('notificationPanel');
+    const list = document.getElementById('notificationList');
+    const markReadBtn = document.getElementById('markAlertsReadBtn');
+    const clearBtn = document.getElementById('clearAlertsBtn');
+    if (!bell || !panel || !list || !markReadBtn || !clearBtn) return;
+
+    notificationCenterBound = true;
+
+    bell.addEventListener('click', event => {
+        event.stopPropagation();
+        setNotificationPanelState(!panel.classList.contains('open'));
+    });
+
+    panel.addEventListener('click', event => {
+        event.stopPropagation();
+    });
+
+    list.addEventListener('click', event => {
+        const button = event.target.closest('[data-alert-id]');
+        if (!button) return;
+        markAlertRead(button.dataset.alertId);
+        renderNotificationCenter();
+    });
+
+    markReadBtn.addEventListener('click', () => {
+        markAllAlertsRead();
+        renderNotificationCenter();
+    });
+
+    clearBtn.addEventListener('click', () => {
+        clearNotificationAlerts();
+        renderNotificationCenter();
+    });
+
+    document.addEventListener('click', event => {
+        const center = document.querySelector('.notification-center');
+        if (!center?.contains(event.target)) setNotificationPanelState(false);
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') setNotificationPanelState(false);
     });
 }
 
-/* ─────────────────────────────────────
-   LEVEL + XP WIDGET
-───────────────────────────────────── */
+function renderNotificationCenter() {
+    const badge = document.getElementById('notificationCountBadge');
+    const list = document.getElementById('notificationList');
+    const unreadText = document.getElementById('notificationUnreadLabel');
+    if (!badge || !list || !unreadText) return;
+
+    const alerts = getNotificationAlerts();
+    const unread = getUnreadAlertCount();
+
+    badge.textContent = unread > 99 ? '99+' : String(unread);
+    badge.hidden = unread === 0;
+    unreadText.textContent = unread === 0 ? 'All caught up' : `${unread} unread`;
+
+    if (alerts.length === 0) {
+        list.innerHTML = '<div class="notification-empty">Reminder alerts will appear here when their scheduled time is reached.</div>';
+        return;
+    }
+
+    list.innerHTML = alerts.map(alert => `
+        <article class="notification-item ${alert.read ? 'is-read' : ''}">
+            <div class="notification-item-head">
+                <div>
+                    <strong>${alert.label}</strong>
+                    <span>${formatReminderTime(alert.time)} • ${alert.repeat}</span>
+                </div>
+                ${alert.read ? '<span class="notification-read-state">Read</span>' : '<span class="notification-dot"></span>'}
+            </div>
+            <div class="notification-item-foot">
+                <span>${new Date(alert.firedAt).toLocaleString()}</span>
+                ${alert.read ? '' : `<button class="ghost-btn notification-read-btn" type="button" data-alert-id="${alert.id}">Mark read</button>`}
+            </div>
+        </article>
+    `).join('');
+}
+
+function renderAnalyticsSection() {
+    updateCompletionStats();
+    renderHabitSuccessRates();
+    updateWeeklyChart();
+    renderHeatmap();
+}
+
 export function updateLevelWidget() {
     const { habits } = getState();
-    const xp        = calculateTotalXP(habits);
-    const level     = calculateLevel(habits);
-    const xpInLevel = xp % 100;
+    const xp = calculateTotalXP(habits);
+    const level = calculateLevel(habits);
+    const xpThreshold = CONFIG.LEVEL_XP_THRESHOLD || 100;
+    const xpInLevel = xp % xpThreshold;
 
-    setEl("userLevel",        "Lv. " + level);
-    setEl("xpDisplay",        `${xpInLevel} / 100 XP`);
-    setBar("xpBar",           xpInLevel, "linear-gradient(90deg,#f97316,#fbbf24)");
-    setEl("xpToNext",         `${100 - xpInLevel} XP to Level ${level + 1}`);
-    setEl("userLevelDisplay", `Level ${level} • ${xp} XP`);
+    setEl('userLevel', `Lv. ${level}`);
+    setEl('xpDisplay', `${xpInLevel} / ${xpThreshold} XP`);
+    setBar('xpBar', (xpInLevel / xpThreshold) * 100, 'linear-gradient(90deg, #f59e0b, #f97316)');
+    setEl('xpToNext', `${xpThreshold - xpInLevel} XP to Level ${level + 1}`);
+    setEl('userLevelDisplay', `Level ${level} • ${xp} XP`);
 }
 
-/* ─────────────────────────────────────
-   DATE DISPLAY
-───────────────────────────────────── */
 export function updateDateDisplay() {
-    // Use global selected date for display, not the raw system clock
-    const todayStr = getTodayStr();
-    const todayDate = getToday();
-    const dateStr = todayDate.toLocaleDateString(undefined,{
-        weekday:"long", year:"numeric", month:"long", day:"numeric"
-    });
+    const today = getToday();
     const { habits } = getState();
-    const activeCount = habits.filter(h => isHabitDueToday(h)).length;
-    const chipHtml = `<span class="habits-active-chip">${activeCount} habit${activeCount!==1?"s":""} active</span>`;
+    const dateText = today.toLocaleDateString(undefined, {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    const activeCount = habits.filter(habit => isHabitDueToday(habit)).length;
+    const chip = `<span class="habits-active-chip">${activeCount} habit${activeCount === 1 ? '' : 's'} active</span>`;
 
-    const dashDate = document.getElementById("dashboardDate");
-    if(dashDate) dashDate.innerHTML = dateStr + chipHtml;
+    const dashboardDate = document.getElementById('dashboardDate');
+    if (dashboardDate) dashboardDate.innerHTML = `${dateText}${chip}`;
 
-    const trackerDate = document.getElementById("trackerDate");
-    if(trackerDate) trackerDate.textContent = dateStr;
+    const trackerDate = document.getElementById('trackerDate');
+    if (trackerDate) trackerDate.textContent = dateText;
 }
 
-/* ─────────────────────────────────────
-   SETTINGS WIRING
-───────────────────────────────────── */
 export function setupSettings(user) {
-    const { habits } = getState();
+    setEl('settingsEmail', user.email || 'Guest');
 
-    setEl("settingsEmail", user.email || "Guest");
+    const storedName = getData(`pps_name_${user.email || 'guest'}`, '');
+    const displayName = storedName || user.name || (user.email ? user.email.split('@')[0] : 'Guest');
 
-    const storedName  = getData(`pps_name_${user.email || "guest"}`, "");
-    const displayName = storedName || (user.email ? user.email.split("@")[0] : "Guest");
-
-    const avatarEl = document.getElementById("userAvatar");
+    const avatarEl = document.getElementById('userAvatar');
     if (avatarEl) avatarEl.textContent = displayName[0].toUpperCase();
-    setEl("userNameDisplay", displayName);
+    setEl('userNameDisplay', displayName);
 
-    const nameInput = document.getElementById("settingsName");
+    const nameInput = document.getElementById('settingsName');
     if (nameInput) nameInput.value = displayName;
 
-    document.getElementById("saveNameBtn")?.addEventListener("click", () => {
-        const newName = document.getElementById("settingsName")?.value.trim();
-        if (!newName) { alert("Name cannot be empty."); return; }
-        saveData(`pps_name_${user.email || "guest"}`, newName);
-        setEl("userNameDisplay", newName);
+    document.getElementById('saveNameBtn')?.addEventListener('click', () => {
+        const newName = document.getElementById('settingsName')?.value.trim();
+        if (!newName) {
+            showSettingsMessage('Name cannot be empty.');
+            return;
+        }
+
+        saveData(`pps_name_${user.email || 'guest'}`, newName);
+        if (user.email) {
+            saveData('currentUser', { ...user, name: newName });
+            const users = getData('pps_users', []);
+            const idx = users.findIndex(item => item.email === user.email);
+            if (idx !== -1) {
+                users[idx] = { ...users[idx], name: newName };
+                saveData('pps_users', users);
+            }
+        }
+        setEl('userNameDisplay', newName);
         if (avatarEl) avatarEl.textContent = newName[0].toUpperCase();
-        _showSettingsMsg("Name saved!", "success");
+        const greetingEl = document.getElementById('greetingDisplay');
+        if (greetingEl) {
+            const hour = new Date().getHours();
+            const greet = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
+            greetingEl.innerHTML = `${greet}, <span style="color:var(--accent);">${newName}</span>! 👋`;
+        }
+        showSettingsMessage('Name saved.', 'success');
     });
 
-    document.getElementById("changePasswordBtn")?.addEventListener("click", async () => {
-        const current = document.getElementById("currentPassword")?.value;
-        const newPass = document.getElementById("newPassword")?.value;
-        const confirm = document.getElementById("confirmPassword")?.value;
+    document.getElementById('changePasswordBtn')?.addEventListener('click', async () => {
+        const current = document.getElementById('currentPassword')?.value;
+        const next = document.getElementById('newPassword')?.value;
+        const confirm = document.getElementById('confirmPassword')?.value;
 
-        if (!current || !newPass || !confirm) { _showSettingsMsg("Fill in all password fields."); return; }
-        if (newPass.length < 6)               { _showSettingsMsg("New password must be at least 6 characters."); return; }
-        if (newPass !== confirm)               { _showSettingsMsg("Passwords do not match."); return; }
+        if (!current || !next || !confirm) {
+            showSettingsMessage('Fill in all password fields.');
+            return;
+        }
+        if (next.length < 6) {
+            showSettingsMessage('New password must be at least 6 characters.');
+            return;
+        }
+        if (next !== confirm) {
+            showSettingsMessage('Passwords do not match.');
+            return;
+        }
 
-        // Import hashPassword lazily to avoid circular deps
         const { hashPassword } = await import('./auth.js');
+        const users = getData('pps_users', []);
         const hashedCurrent = await hashPassword(current);
-        const hashedNew     = await hashPassword(newPass);
+        const hashedNext = await hashPassword(next);
+        const idx = users.findIndex(item => item.email === user.email && item.password === hashedCurrent);
 
-        const { getData: gd, saveData: sd } = await import('./storageService.js');
-        const users = gd("pps_users", []);
-        const idx   = users.findIndex(u => u.email === user.email && u.password === hashedCurrent);
-        if (idx === -1) { _showSettingsMsg("Current password is incorrect."); return; }
+        if (idx === -1) {
+            showSettingsMessage('Current password is incorrect.');
+            return;
+        }
 
-        users[idx].password = hashedNew;
-        sd("pps_users", users);
-
-        ["currentPassword", "newPassword", "confirmPassword"].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = "";
+        users[idx].password = hashedNext;
+        saveData('pps_users', users);
+        ['currentPassword', 'newPassword', 'confirmPassword'].forEach(id => {
+            const field = document.getElementById(id);
+            if (field) field.value = '';
         });
-        _showSettingsMsg("Password changed successfully!", "success");
+        showSettingsMessage('Password updated.', 'success');
     });
 
-    document.getElementById("logoutBtn")?.addEventListener("click", () => {
-        import('./storageService.js').then(({ removeData }) => {
-            removeData("currentUser");
-            window.location.href = "login.html";
-        });
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+        const { removeData } = await import('./storageService.js');
+        removeData('currentUser');
+        window.location.href = 'login.html';
     });
 
-    document.getElementById("exportBtn")?.addEventListener("click", () => {
-        const { habits: h } = getState();
-        const blob = new Blob([JSON.stringify(h, null, 2)], { type: "application/json" });
-        const a    = document.createElement("a");
-        a.href     = URL.createObjectURL(blob);
-        a.download = "pps-habits.json";
-        a.click();
-        URL.revokeObjectURL(a.href);
+    document.getElementById('resetBtn')?.addEventListener('click', () => {
+        if (!confirm('Reset all habit data? This cannot be undone.')) return;
+        const { storageKey } = getState();
+        updateState({ habits: [] });
+        saveData(storageKey, []);
+        document.dispatchEvent(new CustomEvent('habitsUpdated'));
+        showSettingsMessage('All data reset.', 'success');
     });
 
-    document.getElementById("resetBtn")?.addEventListener("click", () => {
-        if (!confirm("Reset ALL data? This cannot be undone.")) return;
-        import('./state.js').then(({ updateState }) => {
-            import('./storageService.js').then(({ saveData: sd }) => {
-                const { storageKey } = getState();
-                updateState({ habits: [] });
-                sd(storageKey, []);
-                document.dispatchEvent(new CustomEvent("habitsUpdated"));
-                _showSettingsMsg("All data reset.", "success");
-            });
-        });
-    });
-
-    // Storage used
-    import('./storageService.js').then(({ getStorageSize }) => {
-        const bytes = getStorageSize();
-        setEl("storageUsed", `~${(bytes / 1024).toFixed(1)} KB`);
-    });
+    setEl('storageUsed', `~${(getStorageSize() / 1024).toFixed(1)} KB`);
 }
 
-function _showSettingsMsg(text, type = "error") {
-    const el = document.getElementById("settingsMsg");
+function showSettingsMessage(text, type = 'error') {
+    const el = document.getElementById('settingsMsg');
     if (!el) return;
-    el.textContent   = text;
-    el.className     = `msg ${type}`;
-    el.style.display = "block";
-    setTimeout(() => { el.style.display = "none"; }, 3000);
+    el.textContent = text;
+    el.className = `msg ${type}`;
+    el.style.display = 'block';
+    setTimeout(() => {
+        el.style.display = 'none';
+    }, 3000);
 }

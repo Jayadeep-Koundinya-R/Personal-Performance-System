@@ -3,141 +3,539 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PPS - Build Better Habits</title>
+  <title>PPS — Build Better Habits. Level Up Your Life.</title>
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Landing-only additions — base styles come from style.css ── */
+
+    /* Subtle animated orbs — extend the page-gradient from style.css */
+    .landing-page::before {
+      content: '';
+      position: fixed;
+      width: 700px; height: 700px;
+      top: -260px; left: -180px;
+      background: radial-gradient(circle, rgba(110,168,255,0.09) 0%, transparent 65%);
+      pointer-events: none; z-index: 0;
+      animation: orbFloat 14s ease-in-out infinite alternate;
+    }
+    .landing-page::after {
+      content: '';
+      position: fixed;
+      width: 520px; height: 520px;
+      bottom: -100px; right: -80px;
+      background: radial-gradient(circle, rgba(61,217,194,0.07) 0%, transparent 65%);
+      pointer-events: none; z-index: 0;
+      animation: orbFloat 18s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes orbFloat {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(28px,18px) scale(1.05); }
+    }
+
+    /* Entry animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hero-panel  { animation: fadeUp 0.65s cubic-bezier(.22,1,.36,1) both; }
+    .hero-preview { animation: fadeUp 0.65s cubic-bezier(.22,1,.36,1) 0.15s both; }
+
+    /* Pulsing dot for badge */
+    .badge-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); flex-shrink: 0;
+      animation: badgePulse 2s infinite;
+    }
+    @keyframes badgePulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:0.35; transform:scale(0.7); }
+    }
+
+    /* Nav link hover */
+    .nav-link { transition: color .15s; }
+    .nav-link:hover { color: var(--text); }
+
+    /* Trust pills */
+    .trust-pills {
+      display: flex; flex-wrap: wrap; gap: 14px;
+      margin-bottom: 30px;
+    }
+    .trust-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 500; color: var(--muted);
+    }
+    .trust-pill::before {
+      content: '✓';
+      width: 15px; height: 15px; border-radius: 50%;
+      background: var(--green-dim); color: var(--green);
+      font-size: 8px; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Section layout wrapper */
+    .landing-section {
+      position: relative; z-index: 1;
+      width: 100%;
+      padding: 80px 5.5%;
+      border-top: 1px solid var(--border);
+    }
+    .landing-section-inner {
+      max-width: 1200px; margin: 0 auto;
+    }
+
+    /* Section headings */
+    .section-kicker {
+      font-size: 11px; text-transform: uppercase; letter-spacing: .12em;
+      color: var(--muted); font-weight: 700; margin-bottom: 10px;
+      font-family: 'DM Mono', monospace;
+    }
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(26px, 3.5vw, 38px);
+      font-weight: 800; letter-spacing: -0.03em;
+      color: var(--text); margin-bottom: 10px; line-height: 1.1;
+    }
+    .section-sub {
+      font-size: 15px; color: var(--text-2); max-width: 500px;
+      line-height: 1.75; margin-bottom: 44px;
+    }
+
+    /* ── How it works ── */
+    .steps-grid {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 14px;
+    }
+    .step-card {
+      background: var(--hero-panel);
+      border: 1px solid var(--border-bright);
+      border-radius: 20px; padding: 22px 18px;
+      position: relative; overflow: hidden;
+      box-shadow: var(--card-shadow);
+      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .step-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: var(--glow-accent), var(--card-shadow);
+    }
+    .step-card::before {
+      content: attr(data-step);
+      position: absolute; top: -12px; right: 14px;
+      font-family: 'Syne', sans-serif;
+      font-size: 68px; font-weight: 800;
+      color: rgba(110,168,255,0.05); line-height: 1; pointer-events: none;
+    }
+    .step-icon {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; margin-bottom: 14px;
+      border: 1px solid var(--border);
+    }
+    .si-vi { background: var(--accent-dim); }
+    .si-cy { background: var(--accent2-dim); }
+    .si-gd { background: var(--amber-dim); }
+    .si-gn { background: var(--green-dim); }
+    .step-card h4 {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 8px;
+    }
+    .step-card p { font-size: 12.5px; color: var(--text-2); line-height: 1.65; }
+
+    /* ── Features big grid ── */
+    .features-big-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 14px;
+    }
+    .feat-card {
+      background: var(--hero-panel);
+      border: 1px solid var(--border-bright);
+      border-radius: 20px; padding: 24px 20px;
+      box-shadow: var(--card-shadow);
+      transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+    }
+    .feat-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+      box-shadow: var(--glow-accent), var(--card-shadow);
+    }
+    .feat-icon { font-size: 26px; margin-bottom: 12px; display: block; }
+    .feat-card h4 {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px;
+    }
+    .feat-card p { font-size: 13px; color: var(--text-2); line-height: 1.7; }
+    .feat-tag {
+      display: inline-block; margin-top: 12px;
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      font-family: 'DM Mono', monospace;
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .ft-vi { background: var(--accent-dim);  color: var(--accent);  border: 1px solid #6ea8ff22; }
+    .ft-cy { background: var(--accent2-dim); color: var(--accent2); border: 1px solid #3dd9c222; }
+    .ft-gd { background: var(--amber-dim);   color: var(--amber);   border: 1px solid #f5a62322; }
+    .ft-gn { background: var(--green-dim);   color: var(--green);   border: 1px solid #22d47a22; }
+    .ft-rd { background: var(--red-dim);     color: var(--red);     border: 1px solid #ff4d6a22; }
+
+    /* ── Bottom CTA ── */
+    .cta-section {
+      position: relative; z-index: 1;
+      text-align: center; padding: 100px 5.5%;
+      border-top: 1px solid var(--border);
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      width: 500px; height: 240px;
+      background: radial-gradient(ellipse, rgba(110,168,255,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-section h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 4vw, 46px);
+      font-weight: 800; letter-spacing: -0.035em;
+      color: var(--text); margin-bottom: 14px; line-height: 1.1;
+    }
+    .cta-section h2 span {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .cta-section p { color: var(--text-2); font-size: 16px; margin-bottom: 34px; line-height: 1.7; }
+    .cta-pair { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Footer ── */
+    .landing-footer {
+      position: relative; z-index: 1;
+      padding: 22px 5.5%;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px;
+    }
+    .landing-footer span { font-size: 12px; color: var(--muted); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a {
+      font-size: 12px; color: var(--muted);
+      text-decoration: none; transition: color .15s;
+    }
+    .footer-links a:hover { color: var(--text-2); }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .steps-grid { grid-template-columns: repeat(2,1fr); }
+      .features-big-grid { grid-template-columns: repeat(2,1fr); }
+      .landing-section { padding: 60px 5%; }
+      .cta-section { padding: 70px 5%; }
+    }
+    @media (max-width: 560px) {
+      .steps-grid { grid-template-columns: 1fr; }
+      .features-big-grid { grid-template-columns: 1fr; }
+      .trust-pills { gap: 10px; }
+      .cta-pair { flex-direction: column; align-items: center; }
+    }
+  </style>
 </head>
 <body>
 
-  <div class="landing-page">
-    <nav class="landing-nav">
-      <div class="landing-logo">PPS<span>.</span></div>
-      <div class="nav-links">
-        <div class="theme-panel" data-theme-panel>
-          <span class="theme-panel-title">Theme</span>
-          <button class="theme-toggle-btn" type="button" data-theme-toggle>
-            <span class="theme-toggle-name" data-theme-name>Dark</span>
-          </button>
+<div class="landing-page">
+
+  <!-- ════════════════════════
+       NAV — uses .landing-nav, .nav-links, .theme-panel from style.css
+  ════════════════════════ -->
+  <nav class="landing-nav">
+    <div class="landing-logo">PPS<span>.</span></div>
+    <div class="nav-links">
+      <div class="theme-panel" data-theme-panel>
+        <span class="theme-panel-title">Theme</span>
+        <button class="theme-toggle-btn" type="button" data-theme-toggle>
+          <span class="theme-toggle-name" data-theme-name>Dark</span>
+        </button>
+      </div>
+      <a href="login.html" class="nav-link">Sign In</a>
+      <a href="login.html" class="primary-btn" style="text-decoration:none; padding:10px 22px; font-size:13.5px;">
+        Get Started →
+      </a>
+    </div>
+  </nav>
+
+  <!-- ════════════════════════
+       HERO — uses .hero-section, .hero-shell, .hero-panel, .hero-preview from style.css
+  ════════════════════════ -->
+  <main class="hero-section">
+    <div class="hero-shell">
+
+      <!-- LEFT: .hero-panel (glassmorphism card from style.css) -->
+      <section class="hero-panel">
+
+        <div class="badge-top">
+          <span class="badge-dot"></span>
+          Your personal performance toolkit
         </div>
-        <a href="login.html" class="nav-link">Sign In</a>
-        <a href="login.html" class="primary-btn" style="text-decoration:none;">Get Started</a>
+
+        <h1 class="hero-title">
+          Build better habits.<br>
+          <span>Level up your life.</span>
+        </h1>
+
+        <p class="hero-subtitle">
+          Most habit apps just track checkboxes. PPS goes further — XP, streaks,
+          freeze credits, real analytics and feedback that makes you actually
+          want to show up every single day.
+        </p>
+
+        <div class="cta-group">
+          <a href="login.html" class="primary-btn" style="text-decoration:none; padding:13px 28px; font-size:15px;">
+            Start for Free →
+          </a>
+          <a href="#how" class="ghost-btn" style="padding:13px 28px; font-size:15px; text-decoration:none;">
+            How it works
+          </a>
+        </div>
+
+        <div class="trust-pills">
+          <span class="trust-pill">100% free</span>
+          <span class="trust-pill">No app install needed</span>
+          <span class="trust-pill">Works offline</span>
+          <span class="trust-pill">Your data stays on-device</span>
+        </div>
+
+        <!-- .feature-grid and .feature-item are defined in style.css -->
+        <div class="feature-grid">
+          <div class="feature-item">
+            <div class="f-label">Free Forever</div>
+            <div class="f-val" style="color:var(--accent);">100%</div>
+            <div class="feature-copy">Everything unlocked from day one. No paywalls, no subscriptions, no catch.</div>
+          </div>
+          <div class="feature-item">
+            <div class="f-label">Momentum</div>
+            <div class="f-val" style="color:var(--amber);">🔥 Streak</div>
+            <div class="feature-copy">Freeze credits protect your streak on bad days. No guilt, no starting over.</div>
+          </div>
+          <div class="feature-item">
+            <div class="f-label">Gamified XP</div>
+            <div class="f-val" style="color:var(--green);">+10 XP</div>
+            <div class="feature-copy">Every habit earns XP. Level up, track your growth, feel real progress.</div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- RIGHT: .hero-preview, .preview-card, .mini-stat, .mini-row — all in style.css -->
+      <aside class="hero-preview">
+
+        <div class="preview-card">
+          <div class="preview-heading">
+            <div>
+              <div class="preview-kicker">Inside the dashboard</div>
+              <div class="preview-title">A system that feels alive</div>
+            </div>
+            <span class="status-tag tag-upcoming">Live preview</span>
+          </div>
+          <div class="preview-stats">
+            <div class="mini-stat">
+              <strong style="color:var(--accent);">82%</strong>
+              <span>Completion</span>
+            </div>
+            <div class="mini-stat">
+              <strong style="color:var(--amber);">🔥 18</strong>
+              <span>Day streak</span>
+            </div>
+            <div class="mini-stat">
+              <strong style="color:var(--green);">420 XP</strong>
+              <span>This week</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-card">
+          <div class="preview-kicker" style="margin-bottom:14px;">What's inside</div>
+          <div class="mini-list">
+            <div class="mini-row">
+              <span class="mini-row-label">📊 Analytics + Heatmap</span>
+              <span class="mini-row-value">Visual</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-row-label">🔔 Smart Reminders</span>
+              <span class="mini-row-value">Alerts</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-row-label">📝 Daily Reflections</span>
+              <span class="mini-row-value">Journal</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-row-label">🧊 Freeze Credits</span>
+              <span class="mini-row-value">Protection</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-row-label">🏆 XP + Levels</span>
+              <span class="mini-row-value">Gamified</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mini CTA — uses style.css variables and .preview-card base -->
+        <div class="preview-card" style="background:linear-gradient(145deg,rgba(110,168,255,0.10),rgba(61,217,194,0.07)),var(--hero-panel);border-color:var(--border-bright);">
+          <div class="section-kicker" style="margin-bottom:8px;">Right now</div>
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text);margin-bottom:5px;">Your habits are waiting.</div>
+          <div style="font-size:13px;color:var(--text-2);margin-bottom:16px;line-height:1.6;">Start tracking in under 60 seconds. No setup required.</div>
+          <a href="login.html" class="primary-btn" style="text-decoration:none; padding:10px 20px; font-size:13px;">
+            Create free account →
+          </a>
+        </div>
+
+      </aside>
+    </div>
+  </main>
+
+  <!-- ════════════════════════
+       HOW IT WORKS
+  ════════════════════════ -->
+  <section class="landing-section" id="how">
+    <div class="landing-section-inner">
+      <div class="section-kicker">Simple by design</div>
+      <h2 class="section-title">How PPS works</h2>
+      <p class="section-sub">From zero to your first streak in under a minute. No complicated setup, no learning curve.</p>
+
+      <div class="steps-grid">
+        <div class="step-card" data-step="1">
+          <div class="step-icon si-vi">📋</div>
+          <h4>Add your habits</h4>
+          <p>Name it, pick a category and frequency — daily, weekly, or monthly. Takes 30 seconds.</p>
+        </div>
+        <div class="step-card" data-step="2">
+          <div class="step-icon si-cy">✅</div>
+          <h4>Check them off daily</h4>
+          <p>Open your Daily Tracker, tick what you did. Each completion earns +10 XP and grows your streak.</p>
+        </div>
+        <div class="step-card" data-step="3">
+          <div class="step-icon si-gd">🔥</div>
+          <h4>Build your streak</h4>
+          <p>Consistency creates momentum. Freeze Credits protect you on bad days — no guilt, no full reset.</p>
+        </div>
+        <div class="step-card" data-step="4">
+          <div class="step-icon si-gn">📊</div>
+          <h4>Watch yourself grow</h4>
+          <p>Analytics, heatmaps and level progression show you the bigger picture of your progress over time.</p>
+        </div>
       </div>
-    </nav>
+    </div>
+  </section>
 
-    <main class="hero-section">
-      <div class="hero-shell">
-        <section class="hero-panel">
-          <div class="badge-top">Your personal performance toolkit</div>
+  <!-- ════════════════════════
+       FEATURES
+  ════════════════════════ -->
+  <section class="landing-section">
+    <div class="landing-section-inner">
+      <div class="section-kicker">Everything you need</div>
+      <h2 class="section-title">Built for real consistency</h2>
+      <p class="section-sub">Not just a checkbox list. A complete system designed to make habits actually stick long-term.</p>
 
-          <h1 class="hero-title">
-            Build better habits.<br>
-            <span>Level up your life.</span>
-          </h1>
-
-          <p class="hero-subtitle">
-            PPS is a gamified habit tracker that helps you stay consistent, build streaks,
-            earn XP, and see your growth through polished analytics and rewarding feedback.
-          </p>
-
-          <div class="cta-group">
-            <a href="login.html" class="primary-btn" style="text-decoration:none; padding:16px 32px; font-size:16px;">
-              Start for Free
-            </a>
-            <a href="#features" class="ghost-btn" style="padding:16px 32px; font-size:16px; text-decoration:none;">
-              See Features
-            </a>
-          </div>
-
-          <div class="hero-note">
-            <span>100% free</span>
-            <span>Theme aware</span>
-            <span>Streak tracking</span>
-            <span>XP + achievements</span>
-          </div>
-
-          <div class="feature-grid" id="features">
-            <div class="feature-item">
-              <div class="f-label">Free Forever</div>
-              <div class="f-val" style="color:var(--accent);">100%</div>
-              <div class="feature-copy">A premium-looking system without subscriptions or locked essentials.</div>
-            </div>
-            <div class="feature-item">
-              <div class="f-label">Momentum</div>
-              <div class="f-val" style="color:var(--orange);">Streaks</div>
-              <div class="feature-copy">Build consistency with visible daily wins, freeze credits, and progress loops.</div>
-            </div>
-            <div class="feature-item">
-              <div class="f-label">Gamified Growth</div>
-              <div class="f-val" style="color:var(--green);">XP</div>
-              <div class="feature-copy">Earn points, unlock badges, and turn discipline into measurable progress.</div>
-            </div>
-          </div>
-        </section>
-
-        <aside class="hero-preview">
-          <div class="preview-card">
-            <div class="preview-heading">
-              <div>
-                <div class="preview-kicker">Inside the dashboard</div>
-                <div class="preview-title">A system that feels alive</div>
-              </div>
-              <div class="status-tag tag-upcoming">Modernized</div>
-            </div>
-
-            <div class="preview-stats">
-              <div class="mini-stat">
-                <strong style="color:var(--accent);">82%</strong>
-                <span>Completion</span>
-              </div>
-              <div class="mini-stat">
-                <strong style="color:var(--orange);">18</strong>
-                <span>Day streak</span>
-              </div>
-              <div class="mini-stat">
-                <strong style="color:var(--green);">420 XP</strong>
-                <span>This week</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="preview-card">
-            <div class="preview-kicker" style="margin-bottom:12px;">Core highlights</div>
-            <div class="mini-list">
-              <div class="mini-row">
-                <span class="mini-row-label">Dynamic greeting + quote</span>
-                <span class="mini-row-value">Personalized</span>
-              </div>
-              <div class="mini-row">
-                <span class="mini-row-label">Achievement mastery</span>
-                <span class="mini-row-value">13 badges</span>
-              </div>
-              <div class="mini-row">
-                <span class="mini-row-label">Leaderboard + social shell</span>
-                <span class="mini-row-value">Future-ready</span>
-              </div>
-            </div>
-          </div>
-        </aside>
+      <div class="features-big-grid">
+        <div class="feat-card">
+          <span class="feat-icon">⚡</span>
+          <h4>Dashboard at a glance</h4>
+          <p>See all habits, completion rate, streak count, and weekly XP in one clean screen. No digging around.</p>
+          <span class="feat-tag ft-vi">Always visible</span>
+        </div>
+        <div class="feat-card">
+          <span class="feat-icon">🔥</span>
+          <h4>Streak Engine</h4>
+          <p>Visual flame, freeze credits, per-habit progress bars. Losing a streak actually hurts — that's the point.</p>
+          <span class="feat-tag ft-gd">Motivation loop</span>
+        </div>
+        <div class="feat-card">
+          <span class="feat-icon">📊</span>
+          <h4>Analytics + Heatmap</h4>
+          <p>GitHub-style activity heatmap. Per-habit success rates. Weekly bar charts. See exactly where you win.</p>
+          <span class="feat-tag ft-cy">Visual clarity</span>
+        </div>
+        <div class="feat-card">
+          <span class="feat-icon">🎮</span>
+          <h4>XP + Level System</h4>
+          <p>Every completed habit gives +10 XP. Hit 100 XP → level up. Turns discipline into a game you want to play.</p>
+          <span class="feat-tag ft-gn">Gamified</span>
+        </div>
+        <div class="feat-card">
+          <span class="feat-icon">📝</span>
+          <h4>Daily Reflections</h4>
+          <p>Short journal entry + mood each day. See all past entries. Builds self-awareness alongside the habits.</p>
+          <span class="feat-tag ft-vi">Self-awareness</span>
+        </div>
+        <div class="feat-card">
+          <span class="feat-icon">🔔</span>
+          <h4>Smart Reminders</h4>
+          <p>Set browser notifications at exact times. Choose daily, weekdays, or weekends. Never forget to check in.</p>
+          <span class="feat-tag ft-cy">Push alerts</span>
+        </div>
+        <div class="feat-card">
+          <span class="feat-icon">🧊</span>
+          <h4>Freeze Credits</h4>
+          <p>Miss a day but have credits? Your streak survives. This one feature removes the biggest reason people quit.</p>
+          <span class="feat-tag ft-rd">Streak protection</span>
+        </div>
+        <div class="feat-card">
+          <span class="feat-icon">📄</span>
+          <h4>PDF Performance Report</h4>
+          <p>Export a full report of habits, completion rates, streaks and XP. Great for reviews or college submissions.</p>
+          <span class="feat-tag ft-gn">Export ready</span>
+        </div>
+        <div class="feat-card">
+          <span class="feat-icon">🔒</span>
+          <h4>Private by default</h4>
+          <p>All data stays on your own device. No cloud required to get started. Your data, your control.</p>
+          <span class="feat-tag ft-rd">Your data</span>
+        </div>
       </div>
-    </main>
-  </div>
+    </div>
+  </section>
 
-  <script type="module">
-    import { getData } from './js/storageService.js';
-    import { initTheme, bindThemeToggles } from './js/theme.js';
+  <!-- ════════════════════════
+       BOTTOM CTA
+  ════════════════════════ -->
+  <section class="cta-section">
+    <div class="section-kicker">Ready when you are</div>
+    <h2>Start your streak<br><span>today, not tomorrow.</span></h2>
+    <p>
+      No app download. No credit card. No setup required.<br>
+      Your first habit takes 30 seconds to create.
+    </p>
+    <div class="cta-pair">
+      <a href="login.html" class="primary-btn" style="text-decoration:none; padding:14px 32px; font-size:15px;">
+        Create free account →
+      </a>
+      <a href="login.html" class="ghost-btn" style="padding:14px 32px; font-size:15px; text-decoration:none;">
+        Continue as guest
+      </a>
+    </div>
+  </section>
 
-    initTheme();
-    bindThemeToggles();
+  <!-- FOOTER -->
+  <footer class="landing-footer">
+    <span>© 2025 PPS — Personal Performance System. Built for real people.</span>
+    <div class="footer-links">
+      <a href="login.html">Sign In</a>
+      <a href="login.html">Get Started</a>
+    </div>
+  </footer>
 
-    (function checkAlreadyLoggedIn() {
-      const user = getData('currentUser');
-      if (user) {
-        if (user.isGuest && Date.now() > user.expiry) {
-          return;
-        }
-        window.location.href = 'dashboard.html';
-      }
-    })();
-  </script>
+</div>
+
+<script type="module">
+  import { getData, removeData } from './js/storageService.js';
+  import { initTheme, bindThemeToggles } from './js/theme.js';
+
+  initTheme();        // applies saved dark/light before first paint
+  bindThemeToggles(); // wires all [data-theme-toggle] buttons
+
+  (function checkAlreadyLoggedIn() {
+    const user = getData('currentUser');
+    if (!user) return;
+    if (user.isGuest && Date.now() > user.expiry) {
+      removeData('currentUser');
+      return;
+    }
+    window.location.href = 'dashboard.html';
+  })();
+</script>
 
 </body>
 </html>

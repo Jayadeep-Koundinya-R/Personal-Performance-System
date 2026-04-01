@@ -34,7 +34,7 @@ function renderLeaderboard() {
     const state = getState();
     const currentUserEmail = state.storageKey.includes('guest')
         ? 'Guest'
-        : (JSON.parse(localStorage.getItem('pps_currentUser'))?.email || 'User');
+        : (JSON.parse(localStorage.getItem('currentUser') || 'null')?.email || 'User');
 
     const mockUsers = [
         { name: 'Elite Achiever', level: 14, streak: 42, xp: 1420 },
@@ -62,7 +62,7 @@ function renderLeaderboard() {
                 <div style="font-weight: 800; color: var(--muted); width: 24px; font-size: 14px;">
                     ${index + 1}
                 </div>
-                <div class="avatar" style="width: 32px; height: 32px; font-size: 10px; background: ${user.isMe ? 'linear-gradient(135deg, var(--accent), var(--accent2))' : '#333'};">
+                <div class="avatar" style="width: 32px; height: 32px; font-size: 10px; background: ${user.isMe ? 'linear-gradient(135deg, var(--accent), var(--accent2))' : 'linear-gradient(135deg, var(--card-hover), var(--surface))'};">
                     ${user.name.charAt(0)}
                 </div>
                 <div>

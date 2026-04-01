@@ -15,6 +15,11 @@ import { rem_render }   from './reminder.js';
 
 const MOBILE_BP = 768;
 
+function syncHamburgerState(isOpen) {
+    document.getElementById("mobileHamburgerBtn")?.classList.toggle("open", isOpen);
+    document.getElementById("hamburgerBtn")?.classList.toggle("open", isOpen);
+}
+
 /* ─────────────────────────────────────
    SECTION NAVIGATION
 ───────────────────────────────────── */
@@ -87,6 +92,7 @@ export function openMobileSidebar() {
     const overlay = document.getElementById("sidebarOverlay");
     if (sidebar) sidebar.classList.add("open");
     if (overlay) overlay.classList.add("open");
+    syncHamburgerState(true);
     document.body.style.overflow = "hidden";
 }
 
@@ -95,6 +101,7 @@ export function closeMobileSidebar() {
     const overlay = document.getElementById("sidebarOverlay");
     if (sidebar) sidebar.classList.remove("open");
     if (overlay) overlay.classList.remove("open");
+    syncHamburgerState(false);
     document.body.style.overflow = "";
 }
 
@@ -105,6 +112,7 @@ export function toggleDesktopSidebar() {
     const sidebar = document.getElementById("sidebar");
     if (!sidebar) return;
     const collapsed = sidebar.classList.toggle("collapsed");
+    syncHamburgerState(collapsed);
     import('./storageService.js').then(({ saveData }) => {
         saveData("pps_sidebar_collapsed", collapsed ? "1" : "0");
     });
@@ -130,6 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
         import('./storageService.js').then(({ getData }) => {
             if (getData("pps_sidebar_collapsed") === "1") {
                 sidebar.classList.add("collapsed");
+                syncHamburgerState(true);
             }
         });
     }

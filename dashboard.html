@@ -67,8 +67,24 @@
           <div id="dailyQuote" class="text-muted" style="font-size:12px; font-style:italic; margin-top:8px; border-left:2px solid var(--accent); padding-left:10px;">"The secret of getting ahead is getting started." — Mark Twain</div>
         </div>
         <div class="dashboard-header-actions">
-          <div class="notification-trigger" style="position:relative; cursor:pointer; color:var(--muted); font-size:18px;">
-            🔔<span style="position:absolute; top:-4px; right:-4px; background:var(--red); width:8px; height:8px; border-radius:50%;"></span>
+          <div class="notification-center">
+            <button class="notification-trigger" id="notificationBell" type="button" aria-label="Open alerts" aria-expanded="false" aria-controls="notificationPanel">
+              <span class="notification-symbol">🔔</span>
+              <span class="notification-count" id="notificationCountBadge" hidden>0</span>
+            </button>
+            <div class="notification-panel" id="notificationPanel">
+              <div class="notification-panel-head">
+                <div>
+                  <strong>Reminder Alerts</strong>
+                  <span id="notificationUnreadLabel">All caught up</span>
+                </div>
+                <div class="notification-panel-actions">
+                  <button class="ghost-btn notification-mini-btn" id="markAlertsReadBtn" type="button">Mark all read</button>
+                  <button class="ghost-btn notification-mini-btn" id="clearAlertsBtn" type="button">Clear</button>
+                </div>
+              </div>
+              <div class="notification-list" id="notificationList"></div>
+            </div>
           </div>
           <input type="date" id="appDateSetter" class="global-filter" onchange="setTimeSetter(this.value)" title="View different days" style="padding:4px 8px; font-size:12px;">
         </div>
@@ -168,6 +184,16 @@
             </div>
             <div class="text-muted mt-4" style="font-size:11px;" id="xpToNext">100 XP to next level</div>
           </div>
+          <div class="widget-card reminder-widget-card">
+            <div class="widget-card-head">
+              <h4>Reminder Snapshot</h4>
+              <span class="status-tag tag-upcoming" id="dashboardReminderCount">0 enabled</span>
+            </div>
+            <div class="reminder-widget-headline" id="dashboardReminderHeadline">No active reminders yet</div>
+            <div class="dashboard-reminder-list" id="dashboardReminderList">
+              <div class="widget-empty">Add a reminder to surface it here and in the alert bell.</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -235,16 +261,16 @@
             <option value="365">Last 1 Year</option>
           </select>
         </div>
-        <div id="heatmapMonths" style="display:flex;gap:0;margin-bottom:4px;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;"></div>
-        <div id="heatmapGrid" style="gap:3px;margin-top:2px;"></div>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:11px;color:var(--muted);">
+        <div id="heatmapMonths"></div>
+        <div id="heatmapGrid"></div>
+        <div class="heatmap-legend">
           <span>Less</span>
-          <div style="width:12px;height:12px;border-radius:2px;background:var(--surface);border:1px solid var(--border);"></div>
-          <div style="width:12px;height:12px;border-radius:2px;background:#1e3a5f;"></div>
-          <div style="width:12px;height:12px;border-radius:2px;background:#2563eb;"></div>
-          <div style="width:12px;height:12px;border-radius:2px;background:#6366f1;"></div>
+          <div class="heatmap-legend-cell level-0"></div>
+          <div class="heatmap-legend-cell level-1"></div>
+          <div class="heatmap-legend-cell level-3"></div>
+          <div class="heatmap-legend-cell level-4"></div>
           <span>More</span>
-          <span id="heatmapTotal" style="margin-left:auto;font-family:'JetBrains Mono',monospace;color:var(--accent);"></span>
+          <span id="heatmapTotal" class="heatmap-total"></span>
         </div>
       </div>
     </section>
@@ -505,7 +531,7 @@
 
       <div class="msg" id="settingsMsg"></div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+      <div class="settings-grid">
         <div class="card">
           <h3>Account</h3>
           <div class="settings-row">
@@ -513,8 +539,8 @@
           </div>
           <div class="settings-row">
             <div class="settings-label">Display Name</div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input type="text" id="settingsName" placeholder="Your name" style="width:140px;">
+            <div class="settings-inline-actions">
+              <input type="text" id="settingsName" placeholder="Your name">
               <button class="ghost-btn" id="saveNameBtn">Save</button>
             </div>
           </div>
@@ -545,11 +571,11 @@
           <h3>Preferences</h3>
           <div class="settings-row">
             <div><div class="settings-label">XP per Habit</div><div class="settings-desc">Points per completion</div></div>
-            <input type="number" id="xpPerHabit" value="10" style="width:60px;text-align:center;">
+            <input type="number" id="xpPerHabit" value="10" class="settings-compact-input">
           </div>
           <div class="settings-row">
             <div><div class="settings-label">Default Freeze Credits</div><div class="settings-desc">Per new habit</div></div>
-            <input type="number" id="defaultFreeze" value="2" style="width:60px;text-align:center;">
+            <input type="number" id="defaultFreeze" value="2" class="settings-compact-input">
           </div>
         </div>
 

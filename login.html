@@ -78,12 +78,39 @@
             <input type="password" id="signinPassword" placeholder="••••••••" autocomplete="current-password">
           </div>
 
+          <button class="forgot-password-link" type="button" onclick="toggleForgotPassword()">
+            Forgot Password?
+          </button>
+
+          <div class="forgot-panel" id="forgotPanel" style="display:none;">
+            <div class="forgot-panel-title">Reset Password On This Device</div>
+            <div class="forgot-panel-copy">
+              Enter your account email and choose a new password. This works only for accounts saved locally on this device.
+            </div>
+            <div class="form-group mt-12">
+              <label>Email</label>
+              <input type="email" id="forgotEmail" placeholder="you@email.com" autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="forgotNewPassword" placeholder="Min 6 characters" autocomplete="new-password">
+            </div>
+            <button class="ghost-btn forgot-submit-btn" type="button" onclick="handleForgotPassword()">
+              Reset Password
+            </button>
+          </div>
+
           <button class="primary-btn" style="width:100%; margin-top:20px;" onclick="handleSignIn()">
             Sign In
           </button>
         </div>
 
         <div id="signupForm" style="display:none;">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="signupName" placeholder="Your name" autocomplete="name">
+          </div>
+
           <div class="form-group">
             <label>Email</label>
             <input type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email">
@@ -94,11 +121,6 @@
             <input type="password" id="signupPassword" placeholder="Min 6 characters" autocomplete="new-password">
           </div>
 
-          <div class="form-group" style="margin-top:12px;">
-            <label>Confirm Password</label>
-            <input type="password" id="signupConfirm" placeholder="Repeat password" autocomplete="new-password">
-          </div>
-
           <button class="primary-btn" style="width:100%; margin-top:20px;" onclick="handleSignUp()">
             Create Account
           </button>
@@ -107,7 +129,7 @@
         <div class="divider">or</div>
 
         <button class="guest-btn" onclick="handleGuest()">
-          Continue as Guest · 24h session
+          Continue as Guest · Try a Week
         </button>
 
         <div class="login-footer">
@@ -131,6 +153,9 @@
       document.getElementById('signupForm').style.display = isSignIn ? 'none' : 'block';
       document.getElementById('tabSignIn').classList.toggle('active', isSignIn);
       document.getElementById('tabSignUp').classList.toggle('active', !isSignIn);
+      document.getElementById('forgotPanel').style.display = 'none';
+      document.getElementById('forgotEmail').value = '';
+      document.getElementById('forgotNewPassword').value = '';
       clearMsg();
     }
 
@@ -151,6 +176,16 @@
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
+    function normalizeName(name) {
+      return name.trim().replace(/\s+/g, ' ');
+    }
+
+    function toggleForgotPassword() {
+      const panel = document.getElementById('forgotPanel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      clearMsg();
+    }
+
     async function handleSignIn() {
       const email = document.getElementById('signinEmail').value.trim().toLowerCase();
       const password = document.getElementById('signinPassword').value;
@@ -159,37 +194,64 @@
       const users = getUsers();
       const match = users.find(u => u.email === email && u.password === hashed);
       if (!match) { showMsg('Incorrect email or password.'); return; }
-      setCurrentUser({ email: match.email, isGuest: false });
+      setCurrentUser({ email: match.email, name: match.name || '', isGuest: false });
       window.location.href = 'dashboard.html';
     }
 
     async function handleSignUp() {
+      const name = normalizeName(document.getElementById('signupName').value);
       const email = document.getElementById('signupEmail').value.trim().toLowerCase();
       const password = document.getElementById('signupPassword').value;
-      const confirm = document.getElementById('signupConfirm').value;
-      if (!email || !password || !confirm) { showMsg('Please fill in all fields.'); return; }
+      if (!name || !email || !password) { showMsg('Please fill in all fields.'); return; }
+      if (name.length < 2) { showMsg('Enter your name.'); return; }
       if (!isValidEmail(email)) { showMsg('Enter a valid email address.'); return; }
       if (password.length < 6) { showMsg('Password must be at least 6 characters.'); return; }
-      if (password !== confirm) { showMsg('Passwords do not match.'); return; }
       const users = getUsers();
       if (users.find(u => u.email === email)) { showMsg('An account with this email already exists.'); return; }
       const hashed = await hashPassword(password);
-      users.push({ email, password: hashed });
+      users.push({ name, email, password: hashed });
       saveUsers(users);
       showMsg('Account created! Signing you in...', 'success');
       setTimeout(() => {
-        setCurrentUser({ email, isGuest: false });
+        setCurrentUser({ email, name, isGuest: false });
         window.location.href = 'dashboard.html';
       }, 800);
     }
 
+    async function handleForgotPassword() {
+      const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
+      const nextPassword = document.getElementById('forgotNewPassword').value;
+
+      if (!email) { showMsg('Enter your email to reset the password.'); return; }
+      if (!isValidEmail(email)) { showMsg('Enter a valid email address.'); return; }
+      if (!nextPassword || nextPassword.length < 6) { showMsg('New password must be at least 6 characters.'); return; }
+
+      const users = getUsers();
+      const idx = users.findIndex(u => u.email === email);
+      if (idx === -1) { showMsg('No local account was found for that email.'); return; }
+
+      users[idx].password = await hashPassword(nextPassword);
+      saveUsers(users);
+      showMsg('Password reset successful. You can sign in now.', 'success');
+      document.getElementById('forgotEmail').value = '';
+      document.getElementById('forgotNewPassword').value = '';
+      document.getElementById('signinEmail').value = email;
+      document.getElementById('forgotPanel').style.display = 'none';
+      document.getElementById('signinPassword').focus();
+    }
+
     function handleGuest() {
-      setCurrentUser({ email: null, isGuest: true, expiry: Date.now() + 24 * 60 * 60 * 1000 });
+      setCurrentUser({ email: null, name: 'Guest', isGuest: true, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 });
       window.location.href = 'dashboard.html';
     }
 
     document.addEventListener('keydown', e => {
       if (e.key !== 'Enter') return;
+      const forgotVisible = document.getElementById('forgotPanel').style.display !== 'none';
+      if (forgotVisible) {
+        handleForgotPassword();
+        return;
+      }
       const signinVisible = document.getElementById('signinForm').style.display !== 'none';
       signinVisible ? handleSignIn() : handleSignUp();
     });
@@ -205,8 +267,10 @@
     })();
 
     window.switchTab = switchTab;
+    window.toggleForgotPassword = toggleForgotPassword;
     window.handleSignIn = handleSignIn;
     window.handleSignUp = handleSignUp;
+    window.handleForgotPassword = handleForgotPassword;
     window.handleGuest = handleGuest;
   </script>
 
