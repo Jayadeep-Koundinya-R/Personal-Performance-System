@@ -80,6 +80,13 @@ export function formatDateDMY(isoStr) {
     });
 }
 
+export function isDateWithinRange(isoDateStr, start, end) {
+    if (!isoDateStr) return false;
+    const d = new Date(isoDateStr + "T00:00:00");
+    d.setHours(0, 0, 0, 0);
+    return d >= start && d <= end;
+}
+
 /* ── DOM helpers ── */
 export function setEl(id, value) {
     const el = document.getElementById(id);

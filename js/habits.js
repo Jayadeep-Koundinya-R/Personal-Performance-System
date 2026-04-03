@@ -118,11 +118,14 @@ export function deleteHabit(id) {
 /* ─────────────────────────────────────
    IS HABIT DUE TODAY?
 ───────────────────────────────────── */
+export function isHabitDueOn(habit, dateStr) {
+    if (!habit.dueDate || !dateStr) return false;
+    const dueStr = habit.dueDate.split('T')[0];
+    return dueStr === dateStr;
+}
+
 export function isHabitDueToday(habit) {
-    // Use global date so Time Setter affects due-today checks
-    const today = getToday();
-    const due   = new Date(habit.dueDate); due.setHours(0,0,0,0);
-    return (due - today) / 864e5 <= 0;
+    return isHabitDueOn(habit, getTodayStr());
 }
 
 /* ─────────────────────────────────────

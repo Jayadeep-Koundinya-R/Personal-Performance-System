@@ -58,9 +58,6 @@ export function setupNavigation() {
                 case "achievementsSection":
                     import('./achievements.js').then(m => m.renderAchievements());
                     break;
-                case "socialSection":
-                    import('./social.js').then(m => m.renderSocial());
-                    break;
                 case "reflectionSection":
                     rfl_render();
                     break;
@@ -69,6 +66,9 @@ export function setupNavigation() {
                     break;
                 case "reminderSection":
                     rem_render();
+                    break;
+                case "settingsSection":
+                    // setupSettings(user) is already called in main.js
                     break;
             }
 

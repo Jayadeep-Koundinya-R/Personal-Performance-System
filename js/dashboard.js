@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dashboard.js
  * Dashboard, analytics, reminders, notifications, and settings UI rendering.
  */
@@ -6,16 +6,18 @@
 import { getData, getStorageSize, saveData } from './storageService.js';
 import { CONFIG } from './config.js';
 import { getState, updateState } from './state.js';
-import { isHabitDueToday, updateHabitCompletion } from './habits.js';
+import { isHabitDueOn, updateHabitCompletion } from './habits.js';
 import {
     calculateLevel,
     calculateTotalXP,
     calculateWeeklyPoints,
     getToday,
     getTodayStr,
+    isDateWithinRange,
     setBar,
     setEl
 } from './utils.js';
+
 import { formatReminderTime, getReminders, getUpcomingReminders } from './reminder.js';
 import {
     clearNotificationAlerts,
@@ -66,12 +68,8 @@ function getAnalyticsRange() {
     };
 }
 
-function isDateWithinRange(dateStr, start, end) {
-    const date = new Date(`${dateStr}T00:00:00`);
-    return date >= start && date <= end;
-}
-
 function getDateRangeArray(start, end) {
+
     const dates = [];
     const current = new Date(start);
     current.setHours(0, 0, 0, 0);
@@ -199,6 +197,22 @@ export function setupAnalyticsFilter() {
     });
 }
 
+function getDashboardRange() {
+    const filter = document.getElementById('globalFilter')?.value || 'today';
+    const end = getToday();
+    const start = new Date(end);
+
+    if (filter === 'week') {
+        const day = end.getDay();
+        const diff = end.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+        start.setDate(diff);
+    } else if (filter === 'month') {
+        start.setDate(1);
+    }
+    start.setHours(0, 0, 0, 0);
+    return { start, end, isRange: filter !== 'today' };
+}
+
 export function renderDashboard() {
     const { habits } = getState();
     const criticalList = document.getElementById('criticalList');
@@ -207,32 +221,51 @@ export function renderDashboard() {
     const upcomingList = document.getElementById('upcomingList');
     if (!criticalList || !highList || !mediumList || !upcomingList) return;
 
-    const today = getToday();
+    const { start, end, isRange } = getDashboardRange();
     const todayStr = getTodayStr();
+    
     const critical = [];
     const high = [];
     const medium = [];
     const upcoming = [];
 
     habits.forEach(habit => {
-        if (isHabitDueToday(habit)) critical.push(habit);
-        else if (habit.priority === 'High') high.push(habit);
-        else if (habit.priority === 'Medium') medium.push(habit);
-        else upcoming.push(habit);
+        const dueDate = new Date(habit.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((dueDate - end) / 86400000);
+        
+        const isExactlyToday = isHabitDueOn(habit, todayStr);
+        const isFuture = diffDays > 0;
+        const isOverdue = diffDays < 0;
+        
+        const wasCompletedToday = habit.completedDates.includes(todayStr);
+        const wasCompletedInRange = isRange && habit.completedDates.some(d => isDateWithinRange(d, start, end));
+
+        if (isExactlyToday) {
+            critical.push(habit);
+        } else if (isFuture) {
+            if (habit.priority === 'High') high.push(habit);
+            else if (habit.priority === 'Medium') medium.push(habit);
+            else upcoming.push(habit);
+        } else if (isOverdue && wasCompletedToday) {
+            upcoming.push(habit);
+        } else if (wasCompletedInRange) {
+            upcoming.push(habit);
+        }
     });
 
     [
-        { list: criticalList, items: critical, empty: 'No critical tasks today.' },
-        { list: highList, items: high, empty: 'No high-priority habits queued.' },
-        { list: mediumList, items: medium, empty: 'No medium-focus items right now.' },
-        { list: upcomingList, items: upcoming, empty: 'No upcoming habits waiting.' }
+        { list: criticalList, items: critical, empty: 'No critical tasks.' },
+        { list: highList, items: high, empty: 'No high-priority tasks.' },
+        { list: mediumList, items: medium, empty: 'No medium-focus items.' },
+        { list: upcomingList, items: upcoming, empty: 'No additional tasks.' }
     ].forEach(group => {
         if (group.items.length === 0) {
-            group.list.innerHTML = `<div class="task-item"><span>${group.empty}</span></div>`;
+            group.list.innerHTML = `<div class="widget-empty">${group.empty}</div>`;
             return;
         }
 
-        group.list.innerHTML = group.items.map(habit => buildTaskItem(habit, today, todayStr)).join('');
+        group.list.innerHTML = group.items.map(habit => buildTaskItem(habit, end, todayStr)).join('');
         bindTaskCheckboxes(group.list, habits);
     });
 
@@ -241,6 +274,7 @@ export function renderDashboard() {
     renderNotificationCenter();
     updateAllStats();
 }
+
 
 export function updateAllStats() {
     updateCompletionStats();
@@ -253,31 +287,48 @@ export function updateAllStats() {
 }
 export function updateCompletionStats() {
     const { habits } = getState();
+    const { start, end, isRange } = getDashboardRange();
     const todayStr = getTodayStr();
 
-    let dueToday = 0;
-    let doneToday = 0;
+    let dueInRange = 0;
+    let doneInRange = 0;
     let freezeCredits = 0;
     let maxStreak = 0;
 
     habits.forEach(habit => {
-        if (isHabitDueToday(habit)) {
-            dueToday += 1;
-            if (habit.completedDates.includes(todayStr)) doneToday += 1;
+        const dueDate = new Date(habit.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((dueDate - end) / 86400000);
+        const isExactlyToday = isHabitDueOn(habit, todayStr);
+
+        const completionsInRange = (habit.completedDates || []).filter(d => isDateWithinRange(d, start, end)).length;
+        const doneToday = (habit.completedDates || []).includes(todayStr);
+
+        if (isExactlyToday || (isRange && completionsInRange > 0)) {
+            // Count anything that's due today, or if we're in range mode, anything we did or was due.
+            dueInRange += 1; 
+        }
+        
+        if (isRange) {
+            if (completionsInRange > 0) doneInRange += completionsInRange;
+        } else {
+            if (doneToday) doneInRange += 1;
         }
 
         freezeCredits += habit.freezeCredits || 0;
         maxStreak = Math.max(maxStreak, habit.streak || 0);
     });
 
-    const todayCompletion = dueToday > 0 ? Math.round((doneToday / dueToday) * 100) : 0;
+    const completionPct = dueInRange > 0 ? Math.round(( (isRange ? doneInRange : doneInRange) / dueInRange) * 100) : 0;
+    // For ranges, we might want a different calculation, but for now let's keep it simple
+    
     const totalXP = calculateTotalXP(habits);
     const level = calculateLevel(habits);
     const weeklyPoints = calculateWeeklyPoints(habits);
     const totalDoneAllTime = habits.reduce((sum, habit) => sum + (habit.completedDates || []).length, 0);
     const analytics = getAnalyticsSnapshot();
 
-    setEl('completionRate', `${todayCompletion}%`);
+    setEl('completionRate', `${isRange ? Math.min(100, Math.round((doneInRange / (dueInRange || 1)) * 100)) : completionPct}%`);
     setEl('freezeCreditsDisplay', freezeCredits);
     setEl('currentStreak', `🔥 ${maxStreak}`);
     setEl('weeklyPoints', weeklyPoints);
@@ -302,6 +353,7 @@ export function updateCompletionStats() {
     });
 }
 
+
 export function updateProgressWidget() {
     const { habits } = getState();
     const todayStr = getTodayStr();
@@ -310,7 +362,7 @@ export function updateProgressWidget() {
     let done = 0;
 
     habits.forEach(habit => {
-        if (!isHabitDueToday(habit)) return;
+        if (!isHabitDueOn(habit, todayStr)) return;
         due += 1;
         if (habit.completedDates.includes(todayStr)) done += 1;
     });
@@ -523,7 +575,7 @@ export function renderDailyTracker() {
     if (!list) return;
 
     const todayStr = getTodayStr();
-    const todayHabits = habits.filter(habit => isHabitDueToday(habit));
+    const todayHabits = habits.filter(habit => isHabitDueOn(habit, todayStr));
 
     if (todayHabits.length === 0) {
         list.innerHTML = '<p class="empty-text">No habits due today. Add habits in Habit Manager.</p>';
@@ -752,9 +804,16 @@ function renderNotificationCenter() {
 
     const alerts = getNotificationAlerts();
     const unread = getUnreadAlertCount();
+    const bell = document.getElementById('notificationBell');
+
+    if (bell) {
+        if (unread > 0) bell.classList.add('has-unread');
+        else bell.classList.remove('has-unread');
+    }
 
     badge.textContent = unread > 99 ? '99+' : String(unread);
     badge.hidden = unread === 0;
+
     unreadText.textContent = unread === 0 ? 'All caught up' : `${unread} unread`;
 
     if (alerts.length === 0) {
@@ -809,7 +868,8 @@ export function updateDateDisplay() {
         month: 'long',
         day: 'numeric'
     });
-    const activeCount = habits.filter(habit => isHabitDueToday(habit)).length;
+    const todayStr = getTodayStr();
+    const activeCount = habits.filter(habit => isHabitDueOn(habit, todayStr)).length;
     const chip = `<span class="habits-active-chip">${activeCount} habit${activeCount === 1 ? '' : 's'} active</span>`;
 
     const dashboardDate = document.getElementById('dashboardDate');

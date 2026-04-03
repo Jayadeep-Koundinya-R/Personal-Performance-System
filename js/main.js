@@ -1,4 +1,4 @@
-﻿/**
+/**
  * main.js
  * Central entry point. Wires all modules together.
  */
@@ -21,11 +21,27 @@ import {
 import { notif_requestPermission, notif_startChecker, notif_stop } from './notifications.js';
 import { initTheme, bindThemeToggles } from './theme.js';
 import { renderAchievements } from './achievements.js';
-import { renderSocial } from './social.js';
+
+const QUOTES = [
+    { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+    { text: "Quality is not an act, it is a habit.", author: "Aristotle" },
+    { text: "Small acts, when multiplied by millions of people, can transform the world.", author: "Howard Zinn" },
+    { text: "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", author: "Will Durant" },
+    { text: "Your net worth is your network.", author: "Porter Gale" },
+    { text: "Motivation is what gets you started. Habit is what keeps you going.", author: "Jim Ryun" },
+    { text: "The best way to predict the future is to create it.", author: "Peter Drucker" },
+    { text: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
+    { text: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
+    { text: "The vision that you glorify in your mind... this you will at last build your life by.", author: "James Allen" }
+];
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth();
     if (!user) return;
+
+    // Fix Greeting Flash: Update immediately as the first action
+    _updateGreeting(user);
+    _initDailyQuote();
 
     initHabits(user);
     setupNavigation();
@@ -41,24 +57,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const dateSetter = document.getElementById('appDateSetter');
     if (dateSetter) dateSetter.value = getTodayStr();
 
-    _loadSettings(user);
     initTheme();
     bindThemeToggles();
     _renderAll();
-    _updateGreeting(user);
 });
 
-document.addEventListener('habitsUpdated', () => {
-    _renderAll();
-});
-
-document.addEventListener('remindersUpdated', () => {
-    _renderAll();
-});
-
-document.addEventListener('notificationAlertsUpdated', () => {
-    _renderAll();
-});
+document.addEventListener('habitsUpdated', () => _renderAll());
+document.addEventListener('remindersUpdated', () => _renderAll());
+document.addEventListener('notificationAlertsUpdated', () => _renderAll());
 
 function _renderAll() {
     renderDashboard();
@@ -73,9 +79,6 @@ function _renderAll() {
 
     if (document.getElementById('achievementsSection')?.classList.contains('active-section')) {
         renderAchievements();
-    }
-    if (document.getElementById('socialSection')?.classList.contains('active-section')) {
-        renderSocial();
     }
 
     _updateDashboardExtras();
@@ -106,10 +109,13 @@ function _updateDashboardExtras() {
 
     const categories = habits.reduce((acc, h) => {
         const cat = h.category || 'General';
-        acc[cat] = (acc[cat] || 0) + 1;
+        const count = (h.completedDates || []).length;
+        acc[cat] = (acc[cat] || 0) + count;
         return acc;
     }, {});
-    const bestCat = Object.entries(categories).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+    const bestCat = Object.entries(categories)
+        .filter(([_, count]) => count > 0)
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
     const bestCatEl = document.getElementById('bestCategoryDisplay');
     if (bestCatEl) bestCatEl.textContent = bestCat;
 
@@ -122,26 +128,6 @@ function _updateDashboardExtras() {
     });
     const allDoneEl = document.getElementById('allTimeDoneDisplay');
     if (allDoneEl) allDoneEl.textContent = `${totalDone} completions`;
-}
-
-function _loadSettings(user) {
-    const key = 'pps_prefs_' + (user.email || 'guest');
-    const prefs = getData(key, {});
-    const xpEl = document.getElementById('xpPerHabit');
-    const freezeEl = document.getElementById('defaultFreeze');
-
-    if (xpEl) xpEl.value = prefs.xpPerHabit ?? 10;
-    if (freezeEl) freezeEl.value = prefs.defaultFreeze ?? 2;
-
-    const savePrefs = () => {
-        saveData(key, {
-            xpPerHabit: parseInt(xpEl?.value || 10, 10) || 10,
-            defaultFreeze: parseInt(freezeEl?.value || 2, 10) || 2
-        });
-    };
-
-    xpEl?.addEventListener('change', savePrefs);
-    freezeEl?.addEventListener('change', savePrefs);
 }
 
 window.toggleMobileSidebar = handleHamburger;
@@ -158,8 +144,23 @@ window.rem_delete = rem_delete;
 window.closeEditModal = closeEditModal;
 window.exportToPDF = exportToPDF;
 
+function _initDailyQuote() {
+    const dateIndex = new Date().getDate();
+    const quote = QUOTES[dateIndex % QUOTES.length];
+
+    const textEl = document.getElementById('quoteText');
+    const authEl = document.getElementById('quoteAuthor');
+    if (textEl) textEl.textContent = `"${quote.text}"`;
+    if (authEl) authEl.textContent = `— ${quote.author}`;
+}
+
 window.setTimeSetter = function(dateStr) {
-    if (!dateStr) return;
+    if (!dateStr || dateStr.length < 10) return;
+    const testDate = new Date(dateStr);
+    if (isNaN(testDate.getTime())) return;
+    
     updateState({ selectedDate: dateStr });
     _renderAll();
 };
+
+window.updateDashboardExtras = _updateDashboardExtras;

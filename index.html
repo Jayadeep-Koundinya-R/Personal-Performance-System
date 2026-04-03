@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -202,6 +202,8 @@
     }
     .cta-section p { color: var(--text-2); font-size: 16px; margin-bottom: 34px; line-height: 1.7; }
     .cta-pair { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    
+    .nav-link.is-active { color: var(--accent); }
 
     /* ── Footer ── */
     .landing-footer {
@@ -231,6 +233,10 @@
       .features-big-grid { grid-template-columns: 1fr; }
       .trust-pills { gap: 10px; }
       .cta-pair { flex-direction: column; align-items: center; }
+      .step-card::before { font-size: 48px; top: -6px; right: 10px; }
+    }
+    @media (max-width: 360px) {
+      .step-card::before { font-size: 40px; top: -4px; right: 8px; }
     }
   </style>
 </head>
@@ -244,6 +250,8 @@
   <nav class="landing-nav">
     <div class="landing-logo">PPS<span>.</span></div>
     <div class="nav-links">
+      <a href="#how" class="nav-link">How it works</a>
+      <a href="#features" class="nav-link">Features</a>
       <div class="theme-panel" data-theme-panel>
         <span class="theme-panel-title">Theme</span>
         <button class="theme-toggle-btn" type="button" data-theme-toggle>
@@ -423,7 +431,7 @@
   <!-- ════════════════════════
        FEATURES
   ════════════════════════ -->
-  <section class="landing-section">
+  <section class="landing-section" id="features">
     <div class="landing-section-inner">
       <div class="section-kicker">Everything you need</div>
       <h2 class="section-title">Built for real consistency</h2>
@@ -510,7 +518,7 @@
 
   <!-- FOOTER -->
   <footer class="landing-footer">
-    <span>© 2025 PPS — Personal Performance System. Built for real people.</span>
+    <span>© 2026 PPS — Personal Performance System. Built for real people.</span>
     <div class="footer-links">
       <a href="login.html">Sign In</a>
       <a href="login.html">Get Started</a>
@@ -535,6 +543,31 @@
     }
     window.location.href = 'dashboard.html';
   })();
+
+  // ── INTERSECTION OBSERVER FOR ACTIVE NAV LINKS ──
+  const observerOptions = {
+      root: null,
+      rootMargin: '-20% 0px -60% 0px',
+      threshold: 0
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+          if (entry.isIntersecting) {
+              const id = entry.target.getAttribute('id');
+              document.querySelectorAll('.nav-links .nav-link').forEach(link => {
+                  link.classList.remove('is-active');
+                  if (link.getAttribute('href') === `#${id}`) {
+                      link.classList.add('is-active');
+                  }
+              });
+          }
+      });
+  }, observerOptions);
+
+  document.querySelectorAll('section[id]').forEach(section => {
+      observer.observe(section);
+  });
 </script>
 
 </body>

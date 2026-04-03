@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -20,6 +20,13 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-inline">PPS<span>.</span></div>
+      
+      <div class="theme-panel sidebar-theme" data-theme-panel>
+        <button class="theme-toggle-btn" type="button" data-theme-toggle>
+          <span class="theme-toggle-name" data-theme-name>Dark</span>
+        </button>
+      </div>
+
       <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMobileSidebar()" aria-label="Toggle sidebar">
         <span></span><span></span><span></span>
       </button>
@@ -31,10 +38,10 @@
         <li class="nav-item" data-section="analyticsSection">📊 Analytics</li>
         <li class="nav-item" data-section="streakSection">🔥 Streak Engine</li>
         <li class="nav-item" data-section="achievementsSection">🏆 Achievements</li>
-        <li class="nav-item" data-section="socialSection">👥 Social</li>
         <li class="nav-item" data-section="reflectionSection">📝 Reflections</li>
         <li class="nav-item" data-section="habitManagerSection">⚙️ Habit Manager</li>
         <li class="nav-item" data-section="reminderSection">🔔 Reminders</li>
+        <li class="nav-item" data-section="socialSection">🌍 Social <span class="badge" style="font-size:9px; background:var(--accent-dim); color:var(--accent); padding:2px 6px; border-radius:10px; margin-left:auto; font-weight: 700;">Soon</span></li>
         <li class="nav-item" data-section="settingsSection">🛠 Settings</li>
       </ul>
     </nav>
@@ -50,21 +57,13 @@
   </aside>
 
   <main class="main-content">
-    <div class="theme-dock">
-      <div class="theme-panel" data-theme-panel>
-        <span class="theme-panel-title">Theme</span>
-        <button class="theme-toggle-btn" type="button" data-theme-toggle>
-          <span class="theme-toggle-name" data-theme-name>Dark</span>
-        </button>
-      </div>
-    </div>
 
     <section id="dashboardSection" class="section active-section">
       <div class="dashboard-header">
         <div>
-          <h1 id="greetingDisplay">Good Morning, User!</h1>
+          <h1 id="greetingDisplay"></h1>
           <div class="page-sub" id="dashboardDate"></div>
-          <div id="dailyQuote" class="text-muted" style="font-size:12px; font-style:italic; margin-top:8px; border-left:2px solid var(--accent); padding-left:10px;">"The secret of getting ahead is getting started." — Mark Twain</div>
+          <div id="dailyQuote" class="text-muted" style="font-size:12px; font-style:italic; margin-top:8px; border-left:2px solid var(--accent); padding-left:10px;"><span id="quoteText">Loading quote...</span> <span id="quoteAuthor"></span></div>
         </div>
         <div class="dashboard-header-actions">
           <div class="notification-center">
@@ -72,6 +71,7 @@
               <span class="notification-symbol">🔔</span>
               <span class="notification-count" id="notificationCountBadge" hidden>0</span>
             </button>
+
             <div class="notification-panel" id="notificationPanel">
               <div class="notification-panel-head">
                 <div>
@@ -86,7 +86,13 @@
               <div class="notification-list" id="notificationList"></div>
             </div>
           </div>
-          <input type="date" id="appDateSetter" class="global-filter" onchange="setTimeSetter(this.value)" title="View different days" style="padding:4px 8px; font-size:12px;">
+          <select class="global-filter" id="globalFilter" onchange="window.setGlobalFilter ? window.setGlobalFilter(this.value) : null" aria-label="Date Range">
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+          <input type="date" id="appDateSetter" class="global-filter" onchange="setTimeSetter(this.value)" title="View different days">
+
         </div>
       </div>
 
@@ -113,29 +119,30 @@
         </div>
       </div>
 
-      <div class="stats-row" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px; gap: 14px;">
-        <div class="card" style="padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
-          <div style="font-size: 20px;">🏅</div>
-          <div>
-            <div class="text-muted" style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Best Category</div>
-            <div id="bestCategoryDisplay" style="font-weight: 700; font-size: 14px;">—</div>
+      <div class="stats-row stats-row-sm">
+        <div class="card">
+          <div class="stats-card-icon">🏅</div>
+          <div class="stats-card-content">
+            <div class="stats-card-kicker">Best Category</div>
+            <div id="bestCategoryDisplay" class="stats-card-val">—</div>
           </div>
         </div>
-        <div class="card" style="padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
-          <div style="font-size: 20px;">📋</div>
-          <div>
-            <div class="text-muted" style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Total Habits</div>
-            <div id="totalHabitsDisplay" style="font-weight: 700; font-size: 14px;">0 tracked</div>
+        <div class="card">
+          <div class="stats-card-icon">📋</div>
+          <div class="stats-card-content">
+            <div class="stats-card-kicker">Total Habits</div>
+            <div id="totalHabitsDisplay" class="stats-card-val">0 tracked</div>
           </div>
         </div>
-        <div class="card" style="padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
-          <div style="font-size: 20px;">✅</div>
-          <div>
-            <div class="text-muted" style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">All-Time Done</div>
-            <div id="allTimeDoneDisplay" style="font-weight: 700; font-size: 14px;">0 completions</div>
+        <div class="card">
+          <div class="stats-card-icon">✅</div>
+          <div class="stats-card-content">
+            <div class="stats-card-kicker">All-Time Done</div>
+            <div id="allTimeDoneDisplay" class="stats-card-val">0 completions</div>
           </div>
         </div>
       </div>
+
 
       <div class="dashboard-grid">
         <div class="left-column">
@@ -314,49 +321,7 @@
           <div class="stat-num" id="achUserLevel" style="font-size:20px;">1</div>
           <div class="text-muted" style="font-size:10px;">Level</div>
         </div>
-      </div>
-
-      <h3 style="font-size:11px; text-transform:uppercase; color:var(--muted); letter-spacing:1px; margin-bottom:16px;">
-        🔒 Locked Badges
-      </h3>
       <div id="badgeGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;"></div>
-    </section>
-
-    <section id="socialSection" class="section">
-      <div class="dashboard-header">
-        <div>
-          <h1>Social & Challenges</h1>
-          <div class="page-sub">Compete, challenge, and grow together</div>
-        </div>
-      </div>
-
-      <div class="auth-tabs" style="margin-bottom:20px; max-width:500px;">
-        <div class="auth-tab active" id="tabLeaderboard" onclick="switchSocialTab('leaderboard')">🏆 Leaderboard</div>
-        <div class="auth-tab" id="tabChallenges" onclick="switchSocialTab('challenges')">⚔️ Challenges</div>
-        <div class="auth-tab" id="tabFriends" onclick="switchSocialTab('friends')">👥 Friends</div>
-      </div>
-
-      <div id="socialLeaderboard" class="social-content">
-        <div class="card">
-          <h3 style="margin-bottom:16px;">Rankings</h3>
-          <div id="leaderboardList"></div>
-        </div>
-      </div>
-
-      <div id="socialChallenges" class="social-content" style="display:none;">
-        <div class="card">
-          <h3>Active Challenges</h3>
-          <div class="empty-text">No active challenges. Check back soon!</div>
-        </div>
-      </div>
-
-      <div id="socialFriends" class="social-content" style="display:none;">
-        <div class="card">
-          <h3>Friends</h3>
-          <div class="empty-text">Connect with others to see their progress.</div>
-          <button class="primary-btn" style="width:100%; margin-top:10px;">Invite Friends</button>
-        </div>
-      </div>
     </section>
 
     <section id="streakSection" class="section">
@@ -518,6 +483,23 @@
           <button class="primary-btn" onclick="rem_save()">Save Reminder</button>
           <span id="rem_status" style="font-size:12px;font-weight:600;"></span>
         </div>
+      </div>
+    </section>
+
+    <section id="socialSection" class="section">
+      <div class="dashboard-header">
+        <div>
+          <h1>Social</h1>
+          <div class="page-sub">Leaderboard & Community</div>
+        </div>
+      </div>
+      <div class="card" style="text-align:center; padding: 60px 20px;">
+        <div style="font-size: 48px; margin-bottom: 20px;">🔒</div>
+        <h2 style="font-family:'Syne', sans-serif; font-size: 24px; margin-bottom: 10px;">Coming Soon</h2>
+        <p style="color:var(--text-2); max-width: 400px; margin: 0 auto 24px;">
+          We're building a brand new community experience. Compete with friends, join global challenges, and climb the leaderboard.
+        </p>
+        <button class="primary-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Join Waitlist</button>
       </div>
     </section>
 

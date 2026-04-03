@@ -7,19 +7,19 @@ import { getState } from './state.js';
 import { getData } from './storageService.js';
 
 const BADGES = [
-    { id: 'first_step',      name: 'First Step',      desc: 'Complete your first habit.', icon: '🌱', req: '1 completion',   target: 1 },
-    { id: 'on_a_roll',       name: 'On a Roll',       desc: 'Achieve a 3-day streak.',   icon: '🔥', req: '3-day streak',   target: 3 },
-    { id: 'week_warrior',    name: 'Week Warrior',    desc: 'Achieve a 7-day streak.',   icon: '⚔️', req: '7-day streak',   target: 7 },
-    { id: 'monthly_master',  name: 'Monthly Master',  desc: 'Achieve a 30-day streak.',  icon: '🏆', req: '30-day streak',  target: 30 },
-    { id: 'getting_started', name: 'Getting Started', desc: 'Reach 10 completions.',     icon: '✅', req: '10 completions',  target: 10 },
-    { id: 'half_century',    name: 'Half Century',    desc: 'Reach 50 completions.',     icon: '🎯', req: '50 completions',  target: 50 },
-    { id: 'centurion',       name: 'Centurion',       desc: 'Reach 100 completions.',    icon: '💯', req: '100 completions', target: 100 },
-    { id: 'legendary',       name: 'Legendary',       desc: 'Reach 500 completions.',    icon: '👑', req: '500 completions', target: 500 },
-    { id: 'perfect_day',     name: 'Perfect Day',     desc: 'All habits done in a day.', icon: '⭐', req: '100% completion',  target: 100 },
-    { id: 'habit_builder',   name: 'Habit Builder',   desc: 'Have 5 habits active.',      icon: '📋', req: '5 habits tracked', target: 5 },
-    { id: 'streak_master',   name: 'Streak Master',   desc: 'Use a freeze credit.',      icon: '❄️', req: '1 credit used',    target: 1 },
-    { id: 'xp_hunter',       name: 'XP Hunter',       desc: 'Reach level 5.',            icon: '⬆️', req: 'Level 5 reached',   target: 5 },
-    { id: 'dedication',      name: 'Dedication',      desc: 'Log in 7 days in a row.',   icon: '📅', req: '7-day login',     target: 7 }
+    { id: 'first_step',      name: 'First Step',      desc: 'Complete your first habit.', icon: '🌱', hint: 'Complete 1 habit to unlock',   target: 1 },
+    { id: 'on_a_roll',       name: 'On a Roll',       desc: 'Achieve a 3-day streak.',   icon: '🔥', hint: 'Achieve a 3-day streak to unlock',   target: 3 },
+    { id: 'week_warrior',    name: 'Week Warrior',    desc: 'Achieve a 7-day streak.',   icon: '⚔️', hint: 'Achieve a 7-day streak to unlock',   target: 7 },
+    { id: 'monthly_master',  name: 'Monthly Master',  desc: 'Achieve a 30-day streak.',  icon: '🏆', hint: 'Achieve a 30-day streak to unlock',  target: 30 },
+    { id: 'getting_started', name: 'Getting Started', desc: 'Reach 10 completions.',     icon: '✅', hint: 'Complete 10 habits to unlock',  target: 10 },
+    { id: 'half_century',    name: 'Half Century',    desc: 'Reach 50 completions.',     icon: '🎯', hint: 'Complete 50 habits to unlock',  target: 50 },
+    { id: 'centurion',       name: 'Centurion',       desc: 'Reach 100 completions.',    icon: '💯', hint: 'Complete 100 habits to unlock', target: 100 },
+    { id: 'legendary',       name: 'Legendary',       desc: 'Reach 500 completions.',    icon: '👑', hint: 'Complete 500 habits to unlock', target: 500 },
+    { id: 'perfect_day',     name: 'Perfect Day',     desc: 'All habits done in a day.', icon: '⭐', hint: 'Complete all habits in a single day to unlock',  target: 100 },
+    { id: 'habit_builder',   name: 'Habit Builder',   desc: 'Have 5 habits active.',      icon: '📋', hint: 'Track 5 active habits to unlock', target: 5 },
+    { id: 'streak_master',   name: 'Streak Master',   desc: 'Use a freeze credit.',      icon: '❄️', hint: 'Use 1 freeze credit to unlock',    target: 1 },
+    { id: 'xp_hunter',       name: 'XP Hunter',       desc: 'Reach level 5.',            icon: '⬆️', hint: 'Reach level 5 to unlock',   target: 5 },
+    { id: 'dedication',      name: 'Dedication',      desc: 'Log in 7 days in a row.',   icon: '📅', hint: 'Log in 7 days in a row to unlock',     target: 7 }
 ];
 
 export function renderAchievements() {
@@ -41,29 +41,73 @@ export function renderAchievements() {
     document.getElementById('achTotalHabits').textContent = stats.totalHabits;
     document.getElementById('achUserLevel').textContent = stats.level;
 
-    // Render grid
-    grid.innerHTML = BADGES.map(badge => {
-        const isUnlocked = isBadgeUnlocked(badge, stats);
-        return `
-            <div class="card badge-card ${isUnlocked ? 'unlocked' : 'locked'}" 
-                 style="display:flex; align-items:center; gap:16px; padding:16px; transition:all 0.3s; opacity: ${isUnlocked ? 1 : 0.6};">
-                <div class="badge-icon" style="font-size: 32px; filter: ${isUnlocked ? 'none' : 'grayscale(1) brightness(0.6)'};">
-                    ${badge.icon}
+    const unlockedBadges = BADGES.filter(b => isBadgeUnlocked(b, stats));
+    const lockedBadges = BADGES.filter(b => !isBadgeUnlocked(b, stats));
+
+    let html = '';
+
+    // Unlocked Section (Always show header)
+    html += `<h3 style="grid-column: 1/-1; font-size:12px; text-transform:uppercase; color:var(--accent); letter-spacing:1px; margin: 100px 0 5px 0;">🏆 Earned Badges</h3>`;
+    if (unlockedBadges.length > 0) {
+        html += unlockedBadges.map(badge => renderBadge(badge, true, stats)).join('');
+    } else {
+        html += `<div class="card" style="grid-column: 1/-1; padding: 20px; text-align: center; color: var(--muted); border: 1px dashed var(--border);">Complete your first habit to earn your first badge!</div>`;
+    }
+
+    // Locked Section
+    if (lockedBadges.length > 0) {
+        html += `<h3 style="grid-column: 1/-1; font-size:12px; text-transform:uppercase; color:var(--muted); letter-spacing:1px; margin: 25px 0 5px 0;">🔒 Locked Badges</h3>`;
+        html += lockedBadges.map(badge => renderBadge(badge, false, stats)).join('');
+    }
+
+    grid.innerHTML = html;
+}
+
+function getBadgeProgress(badge, stats) {
+    let current = 0;
+    switch (badge.id) {
+        case 'first_step':
+        case 'getting_started': 
+        case 'half_century':    
+        case 'centurion':       
+        case 'legendary':       current = stats.totalCompletions; break;
+        case 'on_a_roll':       
+        case 'week_warrior':    
+        case 'monthly_master':  current = stats.bestStreak; break;
+        case 'xp_hunter':       current = stats.level; break;
+        case 'habit_builder':   current = stats.totalHabits; break;
+        case 'streak_master':   current = stats.creditsUsed; break;
+        case 'perfect_day':     current = stats.allDoneInADay ? 100 : 0; break;
+        case 'dedication':      current = stats.loginStreak; break;
+    }
+    return Math.min(current, badge.target);
+}
+
+function renderBadge(badge, isUnlocked, stats) {
+    const current = getBadgeProgress(badge, stats);
+    const cleanHint = badge.hint.replace(' to unlock', '');
+    const progressText = isUnlocked ? 'Requirement met ✓' : `${cleanHint} · ${current}/${badge.target}`;
+
+    return `
+        <div class="card badge-card ${isUnlocked ? 'unlocked' : 'locked'}" 
+             style="display:flex; align-items:center; gap:16px; padding:16px; transition:all 0.3s; opacity: ${isUnlocked ? 1 : 0.65}; position: relative; overflow: hidden;">
+            ${!isUnlocked ? '<div style="position:absolute; top:8px; right:8px; font-size:12px; opacity:0.5;">🔒</div>' : ''}
+            <div class="badge-icon" style="font-size: 32px; filter: ${isUnlocked ? 'none' : 'grayscale(1) brightness(0.6)'};">
+                ${badge.icon}
+            </div>
+            <div style="flex:1;">
+                <div style="font-weight: 700; font-size: 14px; color: ${isUnlocked ? 'var(--text)' : 'var(--muted)'};">
+                    ${badge.name}
                 </div>
-                <div style="flex:1;">
-                    <div style="font-weight: 700; font-size: 14px; color: ${isUnlocked ? 'var(--text)' : 'var(--muted)'};">
-                        ${badge.name} ${isUnlocked ? '🔓' : '🔒'}
-                    </div>
-                    <div class="text-muted" style="font-size: 11px; margin-top:2px;">
-                        ${badge.desc}
-                    </div>
-                    <div style="font-size: 10px; margin-top:6px; font-family:'DM Mono', monospace; color: ${isUnlocked ? 'var(--green)' : 'var(--muted)'};">
-                        ${badge.req}
-                    </div>
+                <div class="text-muted" style="font-size: 11px; margin-top:2px;">
+                    ${badge.desc}
+                </div>
+                <div style="font-size: 10px; margin-top:6px; font-family:'DM Mono', monospace; color: ${isUnlocked ? 'var(--green)' : 'var(--muted)'};">
+                    ${progressText}
                 </div>
             </div>
-        `;
-    }).join('');
+        </div>
+    `;
 }
 
 function calculateAchievementStats() {
@@ -73,19 +117,19 @@ function calculateAchievementStats() {
     // Get all completed history across all habits
     let totalCompletions = 0;
     habits.forEach(h => {
-        if (h.completedDays) {
-            totalCompletions += Object.values(h.completedDays).filter(v => v === true).length;
+        if (h.completedDates) {
+            totalCompletions += h.completedDates.length;
         }
     });
 
     return {
         totalCompletions,
-        bestStreak: state.stats.streak, // Simplified for now
+        bestStreak: state.stats.streak,
         totalHabits: habits.length,
         level: state.stats.level,
-        allDoneInADay: false, // Placeholder
-        creditsUsed: 0,      // Placeholder
-        loginStreak: 1       // Placeholder
+        allDoneInADay: false,
+        creditsUsed: 0,
+        loginStreak: 1
     };
 }
 
@@ -109,6 +153,7 @@ function isBadgeUnlocked(badge, stats) {
         case 'legendary':       return stats.totalCompletions >= 500;
         case 'xp_hunter':       return stats.level >= 5;
         case 'habit_builder':   return stats.totalHabits >= 5;
-        default:                return false; // placeholder for others
+        case 'streak_master':   return stats.creditsUsed >= 1;
+        default:                return false;
     }
 }
