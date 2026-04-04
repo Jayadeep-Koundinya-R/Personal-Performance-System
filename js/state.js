@@ -14,7 +14,11 @@ let _state = {
         totalXP:       0,
         level:         1,
         streak:        0,
-        freezeCredits: CONFIG.MAX_FREEZE_CREDITS
+        freezeCredits: CONFIG.MAX_FREEZE_CREDITS,
+        totalCreditsUsed: 0,
+        perfectDays: [],
+        loginStreak: 1,
+        lastLoginDate: null
     }
 };
 
@@ -35,7 +39,12 @@ export function resetState() {
             totalXP:       0,
             level:         1,
             streak:        0,
-            freezeCredits: CONFIG.MAX_FREEZE_CREDITS
+            freezeCredits: CONFIG.MAX_FREEZE_CREDITS,
+            totalCreditsUsed: 0,
+            perfectDays: [],
+            loginStreak: 1,
+            lastLoginDate: null
         }
     };
 }
+

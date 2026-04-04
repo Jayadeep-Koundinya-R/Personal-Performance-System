@@ -191,6 +191,20 @@
             </div>
             <div class="text-muted mt-4" style="font-size:11px;" id="xpToNext">100 XP to next level</div>
           </div>
+          <div class="widget-card">
+            <h4>Achievements</h4>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span class="stat-value" id="dashAchievementCount" style="font-size:20px;">0 / 13</span>
+              <span class="text-accent mono" id="dashAchievementPercent" style="font-size:12px;">0%</span>
+            </div>
+            <div class="prog-wrap">
+              <div class="prog-fill" id="dashAchievementBar" style="width:0%; background: linear-gradient(90deg, var(--accent), var(--accent2));"></div>
+            </div>
+            <div class="text-muted mt-8" style="font-size:11px; display: flex; align-items: center; gap: 6px;">
+              <span id="dashLatestBadgeIcon" style="filter:grayscale(1); opacity:0.5;">🏆</span>
+              <span id="dashLatestBadgeText">Complete habits to earn badges</span>
+            </div>
+          </div>
           <div class="widget-card reminder-widget-card">
             <div class="widget-card-head">
               <h4>Reminder Snapshot</h4>
@@ -493,13 +507,94 @@
           <div class="page-sub">Leaderboard & Community</div>
         </div>
       </div>
-      <div class="card" style="text-align:center; padding: 60px 20px;">
-        <div style="font-size: 48px; margin-bottom: 20px;">🔒</div>
-        <h2 style="font-family:'Syne', sans-serif; font-size: 24px; margin-bottom: 10px;">Coming Soon</h2>
-        <p style="color:var(--text-2); max-width: 400px; margin: 0 auto 24px;">
-          We're building a brand new community experience. Compete with friends, join global challenges, and climb the leaderboard.
-        </p>
-        <button class="primary-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Join Waitlist</button>
+      <div class="dashboard-grid">
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="padding:20px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 50%, transparent);">
+            <h3 style="margin-bottom:4px; font-family:'Syne', sans-serif;">🏆 Global Leaderboard</h3>
+            <div class="text-muted" style="font-size:12px;">Top performers this week</div>
+          </div>
+          <div style="display:grid;">
+            <!-- Rank 1 -->
+            <div style="display:flex; align-items:center; gap:16px; padding:16px 20px; border-bottom: 1px solid var(--border); background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent);">
+              <div style="font-size:18px; font-weight:800; color:var(--accent); width:24px; text-align:center;">1</div>
+              <div style="width:40px; height:40px; border-radius:50%; background:var(--accent2); display:flex; align-items:center; justify-content:center; font-size:20px;">👩‍🚀</div>
+              <div style="flex:1;">
+                <div style="font-weight:700; font-size:14px; color:var(--text);">Sarah J.</div>
+                <div class="text-muted" style="font-size:11px;">Level 42 · Streak Master</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-family:'DM Mono', monospace; font-size:14px; font-weight:700; color:var(--text);">14,500 XP</div>
+                <div style="font-size:11px; color:var(--green);">▲ 2</div>
+              </div>
+            </div>
+            <!-- Rank 2 -->
+            <div style="display:flex; align-items:center; gap:16px; padding:16px 20px; border-bottom: 1px solid var(--border);">
+              <div style="font-size:16px; font-weight:700; color:var(--text-2); width:24px; text-align:center;">2</div>
+              <div style="width:40px; height:40px; border-radius:50%; background:#475569; display:flex; align-items:center; justify-content:center; font-size:20px;">🕵️</div>
+              <div style="flex:1;">
+                <div style="font-weight:700; font-size:14px; color:var(--text);">Alex M.</div>
+                <div class="text-muted" style="font-size:11px;">Level 38 · Centurion</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-family:'DM Mono', monospace; font-size:14px; font-weight:700; color:var(--text);">13,250 XP</div>
+                <div style="font-size:11px; color:var(--text-2);">—</div>
+              </div>
+            </div>
+            <!-- Rank 3 -->
+            <div style="display:flex; align-items:center; gap:16px; padding:16px 20px; border-bottom: 1px solid var(--border);">
+              <div style="font-size:16px; font-weight:700; color:var(--text-2); width:24px; text-align:center;">3</div>
+              <div style="width:40px; height:40px; border-radius:50%; background:#8b5cf6; display:flex; align-items:center; justify-content:center; font-size:20px;">👩‍💻</div>
+              <div style="flex:1;">
+                <div style="font-weight:700; font-size:14px; color:var(--text);">Jordan T.</div>
+                <div class="text-muted" style="font-size:11px;">Level 35 · Legendary</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-family:'DM Mono', monospace; font-size:14px; font-weight:700; color:var(--text);">12,900 XP</div>
+                <div style="font-size:11px; color:var(--red);">▼ 1</div>
+              </div>
+            </div>
+            <!-- Current User Mock -->
+            <div style="display:flex; align-items:center; gap:16px; padding:16px 20px; background: color-mix(in srgb, var(--surface) 60%, transparent);">
+              <div style="font-size:14px; font-weight:700; color:var(--muted); width:24px; text-align:center;">84</div>
+              <div style="width:40px; height:40px; border-radius:50%; border:2px dashed var(--border-bright); display:flex; align-items:center; justify-content:center; font-size:18px;">👤</div>
+              <div style="flex:1;">
+                <div style="font-weight:700; font-size:14px; color:var(--text);">You</div>
+                <div class="text-muted" style="font-size:11px;" id="socialUserLevel">Level 1</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-family:'DM Mono', monospace; font-size:14px; font-weight:700; color:var(--accent);" id="socialUserXP">0 XP</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card" style="margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <h3 style="margin-bottom:0; font-family:'Syne', sans-serif;">🎯 Weekly Challenge</h3>
+              <span class="badge-top" style="margin-bottom:0; font-size:10px; padding:4px 8px;">2 Days Left</span>
+            </div>
+            <p style="font-size:13px; color:var(--text-2); margin-bottom:16px;">
+              Complete 5 workouts this week to earn the <strong>Fitness Pioneer</strong> badge and an exclusive profile ring.
+            </p>
+            <div class="prog-wrap" style="height:8px; margin-bottom:8px;">
+               <div class="prog-fill" style="width:60%; background:linear-gradient(90deg, #10b981, #3b82f6);"></div>
+            </div>
+            <div class="text-muted" style="font-size:11px; text-align:right;">3 / 5 Workouts</div>
+            <button class="primary-btn" style="width:100%; margin-top:16px;">Join Challenge</button>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-bottom:12px; font-family:'Syne', sans-serif;">🤝 Add Friends</h3>
+            <div style="display:flex; gap:8px;">
+              <input type="text" placeholder="Enter username or email..." style="flex:1; padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:var(--surface);">
+              <button class="ghost-btn" style="padding:10px 16px;">Send</button>
+            </div>
+            <div class="text-muted" style="margin-top:12px; font-size:11px; text-align:center;">
+              Social features are currently in beta mode.
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 

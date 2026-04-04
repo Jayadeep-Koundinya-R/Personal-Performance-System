@@ -113,6 +113,7 @@ function renderBadge(badge, isUnlocked, stats) {
 function calculateAchievementStats() {
     const state = getState();
     const habits = state.habits || [];
+    const stats = state.stats || {};
     
     // Get all completed history across all habits
     let totalCompletions = 0;
@@ -124,12 +125,12 @@ function calculateAchievementStats() {
 
     return {
         totalCompletions,
-        bestStreak: state.stats.streak,
+        bestStreak: stats.streak || 0,
         totalHabits: habits.length,
-        level: state.stats.level,
-        allDoneInADay: false,
-        creditsUsed: 0,
-        loginStreak: 1
+        level: stats.level || 1,
+        allDoneInADay: !!(stats.perfectDays && stats.perfectDays.length > 0),
+        creditsUsed: stats.totalCreditsUsed || 0,
+        loginStreak: stats.loginStreak || 1
     };
 }
 
@@ -151,9 +152,11 @@ function isBadgeUnlocked(badge, stats) {
         case 'half_century':    return stats.totalCompletions >= 50;
         case 'centurion':       return stats.totalCompletions >= 100;
         case 'legendary':       return stats.totalCompletions >= 500;
+        case 'perfect_day':     return stats.allDoneInADay;
         case 'xp_hunter':       return stats.level >= 5;
         case 'habit_builder':   return stats.totalHabits >= 5;
         case 'streak_master':   return stats.creditsUsed >= 1;
+        case 'dedication':      return stats.loginStreak >= 7;
         default:                return false;
     }
 }

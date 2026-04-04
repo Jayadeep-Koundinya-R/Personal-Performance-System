@@ -27,8 +27,18 @@ function notifyHabitsUpdated() {
 ───────────────────────────────────── */
 export function initHabits(user) {
     const storageKey  = `habits_${user.email || "guest"}`;
+    const statsKey    = `stats_${user.email || "guest"}`;
     const loadedHabits = getData(storageKey, []);
-    updateState({ habits: loadedHabits, storageKey });
+    const loadedStats  = getData(statsKey, null);
+    
+    updateState({ habits: loadedHabits, storageKey, statsKey });
+    
+    // Merge loaded stats into state
+    if (loadedStats) {
+        const currentStats = getState().stats;
+        updateState({ stats: { ...currentStats, ...loadedStats } });
+    }
+    
     dailyReset();
     return getState().habits;
 }
@@ -38,6 +48,11 @@ export function saveHabits() {
     saveData(storageKey, habits);
 }
 
+export function saveStats() {
+    const { stats, statsKey } = getState();
+    if (statsKey) saveData(statsKey, stats);
+}
+
 /* ─────────────────────────────────────
    DAILY RESET
    Runs on every app open. Advances due dates that have passed and
@@ -45,8 +60,25 @@ export function saveHabits() {
 ───────────────────────────────────── */
 function dailyReset() {
     const today   = getToday();
+    const todayStr= getTodayStr();
     let   changed = false;
-    const { habits } = getState();
+    let   statsChanged = false;
+    const state = getState();
+    const habits = state.habits;
+    const stats = state.stats;
+
+    // --- Login Streak Logic ---
+    if (stats.lastLoginDate !== todayStr) {
+        if (stats.lastLoginDate) {
+            const diff = Math.round((today - new Date(stats.lastLoginDate)) / 864e5);
+            if (diff === 1) stats.loginStreak++;
+            else if (diff > 1) stats.loginStreak = 1;
+        } else {
+            stats.loginStreak = 1;
+        }
+        stats.lastLoginDate = todayStr;
+        statsChanged = true;
+    }
 
     habits.forEach(habit => {
         if (habit.period === "Today") return;
@@ -59,8 +91,14 @@ function dailyReset() {
             const wasCompleted = habit.completedDates.includes(dueDateStr);
 
             if (!wasCompleted && habit.streak > 0) {
-                if (habit.freezeCredits > 0) habit.freezeCredits--;
-                else                         habit.streak = 0;
+                if (habit.freezeCredits > 0) {
+                    habit.freezeCredits--;
+                    stats.totalCreditsUsed = (stats.totalCreditsUsed || 0) + 1;
+                    statsChanged = true;
+                }
+                else {
+                    habit.streak = 0;
+                }
             }
 
             // Advance due date until it's >= today
@@ -74,6 +112,10 @@ function dailyReset() {
     });
 
     if (changed) saveHabits();
+    if (statsChanged) {
+        updateState({ stats });
+        saveStats();
+    }
 }
 
 /* ─────────────────────────────────────
@@ -161,6 +203,27 @@ export function updateHabitCompletion(habit, isCompleted) {
             habit.lastCompletedDate = null;
             habit.streak = 0;
         }
+    }
+
+    // --- Perfect Day Logic ---
+    const state = getState();
+    const stats = state.stats;
+    const allHabits = state.habits;
+    
+    // Check if what is due today is completely done
+    const dueToday = allHabits.filter(h => isHabitDueToday(h));
+    const allDone = dueToday.length > 0 && dueToday.every(h => h.completedDates.includes(todayStr));
+    
+    if (!stats.perfectDays) stats.perfectDays = [];
+    
+    if (allDone && !stats.perfectDays.includes(todayStr)) {
+        stats.perfectDays.push(todayStr);
+        updateState({ stats });
+        saveStats();
+    } else if (!allDone && stats.perfectDays.includes(todayStr)) {
+        stats.perfectDays = stats.perfectDays.filter(d => d !== todayStr);
+        updateState({ stats });
+        saveStats();
     }
 
     saveHabits();

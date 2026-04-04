@@ -157,11 +157,7 @@ body::before {
   opacity: 0;
   pointer-events: none;
 }
-.sidebar.collapsed .logo-inline {
-  opacity: 0;
-  overflow: hidden;
-  width: 0;
-}
+.sidebar.collapsed .logo-inline, .sidebar.collapsed .theme-panel { opacity: 0; overflow: hidden; width: 0; position: absolute; pointer-events: none; } .sidebar.collapsed .sidebar-header { padding: 0; justify-content: center; }
 
 .sidebar-header {
   display: flex;
@@ -2601,3 +2597,4 @@ button {
   gap: 12px;
   align-items: center;
 }
+

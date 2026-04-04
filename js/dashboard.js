@@ -281,6 +281,8 @@ export function updateAllStats() {
     updateProgressWidget();
     updateWeeklyChart();
     updateLevelWidget();
+    updateAchievementWidget();
+    updateSocialUI();
     updateDateDisplay();
     renderDashboardReminderWidget();
     renderNotificationCenter();
@@ -857,6 +859,72 @@ export function updateLevelWidget() {
     setBar('xpBar', (xpInLevel / xpThreshold) * 100, 'linear-gradient(90deg, #f59e0b, #f97316)');
     setEl('xpToNext', `${xpThreshold - xpInLevel} XP to Level ${level + 1}`);
     setEl('userLevelDisplay', `Level ${level} • ${xp} XP`);
+}
+
+export function updateAchievementWidget() {
+    // Dynamically import to get access to constants and logic without circularity issues
+    import('./achievements.js').then(module => {
+        const stats = module.calculateAchievementStats();
+        // 13 is the total badges in achievements.js
+        const totalBadges = 13; 
+        let unlockedCount = 0;
+        
+        // Use a simple version of the check logic for the dashboard
+        const BADGE_IDS = [
+            'first_step', 'on_a_roll', 'week_warrior', 'monthly_master',
+            'getting_started', 'half_century', 'centurion', 'legendary',
+            'perfect_day', 'habit_builder', 'streak_master', 'xp_hunter', 'dedication'
+        ];
+        
+        // This is a bit redundant but safe for a quick dashboard widget
+        let lastBadge = null;
+        BADGE_IDS.forEach(id => {
+            if (module.isBadgeUnlocked({id}, stats)) {
+                unlockedCount++;
+                lastBadge = id;
+            }
+        });
+
+        const percent = Math.round((unlockedCount / totalBadges) * 100);
+        setEl('dashAchievementCount', `${unlockedCount} / ${totalBadges}`);
+        setEl('dashAchievementPercent', `${percent}%`);
+        setBar('dashAchievementBar', percent);
+
+        if (lastBadge) {
+            const badgeMeta = {
+                'first_step': { n: 'First Step', i: '🌱' },
+                'on_a_roll': { n: 'On a Roll', i: '🔥' },
+                'week_warrior': { n: 'Week Warrior', i: '⚔️' },
+                'monthly_master': { n: 'Monthly Master', i: '🏆' },
+                'getting_started': { n: 'Getting Started', i: '✅' },
+                'half_century': { n: 'Half Century', i: '🎯' },
+                'centurion': { n: 'Centurion', i: '💯' },
+                'legendary': { n: 'Legendary', i: '👑' },
+                'perfect_day': { n: 'Perfect Day', i: '⭐' },
+                'habit_builder': { n: 'Habit Builder', i: '📋' },
+                'streak_master': { n: 'Streak Master', i: '❄️' },
+                'xp_hunter': { n: 'XP Hunter', i: '⬆️' },
+                'dedication': { n: 'Dedication', i: '📅' }
+            }[lastBadge];
+
+            const iconEl = document.getElementById('dashLatestBadgeIcon');
+            if (iconEl) {
+                iconEl.textContent = badgeMeta.i;
+                iconEl.style.filter = 'none';
+                iconEl.style.opacity = '1';
+            }
+            setEl('dashLatestBadgeText', `Latest: ${badgeMeta.n}`);
+        }
+    });
+}
+
+export function updateSocialUI() {
+    const { habits } = getState();
+    const xp = calculateTotalXP(habits);
+    const level = calculateLevel(habits);
+    
+    setEl('socialUserLevel', `Level ${level}`);
+    setEl('socialUserXP', `${xp.toLocaleString()} XP`);
 }
 
 export function updateDateDisplay() {
