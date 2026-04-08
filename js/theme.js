@@ -3,6 +3,8 @@
  * Handles Dark/Light mode switching and persistence
  */
 
+let delegateBound = false;
+
 export function initTheme() {
     const savedTheme = localStorage.getItem('pps_theme') || 'dark';
     applyTheme(savedTheme);
@@ -11,9 +13,18 @@ export function initTheme() {
 
 export function bindThemeToggles() {
     document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
-        if (btn.dataset.themeBound === 'true') return;
         btn.dataset.themeBound = 'true';
-        btn.addEventListener('click', toggleTheme);
+    });
+
+    if (delegateBound) return;
+    delegateBound = true;
+
+    document.addEventListener('click', event => {
+        const button = event.target.closest('[data-theme-toggle]');
+        if (!button) return;
+
+        event.preventDefault();
+        toggleTheme();
     });
 }
 
@@ -39,6 +50,7 @@ function applyTheme(theme) {
 function updateToggleUI(theme) {
     const modeName = theme === 'light' ? 'Light' : 'Dark';
     const nextTitle = theme === 'light' ? 'Switch to Dark' : 'Switch to Light';
+    const isLight = theme === 'light';
 
     document.querySelectorAll('[data-theme-name]').forEach(el => {
         el.textContent = modeName;
@@ -47,5 +59,6 @@ function updateToggleUI(theme) {
     document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
         btn.title = nextTitle;
         btn.setAttribute('aria-label', nextTitle);
+        btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
     });
 }

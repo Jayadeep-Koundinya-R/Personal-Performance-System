@@ -20,12 +20,6 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo-inline">PPS<span>.</span></div>
-      
-      <div class="theme-panel sidebar-theme" data-theme-panel>
-        <button class="theme-toggle-btn" type="button" data-theme-toggle>
-          <span class="theme-toggle-name" data-theme-name>Dark</span>
-        </button>
-      </div>
 
       <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMobileSidebar()" aria-label="Toggle sidebar">
         <span></span><span></span><span></span>
@@ -42,8 +36,9 @@
         <li class="nav-item" data-section="habitManagerSection">⚙️ Habit Manager</li>
         <li class="nav-item" data-section="reminderSection">🔔 Reminders</li>
         <li class="nav-item" data-section="socialSection">🌍 Social <span class="badge" style="font-size:9px; background:var(--accent-dim); color:var(--accent); padding:2px 6px; border-radius:10px; margin-left:auto; font-weight: 700;">Soon</span></li>
+        <li class="nav-item" data-section="tasksSection">👷‍♂️Tasks</li>
         <li class="nav-item" data-section="settingsSection">🛠 Settings</li>
-        <li class="nav-item" data-section="tasksSection">Tasks</li>
+        
       </ul>
     </nav>
     <div class="sidebar-footer">
@@ -60,169 +55,259 @@
   <main class="main-content">
 
     <section id="dashboardSection" class="section active-section">
-      <div class="dashboard-header">
-        <div>
-          <h1 id="greetingDisplay"></h1>
-          <div class="page-sub" id="dashboardDate"></div>
-          <div id="dailyQuote" class="text-muted" style="font-size:12px; font-style:italic; margin-top:8px; border-left:2px solid var(--accent); padding-left:10px;"><span id="quoteText">Loading quote...</span> <span id="quoteAuthor"></span></div>
-        </div>
-        <div class="dashboard-header-actions">
-          <div class="notification-center">
-            <button class="notification-trigger" id="notificationBell" type="button" aria-label="Open alerts" aria-expanded="false" aria-controls="notificationPanel">
-              <span class="notification-symbol">🔔</span>
-              <span class="notification-count" id="notificationCountBadge" hidden>0</span>
-            </button>
+      <div class="dashboard-shell">
+        <div class="dashboard-hero-panel">
+          <div class="dashboard-hero-copy">
+            <div class="dashboard-eyebrow">Performance command center</div>
+            <h1 id="greetingDisplay"></h1>
+            <div class="page-sub dashboard-hero-date" id="dashboardDate"></div>
+            <div id="dailyQuote" class="dashboard-quote">
+              <span class="dashboard-quote-mark">"</span>
+              <div class="dashboard-quote-copy">
+                <span id="quoteText">Loading quote...</span>
+                <span id="quoteAuthor" class="dashboard-quote-author"></span>
+              </div>
+            </div>
+            <div class="dashboard-chip-row">
+              <span class="dashboard-chip dashboard-chip-accent">Live habits</span>
+              <span class="dashboard-chip">Reminder alerts</span>
+              <span class="dashboard-chip">Task planning</span>
+            </div>
+          </div>
 
-            <div class="notification-panel" id="notificationPanel">
-              <div class="notification-panel-head">
-                <div>
-                  <strong>Reminder Alerts</strong>
-                  <span id="notificationUnreadLabel">All caught up</span>
-                </div>
-                <div class="notification-panel-actions">
-                  <button class="ghost-btn notification-mini-btn" id="markAlertsReadBtn" type="button">Mark all read</button>
-                  <button class="ghost-btn notification-mini-btn" id="clearAlertsBtn" type="button">Clear</button>
+          <div class="dashboard-hero-side">
+            <div class="dashboard-header-actions">
+              <div class="notification-center">
+                <button class="notification-trigger" id="notificationBell" type="button" aria-label="Open alerts" aria-expanded="false" aria-controls="notificationPanel">
+                  <span class="notification-symbol">Alerts</span>
+                  <span class="notification-count" id="notificationCountBadge" hidden>0</span>
+                </button>
+
+                <div class="notification-panel" id="notificationPanel">
+                  <div class="notification-panel-head">
+                    <div>
+                      <strong>Reminder Alerts</strong>
+                      <span id="notificationUnreadLabel">All caught up</span>
+                    </div>
+                    <div class="notification-panel-actions">
+                      <button class="ghost-btn notification-mini-btn" id="markAlertsReadBtn" type="button">Mark all read</button>
+                      <button class="ghost-btn notification-mini-btn" id="clearAlertsBtn" type="button">Clear</button>
+                    </div>
+                  </div>
+                  <div class="notification-list" id="notificationList"></div>
                 </div>
               </div>
-              <div class="notification-list" id="notificationList"></div>
+              <select class="global-filter" id="globalFilter" onchange="window.setGlobalFilter ? window.setGlobalFilter(this.value) : null" aria-label="Date Range">
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+              </select>
+              <input type="date" id="appDateSetter" class="global-filter" onchange="setTimeSetter(this.value)" title="View different days">
             </div>
-          </div>
-          <select class="global-filter" id="globalFilter" onchange="window.setGlobalFilter ? window.setGlobalFilter(this.value) : null" aria-label="Date Range">
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
-          <input type="date" id="appDateSetter" class="global-filter" onchange="setTimeSetter(this.value)" title="View different days">
 
-        </div>
-      </div>
-
-      <div class="stats-row">
-        <div class="stat-card purple">
-          <div class="stat-num" id="completionRate">0%</div>
-          <div class="stat-label">Completion Rate</div>
-          <div class="stat-badge">Today's habits</div>
-        </div>
-        <div class="stat-card orange">
-          <div class="stat-num" id="currentStreak">🔥 0</div>
-          <div class="stat-label">Current Streak</div>
-          <div class="stat-badge">Keep going!</div>
-        </div>
-        <div class="stat-card cyan">
-          <div class="stat-num" id="freezeCreditsDisplay">0</div>
-          <div class="stat-label">Freeze Credits</div>
-          <div class="stat-badge">Saves your streak</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-num" id="weeklyPoints">0</div>
-          <div class="stat-label">Points This Week</div>
-          <div class="stat-badge">+10 XP per habit</div>
-        </div>
-      </div>
-
-      <div class="stats-row stats-row-sm">
-        <div class="card">
-          <div class="stats-card-icon">🏅</div>
-          <div class="stats-card-content">
-            <div class="stats-card-kicker">Best Category</div>
-            <div id="bestCategoryDisplay" class="stats-card-val">—</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="stats-card-icon">📋</div>
-          <div class="stats-card-content">
-            <div class="stats-card-kicker">Total Habits</div>
-            <div id="totalHabitsDisplay" class="stats-card-val">0 tracked</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="stats-card-icon">✅</div>
-          <div class="stats-card-content">
-            <div class="stats-card-kicker">All-Time Done</div>
-            <div id="allTimeDoneDisplay" class="stats-card-val">0 completions</div>
-          </div>
-        </div>
-      </div>
-
-
-      <div class="dashboard-grid">
-        <div class="left-column">
-          <div class="card critical-card">
-            <h3>🔴 Critical Tasks</h3>
-            <div id="criticalList"></div>
-          </div>
-          <div class="card high-card">
-            <h3>🟠 High Priority</h3>
-            <div id="highList"></div>
-          </div>
-          <div class="card medium-card">
-            <h3>🟡 Medium Focus</h3>
-            <div id="mediumList"></div>
-          </div>
-          <div class="card upcoming-card">
-            <div class="card-header">
-              <h3>🟢 Upcoming</h3>
-              <span class="toggle-btn">Show More</span>
+            <div class="dashboard-hero-note">
+              <div class="dashboard-hero-note-label">Today at a glance</div>
+              <p>Your habits, reminders, streaks, and task planning now sit in one clearer dashboard so your next move is easy to spot.</p>
             </div>
-            <div id="upcomingList"></div>
           </div>
         </div>
 
-        <div class="right-column">
-          <div class="widget-card">
-            <h4>Today's Progress</h4>
-            <div class="stat-value" id="todayProgress">0/0</div>
-            <div class="text-muted mt-4" style="font-size:12px;">habits completed</div>
-            <div class="prog-wrap">
-              <div class="prog-fill" id="todayProgressBar" style="width:0%;"></div>
+        <div class="dashboard-kpi-grid">
+          <div class="stat-card purple dashboard-kpi-card">
+            <div class="dashboard-kpi-top">
+              <span class="dashboard-kpi-index">01</span>
+              <span class="stat-badge">Today's habits</span>
+            </div>
+            <div class="stat-num" id="completionRate">0%</div>
+            <div class="stat-label">Completion Rate</div>
+          </div>
+
+          <div class="stat-card orange dashboard-kpi-card">
+            <div class="dashboard-kpi-top">
+              <span class="dashboard-kpi-index">02</span>
+              <span class="stat-badge">Momentum</span>
+            </div>
+            <div class="stat-num" id="currentStreak">0</div>
+            <div class="stat-label">Current Streak</div>
+          </div>
+
+          <div class="stat-card cyan dashboard-kpi-card">
+            <div class="dashboard-kpi-top">
+              <span class="dashboard-kpi-index">03</span>
+              <span class="stat-badge">Protection</span>
+            </div>
+            <div class="stat-num" id="freezeCreditsDisplay">0</div>
+            <div class="stat-label">Freeze Credits</div>
+          </div>
+
+          <div class="stat-card green dashboard-kpi-card">
+            <div class="dashboard-kpi-top">
+              <span class="dashboard-kpi-index">04</span>
+              <span class="stat-badge">Growth</span>
+            </div>
+            <div class="stat-num" id="weeklyPoints">0</div>
+            <div class="stat-label">Points This Week</div>
+          </div>
+        </div>
+
+        <div class="dashboard-micro-grid">
+          <div class="card dashboard-mini-card">
+            <div class="stats-card-icon">BC</div>
+            <div class="stats-card-content">
+              <div class="stats-card-kicker">Best Category</div>
+              <div id="bestCategoryDisplay" class="stats-card-val">-</div>
             </div>
           </div>
-          <div class="widget-card">
-            <h4>Weekly Snapshot</h4>
-            <div class="bar-chart" id="weeklyChart"></div>
-          </div>
-          <div class="widget-card">
-            <h4>Level Progress</h4>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <span class="stat-value" id="userLevel" style="font-size:20px;">Lv. 1</span>
-              <span class="text-muted mono" id="xpDisplay" style="font-size:12px;">0 / 100 XP</span>
-            </div>
-            <div class="prog-wrap">
-              <div class="prog-fill" id="xpBar" style="width:0%;"></div>
-            </div>
-            <div class="text-muted mt-4" style="font-size:11px;" id="xpToNext">100 XP to next level</div>
-          </div>
-          <div class="widget-card">
-            <h4>Achievements</h4>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <span class="stat-value" id="dashAchievementCount" style="font-size:20px;">0 / 13</span>
-              <span class="text-accent mono" id="dashAchievementPercent" style="font-size:12px;">0%</span>
-            </div>
-            <div class="prog-wrap">
-              <div class="prog-fill" id="dashAchievementBar" style="width:0%; background: linear-gradient(90deg, var(--accent), var(--accent2));"></div>
-            </div>
-            <div class="text-muted mt-8" style="font-size:11px; display: flex; align-items: center; gap: 6px;">
-              <span id="dashLatestBadgeIcon" style="filter:grayscale(1); opacity:0.5;">🏆</span>
-              <span id="dashLatestBadgeText">Complete habits to earn badges</span>
+
+          <div class="card dashboard-mini-card">
+            <div class="stats-card-icon">TH</div>
+            <div class="stats-card-content">
+              <div class="stats-card-kicker">Total Habits</div>
+              <div id="totalHabitsDisplay" class="stats-card-val">0 tracked</div>
             </div>
           </div>
-          <div class="widget-card reminder-widget-card">
-            <div class="widget-card-head">
-              <h4>Reminder Snapshot</h4>
-              <span class="status-tag tag-upcoming" id="dashboardReminderCount">0 enabled</span>
-            </div>
-            <div class="reminder-widget-headline" id="dashboardReminderHeadline">No active reminders yet</div>
-            <div class="dashboard-reminder-list" id="dashboardReminderList">
-              <div class="widget-empty">Add a reminder to surface it here and in the alert bell.</div>
+
+          <div class="card dashboard-mini-card">
+            <div class="stats-card-icon">AD</div>
+            <div class="stats-card-content">
+              <div class="stats-card-kicker">All-Time Done</div>
+              <div id="allTimeDoneDisplay" class="stats-card-val">0 completions</div>
             </div>
           </div>
-          <div class="widget-card task-hub-widget">
-            <div class="widget-card-head">
-              <h4>Task Hub</h4>
-              <span class="status-tag tag-upcoming" id="dashboardTaskCount">0 pending</span>
+        </div>
+
+        <div class="dashboard-main-grid">
+          <div class="card dashboard-focus-board">
+            <div class="dashboard-panel-head">
+              <div>
+                <div class="dashboard-panel-kicker">Execution board</div>
+                <h3 class="dashboard-panel-title">Focus lanes</h3>
+              </div>
+              <span class="status-tag tag-upcoming">Auto-sorted from habits</span>
             </div>
-            <div class="task-hub-copy" id="dashboardTaskStatus">Plan tasks now and connect your calendar when the sync launches.</div>
-            <button class="ghost-btn" id="openTasksSectionBtn" type="button">Open Tasks</button>
+
+            <div class="dashboard-focus-lanes">
+              <div class="dashboard-lane critical-card">
+                <div class="dashboard-lane-head">
+                  <div class="dashboard-lane-label">
+                    <span class="dashboard-lane-dot"></span>
+                    <h4>Critical now</h4>
+                  </div>
+                  <p class="dashboard-lane-copy">Due today and best handled first.</p>
+                </div>
+                <div id="criticalList"></div>
+              </div>
+
+              <div class="dashboard-lane high-card">
+                <div class="dashboard-lane-head">
+                  <div class="dashboard-lane-label">
+                    <span class="dashboard-lane-dot"></span>
+                    <h4>High priority</h4>
+                  </div>
+                  <p class="dashboard-lane-copy">Important follow-up coming soon.</p>
+                </div>
+                <div id="highList"></div>
+              </div>
+
+              <div class="dashboard-lane medium-card">
+                <div class="dashboard-lane-head">
+                  <div class="dashboard-lane-label">
+                    <span class="dashboard-lane-dot"></span>
+                    <h4>Medium focus</h4>
+                  </div>
+                  <p class="dashboard-lane-copy">Good momentum tasks for the day.</p>
+                </div>
+                <div id="mediumList"></div>
+              </div>
+
+              <div class="dashboard-lane upcoming-card">
+                <div class="dashboard-lane-head">
+                  <div class="dashboard-lane-label">
+                    <span class="dashboard-lane-dot"></span>
+                    <h4>Upcoming</h4>
+                  </div>
+                  <p class="dashboard-lane-copy">Everything queued after the essentials.</p>
+                </div>
+                <div id="upcomingList"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-widget-column">
+            <div class="dashboard-widget-grid">
+              <div class="widget-card dashboard-utility-card dashboard-summary-card">
+                <div class="widget-card-head">
+                  <h4>Today's Progress</h4>
+                  <span class="dashboard-widget-chip">Live</span>
+                </div>
+                <div class="stat-value" id="todayProgress">0/0</div>
+                <div class="dashboard-widget-note">Habits completed today</div>
+                <div class="prog-wrap dashboard-progress-wrap">
+                  <div class="prog-fill" id="todayProgressBar" style="width:0%;"></div>
+                </div>
+              </div>
+
+              <div class="widget-card dashboard-utility-card dashboard-summary-card dashboard-chart-card">
+                <div class="widget-card-head">
+                  <h4>Weekly Snapshot</h4>
+                  <span class="dashboard-widget-chip">7 days</span>
+                </div>
+                <div class="bar-chart dashboard-weekly-chart" id="weeklyChart"></div>
+              </div>
+
+              <div class="widget-card dashboard-utility-card dashboard-summary-card">
+                <div class="widget-card-head">
+                  <h4>Level Progress</h4>
+                  <span class="dashboard-widget-chip">XP</span>
+                </div>
+                <div class="dashboard-level-row">
+                  <span class="stat-value dashboard-level-value" id="userLevel">Lv. 1</span>
+                  <span class="text-muted mono dashboard-level-copy" id="xpDisplay">0 / 100 XP</span>
+                </div>
+                <div class="prog-wrap dashboard-progress-wrap">
+                  <div class="prog-fill" id="xpBar" style="width:0%;"></div>
+                </div>
+                <div class="dashboard-widget-note" id="xpToNext">100 XP to next level</div>
+              </div>
+
+              <div class="widget-card dashboard-utility-card dashboard-summary-card">
+                <div class="widget-card-head">
+                  <h4>Achievements</h4>
+                  <span class="dashboard-widget-chip">Badges</span>
+                </div>
+                <div class="dashboard-level-row">
+                  <span class="stat-value dashboard-level-value" id="dashAchievementCount">0 / 13</span>
+                  <span class="text-accent mono dashboard-level-copy" id="dashAchievementPercent">0%</span>
+                </div>
+                <div class="prog-wrap dashboard-progress-wrap">
+                  <div class="prog-fill" id="dashAchievementBar" style="width:0%; background: linear-gradient(90deg, var(--accent), var(--accent2));"></div>
+                </div>
+                <div class="dashboard-badge-row">
+                  <span id="dashLatestBadgeIcon">Badge</span>
+                  <span id="dashLatestBadgeText">Complete habits to earn badges</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="widget-card reminder-widget-card dashboard-utility-card dashboard-detail-card">
+              <div class="widget-card-head">
+                <h4>Reminder Snapshot</h4>
+                <span class="status-tag tag-upcoming" id="dashboardReminderCount">0 enabled</span>
+              </div>
+              <div class="reminder-widget-headline" id="dashboardReminderHeadline">No active reminders yet</div>
+              <div class="dashboard-reminder-list" id="dashboardReminderList">
+                <div class="widget-empty">Add a reminder to surface it here and in the alert bell.</div>
+              </div>
+            </div>
+
+            <div class="widget-card task-hub-widget dashboard-utility-card dashboard-detail-card">
+              <div class="widget-card-head">
+                <h4>Task Hub</h4>
+                <span class="status-tag tag-upcoming" id="dashboardTaskCount">0 pending</span>
+              </div>
+              <div class="task-hub-copy" id="dashboardTaskStatus">Plan tasks now and connect your calendar when the sync launches.</div>
+              <button class="ghost-btn" id="openTasksSectionBtn" type="button">Open Tasks</button>
+            </div>
           </div>
         </div>
       </div>
@@ -836,6 +921,21 @@
             <span class="settings-badge">Live</span>
           </div>
           <div class="settings-stack">
+            <div class="settings-row settings-row-theme">
+              <div class="settings-row-main">
+                <span class="settings-icon">T</span>
+                <div>
+                  <div class="settings-label">Theme Mode</div>
+                  <div class="settings-desc">Switch between dark and light mode for laptop and mobile.</div>
+                </div>
+              </div>
+              <div class="theme-panel settings-theme-panel" data-theme-panel>
+                <span class="theme-panel-title">Theme</span>
+                <button class="theme-toggle-btn" id="settingsThemeToggle" type="button" data-theme-toggle>
+                  <span class="theme-toggle-name" data-theme-name>Dark</span>
+                </button>
+              </div>
+            </div>
             <div class="settings-row">
               <div class="settings-row-main">
                 <span class="settings-icon">X</span>
