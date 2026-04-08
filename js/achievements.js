@@ -47,7 +47,7 @@ export function renderAchievements() {
     let html = '';
 
     // Unlocked Section (Always show header)
-    html += `<h3 style="grid-column: 1/-1; font-size:12px; text-transform:uppercase; color:var(--accent); letter-spacing:1px; margin: 100px 0 5px 0;">🏆 Earned Badges</h3>`;
+    html += `<h3 style="grid-column: 1/-1; font-size:12px; text-transform:uppercase; color:var(--accent); letter-spacing:1px; margin: 8px 0 5px 0;">🏆 Earned Badges</h3>`;
     if (unlockedBadges.length > 0) {
         html += unlockedBadges.map(badge => renderBadge(badge, true, stats)).join('');
     } else {
@@ -110,7 +110,7 @@ function renderBadge(badge, isUnlocked, stats) {
     `;
 }
 
-function calculateAchievementStats() {
+export function calculateAchievementStats() {
     const state = getState();
     const habits = state.habits || [];
     const stats = state.stats || {};
@@ -142,7 +142,7 @@ function checkAllBadges(stats) {
     return count;
 }
 
-function isBadgeUnlocked(badge, stats) {
+export function isBadgeUnlocked(badge, stats) {
     switch (badge.id) {
         case 'first_step':      return stats.totalCompletions >= 1;
         case 'on_a_roll':       return stats.bestStreak >= 3;

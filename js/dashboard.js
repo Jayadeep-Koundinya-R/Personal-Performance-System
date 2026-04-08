@@ -4,13 +4,14 @@
  */
 
 import { getData, getStorageSize, saveData } from './storageService.js';
-import { CONFIG } from './config.js';
+import { CONFIG, getAppSettings, saveAppSettings } from './config.js';
 import { getState, updateState } from './state.js';
 import { isHabitDueOn, updateHabitCompletion } from './habits.js';
 import {
     calculateLevel,
     calculateTotalXP,
     calculateWeeklyPoints,
+    getLocalDateKey,
     getToday,
     getTodayStr,
     isDateWithinRange,
@@ -121,7 +122,7 @@ function getAnalyticsSnapshot() {
         totalDone,
         avgCompletion: totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0,
         bestStreak,
-        totalXP: totalDone * (CONFIG.XP_PER_COMPLETION || 10)
+        totalXP: totalDone * getAppSettings().xpPerCompletion
     };
 }
 
@@ -345,8 +346,10 @@ export function updateCompletionStats() {
     setEl('totalXP', analytics.totalXP);
     setEl('totalDone', analytics.totalDone);
 
+    const currentStats = getState().stats;
     updateState({
         stats: {
+            ...currentStats,
             totalXP,
             level,
             streak: maxStreak,
@@ -404,7 +407,7 @@ function getAnalyticsChartBars() {
         return Array.from({ length: 7 }, (_, index) => {
             const date = new Date(today);
             date.setDate(today.getDate() - (6 - index));
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = getLocalDateKey(date);
             return {
                 label: date.toLocaleDateString(undefined, { weekday: 'short' }),
                 value: completionMap[dateStr] || 0,
@@ -422,7 +425,7 @@ function getAnalyticsChartBars() {
 
             let value = 0;
             getDateRangeArray(bucketStart, bucketEnd).forEach(date => {
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = getLocalDateKey(date);
                 value += completionMap[dateStr] || 0;
             });
 
@@ -471,7 +474,7 @@ export function updateWeeklyChart() {
     const dashboardBars = Array.from({ length: 7 }, (_, index) => {
         const date = new Date(today);
         date.setDate(today.getDate() - (6 - index));
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = getLocalDateKey(date);
         return {
             label: date.toLocaleDateString(undefined, { weekday: 'short' }),
             value: completionMap[dateStr] || 0,
@@ -542,7 +545,7 @@ export function renderHeatmap() {
     grid.innerHTML = weeks.map(week => `
         <div class="heatmap-week">
             ${week.map(date => {
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = getLocalDateKey(date);
                 if (date < start || date > today) {
                     return '<div class="heatmap-cell heatmap-cell-empty"></div>';
                 }
@@ -557,7 +560,7 @@ export function renderHeatmap() {
                     else level = 4;
                 }
 
-                const todayClass = dateStr === today.toISOString().split('T')[0] ? ' heatmap-cell-today' : '';
+                const todayClass = dateStr === getLocalDateKey(today) ? ' heatmap-cell-today' : '';
                 const title = count > 0
                     ? `${dateStr} • ${count} completion${count === 1 ? '' : 's'}`
                     : `${dateStr} • No completions`;
@@ -577,6 +580,7 @@ export function renderDailyTracker() {
     if (!list) return;
 
     const todayStr = getTodayStr();
+    const { xpPerCompletion } = getAppSettings();
     const todayHabits = habits.filter(habit => isHabitDueOn(habit, todayStr));
 
     if (todayHabits.length === 0) {
@@ -612,7 +616,7 @@ export function renderDailyTracker() {
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
                             <span class="status-tag ${priorityClass}">${habit.priority}</span>
-                            <span class="status-tag ${done ? 'tag-done' : 'tag-today'}">${done ? `+${CONFIG.XP_PER_COMPLETION} XP ✓` : `+${CONFIG.XP_PER_COMPLETION} XP`}</span>
+                            <span class="status-tag ${done ? 'tag-done' : 'tag-today'}">${done ? `+${xpPerCompletion} XP ✓` : `+${xpPerCompletion} XP`}</span>
                         </div>
                     </div>
                 `;
@@ -851,7 +855,7 @@ export function updateLevelWidget() {
     const { habits } = getState();
     const xp = calculateTotalXP(habits);
     const level = calculateLevel(habits);
-    const xpThreshold = CONFIG.LEVEL_XP_THRESHOLD || 100;
+    const xpThreshold = getAppSettings().levelXpThreshold;
     const xpInLevel = xp % xpThreshold;
 
     setEl('userLevel', `Lv. ${level}`);
@@ -862,26 +866,38 @@ export function updateLevelWidget() {
 }
 
 export function updateAchievementWidget() {
-    // Dynamically import to get access to constants and logic without circularity issues
     import('./achievements.js').then(module => {
         const stats = module.calculateAchievementStats();
-        // 13 is the total badges in achievements.js
-        const totalBadges = 13; 
+        const totalBadges = 13;
         let unlockedCount = 0;
-        
-        // Use a simple version of the check logic for the dashboard
+
         const BADGE_IDS = [
             'first_step', 'on_a_roll', 'week_warrior', 'monthly_master',
             'getting_started', 'half_century', 'centurion', 'legendary',
             'perfect_day', 'habit_builder', 'streak_master', 'xp_hunter', 'dedication'
         ];
-        
-        // This is a bit redundant but safe for a quick dashboard widget
-        let lastBadge = null;
+
+        const BADGE_META = {
+            'first_step':      { n: 'First Step',      i: '🌱' },
+            'on_a_roll':       { n: 'On a Roll',        i: '🔥' },
+            'week_warrior':    { n: 'Week Warrior',     i: '⚔️' },
+            'monthly_master':  { n: 'Monthly Master',   i: '🏆' },
+            'getting_started': { n: 'Getting Started',  i: '✅' },
+            'half_century':    { n: 'Half Century',     i: '🎯' },
+            'centurion':       { n: 'Centurion',        i: '💯' },
+            'legendary':       { n: 'Legendary',        i: '👑' },
+            'perfect_day':     { n: 'Perfect Day',      i: '⭐' },
+            'habit_builder':   { n: 'Habit Builder',    i: '📋' },
+            'streak_master':   { n: 'Streak Master',    i: '❄️' },
+            'xp_hunter':       { n: 'XP Hunter',        i: '⬆️' },
+            'dedication':      { n: 'Dedication',       i: '📅' }
+        };
+
+        let lastBadgeId = null;
         BADGE_IDS.forEach(id => {
-            if (module.isBadgeUnlocked({id}, stats)) {
+            if (module.isBadgeUnlocked({ id }, stats)) {
                 unlockedCount++;
-                lastBadge = id;
+                lastBadgeId = id;
             }
         });
 
@@ -890,30 +906,15 @@ export function updateAchievementWidget() {
         setEl('dashAchievementPercent', `${percent}%`);
         setBar('dashAchievementBar', percent);
 
-        if (lastBadge) {
-            const badgeMeta = {
-                'first_step': { n: 'First Step', i: '🌱' },
-                'on_a_roll': { n: 'On a Roll', i: '🔥' },
-                'week_warrior': { n: 'Week Warrior', i: '⚔️' },
-                'monthly_master': { n: 'Monthly Master', i: '🏆' },
-                'getting_started': { n: 'Getting Started', i: '✅' },
-                'half_century': { n: 'Half Century', i: '🎯' },
-                'centurion': { n: 'Centurion', i: '💯' },
-                'legendary': { n: 'Legendary', i: '👑' },
-                'perfect_day': { n: 'Perfect Day', i: '⭐' },
-                'habit_builder': { n: 'Habit Builder', i: '📋' },
-                'streak_master': { n: 'Streak Master', i: '❄️' },
-                'xp_hunter': { n: 'XP Hunter', i: '⬆️' },
-                'dedication': { n: 'Dedication', i: '📅' }
-            }[lastBadge];
-
+        if (lastBadgeId && BADGE_META[lastBadgeId]) {
+            const meta = BADGE_META[lastBadgeId];
             const iconEl = document.getElementById('dashLatestBadgeIcon');
             if (iconEl) {
-                iconEl.textContent = badgeMeta.i;
+                iconEl.textContent = meta.i;
                 iconEl.style.filter = 'none';
                 iconEl.style.opacity = '1';
             }
-            setEl('dashLatestBadgeText', `Latest: ${badgeMeta.n}`);
+            setEl('dashLatestBadgeText', `Latest: ${meta.n}`);
         }
     });
 }
@@ -949,6 +950,7 @@ export function updateDateDisplay() {
 
 export function setupSettings(user) {
     setEl('settingsEmail', user.email || 'Guest');
+    const appSettings = getAppSettings();
 
     const storedName = getData(`pps_name_${user.email || 'guest'}`, '');
     const displayName = storedName || user.name || (user.email ? user.email.split('@')[0] : 'Guest');
@@ -959,6 +961,13 @@ export function setupSettings(user) {
 
     const nameInput = document.getElementById('settingsName');
     if (nameInput) nameInput.value = displayName;
+
+    const xpInput = document.getElementById('xpPerHabit');
+    const freezeInput = document.getElementById('defaultFreeze');
+    if (xpInput) xpInput.value = appSettings.xpPerCompletion;
+    if (freezeInput) freezeInput.value = appSettings.maxFreezeCredits;
+    setEl('settingsXpPreview', `${appSettings.xpPerCompletion} XP`);
+    setEl('settingsFreezePreview', `${appSettings.maxFreezeCredits} credits`);
 
     document.getElementById('saveNameBtn')?.addEventListener('click', () => {
         const newName = document.getElementById('settingsName')?.value.trim();
@@ -1024,6 +1033,33 @@ export function setupSettings(user) {
             if (field) field.value = '';
         });
         showSettingsMessage('Password updated.', 'success');
+    });
+
+    document.getElementById('savePreferencesBtn')?.addEventListener('click', () => {
+        const nextXp = Number(document.getElementById('xpPerHabit')?.value);
+        const nextFreeze = Number(document.getElementById('defaultFreeze')?.value);
+
+        if (!Number.isFinite(nextXp) || nextXp < 1) {
+            showSettingsMessage('XP per habit must be at least 1.');
+            return;
+        }
+        if (!Number.isFinite(nextFreeze) || nextFreeze < 0) {
+            showSettingsMessage('Freeze credits cannot be negative.');
+            return;
+        }
+
+        const savedSettings = saveAppSettings({
+            xpPerCompletion: nextXp,
+            maxFreezeCredits: nextFreeze
+        });
+
+        if (xpInput) xpInput.value = savedSettings.xpPerCompletion;
+        if (freezeInput) freezeInput.value = savedSettings.maxFreezeCredits;
+        setEl('settingsXpPreview', `${savedSettings.xpPerCompletion} XP`);
+        setEl('settingsFreezePreview', `${savedSettings.maxFreezeCredits} credits`);
+
+        document.dispatchEvent(new CustomEvent('habitsUpdated'));
+        showSettingsMessage('Preferences saved.', 'success');
     });
 
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {

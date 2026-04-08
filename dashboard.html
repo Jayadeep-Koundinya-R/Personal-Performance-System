@@ -43,6 +43,7 @@
         <li class="nav-item" data-section="reminderSection">🔔 Reminders</li>
         <li class="nav-item" data-section="socialSection">🌍 Social <span class="badge" style="font-size:9px; background:var(--accent-dim); color:var(--accent); padding:2px 6px; border-radius:10px; margin-left:auto; font-weight: 700;">Soon</span></li>
         <li class="nav-item" data-section="settingsSection">🛠 Settings</li>
+        <li class="nav-item" data-section="tasksSection">Tasks</li>
       </ul>
     </nav>
     <div class="sidebar-footer">
@@ -215,6 +216,14 @@
               <div class="widget-empty">Add a reminder to surface it here and in the alert bell.</div>
             </div>
           </div>
+          <div class="widget-card task-hub-widget">
+            <div class="widget-card-head">
+              <h4>Task Hub</h4>
+              <span class="status-tag tag-upcoming" id="dashboardTaskCount">0 pending</span>
+            </div>
+            <div class="task-hub-copy" id="dashboardTaskStatus">Plan tasks now and connect your calendar when the sync launches.</div>
+            <button class="ghost-btn" id="openTasksSectionBtn" type="button">Open Tasks</button>
+          </div>
         </div>
       </div>
     </section>
@@ -335,6 +344,8 @@
           <div class="stat-num" id="achUserLevel" style="font-size:20px;">1</div>
           <div class="text-muted" style="font-size:10px;">Level</div>
         </div>
+      </div>
+
       <div id="badgeGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;"></div>
     </section>
 
@@ -436,6 +447,119 @@
       <div class="card">
         <h3>Your Habits (<span id="habitCount">0</span>)</h3>
         <div id="habitList"></div>
+      </div>
+    </section>
+
+    <section id="tasksSection" class="section">
+      <div class="dashboard-header">
+        <div>
+          <h1>Tasks</h1>
+          <div class="page-sub">Plan tasks now, then connect Google Calendar or another calendar when the sync goes live.</div>
+        </div>
+      </div>
+
+      <div class="tasks-hero">
+        <div class="tasks-hero-copy">
+          <span class="settings-eyebrow">Task hub</span>
+          <h2>One place for tasks, reminders, and future calendar sync.</h2>
+          <p>Create tasks locally today. When calendar integration launches, PPS will use the signed-in email automatically the moment the user chooses to connect.</p>
+        </div>
+        <div class="tasks-hero-stats">
+          <div class="tasks-hero-stat">
+            <span>Saved Tasks</span>
+            <strong id="tasksTotalCount">0</strong>
+          </div>
+          <div class="tasks-hero-stat">
+            <span>Pending</span>
+            <strong id="tasksPendingCount">0</strong>
+          </div>
+          <div class="tasks-hero-stat">
+            <span>Completed</span>
+            <strong id="tasksCompletedCount">0</strong>
+          </div>
+          <div class="tasks-hero-stat">
+            <span>Calendar</span>
+            <strong id="tasksCalendarState">Not connected</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg" id="tasksMsg"></div>
+
+      <div class="tasks-layout">
+        <div class="card tasks-connect-card">
+          <div class="tasks-card-head">
+            <div>
+              <span class="tasks-kicker">Calendar sync</span>
+              <h3>Connect when ready</h3>
+              <p>Google Calendar and other calendar providers are coming soon. PPS will prefill the signed-in email automatically once the user clicks connect.</p>
+            </div>
+            <span class="tasks-badge">Coming Soon</span>
+          </div>
+
+          <div class="tasks-provider-grid">
+            <button class="tasks-provider" id="taskConnectGoogleBtn" type="button">
+              <span class="tasks-provider-title">Google Calendar</span>
+              <span class="tasks-provider-desc">Queue the sync request and auto-use your account email.</span>
+            </button>
+            <button class="tasks-provider" id="taskConnectOutlookBtn" type="button">
+              <span class="tasks-provider-title">Outlook Calendar</span>
+              <span class="tasks-provider-desc">Keep the same workflow ready for other calendars too.</span>
+            </button>
+          </div>
+
+          <div class="tasks-connection-panel">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Email To Use</label>
+              <input type="email" id="taskConnectionEmail" placeholder="Filled after connect request" readonly>
+            </div>
+            <div class="tasks-connection-copy">
+              <span class="tasks-connection-provider" id="taskConnectionProvider">Choose a calendar</span>
+              <p id="taskConnectionHint">Click connect and PPS will pull your sign-up email automatically.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card tasks-compose-card">
+          <div class="tasks-card-head">
+            <div>
+              <span class="tasks-kicker">Planner</span>
+              <h3>Create a task</h3>
+              <p>Save tasks now so they are ready for future calendar sync, reminders, and email flows.</p>
+            </div>
+            <span class="tasks-badge tasks-badge-live">Live</span>
+          </div>
+
+          <div class="form-group">
+            <label>Task Title</label>
+            <input type="text" id="taskTitle" placeholder="e.g. Submit internship application">
+          </div>
+          <div class="form-group">
+            <label>Due Date</label>
+            <input type="date" id="taskDueDate">
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <textarea id="taskNote" rows="4" placeholder="Add details, follow-up ideas, or anything you want synced later."></textarea>
+          </div>
+          <label class="tasks-email-toggle">
+            <input type="checkbox" id="taskEmailReminder" checked>
+            <span>Email me when reminders go live for this task</span>
+          </label>
+          <button class="primary-btn" id="saveTaskBtn" type="button">Save Task</button>
+        </div>
+
+        <div class="card tasks-list-card">
+          <div class="tasks-card-head">
+            <div>
+              <span class="tasks-kicker">Saved tasks</span>
+              <h3>Your task board</h3>
+              <p>Track what is pending now, then connect it all to calendar sync later.</p>
+            </div>
+            <span class="tasks-badge tasks-badge-soft">Local</span>
+          </div>
+          <div id="taskList"></div>
+        </div>
       </div>
     </section>
 
@@ -602,73 +726,192 @@
       <div class="dashboard-header">
         <div>
           <h1>Settings</h1>
-          <div class="page-sub">Customize your experience</div>
+          <div class="page-sub">Clean up your account, tune habit rewards, and manage your local data.</div>
+        </div>
+      </div>
+
+      <div class="settings-overview">
+        <div class="settings-overview-copy">
+          <span class="settings-eyebrow">Control center</span>
+          <h2>Make PPS feel consistent and easy to use.</h2>
+          <p>Everything important is grouped here so account details, security, reward values, and exports all feel like part of the same page.</p>
+          <div class="settings-overview-tags">
+            <span>Account</span>
+            <span>Security</span>
+            <span>Preferences</span>
+            <span>Data</span>
+          </div>
+        </div>
+        <div class="settings-overview-note">
+          <span class="settings-note-label">Quick note</span>
+          <p>XP and freeze changes apply after saving. Default freeze credits affect new habits you create from now on.</p>
         </div>
       </div>
 
       <div class="msg" id="settingsMsg"></div>
 
       <div class="settings-grid">
-        <div class="card">
-          <h3>Account</h3>
-          <div class="settings-row">
-            <div><div class="settings-label">Email</div><div class="settings-desc" id="settingsEmail">—</div></div>
+        <div class="card settings-card settings-card-account">
+          <div class="settings-card-head">
+            <div>
+              <span class="settings-eyebrow">Profile</span>
+              <h3>Account</h3>
+              <p>Update how your identity appears around the dashboard.</p>
+            </div>
+            <span class="settings-badge">Active</span>
           </div>
-          <div class="settings-row">
-            <div class="settings-label">Display Name</div>
-            <div class="settings-inline-actions">
-              <input type="text" id="settingsName" placeholder="Your name">
-              <button class="ghost-btn" id="saveNameBtn">Save</button>
+          <div class="settings-stack">
+            <div class="settings-row settings-row-emphasis">
+              <div class="settings-row-main">
+                <span class="settings-icon">E</span>
+                <div>
+                  <div class="settings-label">Email</div>
+                  <div class="settings-desc">Primary sign-in address</div>
+                </div>
+              </div>
+              <span class="settings-value-pill" id="settingsEmail">&mdash;</span>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <span class="settings-icon">N</span>
+                <div>
+                  <div class="settings-label">Display Name</div>
+                  <div class="settings-desc">Shown in greetings and profile areas</div>
+                </div>
+              </div>
+              <div class="settings-inline-actions settings-inline-actions-wide">
+                <input type="text" id="settingsName" placeholder="Your name">
+                <button class="ghost-btn" id="saveNameBtn" type="button">Save</button>
+              </div>
+            </div>
+            <div class="settings-row settings-row-danger">
+              <div class="settings-row-main">
+                <span class="settings-icon">O</span>
+                <div>
+                  <div class="settings-label">Sign Out</div>
+                  <div class="settings-desc">End your current session on this device</div>
+                </div>
+              </div>
+              <button class="danger-btn" id="logoutBtn" type="button">Log Out</button>
             </div>
           </div>
-          <div class="settings-row">
-            <div class="settings-label">Sign Out</div>
-            <button class="danger-btn" id="logoutBtn">Log Out</button>
+        </div>
+
+        <div class="card settings-card settings-card-password">
+          <div class="settings-card-head">
+            <div>
+              <span class="settings-eyebrow">Security</span>
+              <h3>Password</h3>
+              <p>Change your password without leaving the dashboard.</p>
+            </div>
+            <span class="settings-badge">Protected</span>
+          </div>
+          <div class="settings-form-grid">
+            <div class="form-group mt-8">
+              <label>Current Password</label>
+              <input type="password" id="currentPassword" placeholder="Enter current password" autocomplete="current-password">
+            </div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="newPassword" placeholder="Minimum 6 characters" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label>Confirm New Password</label>
+              <input type="password" id="confirmPassword" placeholder="Repeat new password" autocomplete="new-password">
+            </div>
+          </div>
+          <div class="settings-card-footer">
+            <p class="settings-note-text">Use a strong password that is easy for you to remember and hard for others to guess.</p>
+            <button class="primary-btn settings-action-btn" id="changePasswordBtn" type="button">Update Password</button>
           </div>
         </div>
 
-        <div class="card">
-          <h3>Change Password</h3>
-          <div class="form-group mt-8">
-            <label>Current Password</label>
-            <input type="password" id="currentPassword" placeholder="••••••••">
+        <div class="card settings-card settings-card-preferences">
+          <div class="settings-card-head">
+            <div>
+              <span class="settings-eyebrow">Behavior</span>
+              <h3>Preferences</h3>
+              <p>Adjust the reward system for your workflow.</p>
+            </div>
+            <span class="settings-badge">Live</span>
           </div>
-          <div class="form-group">
-            <label>New Password</label>
-            <input type="password" id="newPassword" placeholder="Min 6 characters">
+          <div class="settings-stack">
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <span class="settings-icon">X</span>
+                <div>
+                  <div class="settings-label">XP per Habit</div>
+                  <div class="settings-desc">Points earned each time a habit is completed</div>
+                </div>
+              </div>
+              <input type="number" id="xpPerHabit" value="10" min="1" class="settings-compact-input">
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <span class="settings-icon">F</span>
+                <div>
+                  <div class="settings-label">Default Freeze Credits</div>
+                  <div class="settings-desc">Assigned to each new habit you create</div>
+                </div>
+              </div>
+              <input type="number" id="defaultFreeze" value="2" min="0" class="settings-compact-input">
+            </div>
           </div>
-          <div class="form-group">
-            <label>Confirm New Password</label>
-            <input type="password" id="confirmPassword" placeholder="Repeat new password">
+          <div class="settings-card-footer">
+            <div class="settings-mini-stats">
+              <div class="settings-mini-stat">
+                <span class="settings-mini-label">Current XP</span>
+                <strong id="settingsXpPreview">10 XP</strong>
+              </div>
+              <div class="settings-mini-stat">
+                <span class="settings-mini-label">New Habit Freeze</span>
+                <strong id="settingsFreezePreview">2 credits</strong>
+              </div>
+            </div>
+            <button class="primary-btn settings-action-btn" id="savePreferencesBtn" type="button">Save Preferences</button>
           </div>
-          <button class="primary-btn" id="changePasswordBtn">Update Password</button>
         </div>
 
-        <div class="card">
-          <h3>Preferences</h3>
-          <div class="settings-row">
-            <div><div class="settings-label">XP per Habit</div><div class="settings-desc">Points per completion</div></div>
-            <input type="number" id="xpPerHabit" value="10" class="settings-compact-input">
+        <div class="card settings-card settings-card-data">
+          <div class="settings-card-head">
+            <div>
+              <span class="settings-eyebrow">Local data</span>
+              <h3>Data</h3>
+              <p>Export your progress or clear local records when needed.</p>
+            </div>
+            <span class="settings-badge">Local</span>
           </div>
-          <div class="settings-row">
-            <div><div class="settings-label">Default Freeze Credits</div><div class="settings-desc">Per new habit</div></div>
-            <input type="number" id="defaultFreeze" value="2" class="settings-compact-input">
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Data</h3>
-          <div class="settings-row">
-            <div><div class="settings-label">Export PDF Report</div><div class="settings-desc">Download your full performance report</div></div>
-            <button class="primary-btn" onclick="exportToPDF()" style="padding:7px 16px;font-size:12.5px;">📄 Export PDF</button>
-          </div>
-          <div class="settings-row">
-            <div><div class="settings-label">Reset All Data</div><div class="settings-desc" style="color:var(--red);">Cannot be undone</div></div>
-            <button class="danger-btn" id="resetBtn">Reset</button>
-          </div>
-          <div class="settings-row">
-            <div class="settings-label">Storage Used</div>
-            <span class="text-muted" id="storageUsed">~0 KB</span>
+          <div class="settings-stack">
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <span class="settings-icon">R</span>
+                <div>
+                  <div class="settings-label">Export PDF Report</div>
+                  <div class="settings-desc">Generate a printable report of your progress</div>
+                </div>
+              </div>
+              <button class="primary-btn settings-action-btn" onclick="exportToPDF()" type="button">Export Report</button>
+            </div>
+            <div class="settings-row settings-row-danger">
+              <div class="settings-row-main">
+                <span class="settings-icon">D</span>
+                <div>
+                  <div class="settings-label">Reset All Data</div>
+                  <div class="settings-desc">Clear tracked habits and progress for this account</div>
+                </div>
+              </div>
+              <button class="danger-btn settings-action-btn" id="resetBtn" type="button">Reset Data</button>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-main">
+                <span class="settings-icon">S</span>
+                <div>
+                  <div class="settings-label">Storage Used</div>
+                  <div class="settings-desc">Estimated browser storage currently used by PPS</div>
+                </div>
+              </div>
+              <span class="settings-value-pill" id="storageUsed">~0 KB</span>
+            </div>
           </div>
         </div>
       </div>

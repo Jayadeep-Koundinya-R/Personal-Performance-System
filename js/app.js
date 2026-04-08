@@ -5,6 +5,7 @@
  */
 
 import { getData } from './storageService.js';
+import { getAppSettings } from './config.js';
 import { getToday } from './utils.js';
 
 /* ─────────────────────────────────────
@@ -19,9 +20,10 @@ export function exportToPDF() {
 
     const habitsKey = "habits_" + (user.email || "guest");
     const habitList = getData(habitsKey, []);
+    const { xpPerCompletion, levelXpThreshold } = getAppSettings();
 
-    const totalXP   = habitList.reduce((s, h) => s + (h.completedDates || []).length * 10, 0);
-    const level     = Math.floor(totalXP / 100) + 1;
+    const totalXP   = habitList.reduce((s, h) => s + (h.completedDates || []).length * xpPerCompletion, 0);
+    const level     = Math.floor(totalXP / levelXpThreshold) + 1;
     const bestStreak = habitList.reduce((s, h) => Math.max(s, h.streak || 0), 0);
     const totalDone  = habitList.reduce((s, h) => s + (h.completedDates || []).length, 0);
 

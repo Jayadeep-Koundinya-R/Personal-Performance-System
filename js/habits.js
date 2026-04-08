@@ -11,10 +11,11 @@
  */
 
 import { getData, saveData } from './storageService.js';
+import { getAppSettings } from './config.js';
 import { getState, updateState } from './state.js';
 import {
     generateInitialDueDate, updateNextDueDate,
-    calculateWeeklyPoints, getToday, getTodayStr, formatDateDMY
+    calculateWeeklyPoints, getLocalDateKey, getToday, getTodayStr, formatDateDMY
 } from './utils.js';
 
 /* ── Notify all listeners that habit data has changed ── */
@@ -87,7 +88,7 @@ function dailyReset() {
         dueDate.setHours(0, 0, 0, 0);
 
         if (dueDate < today) {
-            const dueDateStr   = dueDate.toISOString().split("T")[0];
+            const dueDateStr   = getLocalDateKey(dueDate);
             const wasCompleted = habit.completedDates.includes(dueDateStr);
 
             if (!wasCompleted && habit.streak > 0) {
@@ -136,7 +137,7 @@ export function addHabit(name, category, period, priority, startDate) {
         completedDates:    [],
         streak:            0,
         lastCompletedDate: null,
-        freezeCredits:     2
+        freezeCredits:     getAppSettings().maxFreezeCredits
     };
 
     const { habits } = getState();
@@ -162,7 +163,7 @@ export function deleteHabit(id) {
 ───────────────────────────────────── */
 export function isHabitDueOn(habit, dateStr) {
     if (!habit.dueDate || !dateStr) return false;
-    const dueStr = habit.dueDate.split('T')[0];
+    const dueStr = getLocalDateKey(habit.dueDate);
     return dueStr === dateStr;
 }
 
@@ -313,7 +314,7 @@ export function openEditModal(habit) {
     document.getElementById("editHabitPeriod").value   = habit.period;
 
     const dueDateInput = habit.dueDate
-        ? new Date(habit.dueDate).toISOString().split("T")[0]
+        ? getLocalDateKey(habit.dueDate)
         : "";
     document.getElementById("editHabitDate").value = dueDateInput;
 

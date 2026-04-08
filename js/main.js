@@ -12,6 +12,7 @@ import { setupNavigation, handleHamburger, closeMobileSidebar } from './nav.js';
 import { exportToPDF } from './app.js';
 import { setupReflections, rfl_save, rfl_setMood, rfl_delete, rfl_render } from './reflection.js';
 import { setupReminders, rem_save, rem_toggle, rem_delete, rem_render } from './reminder.js';
+import { initTasks, renderTasks } from './tasks.js';
 import {
     renderDashboard, renderDailyTracker, renderStreakSection,
     renderHabitSuccessRates, renderHeatmap, setupSettings,
@@ -21,6 +22,7 @@ import {
 import { notif_requestPermission, notif_startChecker, notif_stop } from './notifications.js';
 import { initTheme, bindThemeToggles } from './theme.js';
 import { renderAchievements } from './achievements.js';
+import { renderSocial } from './social.js';
 
 const QUOTES = [
     { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
@@ -51,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEditModal();
     setupSettings(user);
     setupReflections();
+    initTasks(user);
     setupReminders();
     notif_startChecker();
 
@@ -65,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('habitsUpdated', () => _renderAll());
 document.addEventListener('remindersUpdated', () => _renderAll());
 document.addEventListener('notificationAlertsUpdated', () => _renderAll());
+document.addEventListener('tasksUpdated', () => _renderAll());
 
 function _renderAll() {
     renderDashboard();
@@ -73,12 +77,16 @@ function _renderAll() {
     renderHabitSuccessRates();
     renderHeatmap();
     renderHabits();
+    renderTasks();
     updateAllStats();
     rfl_render();
     rem_render();
 
     if (document.getElementById('achievementsSection')?.classList.contains('active-section')) {
         renderAchievements();
+    }
+    if (document.getElementById('socialSection')?.classList.contains('active-section')) {
+        renderSocial();
     }
 
     _updateDashboardExtras();

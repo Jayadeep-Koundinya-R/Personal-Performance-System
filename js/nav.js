@@ -12,6 +12,8 @@ import {
 import { renderHabits } from './habits.js';
 import { rfl_render }   from './reflection.js';
 import { rem_render }   from './reminder.js';
+import { renderSocial } from './social.js';
+import { renderTasks } from './tasks.js';
 
 const MOBILE_BP = 768;
 
@@ -64,8 +66,14 @@ export function setupNavigation() {
                 case "habitManagerSection":
                     renderHabits();
                     break;
+                case "tasksSection":
+                    renderTasks();
+                    break;
                 case "reminderSection":
                     rem_render();
+                    break;
+                case "socialSection":
+                    renderSocial();
                     break;
                 case "settingsSection":
                     // setupSettings(user) is already called in main.js

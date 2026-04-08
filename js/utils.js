@@ -4,8 +4,17 @@
  * Safe to import from anywhere without creating circular dependencies.
  */
 
-import { CONFIG } from './config.js';
+import { CONFIG, getAppSettings } from './config.js';
 import { getState } from './state.js';
+
+export function getLocalDateKey(dateLike = new Date()) {
+    const date = dateLike instanceof Date ? new Date(dateLike) : new Date(dateLike);
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 /* ── Priority ── */
 export function getPriorityColor(priority) {
@@ -21,6 +30,7 @@ export function generateInitialDueDate(period) {
     var d = getToday();
     if (period === "Weekly") d.setDate(d.getDate() + 7);
     if (period === "Monthly") d.setMonth(d.getMonth() + 1);
+    d.setHours(12, 0, 0, 0);
     return d.toISOString();
 }
 
@@ -30,29 +40,30 @@ export function updateNextDueDate(habit) {
     else if (habit.period === "Weekly")  d.setDate(d.getDate() + 7);
     else if (habit.period === "Monthly") d.setMonth(d.getMonth() + 1);
     else return;   // "Today" — never advances
+    d.setHours(12, 0, 0, 0);
     habit.dueDate = d.toISOString();
 }
 
 /* ── XP / Level ── */
-const XP_PER = CONFIG.XP_PER_COMPLETION  || 10;
-const LVL_XP = CONFIG.LEVEL_XP_THRESHOLD || 100;
-
 export function calculateTotalXP(habits) {
-    return habits.reduce((sum, h) => sum + h.completedDates.length * XP_PER, 0);
+    const xpPer = getAppSettings().xpPerCompletion || CONFIG.XP_PER_COMPLETION || 10;
+    return habits.reduce((sum, h) => sum + h.completedDates.length * xpPer, 0);
 }
 
 export function calculateLevel(habits) {
-    return Math.floor(calculateTotalXP(habits) / LVL_XP) + 1;
+    const levelXp = CONFIG.LEVEL_XP_THRESHOLD || 100;
+    return Math.floor(calculateTotalXP(habits) / levelXp) + 1;
 }
 
 export function calculateWeeklyPoints(habits) {
+    const xpPer = getAppSettings().xpPerCompletion || CONFIG.XP_PER_COMPLETION || 10;
     // Use global date so the weekly window respects the Time Setter
     var cutoff = getToday();
     cutoff.setDate(cutoff.getDate() - 7);
     var pts = 0;
     habits.forEach(function (h) {
         h.completedDates.forEach(function (ds) {
-            if (new Date(ds) >= cutoff) pts += XP_PER;
+            if (new Date(ds) >= cutoff) pts += xpPer;
         });
     });
     return pts;
@@ -63,7 +74,7 @@ export function calculateWeeklyPoints(habits) {
 /** Returns the currently "selected" date string (YYYY-MM-DD).
  *  Defaults to today unless the user has picked a different date. */
 export function getTodayStr() {
-    return getState()?.selectedDate || new Date().toISOString().split("T")[0];
+    return getState()?.selectedDate || getLocalDateKey(new Date());
 }
 
 /** Returns a Date object at midnight for the selected date. */
