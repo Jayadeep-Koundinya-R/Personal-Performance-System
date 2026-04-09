@@ -626,10 +626,22 @@ export function renderDailyTracker() {
 
     list.querySelectorAll('[data-tracker-checkbox]').forEach(input => {
         input.addEventListener('change', event => {
-            const id = Number(event.currentTarget.dataset.id);
+            const el = event.currentTarget;
+            const id = Number(el.dataset.id);
             const habit = habits.find(item => item.id === id);
             if (!habit) return;
-            updateHabitCompletion(habit, event.currentTarget.checked);
+
+            const isChecked = el.checked;
+            updateHabitCompletion(habit, isChecked);
+
+            // Perfections: Success feedback
+            if (isChecked) {
+                const row = el.closest('.task-item');
+                if (row) {
+                    row.classList.add('just-completed');
+                    setTimeout(() => row.classList.remove('just-completed'), 600);
+                }
+            }
         });
     });
 
@@ -949,11 +961,11 @@ export function updateDateDisplay() {
 }
 
 export function setupSettings(user) {
-    setEl('settingsEmail', user.email || 'Guest');
+    setEl('settingsEmail', user.email || 'Apex Performer');
     const appSettings = getAppSettings();
 
     const storedName = getData(`pps_name_${user.email || 'guest'}`, '');
-    const displayName = storedName || user.name || (user.email ? user.email.split('@')[0] : 'Guest');
+    const displayName = storedName || user.name || (user.email ? user.email.split('@')[0] : 'Apex Performer');
 
     const avatarEl = document.getElementById('userAvatar');
     if (avatarEl) avatarEl.textContent = displayName[0].toUpperCase();

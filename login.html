@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -129,7 +129,7 @@
         <div class="divider">or</div>
 
         <button class="guest-btn" onclick="handleGuest()">
-          Continue as Guest · Try a Week
+          Continue as Apex Performer · Try a Week
         </button>
 
         <div class="login-footer">
@@ -241,7 +241,7 @@
     }
 
     function handleGuest() {
-      setCurrentUser({ email: null, name: 'Guest', isGuest: true, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+      setCurrentUser({ email: null, name: 'Apex Performer', isGuest: true, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 });
       window.location.href = 'dashboard.html';
     }
 

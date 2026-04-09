@@ -1,4 +1,4 @@
-﻿/**
+/**
  * PPS - Social Module
  * Manages social tabs, leaderboards, and challenges.
  */
@@ -33,7 +33,7 @@ function renderLeaderboard() {
 
     const state = getState();
     const currentUserEmail = state.storageKey.includes('guest')
-        ? 'Guest'
+        ? 'Apex Performer'
         : (JSON.parse(localStorage.getItem('currentUser') || 'null')?.email || 'User');
 
     const mockUsers = [

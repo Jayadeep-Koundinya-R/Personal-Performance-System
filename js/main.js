@@ -106,7 +106,7 @@ function _updateGreeting(user) {
         ? getData(`pps_name_${user.email}`, '')
         : getData('pps_name_guest', '');
     const displayName = user.isGuest
-        ? (storedName || 'Guest')
+        ? (storedName || 'Apex Performer')
         : (storedName || user.name || user.email.split('@')[0]);
     el.innerHTML = `${greet}, <span style="color:var(--accent);">${displayName}</span>! 👋`;
 }

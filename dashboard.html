@@ -56,59 +56,23 @@
 
     <section id="dashboardSection" class="section active-section">
       <div class="dashboard-shell">
-        <div class="dashboard-hero-panel">
-          <div class="dashboard-hero-copy">
-            <div class="dashboard-eyebrow">Performance command center</div>
-            <h1 id="greetingDisplay"></h1>
-            <div class="page-sub dashboard-hero-date" id="dashboardDate"></div>
-            <div id="dailyQuote" class="dashboard-quote">
-              <span class="dashboard-quote-mark">"</span>
-              <div class="dashboard-quote-copy">
-                <span id="quoteText">Loading quote...</span>
-                <span id="quoteAuthor" class="dashboard-quote-author"></span>
-              </div>
-            </div>
-            <div class="dashboard-chip-row">
-              <span class="dashboard-chip dashboard-chip-accent">Live habits</span>
-              <span class="dashboard-chip">Reminder alerts</span>
-              <span class="dashboard-chip">Task planning</span>
-            </div>
+        <div class="dashboard-header">
+          <div>
+            <h1 id="greetingDisplay">Performance Dashboard</h1>
+            <div class="page-sub" id="dashboardDate">Let's make today matter.</div>
           </div>
-
-          <div class="dashboard-hero-side">
-            <div class="dashboard-header-actions">
-              <div class="notification-center">
-                <button class="notification-trigger" id="notificationBell" type="button" aria-label="Open alerts" aria-expanded="false" aria-controls="notificationPanel">
-                  <span class="notification-symbol">Alerts</span>
-                  <span class="notification-count" id="notificationCountBadge" hidden>0</span>
-                </button>
-
-                <div class="notification-panel" id="notificationPanel">
-                  <div class="notification-panel-head">
-                    <div>
-                      <strong>Reminder Alerts</strong>
-                      <span id="notificationUnreadLabel">All caught up</span>
-                    </div>
-                    <div class="notification-panel-actions">
-                      <button class="ghost-btn notification-mini-btn" id="markAlertsReadBtn" type="button">Mark all read</button>
-                      <button class="ghost-btn notification-mini-btn" id="clearAlertsBtn" type="button">Clear</button>
-                    </div>
-                  </div>
-                  <div class="notification-list" id="notificationList"></div>
-                </div>
-              </div>
-              <select class="global-filter" id="globalFilter" onchange="window.setGlobalFilter ? window.setGlobalFilter(this.value) : null" aria-label="Date Range">
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-              </select>
-              <input type="date" id="appDateSetter" class="global-filter" onchange="setTimeSetter(this.value)" title="View different days">
+          <div class="dashboard-header-actions">
+            <div class="theme-panel" data-theme-panel>
+              <span class="theme-panel-title">Theme</span>
+              <button class="theme-toggle-btn" type="button" data-theme-toggle>
+                <span class="theme-toggle-name" data-theme-name>Dark</span>
+              </button>
             </div>
-
-            <div class="dashboard-hero-note">
-              <div class="dashboard-hero-note-label">Today at a glance</div>
-              <p>Your habits, reminders, streaks, and task planning now sit in one clearer dashboard so your next move is easy to spot.</p>
-            </div>
+            <select class="global-filter" id="globalFilter" onchange="window.setGlobalFilter ? window.setGlobalFilter(this.value) : null">
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+            </select>
           </div>
         </div>
 
@@ -317,21 +281,33 @@
       <div class="dashboard-header">
         <div>
           <h1>Daily Tracker</h1>
-          <div class="page-sub">Check off as you go — XP updates automatically</div>
+          <div class="page-sub" id="trackerDateLabel">Check off as you go — XP updates automatically</div>
         </div>
-        <div class="mono text-muted" id="trackerDate" style="font-size:13px;"></div>
+        <div class="dashboard-header-actions">
+          <div class="theme-panel" data-theme-panel>
+            <span class="theme-panel-title">Theme</span>
+            <button class="theme-toggle-btn" type="button" data-theme-toggle>
+              <span class="theme-toggle-name" data-theme-name>Dark</span>
+            </button>
+          </div>
+          <div class="mono text-muted" id="trackerDate" style="font-size:13px; font-weight: 500;"></div>
+        </div>
       </div>
-      <div class="card" style="display:flex;align-items:center;gap:24px;margin-bottom:20px;">
-        <div>
-          <div class="stat-value" id="trackerProgress">0/0</div>
-          <div class="text-muted" style="font-size:12px;">Done today</div>
+
+      <div class="card p-24" style="display:flex; align-items:center; gap:32px; margin-bottom:24px; border: 1px solid var(--border); box-shadow: var(--card-shadow);">
+        <div style="flex-shrink: 0;">
+          <div class="stat-num" id="trackerProgress" style="font-size: 32px; line-height: 1;">0/0</div>
+          <div class="text-muted" style="font-size:12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;">Done Today</div>
         </div>
         <div style="flex:1;">
-          <div class="prog-wrap" style="height:10px;">
-            <div class="prog-fill" id="trackerProgressBar" style="width:0%;height:10px;"></div>
+          <div class="prog-wrap" style="height:12px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 5%, var(--border));">
+            <div class="prog-fill" id="trackerProgressBar" style="width:0%; height:12px; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent2));"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+            <span class="text-muted" id="trackerPercent" style="font-size:13px; font-weight: 500;">0% complete</span>
+            <span class="text-accent mono" style="font-size: 13px; font-weight: 700;">+XP Pending</span>
           </div>
         </div>
-        <div class="text-muted" id="trackerPercent" style="font-size:13px;">0% complete</div>
       </div>
       <div id="trackerList"></div>
     </section>

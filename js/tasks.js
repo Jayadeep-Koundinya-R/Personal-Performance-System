@@ -259,7 +259,7 @@ export function initTasks(user) {
 
 export function renderTasks() {
     if (!activeUser) {
-        activeUser = getData('currentUser', { email: null, name: 'Guest' });
+        activeUser = getData('currentUser', { email: null, name: 'Apex Performer' });
     }
 
     const tasks = getTasksList();
