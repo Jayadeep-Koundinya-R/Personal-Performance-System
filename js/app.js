@@ -13,7 +13,7 @@ import { getToday } from './utils.js';
 ───────────────────────────────────── */
 export function exportToPDF() {
     const user  = getData("currentUser", {});
-    const name  = user.name || user.email || "User";
+    const name  = user.name || "User";
     const today = getToday().toLocaleDateString("en-GB", {
         weekday: "long", day: "2-digit", month: "long", year: "numeric"
     });

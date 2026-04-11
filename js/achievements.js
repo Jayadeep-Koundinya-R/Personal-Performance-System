@@ -4,7 +4,8 @@
  */
 
 import { getState } from './state.js';
-import { getData } from './storageService.js';
+import { getData, saveData } from './storageService.js';
+import { showBadgeUnlockToast } from './effects.js';
 
 const BADGES = [
     { id: 'first_step',      name: 'First Step',      desc: 'Complete your first habit.', icon: '🌱', hint: 'Complete 1 habit to unlock',   target: 1 },
@@ -28,6 +29,18 @@ export function renderAchievements() {
 
     const stats = calculateAchievementStats();
     const unlockedCount = checkAllBadges(stats);
+
+    // Detect newly unlocked badges since last render
+    const seenKey = `pps_seen_badges_${getData('currentUser',{})?.email || 'guest'}`;
+    const seen = new Set(getData(seenKey, []));
+    const newlyUnlocked = BADGES.filter(b => isBadgeUnlocked(b, stats) && !seen.has(b.id));
+    if (newlyUnlocked.length) {
+        newlyUnlocked.forEach((b, i) => {
+            setTimeout(() => showBadgeUnlockToast(b), i * 800);
+            seen.add(b.id);
+        });
+        saveData(seenKey, [...seen]);
+    }
     
     // Update summary UI
     document.getElementById('achievementsSummary').textContent = `${unlockedCount}/${BADGES.length} badges unlocked`;

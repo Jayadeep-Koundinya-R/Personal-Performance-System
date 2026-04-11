@@ -30,7 +30,10 @@ let _state = {
 };
 
 export function getState() {
-    return _state;
+    // Return a shallow copy so callers can't accidentally mutate _state directly.
+    // Deep objects (habits array, stats) are still references — use updateState()
+    // to replace them, never mutate in place.
+    return { ..._state };
 }
 
 export function updateState(patch) {

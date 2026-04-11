@@ -4,6 +4,7 @@
  */
 
 import { getState } from './state.js';
+import { getData } from './storageService.js';
 
 export function renderSocial() {
     renderLeaderboard();
@@ -34,7 +35,7 @@ function renderLeaderboard() {
     const state = getState();
     const currentUserEmail = state.storageKey.includes('guest')
         ? 'Apex Performer'
-        : (JSON.parse(localStorage.getItem('currentUser') || 'null')?.email || 'User');
+        : (getData('currentUser', null)?.email || 'User');
 
     const mockUsers = [
         { name: 'Elite Achiever', level: 14, streak: 42, xp: 1420 },

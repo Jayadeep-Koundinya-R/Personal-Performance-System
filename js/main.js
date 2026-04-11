@@ -10,7 +10,7 @@ import { getTodayStr } from './utils.js';
 import { initHabits, setupAddHabitButton, setupEditModal, renderHabits, closeEditModal } from './habits.js';
 import { setupNavigation, handleHamburger, closeMobileSidebar } from './nav.js';
 import { exportToPDF } from './app.js';
-import { setupReflections, rfl_save, rfl_setMood, rfl_delete, rfl_render } from './reflection.js';
+import { setupReflections, rfl_save, rfl_setMood, rfl_delete, rfl_render, rfl_renderHabitSelector } from './reflection.js';
 import { setupReminders, rem_save, rem_toggle, rem_delete, rem_render } from './reminder.js';
 import { initTasks, renderTasks } from './tasks.js';
 import {
@@ -80,6 +80,7 @@ function _renderAll() {
     renderTasks();
     updateAllStats();
     rfl_render();
+    rfl_renderHabitSelector();  // keep habit pills in sync when habits change
     rem_render();
 
     if (document.getElementById('achievementsSection')?.classList.contains('active-section')) {
@@ -102,12 +103,18 @@ function _updateGreeting(user) {
     else if (hour < 18) greet = 'Good Afternoon';
     else greet = 'Good Evening';
 
-    const storedName = !user.isGuest && user.email
+    let storedName = !user.isGuest && user.email
         ? getData(`pps_name_${user.email}`, '')
         : getData('pps_name_guest', '');
+
+    // Prevent accidentally saved emails from overriding the user name
+    if (!user.isGuest && user.email && (storedName === user.email || storedName === user.email.split('@')[0])) {
+        storedName = '';
+    }
+
     const displayName = user.isGuest
         ? (storedName || 'Apex Performer')
-        : (storedName || user.name || user.email.split('@')[0]);
+        : (storedName || user.name || 'Apex Performer');
     el.innerHTML = `${greet}, <span style="color:var(--accent);">${displayName}</span>! 👋`;
 }
 
@@ -151,6 +158,15 @@ window.rem_toggle = rem_toggle;
 window.rem_delete = rem_delete;
 window.closeEditModal = closeEditModal;
 window.exportToPDF = exportToPDF;
+// Wired to the globalFilter select onchange attribute
+window._onGlobalFilterChange = function() {
+    renderDashboard();
+    renderDailyTracker();
+    renderStreakSection();
+    renderHabitSuccessRates();
+    updateWeeklyChart();
+    updateAllStats();
+};
 
 function _initDailyQuote() {
     const dateIndex = new Date().getDate();

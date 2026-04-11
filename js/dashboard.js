@@ -172,7 +172,7 @@ function bindTaskCheckboxes(root, habits) {
             const id = Number(event.currentTarget.dataset.id);
             const habit = habits.find(item => item.id === id);
             if (!habit) return;
-            updateHabitCompletion(habit, event.currentTarget.checked);
+            updateHabitCompletion(habit, event.currentTarget.checked, event.currentTarget);
         });
     });
 }
@@ -287,6 +287,7 @@ export function updateAllStats() {
     updateDateDisplay();
     renderDashboardReminderWidget();
     renderNotificationCenter();
+    updateDonutChart();
 }
 export function updateCompletionStats() {
     const { habits } = getState();
@@ -362,22 +363,49 @@ export function updateCompletionStats() {
 export function updateProgressWidget() {
     const { habits } = getState();
     const todayStr = getTodayStr();
+    const { xpPerCompletion } = getAppSettings();
 
-    let due = 0;
-    let done = 0;
-
+    let due = 0, done = 0;
     habits.forEach(habit => {
         if (!isHabitDueOn(habit, todayStr)) return;
-        due += 1;
-        if (habit.completedDates.includes(todayStr)) done += 1;
+        due++;
+        if (habit.completedDates.includes(todayStr)) done++;
     });
 
     const pct = due > 0 ? Math.round((done / due) * 100) : 0;
+    const xpEarned = done * xpPerCompletion;
+
+    // Text elements
     setEl('todayProgress', `${done}/${due}`);
-    setBar('todayProgressBar', pct);
     setEl('trackerProgress', `${done}/${due}`);
     setBar('trackerProgressBar', pct);
-    setEl('trackerPercent', `${pct}% complete`);
+    setEl('trackerPercent', `${pct}%`);
+
+    // Tracker ring SVG
+    const ring = document.getElementById('trackerRingFill');
+    if (ring) {
+        const circumference = 201.1;
+        ring.style.strokeDashoffset = circumference - (pct / 100) * circumference;
+    }
+
+    // XP badge
+    setEl('trackerXpBadge', `+${xpEarned} XP today`);
+
+    // Motivation message
+    const msgEl = document.getElementById('trackerMotivation');
+    if (msgEl) {
+        if (due === 0)       msgEl.textContent = 'No habits due today';
+        else if (pct === 0)  msgEl.textContent = "Let's get started 💪";
+        else if (pct < 50)   msgEl.textContent = 'Good start, keep going! 🚀';
+        else if (pct < 100)  msgEl.textContent = 'Halfway there, push through! 🔥';
+        else                 msgEl.textContent = 'Perfect day! Every habit done ⭐';
+    }
+
+    // Banner glow when complete
+    const banner = document.querySelector('.tracker-hero-banner');
+    if (banner) {
+        banner.classList.toggle('tracker-hero-complete', pct === 100 && due > 0);
+    }
 }
 
 function renderBarChart(containerId, bars) {
@@ -386,15 +414,61 @@ function renderBarChart(containerId, bars) {
 
     const max = Math.max(...bars.map(bar => bar.value), 1);
     container.innerHTML = bars.map(bar => {
-        const height = Math.max(10, Math.round((bar.value / max) * 100));
+        const height = Math.max(6, Math.round((bar.value / max) * 100));
+        const isEmpty = bar.value === 0;
         return `
             <div class="bar-col">
-                <div class="bar" style="height:${height}%; background:${bar.gradient};"></div>
-                <div class="bar-value">${bar.value}</div>
+                <div class="bar-val-label" style="font-size:11px;color:${isEmpty ? 'var(--border-bright)' : 'var(--text-2)'};font-family:'DM Mono',monospace;margin-bottom:4px;text-align:center;">${bar.value > 0 ? bar.value : ''}</div>
+                <div class="bar-track" style="flex:1;display:flex;align-items:flex-end;">
+                    <div class="bar" style="height:${height}%;background:${isEmpty ? 'var(--border)' : bar.gradient};border-radius:6px 6px 0 0;width:100%;min-height:4px;transition:height .4s cubic-bezier(.4,0,.2,1);"></div>
+                </div>
                 <div class="bar-label">${bar.label}</div>
             </div>
         `;
     }).join('');
+}
+
+function updateDonutChart() {
+    const { habits } = getState();
+    const todayStr = getTodayStr();
+
+    let due = 0, done = 0;
+    const habitDetails = [];
+
+    habits.forEach(habit => {
+        if (!isHabitDueOn(habit, todayStr)) return;
+        due++;
+        const isDone = habit.completedDates.includes(todayStr);
+        if (isDone) done++;
+        habitDetails.push({ name: habit.name, done: isDone, priority: habit.priority });
+    });
+
+    const pct = due > 0 ? Math.round((done / due) * 100) : 0;
+    const circumference = 339.3;
+    const offset = circumference - (pct / 100) * circumference;
+
+    const fill = document.getElementById('donutFill');
+    const pctEl = document.getElementById('donutPct');
+    const subEl = document.getElementById('donutSub');
+    const legendEl = document.getElementById('donutLegend');
+
+    if (fill) fill.style.strokeDashoffset = offset;
+    if (pctEl) pctEl.textContent = `${pct}%`;
+    if (subEl) subEl.textContent = `${done} / ${due}`;
+
+    if (legendEl) {
+        if (habitDetails.length === 0) {
+            legendEl.innerHTML = `<div style="font-size:12px;color:var(--muted);text-align:center;">No habits due today</div>`;
+        } else {
+            legendEl.innerHTML = habitDetails.slice(0, 4).map(h => `
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${h.done ? 'var(--green)' : 'var(--border-bright)'};flex-shrink:0;"></span>
+                    <span style="color:${h.done ? 'var(--text-2)' : 'var(--muted)'};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.name}</span>
+                    <span style="color:${h.done ? 'var(--green)' : 'var(--muted)'};">${h.done ? '✓' : '○'}</span>
+                </div>
+            `).join('') + (habitDetails.length > 4 ? `<div style="font-size:11px;color:var(--muted);text-align:center;">+${habitDetails.length - 4} more</div>` : '');
+        }
+    }
 }
 
 function getAnalyticsChartBars() {
@@ -475,17 +549,27 @@ export function updateWeeklyChart() {
         const date = new Date(today);
         date.setDate(today.getDate() - (6 - index));
         const dateStr = getLocalDateKey(date);
+        const isToday = index === 6;
         return {
-            label: date.toLocaleDateString(undefined, { weekday: 'short' }),
+            label: isToday ? 'Today' : date.toLocaleDateString(undefined, { weekday: 'short' }),
             value: completionMap[dateStr] || 0,
-            gradient: index === 6
+            gradient: isToday
                 ? 'linear-gradient(180deg, #2dd4bf, #0f766e)'
                 : 'linear-gradient(180deg, #60a5fa, #1d4ed8)'
         };
     });
 
     renderBarChart('weeklyChart', dashboardBars);
-    renderBarChart('analyticsWeekChart', getAnalyticsChartBars());
+
+    // Analytics chart with label update
+    const analyticsBars = getAnalyticsChartBars();
+    renderBarChart('analyticsWeekChart', analyticsBars);
+
+    const filter = getAnalyticsFilterValue();
+    const labelEl = document.getElementById('analyticsChartLabel');
+    if (labelEl) {
+        labelEl.textContent = filter === '7' ? 'Last 7 Days' : filter === '30' ? 'Last 30 Days' : 'All Time';
+    }
 }
 export function renderHeatmap() {
     const grid = document.getElementById('heatmapGrid');
@@ -523,6 +607,29 @@ export function renderHeatmap() {
         .map(([, count]) => count);
     const maxCount = Math.max(...countsInRange, 1);
 
+    // ── Dynamic cell sizing ──────────────────────────────────────────────────
+    // Measure the actual rendered container width so cells fill the full box.
+    // If the section is hidden (clientWidth = 0), defer to next animation frame.
+    const scrollWrap = grid.closest('.heatmap-scroll-wrap') || grid.parentElement;
+    const containerW = scrollWrap ? scrollWrap.clientWidth : 0;
+
+    if (containerW <= 0) {
+        // Section not visible yet — retry after paint
+        requestAnimationFrame(() => renderHeatmap());
+        return;
+    }
+
+    const numWeeks = weeks.length;
+    const GAP = 3;
+    // Subtract a small buffer (card padding + border) so the last column never clips
+    const usableW = containerW - 4;
+    // Largest integer cell that fits all weeks + gaps inside usableW
+    const rawCell = Math.floor((usableW - (numWeeks - 1) * GAP) / numWeeks);
+    const CELL = Math.min(22, Math.max(10, rawCell));
+    const COL_W = CELL + GAP;
+    const labelFontSize = CELL <= 12 ? 9 : CELL <= 16 ? 10 : 11;
+
+    // ── Month labels ─────────────────────────────────────────────────────────
     const monthEntries = [];
     weeks.forEach((week, index) => {
         const firstVisible = week.find(date => date >= start && date <= today);
@@ -535,19 +642,32 @@ export function renderHeatmap() {
     });
 
     months.className = 'heatmap-months';
-    months.style.gridTemplateColumns = `repeat(${weeks.length}, minmax(0, 1fr))`;
-    months.innerHTML = monthEntries.map((entry, index) => {
-        const nextIndex = monthEntries[index + 1]?.index ?? weeks.length;
-        return `<span style="grid-column:${entry.index + 1} / span ${Math.max(1, nextIndex - entry.index)};">${entry.label}</span>`;
+    months.style.display = 'block';
+    months.style.width = '100%';
+    months.style.position = 'relative';
+    months.style.height = `${labelFontSize + 6}px`;
+
+    // Position each label absolutely at the exact pixel offset of its week column
+    months.innerHTML = monthEntries.map((entry, i) => {
+        const leftPx = entry.index * COL_W;
+        const nextIndex = monthEntries[i + 1]?.index ?? weeks.length;
+        const spanCols = nextIndex - entry.index;
+        // Max width = span in pixels, but at least 28px so short months still show
+        const maxW = Math.max(28, spanCols * COL_W - 2);
+        return `<span style="position:absolute;left:${leftPx}px;max-width:${maxW}px;overflow:hidden;white-space:nowrap;font-size:${labelFontSize}px;color:var(--muted);font-family:'DM Mono',monospace;">${entry.label}</span>`;
     }).join('');
 
+    // ── Grid cells ───────────────────────────────────────────────────────────
     grid.className = 'heatmap-grid';
+    grid.style.gap = `${GAP}px`;
+    grid.style.width = '100%';
+
     grid.innerHTML = weeks.map(week => `
-        <div class="heatmap-week">
+        <div class="heatmap-week" style="gap:${GAP}px;width:${CELL}px;flex-shrink:0;">
             ${week.map(date => {
                 const dateStr = getLocalDateKey(date);
                 if (date < start || date > today) {
-                    return '<div class="heatmap-cell heatmap-cell-empty"></div>';
+                    return `<div class="heatmap-cell heatmap-cell-empty" style="width:${CELL}px;height:${CELL}px;"></div>`;
                 }
 
                 const count = completionMap[dateStr] || 0;
@@ -565,7 +685,7 @@ export function renderHeatmap() {
                     ? `${dateStr} • ${count} completion${count === 1 ? '' : 's'}`
                     : `${dateStr} • No completions`;
 
-                return `<div class="heatmap-cell level-${level}${todayClass}" title="${title}"></div>`;
+                return `<div class="heatmap-cell level-${level}${todayClass}" style="width:${CELL}px;height:${CELL}px;" title="${title}" role="gridcell" tabindex="0" aria-label="${title}"></div>`;
             }).join('')}
         </div>
     `).join('');
@@ -632,9 +752,8 @@ export function renderDailyTracker() {
             if (!habit) return;
 
             const isChecked = el.checked;
-            updateHabitCompletion(habit, isChecked);
+            updateHabitCompletion(habit, isChecked, el);
 
-            // Perfections: Success feedback
             if (isChecked) {
                 const row = el.closest('.task-item');
                 if (row) {
@@ -654,36 +773,40 @@ export function renderStreakSection() {
     if (!container) return;
 
     if (habits.length === 0) {
-        container.innerHTML = '<p class="empty-text">No habits yet.</p>';
+        container.innerHTML = '<p class="empty-text">No habits yet. Add habits in Habit Manager.</p>';
         return;
     }
 
     container.innerHTML = habits.map(habit => {
         const streak = habit.streak || 0;
         const pct = Math.min(streak * 10, 100);
-        const tone = streak >= 7 ? 'ember' : streak === 0 ? 'reset' : 'surge';
-        const icon = streak >= 7 ? '⚡' : streak === 0 ? '○' : '🔥';
-        const message = streak === 0
-            ? 'Start today and build the chain.'
-            : 'Stay consistent and keep the streak alive.';
+
+        // Intensity tiers
+        let tier, icon, tierLabel;
+        if (streak === 0)      { tier = 'dead';   icon = '○';  tierLabel = 'Not started'; }
+        else if (streak < 3)   { tier = 'spark';  icon = '🌱'; tierLabel = 'Just started'; }
+        else if (streak < 7)   { tier = 'warm';   icon = '🔥'; tierLabel = 'Building up'; }
+        else if (streak < 14)  { tier = 'hot';    icon = '🔥'; tierLabel = 'On fire!'; }
+        else if (streak < 30)  { tier = 'blazing';icon = '⚡'; tierLabel = 'Blazing!'; }
+        else                   { tier = 'legend'; icon = '👑'; tierLabel = 'Legendary'; }
 
         return `
-            <article class="streak-card tone-${tone}">
-                <div class="streak-card-head">
-                    <span class="streak-card-title">${habit.name}</span>
-                    <span class="streak-card-chip">${habit.period}</span>
+            <article class="streak-card-v2 streak-tier-${tier}">
+                <div class="streak-card-v2-top">
+                    <div class="streak-card-v2-icon">${icon}</div>
+                    <div class="streak-card-v2-info">
+                        <div class="streak-card-v2-name">${habit.name}</div>
+                        <div class="streak-card-v2-meta">${habit.category || 'General'} · ${habit.period}</div>
+                    </div>
+                    <div class="streak-card-v2-num">${streak}</div>
                 </div>
-                <div class="streak-card-value">
-                    <span>${icon}</span>
-                    <strong>${streak}</strong>
+                <div class="streak-card-v2-tier-label">${tierLabel}</div>
+                <div class="streak-card-v2-bar-track">
+                    <div class="streak-card-v2-bar-fill" style="width:${pct}%;"></div>
                 </div>
-                <div class="streak-card-copy">${message}</div>
-                <div class="prog-wrap mt-12">
-                    <div class="prog-fill" style="width:${pct}%;"></div>
-                </div>
-                <div class="streak-card-meta">
-                    <span>${habit.category || 'General'}</span>
-                    <span>🧊 ${habit.freezeCredits || 0} freeze</span>
+                <div class="streak-card-v2-footer">
+                    <span>🧊 ${habit.freezeCredits || 0} freeze left</span>
+                    <span>${streak} day${streak !== 1 ? 's' : ''}</span>
                 </div>
             </article>
         `;
@@ -964,8 +1087,11 @@ export function setupSettings(user) {
     setEl('settingsEmail', user.email || 'Apex Performer');
     const appSettings = getAppSettings();
 
-    const storedName = getData(`pps_name_${user.email || 'guest'}`, '');
-    const displayName = storedName || user.name || (user.email ? user.email.split('@')[0] : 'Apex Performer');
+    let storedName = getData(`pps_name_${user.email || 'guest'}`, '');
+    if (user.email && (storedName === user.email || storedName === user.email.split('@')[0])) {
+        storedName = '';
+    }
+    const displayName = storedName || user.name || 'Apex Performer';
 
     const avatarEl = document.getElementById('userAvatar');
     if (avatarEl) avatarEl.textContent = displayName[0].toUpperCase();
@@ -1087,6 +1213,53 @@ export function setupSettings(user) {
         saveData(storageKey, []);
         document.dispatchEvent(new CustomEvent('habitsUpdated'));
         showSettingsMessage('All data reset.', 'success');
+    });
+
+    // ── JSON Export ──
+    document.getElementById('exportJsonBtn')?.addEventListener('click', () => {
+        const { habits, storageKey, stats, statsKey } = getState();
+        const backup = {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            storageKey,
+            habits,
+            stats
+        };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pps_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showSettingsMessage('Backup downloaded.', 'success');
+    });
+
+    // ── JSON Import ──
+    document.getElementById('importJsonInput')?.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const backup = JSON.parse(text);
+            if (!backup.habits || !Array.isArray(backup.habits)) {
+                showSettingsMessage('Invalid backup file.');
+                return;
+            }
+            if (!confirm(`Import ${backup.habits.length} habits from backup? This will overwrite your current habits.`)) {
+                e.target.value = '';
+                return;
+            }
+            const { storageKey, statsKey } = getState();
+            updateState({ habits: backup.habits, stats: backup.stats || getState().stats });
+            saveData(storageKey, backup.habits);
+            if (backup.stats && statsKey) saveData(statsKey, backup.stats);
+            document.dispatchEvent(new CustomEvent('habitsUpdated'));
+            showSettingsMessage(`Imported ${backup.habits.length} habits.`, 'success');
+        } catch {
+            showSettingsMessage('Could not read backup file.');
+        }
+        e.target.value = '';
     });
 
     setEl('storageUsed', `~${(getStorageSize() / 1024).toFixed(1)} KB`);
