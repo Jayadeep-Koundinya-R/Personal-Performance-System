@@ -14,6 +14,7 @@ import { rfl_render }   from './reflection.js';
 import { rem_render }   from './reminder.js';
 import { renderSocial } from './social.js';
 import { renderTasks } from './tasks.js';
+import { notif_syncStatus } from './notifications.js';
 
 const MOBILE_BP = 768;
 
@@ -71,6 +72,7 @@ export function setupNavigation() {
                     break;
                 case "reminderSection":
                     rem_render();
+                    notif_syncStatus();
                     break;
                 case "socialSection":
                     renderSocial();
