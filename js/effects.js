@@ -145,10 +145,10 @@ function _nextToast() {
     const { title, subtitle, type, duration } = _toastQueue.shift();
 
     const colors = {
-        streak: { bg: 'linear-gradient(135deg,#1a0c00,#2a1400)', border: '#f5a623', glow: 'rgba(245,166,35,0.3)' },
-        badge:  { bg: 'linear-gradient(135deg,#0c0818,#1a1040)', border: '#6ea8ff', glow: 'rgba(110,168,255,0.3)' },
-        perfect:{ bg: 'linear-gradient(135deg,#001610,#002820)', border: '#22d47a', glow: 'rgba(34,212,122,0.3)' },
-        default:{ bg: 'var(--card)',                              border: 'var(--border-bright)', glow: 'transparent' }
+        streak: { bg: 'var(--toast-streak-bg, linear-gradient(135deg,#1a0c00,#2a1400))', border: '#f5a623', glow: 'rgba(245,166,35,0.3)' },
+        badge:  { bg: 'var(--toast-badge-bg,  linear-gradient(135deg,#0c0818,#1a1040))', border: '#6ea8ff', glow: 'rgba(110,168,255,0.3)' },
+        perfect:{ bg: 'var(--toast-perfect-bg,linear-gradient(135deg,#001610,#002820))', border: '#22d47a', glow: 'rgba(34,212,122,0.3)' },
+        default:{ bg: 'var(--card)',                                                       border: 'var(--border-bright)', glow: 'transparent' }
     };
     const c = colors[type] || colors.default;
 

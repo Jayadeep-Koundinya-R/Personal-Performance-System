@@ -53,6 +53,11 @@
     linear-gradient(145deg, rgba(19, 34, 55, 0.95), rgba(9, 18, 34, 0.88));
   --soft-shadow: 0 22px 60px rgba(2, 10, 25, 0.42);
   --card-shadow: 0 16px 36px rgba(2, 10, 25, 0.28);
+
+  /* Toast backgrounds */
+  --toast-streak-bg:  linear-gradient(135deg, #1a0c00, #2a1400);
+  --toast-badge-bg:   linear-gradient(135deg, #0c0818, #1a1040);
+  --toast-perfect-bg: linear-gradient(135deg, #001610, #002820);
 }
 
 /* ── LIGHT THEME OVERRIDES ── */
@@ -86,6 +91,11 @@
     linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.96));
   --soft-shadow: 0 20px 50px rgba(15, 23, 42, 0.06);
   --card-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
+
+  /* Toast backgrounds — slightly lighter for light theme but still readable */
+  --toast-streak-bg:  linear-gradient(135deg, #2a1400, #3d1f00);
+  --toast-badge-bg:   linear-gradient(135deg, #1a1040, #2a1a60);
+  --toast-perfect-bg: linear-gradient(135deg, #002820, #003d2a);
 }
 
 /* ── RESET ── */

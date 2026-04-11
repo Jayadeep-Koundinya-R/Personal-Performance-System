@@ -57,9 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupReminders();
     notif_startChecker();
 
-    const dateSetter = document.getElementById('appDateSetter');
-    if (dateSetter) dateSetter.value = getTodayStr();
-
     initTheme();
     bindThemeToggles();
     _renderAll();
@@ -177,14 +174,5 @@ function _initDailyQuote() {
     if (textEl) textEl.textContent = `"${quote.text}"`;
     if (authEl) authEl.textContent = `— ${quote.author}`;
 }
-
-window.setTimeSetter = function(dateStr) {
-    if (!dateStr || dateStr.length < 10) return;
-    const testDate = new Date(dateStr);
-    if (isNaN(testDate.getTime())) return;
-    
-    updateState({ selectedDate: dateStr });
-    _renderAll();
-};
 
 window.updateDashboardExtras = _updateDashboardExtras;

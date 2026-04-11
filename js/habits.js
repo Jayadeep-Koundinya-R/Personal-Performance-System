@@ -170,7 +170,7 @@ export function addHabit(name, category, period, priority, startDate) {
 /* ─────────────────────────────────────
    DELETE HABIT (with undo)
 ───────────────────────────────────── */
-let _deletedHabit = null;
+let _deletedQueue = [];
 let _undoTimer = null;
 
 export function deleteHabit(id) {
@@ -179,22 +179,27 @@ export function deleteHabit(id) {
     if (!habit) return;
 
     // Stash for undo
-    _deletedHabit = { habit, index: habits.indexOf(habit) };
+    _deletedQueue.push({ habit, index: habits.indexOf(habit) });
     clearTimeout(_undoTimer);
 
     updateState({ habits: habits.filter(h => h.id !== id) });
     saveHabits();
     notifyHabitsUpdated();
-    _showUndoToast(habit.name);
+    
+    // Determine toast message
+    const msg = _deletedQueue.length > 1 
+        ? `${_deletedQueue.length} habits deleted`
+        : `"${habit.name}" deleted`;
+    _showUndoToast(msg);
 
-    // Auto-clear undo after 5 seconds
+    // Auto-clear undo queue after 5 seconds
     _undoTimer = setTimeout(() => {
-        _deletedHabit = null;
+        _deletedQueue = [];
         _hideUndoToast();
     }, 5000);
 }
 
-function _showUndoToast(name) {
+function _showUndoToast(msg) {
     let toast = document.getElementById('_pps_undo_toast');
     if (!toast) {
         toast = document.createElement('div');
@@ -211,7 +216,7 @@ function _showUndoToast(name) {
         document.body.appendChild(toast);
     }
     toast.innerHTML = `
-        <span>"${name}" deleted</span>
+        <span>${msg}</span>
         <button onclick="window._pps_undoDelete()" style="
             background:var(--accent-dim); color:var(--accent);
             border:1px solid var(--accent); border-radius:8px;
@@ -230,16 +235,35 @@ function _hideUndoToast() {
 // Exposed globally so the inline onclick can reach it
 if (typeof window !== 'undefined') {
     window._pps_undoDelete = function () {
-        if (!_deletedHabit) return;
+        if (_deletedQueue.length === 0) return;
         clearTimeout(_undoTimer);
+        
+        const lastDeleted = _deletedQueue.pop();
         const { habits } = getState();
         const restored = [...habits];
-        restored.splice(_deletedHabit.index, 0, _deletedHabit.habit);
+        
+        // Ensure index doesn't overshoot if multiple things were deleted
+        const spliceIndex = Math.min(lastDeleted.index, restored.length);
+        restored.splice(spliceIndex, 0, lastDeleted.habit);
+        
         updateState({ habits: restored });
         saveHabits();
         notifyHabitsUpdated();
-        _deletedHabit = null;
-        _hideUndoToast();
+        
+        if (_deletedQueue.length > 0) {
+            const msg = _deletedQueue.length > 1 
+                ? `${_deletedQueue.length} habits deleted`
+                : `"${_deletedQueue[_deletedQueue.length - 1].habit.name}" deleted`;
+            _showUndoToast(msg);
+            
+            // Restart timer for remaining items
+            _undoTimer = setTimeout(() => {
+                _deletedQueue = [];
+                _hideUndoToast();
+            }, 5000);
+        } else {
+            _hideUndoToast();
+        }
     };
 }
 
@@ -415,7 +439,7 @@ export function renderHabits() {
         // Drag-to-reorder
         card.addEventListener("dragstart", e => {
             e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("text/plain", idx);
+            e.dataTransfer.setData("text/plain", habit.id);
             card.style.opacity = "0.4";
         });
         card.addEventListener("dragend", () => { card.style.opacity = ""; });
@@ -428,10 +452,16 @@ export function renderHabits() {
         card.addEventListener("drop", e => {
             e.preventDefault();
             card.style.borderTop = "";
-            const fromIdx = Number(e.dataTransfer.getData("text/plain"));
-            const toIdx = idx;
-            if (fromIdx === toIdx) return;
+            const fromId = Number(e.dataTransfer.getData("text/plain"));
+            const toId = habit.id;
+            if (fromId === toId) return;
+            
             const { habits: h } = getState();
+            const fromIdx = h.findIndex(item => item.id === fromId);
+            const toIdx = h.findIndex(item => item.id === toId);
+            
+            if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+            
             const reordered = [...h];
             const [moved] = reordered.splice(fromIdx, 1);
             reordered.splice(toIdx, 0, moved);

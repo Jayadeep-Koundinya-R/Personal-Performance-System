@@ -217,55 +217,85 @@ function getDashboardRange() {
 export function renderDashboard() {
     const { habits } = getState();
     const criticalList = document.getElementById('criticalList');
-    const highList = document.getElementById('highList');
-    const mediumList = document.getElementById('mediumList');
+    const highList     = document.getElementById('highList');
+    const mediumList   = document.getElementById('mediumList');
     const upcomingList = document.getElementById('upcomingList');
     if (!criticalList || !highList || !mediumList || !upcomingList) return;
 
     const { start, end, isRange } = getDashboardRange();
     const todayStr = getTodayStr();
-    
+    const filter   = document.getElementById('globalFilter')?.value || 'today';
+
+    // Update lane headings based on filter
+    const laneHeadings = {
+        today: ['Critical now',   'High priority',       'Medium focus',        'Upcoming'],
+        week:  ['Due today',      'Due this week — High', 'Due this week — Med', 'Completed this week'],
+        month: ['Due today',      'High this month',     'Medium this month',   'Completed this month']
+    };
+    const [h1, h2, h3, h4] = laneHeadings[filter] || laneHeadings.today;
+    const laneHeadEls = document.querySelectorAll('.dashboard-lane h4');
+    if (laneHeadEls[0]) laneHeadEls[0].textContent = h1;
+    if (laneHeadEls[1]) laneHeadEls[1].textContent = h2;
+    if (laneHeadEls[2]) laneHeadEls[2].textContent = h3;
+    if (laneHeadEls[3]) laneHeadEls[3].textContent = h4;
+
     const critical = [];
-    const high = [];
-    const medium = [];
+    const high     = [];
+    const medium   = [];
     const upcoming = [];
 
     habits.forEach(habit => {
         const dueDate = new Date(habit.dueDate);
         dueDate.setHours(0, 0, 0, 0);
         const diffDays = Math.round((dueDate - end) / 86400000);
-        
-        const isExactlyToday = isHabitDueOn(habit, todayStr);
-        const isFuture = diffDays > 0;
-        const isOverdue = diffDays < 0;
-        
-        const wasCompletedToday = habit.completedDates.includes(todayStr);
-        const wasCompletedInRange = isRange && habit.completedDates.some(d => isDateWithinRange(d, start, end));
 
-        if (isExactlyToday) {
-            critical.push(habit);
-        } else if (isFuture) {
-            if (habit.priority === 'High') high.push(habit);
-            else if (habit.priority === 'Medium') medium.push(habit);
-            else upcoming.push(habit);
-        } else if (isOverdue && wasCompletedToday) {
-            upcoming.push(habit);
-        } else if (wasCompletedInRange) {
-            upcoming.push(habit);
+        const isExactlyToday   = isHabitDueOn(habit, todayStr);
+        const isDueInRange     = isRange && dueDate >= start && dueDate <= end;
+        const isFuture         = diffDays > 0;
+        const completedInRange = habit.completedDates.some(d => isDateWithinRange(d, start, end));
+        const completedToday   = habit.completedDates.includes(todayStr);
+
+        if (!isRange) {
+            // ── TODAY view ────────────────────────────────────────────────
+            if (isExactlyToday) {
+                critical.push(habit);
+            } else if (isFuture) {
+                if (habit.priority === 'High')   high.push(habit);
+                else if (habit.priority === 'Medium') medium.push(habit);
+                else upcoming.push(habit);
+            } else if (completedToday) {
+                upcoming.push(habit);
+            }
+        } else {
+            // ── WEEK / MONTH view ─────────────────────────────────────────
+            // Lane 1 (critical): due exactly today
+            // Lane 2 (high): due in range, High priority, not done
+            // Lane 3 (medium): due in range, Medium/Low priority, not done
+            // Lane 4 (upcoming): completed in range OR due in range and done
+            if (isExactlyToday && !completedToday) {
+                critical.push(habit);
+            } else if (isDueInRange && !completedInRange) {
+                if (habit.priority === 'High')   high.push(habit);
+                else                             medium.push(habit);
+            } else if (completedInRange) {
+                upcoming.push(habit);
+            } else if (isFuture && !isDueInRange) {
+                // Due after the range end — show in high/medium for awareness
+                if (habit.priority === 'High')   high.push(habit);
+            }
         }
     });
 
     [
-        { list: criticalList, items: critical, empty: 'No critical tasks.' },
-        { list: highList, items: high, empty: 'No high-priority tasks.' },
-        { list: mediumList, items: medium, empty: 'No medium-focus items.' },
-        { list: upcomingList, items: upcoming, empty: 'No additional tasks.' }
+        { list: criticalList, items: critical, empty: isRange ? 'Nothing due today.' : 'No critical tasks.' },
+        { list: highList,     items: high,     empty: 'No high-priority items.' },
+        { list: mediumList,   items: medium,   empty: 'No medium-focus items.' },
+        { list: upcomingList, items: upcoming, empty: isRange ? 'No completions yet in this range.' : 'No additional tasks.' }
     ].forEach(group => {
         if (group.items.length === 0) {
             group.list.innerHTML = `<div class="widget-empty">${group.empty}</div>`;
             return;
         }
-
         group.list.innerHTML = group.items.map(habit => buildTaskItem(habit, end, todayStr)).join('');
         bindTaskCheckboxes(group.list, habits);
     });
@@ -293,46 +323,56 @@ export function updateCompletionStats() {
     const { habits } = getState();
     const { start, end, isRange } = getDashboardRange();
     const todayStr = getTodayStr();
+    const filter = document.getElementById('globalFilter')?.value || 'today';
 
-    let dueInRange = 0;
-    let doneInRange = 0;
+    let dueCount  = 0;
+    let doneCount = 0;
     let freezeCredits = 0;
     let maxStreak = 0;
 
     habits.forEach(habit => {
-        const dueDate = new Date(habit.dueDate);
-        dueDate.setHours(0, 0, 0, 0);
-        const diffDays = Math.round((dueDate - end) / 86400000);
         const isExactlyToday = isHabitDueOn(habit, todayStr);
 
-        const completionsInRange = (habit.completedDates || []).filter(d => isDateWithinRange(d, start, end)).length;
-        const doneToday = (habit.completedDates || []).includes(todayStr);
-
-        if (isExactlyToday || (isRange && completionsInRange > 0)) {
-            // Count anything that's due today, or if we're in range mode, anything we did or was due.
-            dueInRange += 1; 
-        }
-        
-        if (isRange) {
-            if (completionsInRange > 0) doneInRange += completionsInRange;
+        if (!isRange) {
+            // ── TODAY filter ──────────────────────────────────────────────
+            // Only habits due today count. Done = completed today. Max 1 per habit.
+            if (isExactlyToday) {
+                dueCount++;
+                if ((habit.completedDates || []).includes(todayStr)) doneCount++;
+            }
         } else {
-            if (doneToday) doneInRange += 1;
+            // ── WEEK / MONTH filter ───────────────────────────────────────
+            // A habit "counts" if it had at least one due date fall inside the range
+            // OR if it was completed inside the range.
+            // Done = completed at least once in range (capped at 1 per habit).
+            const completedInRange = (habit.completedDates || []).some(d => isDateWithinRange(d, start, end));
+            const dueInRange = _habitHadDueDateInRange(habit, start, end);
+
+            if (dueInRange || completedInRange) {
+                dueCount++;
+                if (completedInRange) doneCount++;
+            }
         }
 
         freezeCredits += habit.freezeCredits || 0;
         maxStreak = Math.max(maxStreak, habit.streak || 0);
     });
 
-    const completionPct = dueInRange > 0 ? Math.round(( (isRange ? doneInRange : doneInRange) / dueInRange) * 100) : 0;
-    // For ranges, we might want a different calculation, but for now let's keep it simple
-    
-    const totalXP = calculateTotalXP(habits);
-    const level = calculateLevel(habits);
-    const weeklyPoints = calculateWeeklyPoints(habits);
-    const totalDoneAllTime = habits.reduce((sum, habit) => sum + (habit.completedDates || []).length, 0);
-    const analytics = getAnalyticsSnapshot();
+    // Always 0–100%, never over
+    const completionPct = dueCount > 0 ? Math.min(100, Math.round((doneCount / dueCount) * 100)) : 0;
 
-    setEl('completionRate', `${isRange ? Math.min(100, Math.round((doneInRange / (dueInRange || 1)) * 100)) : completionPct}%`);
+    const totalXP      = calculateTotalXP(habits);
+    const level        = calculateLevel(habits);
+    const weeklyPoints = calculateWeeklyPoints(habits);
+    const totalDoneAllTime = habits.reduce((s, h) => s + (h.completedDates || []).length, 0);
+    const analytics    = getAnalyticsSnapshot();
+
+    // KPI label changes with filter
+    const filterLabel = { today: "Today's habits", week: 'This week', month: 'This month' }[filter] || "Today's habits";
+    const kpiBadge = document.querySelector('.stat-card.purple .stat-badge');
+    if (kpiBadge) kpiBadge.textContent = filterLabel;
+
+    setEl('completionRate', `${completionPct}%`);
     setEl('freezeCreditsDisplay', freezeCredits);
     setEl('currentStreak', `🔥 ${maxStreak}`);
     setEl('weeklyPoints', weeklyPoints);
@@ -349,14 +389,62 @@ export function updateCompletionStats() {
 
     const currentStats = getState().stats;
     updateState({
-        stats: {
-            ...currentStats,
-            totalXP,
-            level,
-            streak: maxStreak,
-            freezeCredits
-        }
+        stats: { ...currentStats, totalXP, level, streak: maxStreak, freezeCredits }
     });
+}
+
+/**
+ * Returns true if the habit had at least one scheduled due date fall inside [start, end].
+ * Uses proper calendar month stepping for Monthly habits (no 30-day approximation).
+ */
+function _habitHadDueDateInRange(habit, start, end) {
+    if (!habit.dueDate) return false;
+
+    const period = habit.period;
+    if (period === 'Today' || period === 'Custom') {
+        const d = new Date(habit.dueDate);
+        d.setHours(0, 0, 0, 0);
+        return d >= start && d <= end;
+    }
+
+    // For Daily: if range >= 1 day, a daily habit always has a due date in range
+    if (period === 'Daily') return true;
+
+    // For Weekly/Monthly: walk backwards from current dueDate
+    // to find if any occurrence landed in [start, end]
+    const cursor = new Date(habit.dueDate);
+    cursor.setHours(0, 0, 0, 0);
+
+    // Walk forward first — if cursor is before start, advance until >= start
+    // then check if it's still <= end
+    // Walk backward from cursor until we pass start
+    const maxSteps = period === 'Weekly' ? 200 : 50; // safety limit
+    let steps = 0;
+
+    // First advance cursor backwards until it's before or at end
+    while (cursor > end && steps < maxSteps) {
+        if (period === 'Weekly') {
+            cursor.setDate(cursor.getDate() - 7);
+        } else {
+            // Monthly — subtract one calendar month
+            cursor.setMonth(cursor.getMonth() - 1);
+        }
+        steps++;
+    }
+
+    // Now walk forward checking if any occurrence is in [start, end]
+    steps = 0;
+    while (cursor <= end && steps < maxSteps) {
+        if (cursor >= start) return true;
+        if (period === 'Weekly') {
+            cursor.setDate(cursor.getDate() + 7);
+        } else {
+            cursor.setMonth(cursor.getMonth() + 1);
+        }
+        steps++;
+    }
+
+    return false;
 }
 
 
@@ -365,6 +453,7 @@ export function updateProgressWidget() {
     const todayStr = getTodayStr();
     const { xpPerCompletion } = getAppSettings();
 
+    // Always shows TODAY's progress — not affected by the global filter
     let due = 0, done = 0;
     habits.forEach(habit => {
         if (!isHabitDueOn(habit, todayStr)) return;
@@ -372,40 +461,33 @@ export function updateProgressWidget() {
         if (habit.completedDates.includes(todayStr)) done++;
     });
 
-    const pct = due > 0 ? Math.round((done / due) * 100) : 0;
+    const pct = due > 0 ? Math.min(100, Math.round((done / due) * 100)) : 0;
     const xpEarned = done * xpPerCompletion;
 
-    // Text elements
     setEl('todayProgress', `${done}/${due}`);
     setEl('trackerProgress', `${done}/${due}`);
     setBar('trackerProgressBar', pct);
     setEl('trackerPercent', `${pct}%`);
 
-    // Tracker ring SVG
     const ring = document.getElementById('trackerRingFill');
     if (ring) {
         const circumference = 201.1;
         ring.style.strokeDashoffset = circumference - (pct / 100) * circumference;
     }
 
-    // XP badge
     setEl('trackerXpBadge', `+${xpEarned} XP today`);
 
-    // Motivation message
     const msgEl = document.getElementById('trackerMotivation');
     if (msgEl) {
-        if (due === 0)       msgEl.textContent = 'No habits due today';
-        else if (pct === 0)  msgEl.textContent = "Let's get started 💪";
-        else if (pct < 50)   msgEl.textContent = 'Good start, keep going! 🚀';
-        else if (pct < 100)  msgEl.textContent = 'Halfway there, push through! 🔥';
-        else                 msgEl.textContent = 'Perfect day! Every habit done ⭐';
+        if (due === 0)      msgEl.textContent = 'No habits due today';
+        else if (pct === 0) msgEl.textContent = "Let's get started 💪";
+        else if (pct < 50)  msgEl.textContent = 'Good start, keep going! 🚀';
+        else if (pct < 100) msgEl.textContent = 'Halfway there, push through! 🔥';
+        else                msgEl.textContent = 'Perfect day! Every habit done ⭐';
     }
 
-    // Banner glow when complete
     const banner = document.querySelector('.tracker-hero-banner');
-    if (banner) {
-        banner.classList.toggle('tracker-hero-complete', pct === 100 && due > 0);
-    }
+    if (banner) banner.classList.toggle('tracker-hero-complete', pct === 100 && due > 0);
 }
 
 function renderBarChart(containerId, bars) {

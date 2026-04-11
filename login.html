@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Sign in to PPS — Personal Performance System. Track habits, earn XP, build streaks.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>⚡</text></svg>">
   <title>PPS - Login</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -61,8 +63,8 @@
         <div class="login-tagline">Personal Performance System</div>
 
         <div class="auth-tabs">
-          <div class="auth-tab active" id="tabSignIn" onclick="switchTab('signin')">Sign In</div>
-          <div class="auth-tab" id="tabSignUp" onclick="switchTab('signup')">Sign Up</div>
+          <div class="auth-tab active" id="tabSignIn">Sign In</div>
+          <div class="auth-tab" id="tabSignUp">Sign Up</div>
         </div>
 
         <div class="msg" id="authMsg"></div>
@@ -78,7 +80,7 @@
             <input type="password" id="signinPassword" placeholder="••••••••" autocomplete="current-password">
           </div>
 
-          <button class="forgot-password-link" type="button" onclick="toggleForgotPassword()">
+          <button class="forgot-password-link" type="button" id="forgotPasswordLink">
             Forgot Password?
           </button>
 
@@ -95,12 +97,12 @@
               <label>New Password</label>
               <input type="password" id="forgotNewPassword" placeholder="Min 6 characters" autocomplete="new-password">
             </div>
-            <button class="ghost-btn forgot-submit-btn" type="button" onclick="handleForgotPassword()">
+            <button class="ghost-btn forgot-submit-btn" type="button" id="forgotSubmitBtn">
               Reset Password
             </button>
           </div>
 
-          <button class="primary-btn" style="width:100%; margin-top:20px;" onclick="handleSignIn()">
+          <button class="primary-btn" style="width:100%; margin-top:20px;" id="signInBtn">
             Sign In
           </button>
         </div>
@@ -121,14 +123,14 @@
             <input type="password" id="signupPassword" placeholder="Min 6 characters" autocomplete="new-password">
           </div>
 
-          <button class="primary-btn" style="width:100%; margin-top:20px;" onclick="handleSignUp()">
+          <button class="primary-btn" style="width:100%; margin-top:20px;" id="signUpBtn">
             Create Account
           </button>
         </div>
 
         <div class="divider">or</div>
 
-        <button class="guest-btn" onclick="handleGuest()">
+        <button class="guest-btn" id="guestBtn">
           Continue as Apex Performer · Try a Week
         </button>
 
@@ -248,13 +250,19 @@
     document.addEventListener('keydown', e => {
       if (e.key !== 'Enter') return;
       const forgotVisible = document.getElementById('forgotPanel').style.display !== 'none';
-      if (forgotVisible) {
-        handleForgotPassword();
-        return;
-      }
+      if (forgotVisible) { handleForgotPassword(); return; }
       const signinVisible = document.getElementById('signinForm').style.display !== 'none';
       signinVisible ? handleSignIn() : handleSignUp();
     });
+
+    // Wire all buttons via addEventListener — no window.* needed
+    document.getElementById('tabSignIn').addEventListener('click', () => switchTab('signin'));
+    document.getElementById('tabSignUp').addEventListener('click', () => switchTab('signup'));
+    document.getElementById('forgotPasswordLink').addEventListener('click', toggleForgotPassword);
+    document.getElementById('forgotSubmitBtn').addEventListener('click', handleForgotPassword);
+    document.getElementById('signInBtn').addEventListener('click', handleSignIn);
+    document.getElementById('signUpBtn').addEventListener('click', handleSignUp);
+    document.getElementById('guestBtn').addEventListener('click', handleGuest);
 
     (function checkAlreadyLoggedIn() {
       const user = getData('currentUser');
@@ -265,13 +273,6 @@
       }
       window.location.href = 'dashboard.html';
     })();
-
-    window.switchTab = switchTab;
-    window.toggleForgotPassword = toggleForgotPassword;
-    window.handleSignIn = handleSignIn;
-    window.handleSignUp = handleSignUp;
-    window.handleForgotPassword = handleForgotPassword;
-    window.handleGuest = handleGuest;
   </script>
 
 </body>
