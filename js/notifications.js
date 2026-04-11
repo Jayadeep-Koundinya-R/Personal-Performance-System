@@ -14,10 +14,17 @@ function getAlertStorageKey() {
 }
 
 function setStatus(message, ok) {
-    const el = document.getElementById('notif_status');
-    if (!el) return;
-    el.textContent = message;
-    el.style.color = ok ? '#22c55e' : '#ef4444';
+    // Try multiple times in case the element isn't rendered yet (section hidden)
+    const trySet = () => {
+        const el = document.getElementById('notif_status');
+        if (el) {
+            el.textContent = message;
+            el.style.color = ok ? '#22c55e' : '#ef4444';
+        }
+    };
+    trySet();
+    // Retry after a tick in case the section becomes visible later
+    setTimeout(trySet, 100);
 }
 
 function notifyAlertChange() {
@@ -113,24 +120,28 @@ function checkReminders() {
 
 export function notif_requestPermission() {
     if (typeof Notification === 'undefined') {
-        setStatus('In-app alerts only. Browser notifications are unavailable.', false);
-        return;
-    }
-
-    if (Notification.permission === 'denied') {
-        setStatus('Browser notifications are blocked. In-app alerts still work.', false);
-        return;
-    }
-
-    if (Notification.permission === 'granted') {
-        setStatus('Browser and in-app alerts are active.', true);
+        setStatus('In-app alerts only. Browser notifications unavailable.', false);
         notif_startChecker();
         return;
     }
 
+    if (Notification.permission === 'denied') {
+        setStatus('Browser notifications blocked. In-app alerts still work.', false);
+        notif_startChecker();
+        return;
+    }
+
+    if (Notification.permission === 'granted') {
+        // Already granted — just restart the checker (handles stop → enable flow)
+        notifRunning = false; // force restart even if it was running
+        notif_startChecker();
+        return;
+    }
+
+    // Not yet asked — request permission
     Notification.requestPermission().then(result => {
         if (result === 'granted') {
-            setStatus('Browser and in-app alerts are active.', true);
+            notifRunning = false;
             notif_startChecker();
             fireBrowserNotification({
                 id: 'pps-on',
@@ -139,7 +150,9 @@ export function notif_requestPermission() {
                 repeat: 'One time'
             });
         } else {
-            setStatus('In-app alerts stay on, but browser popups were denied.', false);
+            setStatus('In-app alerts on. Browser popups were denied.', false);
+            notifRunning = false;
+            notif_startChecker();
         }
     });
 }
@@ -150,10 +163,11 @@ export function notif_stop() {
         notifInterval = null;
     }
     notifRunning = false;
-    setStatus('Reminder alert checks stopped.', false);
+    setStatus('Alerts stopped. Click Enable to restart.', false);
 }
 
 export function notif_startChecker() {
+    // Always allow restart — notif_stop resets notifRunning to false
     if (notifRunning) return;
     notifRunning = true;
     checkReminders();
@@ -164,9 +178,9 @@ export function notif_startChecker() {
     } else if (Notification.permission === 'granted') {
         setStatus('Browser and in-app alerts are active.', true);
     } else if (Notification.permission === 'denied') {
-        setStatus('In-app alerts are active. Browser notifications are blocked.', false);
+        setStatus('In-app alerts active. Browser popups blocked.', false);
     } else {
-        setStatus('In-app alerts are active. Enable browser notifications if you want popups.', true);
+        setStatus('In-app alerts active. Enable browser notifications for popups.', true);
     }
 }
 
