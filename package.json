@@ -1,0 +1,14 @@
+{
+  "name": "personal-performance-system",
+  "version": "1.0.0",
+  "description": "A comprehensive system designed to track, analyze, and optimize personal performance metrics.",
+  "homepage": "https://jayadeep-koundinya-r.github.io/Personal-Performance-System/",
+  "scripts": {
+    "start": "npx live-server . --open=./index.html",
+    "deploy": "gh-pages -d ."
+  },
+  "devDependencies": {
+    "gh-pages": "^5.0.0",
+    "live-server": "^1.2.2"
+  }
+}
