@@ -161,7 +161,6 @@ export const useTasks = () => {
         try {
           list = JSON.parse(localStorage.getItem(key) ?? '[]');
         } catch {}
-        const nextList = list.map(t => t.id === id ? { ...t, done } : h => h);
         const updatedList = list.map(t => {
           if (t.id === id) return { ...t, done };
           return t;

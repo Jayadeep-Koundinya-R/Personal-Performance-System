@@ -2,9 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import {
-  Habit,
-  HabitPeriod,
-  HabitPriority,
   createHabit,
   toggleHabitCompletion,
   applyDailyResetToAll,
@@ -13,6 +10,11 @@ import {
   saveHabitsToStorage,
   getToday,
   getTodayStr
+} from '../utils/habitUtils';
+import type {
+  Habit,
+  HabitPeriod,
+  HabitPriority
 } from '../utils/habitUtils';
 
 export const useHabits = () => {
