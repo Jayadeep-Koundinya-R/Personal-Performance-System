@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PPS — Personal Performance System. Build better habits, level up with XP, track streaks, and grow every day. Free, private, no install needed.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>⚡</text></svg>">
+  <title>PPS — Build Better Habits. Level Up Your Life.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Landing-only additions — base styles come from style.css ── */
+
+    /* Subtle animated orbs — extend the page-gradient from style.css */
+    .landing-page::before {
+      content: '';
+      position: fixed;
+      width: 700px; height: 700px;
+      top: -260px; left: -180px;
+      background: radial-gradient(circle, rgba(110,168,255,0.09) 0%, transparent 65%);
+      pointer-events: none; z-index: 0;
+      animation: orbFloat 14s ease-in-out infinite alternate;
+    }
+    .landing-page::after {
+      content: '';
+      position: fixed;
+      width: 520px; height: 520px;
+      bottom: -100px; right: -80px;
+      background: radial-gradient(circle, rgba(61,217,194,0.07) 0%, transparent 65%);
+      pointer-events: none; z-index: 0;
+      animation: orbFloat 18s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes orbFloat {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(28px,18px) scale(1.05); }
+    }
+
+    /* Entry animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hero-panel  { animation: fadeUp 0.65s cubic-bezier(.22,1,.36,1) both; }
+    .hero-preview { animation: fadeUp 0.65s cubic-bezier(.22,1,.36,1) 0.15s both; }
+
+    /* Pulsing dot for badge */
+    .badge-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); flex-shrink: 0;
+      animation: badgePulse 2s infinite;
+    }
+    @keyframes badgePulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:0.35; transform:scale(0.7); }
+    }
+
+    /* Nav link hover */
+    .nav-link { transition: color .15s; }
+    .nav-link:hover { color: var(--text); }
+
+    /* Trust pills */
+    .trust-pills {
+      display: flex; flex-wrap: wrap; gap: 14px;
+      margin-bottom: 30px;
+    }
+    .trust-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 500; color: var(--muted);
+    }
+    .trust-pill::before {
+      content: '✓';
+      width: 15px; height: 15px; border-radius: 50%;
+      background: var(--green-dim); color: var(--green);
+      font-size: 8px; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Section layout wrapper */
+    .landing-section {
+      position: relative; z-index: 1;
+      width: 100%;
+      padding: 100px 5.5%;
+      border-top: 1px solid var(--border);
+    }
+    .landing-section:nth-child(even) {
+      background: color-mix(in srgb, var(--accent) 3%, transparent);
+    }
+    .landing-section-inner {
+      max-width: 1200px; margin: 0 auto;
+    }
+
+    /* Section headings */
+    .section-kicker {
+      font-size: 11px; text-transform: uppercase; letter-spacing: .12em;
+      color: var(--muted); font-weight: 700; margin-bottom: 10px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .section-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: clamp(32px, 4vw, 44px);
+      font-weight: 800; letter-spacing: -0.04em;
+      color: var(--text); margin-bottom: 12px; line-height: 1.05;
+    }
+    .section-sub {
+      font-size: 15px; color: var(--text-2); max-width: 500px;
+      line-height: 1.75; margin-bottom: 44px;
+    }
+
+    /* ── How it works ── */
+    .steps-grid {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 14px;
+    }
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px; padding: 32px 24px;
+      position: relative; overflow: hidden;
+      box-shadow: var(--card-shadow);
+      transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .step-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: var(--glow-accent), var(--card-shadow);
+    }
+    .step-card::before {
+      content: attr(data-step);
+      position: absolute; top: -12px; right: 14px;
+      font-family: 'Syne', sans-serif;
+      font-size: 68px; font-weight: 800;
+      color: rgba(110,168,255,0.05); line-height: 1; pointer-events: none;
+    }
+    .step-icon {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; margin-bottom: 14px;
+      border: 1px solid var(--border);
+    }
+    .si-vi { background: var(--accent-dim); }
+    .si-cy { background: var(--accent2-dim); }
+    .si-gd { background: var(--amber-dim); }
+    .si-gn { background: var(--green-dim); }
+    .step-card h4 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 8px;
+    }
+    .step-card p { font-size: 12.5px; color: var(--text-2); line-height: 1.65; }
+
+    /* ── Features big grid ── */
+    .features-big-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 14px;
+    }
+    .feat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px; padding: 32px 24px;
+      box-shadow: var(--card-shadow);
+      transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .feat-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+      box-shadow: var(--glow-accent), var(--card-shadow);
+    }
+    .feat-icon { font-size: 26px; margin-bottom: 12px; display: block; }
+    .feat-card h4 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px;
+    }
+    .feat-card p { font-size: 13px; color: var(--text-2); line-height: 1.7; }
+    .feat-tag {
+      display: inline-block; margin-top: 12px;
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      font-family: 'DM Mono', monospace;
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .ft-vi { background: var(--accent-dim);  color: var(--accent);  border: 1px solid #6ea8ff22; }
+    .ft-cy { background: var(--accent2-dim); color: var(--accent2); border: 1px solid #3dd9c222; }
+    .ft-gd { background: var(--amber-dim);   color: var(--amber);   border: 1px solid #f5a62322; }
+    .ft-gn { background: var(--green-dim);   color: var(--green);   border: 1px solid #22d47a22; }
+    .ft-rd { background: var(--red-dim);     color: var(--red);     border: 1px solid #ff4d6a22; }
+
+    /* ── Bottom CTA ── */
+    .cta-section {
+      position: relative; z-index: 1;
+      text-align: center; padding: 100px 5.5%;
+      border-top: 1px solid var(--border);
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      width: 500px; height: 240px;
+      background: radial-gradient(ellipse, rgba(110,168,255,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-section h2 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: clamp(32px, 5vw, 54px);
+      font-weight: 800; letter-spacing: -0.04em;
+      color: var(--text); margin-bottom: 14px; line-height: 1.05;
+    }
+    .cta-section h2 span {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .cta-section p { color: var(--text-2); font-size: 16px; margin-bottom: 34px; line-height: 1.7; }
+    .cta-pair { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    
+    .nav-link.is-active { color: var(--accent); }
+
+    /* ── Footer ── */
+    .landing-footer {
+      position: relative; z-index: 1;
+      padding: 22px 5.5%;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px;
+    }
+    .landing-footer span { font-size: 12px; color: var(--muted); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a {
+      font-size: 12px; color: var(--muted);
+      text-decoration: none; transition: color .15s;
+    }
+    .footer-links a:hover { color: var(--text-2); }
+
+    /* ── Responsive ── */
+    .landing-page {
+      overflow-x: hidden;
+    }
+    .landing-nav {
+      width: min(1220px, calc(100% - 28px));
+      margin: 14px auto 0;
+      padding: 0 24px;
+      border-radius: 24px;
+      border: 1px solid var(--border-bright);
+      background:
+        linear-gradient(135deg, rgba(110,168,255,0.10), rgba(61,217,194,0.08)),
+        color-mix(in srgb, var(--bg) 78%, transparent);
+      box-shadow: var(--soft-shadow);
+      backdrop-filter: blur(18px);
+      min-height: 82px;
+    }
+    .hero-section {
+      position: relative;
+      padding: 110px 5.5% 88px;
+    }
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 14%, rgba(110,168,255,0.09), transparent 28%),
+        radial-gradient(circle at 82% 22%, rgba(61,217,194,0.08), transparent 24%);
+      pointer-events: none;
+    }
+    .hero-shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      gap: 20px;
+      align-items: stretch;
+    }
+    .hero-panel,
+    .hero-preview {
+      position: relative;
+      overflow: hidden;
+      border-radius: 32px;
+      border: 1px solid var(--border-bright);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.04), transparent 30%),
+        var(--hero-panel);
+      box-shadow: var(--soft-shadow);
+    }
+    .hero-panel::before,
+    .hero-preview::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(110,168,255,0.10), transparent 34%);
+      pointer-events: none;
+    }
+    .hero-panel {
+      padding: 48px;
+    }
+    .hero-preview {
+      padding: 18px;
+    }
+    .hero-title {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 24px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(50px, 8vw, 92px);
+      line-height: 0.94;
+      font-weight: 700;
+      letter-spacing: -0.07em;
+    }
+    .hero-title-main {
+      display: block;
+      color: var(--text);
+      background: none;
+      -webkit-text-fill-color: currentColor;
+      text-wrap: balance;
+    }
+    .hero-title-accent {
+      display: block;
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(40px, 6.2vw, 78px);
+      line-height: 0.98;
+      letter-spacing: -0.06em;
+      background: linear-gradient(135deg, #9bc2ff 0%, #5eead4 48%, #f5c518 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-wrap: balance;
+    }
+    .hero-subtitle {
+      max-width: 640px;
+      font-size: 17px;
+      line-height: 1.82;
+      color: var(--text-2);
+      margin-bottom: 36px;
+    }
+    .feature-grid {
+      gap: 16px;
+      margin-top: 38px;
+    }
+    .feature-item,
+    .preview-card {
+      border-radius: 24px;
+      border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.04), transparent 34%),
+        color-mix(in srgb, var(--card) 88%, transparent);
+    }
+    .feature-item {
+      padding: 22px;
+      transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+    }
+    .feature-item:hover,
+    .preview-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-bright);
+      box-shadow: var(--soft-shadow);
+    }
+    .f-label,
+    .preview-kicker,
+    .section-kicker {
+      font-family: 'DM Mono', monospace;
+      letter-spacing: .14em;
+    }
+    .f-val {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 30px;
+      letter-spacing: -0.05em;
+    }
+    .preview-card {
+      padding: 20px;
+    }
+    .preview-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      letter-spacing: -0.04em;
+    }
+    .mini-stat {
+      border-radius: 18px;
+      border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
+      background:
+        linear-gradient(145deg, rgba(110,168,255,0.08), transparent 60%),
+        color-mix(in srgb, var(--surface) 92%, transparent);
+    }
+    .mini-stat strong {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px;
+      letter-spacing: -0.05em;
+    }
+    .mini-row {
+      border-radius: 18px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.03), transparent 50%),
+        color-mix(in srgb, var(--surface) 88%, transparent);
+    }
+    .section-title,
+    .cta-section h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: -0.06em;
+      text-wrap: balance;
+    }
+    .step-card,
+    .feat-card {
+      border-radius: 26px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.04), transparent 34%),
+        color-mix(in srgb, var(--surface) 90%, transparent);
+    }
+    .step-card h4,
+    .feat-card h4 {
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: -0.03em;
+    }
+    .cta-section {
+      overflow: hidden;
+    }
+    .cta-section::after {
+      content: '';
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-bright), transparent);
+    }
+
+    @media (max-width: 900px) {
+      .steps-grid { grid-template-columns: repeat(2,1fr); }
+      .features-big-grid { grid-template-columns: repeat(2,1fr); }
+      .landing-section { padding: 60px 5%; }
+      .cta-section { padding: 70px 5%; }
+      .hero-panel { padding: 34px; }
+    }
+    @media (max-width: 560px) {
+      .steps-grid { grid-template-columns: 1fr; }
+      .features-big-grid { grid-template-columns: 1fr; }
+      .trust-pills { gap: 10px; }
+      .cta-pair { flex-direction: column; align-items: center; }
+      .step-card::before { font-size: 48px; top: -6px; right: 10px; }
+      .landing-nav {
+        width: calc(100% - 18px);
+        padding: 0 18px;
+        border-radius: 18px;
+      }
+      .hero-section {
+        padding: 92px 4.5% 68px;
+      }
+      .hero-panel {
+        padding: 26px;
+      }
+      .hero-title {
+        font-size: clamp(42px, 15vw, 58px);
+      }
+      .hero-title-accent {
+        font-size: clamp(34px, 12vw, 48px);
+      }
+      .hero-subtitle {
+        font-size: 15px;
+      }
+    }
+    @media (max-width: 360px) {
+      .step-card::before { font-size: 40px; top: -4px; right: 8px; }
+    }
+
+    /* ═══════════════════════════════════════
+       LANDING PAGE — ENHANCED STYLES
+    ═══════════════════════════════════════ */
+
+    /* Animated background orbs */
+    .landing-page::before {
+      content: '';
+      position: fixed;
+      width: 800px; height: 800px;
+      top: -300px; left: -200px;
+      background: radial-gradient(circle, rgba(110,168,255,0.11) 0%, transparent 65%);
+      pointer-events: none; z-index: 0;
+      animation: orbFloat 16s ease-in-out infinite alternate;
+    }
+    .landing-page::after {
+      content: '';
+      position: fixed;
+      width: 600px; height: 600px;
+      bottom: -120px; right: -100px;
+      background: radial-gradient(circle, rgba(61,217,194,0.09) 0%, transparent 65%);
+      pointer-events: none; z-index: 0;
+      animation: orbFloat 20s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes orbFloat {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(32px,22px) scale(1.06); }
+    }
+
+    /* Entry animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    .hero-panel  { animation: fadeUp 0.7s cubic-bezier(.22,1,.36,1) both; }
+    .hero-preview { animation: fadeUp 0.7s cubic-bezier(.22,1,.36,1) 0.18s both; }
+
+    /* Pulsing dot */
+    .badge-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green); flex-shrink: 0;
+      animation: badgePulse 2.2s infinite;
+      box-shadow: 0 0 8px var(--green);
+    }
+    @keyframes badgePulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:0.4; transform:scale(0.65); }
+    }
+
+    /* Nav */
+    .nav-link { transition: color .15s; font-weight: 500; }
+    .nav-link:hover { color: var(--text); }
+    .nav-link.is-active { color: var(--accent); }
+
+    /* ── HERO TYPOGRAPHY ── */
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+      color: var(--accent); font-weight: 500;
+      background: var(--accent-dim); border: 1px solid #6ea8ff28;
+      padding: 5px 14px; border-radius: 20px; margin-bottom: 28px;
+    }
+    .hero-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(52px, 7.5vw, 96px);
+      line-height: 1.0;
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      margin-bottom: 28px;
+      color: var(--text);
+    }
+    .hero-title em {
+      font-style: italic;
+      background: linear-gradient(135deg, #9bc2ff 0%, #5eead4 55%, #f5c518 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-subtitle {
+      font-family: 'Space Grotesk', sans-serif;
+      max-width: 560px;
+      font-size: 17px;
+      line-height: 1.78;
+      color: var(--text-2);
+      margin-bottom: 36px;
+      font-weight: 400;
+    }
+
+    /* ── CTA BUTTONS — clearly distinct ── */
+    .cta-group {
+      display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 32px;
+    }
+    .btn-primary-hero {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--accent), #4f8fff);
+      color: #fff; font-weight: 700; font-size: 15px;
+      padding: 14px 30px; border-radius: 14px;
+      text-decoration: none; border: none; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      box-shadow: 0 4px 24px rgba(110,168,255,0.35);
+      transition: transform .2s, box-shadow .2s;
+      letter-spacing: -0.01em;
+    }
+    .btn-primary-hero:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(110,168,255,0.45);
+    }
+    .btn-primary-hero .btn-arrow {
+      font-size: 18px; transition: transform .2s;
+    }
+    .btn-primary-hero:hover .btn-arrow { transform: translateX(3px); }
+
+    .btn-ghost-hero {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent;
+      color: var(--text-2); font-weight: 600; font-size: 15px;
+      padding: 14px 28px; border-radius: 14px;
+      text-decoration: none; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      border: 1.5px solid var(--border-bright);
+      transition: border-color .2s, color .2s, background .2s;
+      letter-spacing: -0.01em;
+    }
+    .btn-ghost-hero:hover {
+      border-color: var(--accent);
+      color: var(--text);
+      background: var(--accent-dim);
+    }
+
+    /* ── Trust pills ── */
+    .trust-pills {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      margin-bottom: 36px;
+    }
+    .trust-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 500; color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+    .trust-pill::before {
+      content: '✓';
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--green-dim); color: var(--green);
+      font-size: 9px; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Feature stat grid ── */
+    .feature-grid {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 12px; margin-top: 8px;
+    }
+    .feature-item {
+      border-radius: 18px;
+      border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
+      background: linear-gradient(145deg, rgba(255,255,255,0.04), transparent 34%),
+        color-mix(in srgb, var(--card) 88%, transparent);
+      padding: 20px;
+      transition: transform .22s ease, border-color .22s ease;
+    }
+    .feature-item:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-bright);
+    }
+    .f-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 6px;
+    }
+    .f-val {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px; font-weight: 700;
+      letter-spacing: -0.04em; line-height: 1.1;
+      margin-bottom: 6px;
+    }
+    .feature-copy { font-size: 12px; color: var(--text-2); line-height: 1.6; }
+
+    /* ── Hero preview panel ── */
+    .hero-panel, .hero-preview {
+      position: relative; overflow: hidden;
+      border-radius: 32px;
+      border: 1px solid var(--border-bright);
+      background: linear-gradient(145deg, rgba(255,255,255,0.04), transparent 30%), var(--hero-panel);
+      box-shadow: var(--soft-shadow);
+    }
+    .hero-panel::before, .hero-preview::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(110,168,255,0.10), transparent 34%);
+      pointer-events: none;
+    }
+    .hero-panel { padding: 52px; }
+    .hero-preview { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+    .preview-card {
+      border-radius: 20px;
+      border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
+      background: linear-gradient(145deg, rgba(255,255,255,0.04), transparent 34%),
+        color-mix(in srgb, var(--card) 88%, transparent);
+      padding: 20px;
+      transition: transform .22s ease;
+    }
+    .preview-card:hover { transform: translateY(-2px); }
+    .preview-kicker {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 6px;
+    }
+    .preview-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px; font-weight: 700; letter-spacing: -0.04em;
+      color: var(--text); margin-bottom: 14px;
+    }
+    .preview-heading { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .preview-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .mini-stat {
+      border-radius: 14px;
+      border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
+      background: linear-gradient(145deg, rgba(110,168,255,0.08), transparent 60%),
+        color-mix(in srgb, var(--surface) 92%, transparent);
+      padding: 14px 12px; text-align: center;
+    }
+    .mini-stat strong {
+      display: block;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px; font-weight: 700; letter-spacing: -0.04em;
+      margin-bottom: 3px;
+    }
+    .mini-stat span { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
+    .mini-list { display: flex; flex-direction: column; gap: 8px; }
+    .mini-row {
+      display: flex; justify-content: space-between; align-items: center;
+      border-radius: 12px; padding: 10px 14px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.03), transparent 50%),
+        color-mix(in srgb, var(--surface) 88%, transparent);
+      border: 1px solid var(--border);
+    }
+    .mini-row-label { font-size: 12.5px; color: var(--text-2); }
+    .mini-row-value { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+    /* ── Sections ── */
+    .landing-page { overflow-x: hidden; }
+    .landing-section {
+      position: relative; z-index: 1;
+      width: 100%; padding: 100px 5.5%;
+      border-top: 1px solid var(--border);
+    }
+    .landing-section:nth-child(even) {
+      background: color-mix(in srgb, var(--accent) 2.5%, transparent);
+    }
+    .landing-section-inner { max-width: 1200px; margin: 0 auto; }
+
+    .section-kicker {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .14em;
+      color: var(--accent); font-weight: 500; margin-bottom: 12px;
+    }
+    .section-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(34px, 4vw, 50px);
+      font-weight: 400; letter-spacing: -0.02em;
+      color: var(--text); margin-bottom: 14px; line-height: 1.08;
+    }
+    .section-title em {
+      font-style: italic;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .section-sub {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px; color: var(--text-2); max-width: 520px;
+      line-height: 1.75; margin-bottom: 48px;
+    }
+
+    /* ── Steps ── */
+    .steps-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+    .step-card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.04), transparent 34%),
+        color-mix(in srgb, var(--surface) 90%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 26px; padding: 32px 24px;
+      position: relative; overflow: hidden;
+      box-shadow: var(--card-shadow);
+      transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .step-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--accent);
+      box-shadow: var(--glow-accent), var(--card-shadow);
+    }
+    .step-num {
+      position: absolute; top: -8px; right: 16px;
+      font-family: 'Syne', sans-serif;
+      font-size: 72px; font-weight: 800;
+      color: rgba(110,168,255,0.06); line-height: 1; pointer-events: none;
+    }
+    .step-icon {
+      width: 44px; height: 44px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+    .si-vi { background: var(--accent-dim); }
+    .si-cy { background: var(--accent2-dim); }
+    .si-gd { background: var(--amber-dim); }
+    .si-gn { background: var(--green-dim); }
+    .step-card h4 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 10px;
+      letter-spacing: -0.02em;
+    }
+    .step-card p { font-size: 13px; color: var(--text-2); line-height: 1.7; }
+    .step-connector {
+      display: flex; align-items: center; justify-content: center;
+      color: var(--border-bright); font-size: 20px; padding-top: 40px;
+    }
+
+    /* ── Features ── */
+    .features-big-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+    .feat-card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.04), transparent 34%),
+        color-mix(in srgb, var(--surface) 90%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 26px; padding: 30px 26px;
+      box-shadow: var(--card-shadow);
+      transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative; overflow: hidden;
+    }
+    .feat-card::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(110,168,255,0.2), transparent);
+      opacity: 0; transition: opacity .3s;
+    }
+    .feat-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: var(--glow-accent), var(--card-shadow);
+    }
+    .feat-card:hover::after { opacity: 1; }
+    .feat-icon-wrap {
+      width: 48px; height: 48px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+    .feat-card h4 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .feat-card p { font-size: 13px; color: var(--text-2); line-height: 1.72; }
+    .feat-tag {
+      display: inline-block; margin-top: 14px;
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      font-family: 'DM Mono', monospace;
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .ft-vi { background: var(--accent-dim);  color: var(--accent);  border: 1px solid #6ea8ff22; }
+    .ft-cy { background: var(--accent2-dim); color: var(--accent2); border: 1px solid #3dd9c222; }
+    .ft-gd { background: var(--amber-dim);   color: var(--amber);   border: 1px solid #f5a62322; }
+    .ft-gn { background: var(--green-dim);   color: var(--green);   border: 1px solid #22d47a22; }
+    .ft-rd { background: var(--red-dim);     color: var(--red);     border: 1px solid #ff4d6a22; }
+
+    /* ── Social proof strip ── */
+    .proof-strip {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 40px 5.5%;
+      background: color-mix(in srgb, var(--surface) 40%, transparent);
+    }
+    .proof-strip-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 24px;
+    }
+    .proof-stat { text-align: center; }
+    .proof-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 36px; font-weight: 700; letter-spacing: -0.05em;
+      color: var(--text); line-height: 1;
+    }
+    .proof-num span { color: var(--accent); }
+    .proof-label { font-size: 12px; color: var(--muted); margin-top: 4px; font-family: 'DM Mono', monospace; }
+    .proof-divider { width: 1px; height: 48px; background: var(--border); }
+
+    /* ── CTA section ── */
+    .cta-section {
+      position: relative; z-index: 1; overflow: hidden;
+      text-align: center; padding: 110px 5.5%;
+      border-top: 1px solid var(--border);
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      width: 600px; height: 280px;
+      background: radial-gradient(ellipse, rgba(110,168,255,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-section::after {
+      content: '';
+      position: absolute; inset: auto 0 0 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-bright), transparent);
+    }
+    .cta-section h2 {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(36px, 5.5vw, 62px);
+      font-weight: 400; letter-spacing: -0.03em;
+      color: var(--text); margin-bottom: 16px; line-height: 1.05;
+    }
+    .cta-section h2 em {
+      font-style: italic;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .cta-section p {
+      font-family: 'Space Grotesk', sans-serif;
+      color: var(--text-2); font-size: 16px; margin-bottom: 36px; line-height: 1.7;
+      max-width: 480px; margin-left: auto; margin-right: auto;
+    }
+    .cta-pair { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Footer ── */
+    .landing-footer {
+      position: relative; z-index: 1;
+      padding: 24px 5.5%;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px;
+    }
+    .landing-footer span { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a {
+      font-size: 12px; color: var(--muted);
+      text-decoration: none; transition: color .15s;
+    }
+    .footer-links a:hover { color: var(--text-2); }
+
+    /* ── Nav ── */
+    .landing-nav {
+      width: min(1220px, calc(100% - 28px));
+      margin: 14px auto 0;
+      padding: 0 24px;
+      border-radius: 24px;
+      border: 1px solid var(--border-bright);
+      background: linear-gradient(135deg, rgba(110,168,255,0.10), rgba(61,217,194,0.08)),
+        color-mix(in srgb, var(--bg) 78%, transparent);
+      box-shadow: var(--soft-shadow);
+      backdrop-filter: blur(18px);
+      min-height: 82px;
+    }
+    .hero-section {
+      position: relative;
+      padding: 110px 5.5% 88px;
+    }
+    .hero-section::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(circle at 20% 14%, rgba(110,168,255,0.09), transparent 28%),
+        radial-gradient(circle at 82% 22%, rgba(61,217,194,0.08), transparent 24%);
+      pointer-events: none;
+    }
+    .hero-shell {
+      max-width: 1240px; margin: 0 auto;
+      gap: 20px; align-items: stretch;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .steps-grid { grid-template-columns: repeat(2,1fr); }
+      .features-big-grid { grid-template-columns: repeat(2,1fr); }
+      .landing-section { padding: 64px 5%; }
+      .cta-section { padding: 72px 5%; }
+      .hero-panel { padding: 36px; }
+      .proof-divider { display: none; }
+      .proof-strip-inner { justify-content: center; gap: 32px; }
+    }
+    @media (max-width: 640px) {
+      .steps-grid { grid-template-columns: 1fr; }
+      .features-big-grid { grid-template-columns: 1fr; }
+      .trust-pills { gap: 10px; }
+      .cta-pair { flex-direction: column; align-items: center; }
+      .landing-nav { width: calc(100% - 18px); padding: 0 18px; border-radius: 18px; }
+      .hero-section { padding: 92px 4.5% 68px; }
+      .hero-panel { padding: 28px; }
+      .hero-title { font-size: clamp(44px, 14vw, 62px); }
+      .feature-grid { grid-template-columns: 1fr; }
+      .btn-primary-hero, .btn-ghost-hero { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="landing-page">
+
+  <!-- NAV -->
+  <nav class="landing-nav">
+    <div class="landing-logo">PPS<span>.</span></div>
+    <div class="nav-links">
+      <a href="#how" class="nav-link">How it works</a>
+      <a href="#features" class="nav-link">Features</a>
+      <div class="theme-panel" data-theme-panel>
+        <span class="theme-panel-title">Theme</span>
+        <button class="theme-toggle-btn" type="button" data-theme-toggle>
+          <span class="theme-toggle-name" data-theme-name>Dark</span>
+        </button>
+      </div>
+      <a href="login.html" class="btn-ghost-hero" style="padding:9px 20px; font-size:13.5px;">Sign In</a>
+      <a href="login.html" class="btn-primary-hero" style="padding:9px 20px; font-size:13.5px;">
+        Get Started <span class="btn-arrow">→</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <main class="hero-section">
+    <div class="hero-shell">
+
+      <section class="hero-panel">
+        <div class="hero-eyebrow">
+          <span class="badge-dot"></span>
+          Personal Performance System — Free forever
+        </div>
+
+        <h1 class="hero-title">
+          Build habits that<br><em>actually stick.</em>
+        </h1>
+
+        <p class="hero-subtitle">
+          Most habit apps give you a checklist. PPS gives you a system — XP, streaks,
+          freeze credits, deep analytics, and daily reflections that make you genuinely
+          want to show up every single day.
+        </p>
+
+        <div class="cta-group">
+          <a href="login.html" class="btn-primary-hero">
+            Create free account <span class="btn-arrow">→</span>
+          </a>
+          <a href="login.html" class="btn-ghost-hero">
+            👤 Try as guest
+          </a>
+        </div>
+
+        <div class="trust-pills">
+          <span class="trust-pill">100% free, no paywalls</span>
+          <span class="trust-pill">No app install needed</span>
+          <span class="trust-pill">Works offline</span>
+          <span class="trust-pill">Data stays on your device</span>
+        </div>
+
+        <div class="feature-grid">
+          <div class="feature-item">
+            <div class="f-label">Always free</div>
+            <div class="f-val" style="color:var(--accent);">100%</div>
+            <div class="feature-copy">Every feature unlocked from day one. No subscriptions, no upsells, ever.</div>
+          </div>
+          <div class="feature-item">
+            <div class="f-label">Streak protection</div>
+            <div class="f-val" style="color:var(--amber);">🧊 Freeze</div>
+            <div class="feature-copy">Freeze credits save your streak on bad days. Miss once, keep your chain.</div>
+          </div>
+          <div class="feature-item">
+            <div class="f-label">Gamified XP</div>
+            <div class="f-val" style="color:var(--green);">+10 XP</div>
+            <div class="feature-copy">Every habit earns XP. Level up, unlock badges, feel real measurable progress.</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="hero-preview">
+        <div class="preview-card">
+          <div class="preview-heading">
+            <div>
+              <div class="preview-kicker">Live dashboard preview</div>
+              <div class="preview-title">Your progress at a glance</div>
+            </div>
+            <span class="status-tag tag-done">Active</span>
+          </div>
+          <div class="preview-stats">
+            <div class="mini-stat">
+              <strong style="color:var(--accent);">82%</strong>
+              <span>Completion</span>
+            </div>
+            <div class="mini-stat">
+              <strong style="color:var(--amber);">🔥 18</strong>
+              <span>Day streak</span>
+            </div>
+            <div class="mini-stat">
+              <strong style="color:var(--green);">Lv. 7</strong>
+              <span>Your level</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-card">
+          <div class="preview-kicker" style="margin-bottom:12px;">Everything inside</div>
+          <div class="mini-list">
+            <div class="mini-row">
+              <span class="mini-row-label">📊 Analytics + Heatmap</span>
+              <span class="mini-row-value" style="color:var(--accent);">Visual</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-row-label">🔔 Smart Reminders</span>
+              <span class="mini-row-value" style="color:var(--accent2);">Alerts</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-row-label">📝 Daily Reflections</span>
+              <span class="mini-row-value" style="color:var(--amber);">Journal</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-row-label">🧊 Freeze Credits</span>
+              <span class="mini-row-value" style="color:var(--green);">Protection</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-row-label">🏆 XP + Levels + Badges</span>
+              <span class="mini-row-value" style="color:var(--amber);">Gamified</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-row-label">📄 PDF Performance Report</span>
+              <span class="mini-row-value" style="color:var(--muted);">Export</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-card" style="background:linear-gradient(145deg,rgba(110,168,255,0.12),rgba(61,217,194,0.07)),var(--hero-panel);border-color:var(--border-bright);">
+          <div class="preview-kicker" style="margin-bottom:8px;">Start in 30 seconds</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:-0.02em;">Your first habit is one click away.</div>
+          <div style="font-size:13px;color:var(--text-2);margin-bottom:18px;line-height:1.65;">No setup. No credit card. No download. Just open and start building.</div>
+          <a href="login.html" class="btn-primary-hero" style="font-size:13px; padding:10px 20px;">
+            Create free account <span class="btn-arrow">→</span>
+          </a>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- SOCIAL PROOF STRIP -->
+  <div class="proof-strip">
+    <div class="proof-strip-inner">
+      <div class="proof-stat">
+        <div class="proof-num">10<span>+</span></div>
+        <div class="proof-label">Features built in</div>
+      </div>
+      <div class="proof-divider"></div>
+      <div class="proof-stat">
+        <div class="proof-num">0<span>$</span></div>
+        <div class="proof-label">Cost forever</div>
+      </div>
+      <div class="proof-divider"></div>
+      <div class="proof-stat">
+        <div class="proof-num">30<span>s</span></div>
+        <div class="proof-label">To your first habit</div>
+      </div>
+      <div class="proof-divider"></div>
+      <div class="proof-stat">
+        <div class="proof-num">13<span>+</span></div>
+        <div class="proof-label">Badges to unlock</div>
+      </div>
+      <div class="proof-divider"></div>
+      <div class="proof-stat">
+        <div class="proof-num">100<span>%</span></div>
+        <div class="proof-label">Private, on-device data</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section class="landing-section" id="how">
+    <div class="landing-section-inner">
+      <div class="section-kicker">Simple by design</div>
+      <h2 class="section-title">From zero to streak in<br><em>under a minute.</em></h2>
+      <p class="section-sub">No complicated onboarding. No tutorial videos. Just four steps and you're building real momentum.</p>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-icon si-vi">📋</div>
+          <h4>Create your habits</h4>
+          <p>Name it, pick a category, set the frequency — daily, weekly, or monthly. Add a priority level. Done in 30 seconds.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-icon si-cy">✅</div>
+          <h4>Check off every day</h4>
+          <p>Open the Daily Tracker, tick what you completed. Each habit earns +10 XP and extends your streak automatically.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-icon si-gd">🔥</div>
+          <h4>Protect your momentum</h4>
+          <p>Miss a day? Freeze Credits keep your streak alive. No guilt, no starting over from zero. Just keep going.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">4</div>
+          <div class="step-icon si-gn">📊</div>
+          <h4>See yourself grow</h4>
+          <p>Analytics, heatmaps, level progression, and achievement badges show the real picture of your consistency over time.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="landing-section" id="features">
+    <div class="landing-section-inner">
+      <div class="section-kicker">Everything you need</div>
+      <h2 class="section-title">Built for <em>real consistency,</em><br>not just good intentions.</h2>
+      <p class="section-sub">Every feature is designed around one goal — making it easier to show up tomorrow than to skip.</p>
+
+      <div class="features-big-grid">
+        <div class="feat-card">
+          <div class="feat-icon-wrap si-vi">⚡</div>
+          <h4>Dashboard at a glance</h4>
+          <p>Completion rate, streak count, weekly XP, and focus lanes — all on one screen. No hunting for your data.</p>
+          <span class="feat-tag ft-vi">Always visible</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap si-gd">🔥</div>
+          <h4>Streak Engine</h4>
+          <p>Visual flame counter, per-habit progress bars, and freeze credits. Losing a streak hurts — that's the whole point.</p>
+          <span class="feat-tag ft-gd">Motivation loop</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap si-cy">📊</div>
+          <h4>Analytics + Heatmap</h4>
+          <p>GitHub-style activity heatmap, per-habit success rates, weekly bar charts, and a donut completion overview.</p>
+          <span class="feat-tag ft-cy">Visual clarity</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap" style="background:var(--green-dim);">🎮</div>
+          <h4>XP + Level System</h4>
+          <p>Every completed habit gives +10 XP. Hit 100 XP and level up. Unlock 13 achievement badges as you grow.</p>
+          <span class="feat-tag ft-gn">Gamified</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap si-vi">📝</div>
+          <h4>Daily Reflections</h4>
+          <p>Write a short journal entry and log your mood each day. Past entries are saved with your habit completion snapshot.</p>
+          <span class="feat-tag ft-vi">Self-awareness</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap si-cy">🔔</div>
+          <h4>Smart Reminders</h4>
+          <p>Set browser push notifications at exact times. Choose daily, weekdays only, or weekends. Never forget to check in.</p>
+          <span class="feat-tag ft-cy">Push alerts</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap" style="background:rgba(61,217,194,0.12);">🧊</div>
+          <h4>Freeze Credits</h4>
+          <p>Miss a day but have credits? Your streak survives untouched. This single feature removes the #1 reason people quit.</p>
+          <span class="feat-tag ft-rd">Streak protection</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap si-gn">📄</div>
+          <h4>PDF Performance Report</h4>
+          <p>Export a full printable report — habits, completion rates, streaks, XP, and level. Perfect for reviews or portfolios.</p>
+          <span class="feat-tag ft-gn">Export ready</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap" style="background:var(--red-dim);">🔒</div>
+          <h4>Private by default</h4>
+          <p>All data lives on your device. No account required to start. No cloud sync until you choose it. Your data, your rules.</p>
+          <span class="feat-tag ft-rd">Your data</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOTTOM CTA -->
+  <section class="cta-section">
+    <div class="section-kicker">Ready when you are</div>
+    <h2>Start your streak<br><em>today, not tomorrow.</em></h2>
+    <p>
+      No app download. No credit card. No setup required.<br>
+      Your first habit takes 30 seconds to create.
+    </p>
+    <div class="cta-pair">
+      <a href="login.html" class="btn-primary-hero" style="padding:15px 34px; font-size:15.5px;">
+        Create free account <span class="btn-arrow">→</span>
+      </a>
+      <a href="login.html" class="btn-ghost-hero" style="padding:15px 34px; font-size:15.5px;">
+        👤 Continue as guest
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="landing-footer">
+    <span>© 2026 PPS — Personal Performance System. Built for real people.</span>
+    <div class="footer-links">
+      <a href="login.html">Sign In</a>
+      <a href="login.html">Get Started</a>
+    </div>
+  </footer>
+
+</div>
+
+<script type="module">
+  import { getData, removeData } from './js/storageService.js';
+  import { initTheme, bindThemeToggles } from './js/theme.js';
+
+  initTheme();        // applies saved dark/light before first paint
+  bindThemeToggles(); // wires all [data-theme-toggle] buttons
+
+  (function checkAlreadyLoggedIn() {
+    const user = getData('currentUser');
+    if (!user) return;
+    if (user.isGuest && Date.now() > user.expiry) {
+      removeData('currentUser');
+      return;
+    }
+    window.location.href = 'dashboard.html';
+  })();
+
+  // ── INTERSECTION OBSERVER FOR ACTIVE NAV LINKS ──
+  const observerOptions = {
+      root: null,
+      rootMargin: '-20% 0px -60% 0px',
+      threshold: 0
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+          if (entry.isIntersecting) {
+              const id = entry.target.getAttribute('id');
+              document.querySelectorAll('.nav-links .nav-link').forEach(link => {
+                  link.classList.remove('is-active');
+                  if (link.getAttribute('href') === `#${id}`) {
+                      link.classList.add('is-active');
+                  }
+              });
+          }
+      });
+  }, observerOptions);
+
+  document.querySelectorAll('section[id]').forEach(section => {
+      observer.observe(section);
+  });
+</script>
+
+</body>
+</html>
