@@ -4,6 +4,9 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
+  // Add this line below:
+  base: "/Personal-Performance-System/",
+  
   server: {
     host: "::",
     port: 8080,
