@@ -23,10 +23,11 @@ export interface Habit {
 interface HabitsContextType {
   habits: Habit[];
   loading: boolean;
-  addHabit: (name: string, category: string, period: string, priority: string, startDate?: string | null) => void;
+  addHabit: (name: string, category: string, period: string, priority: string, startDate?: string | null) => Promise<string | null>;
   deleteHabit: (id: string) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   toggleCompletion: (id: string) => void;
+  useStreakFreeze: (habitId: string) => Promise<string | null>;
   isHabitDueToday: (habit: Habit) => boolean;
   getTodayStr: () => string;
   calculateTotalXP: () => number;
@@ -68,7 +69,17 @@ function calculateStreakFromDates(dates: string[]): number {
 
 const HabitsContext = createContext<HabitsContextType | null>(null);
 
-export function HabitsProvider({ children, userEmail, userId }: { children: ReactNode; userEmail: string | null; userId?: string }) {
+export function HabitsProvider({
+  children,
+  userEmail,
+  userId,
+  maxHabits = Infinity,
+}: {
+  children: ReactNode;
+  userEmail: string | null;
+  userId?: string;
+  maxHabits?: number;
+}) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const isGuest = !userId;
@@ -154,7 +165,11 @@ export function HabitsProvider({ children, userEmail, userId }: { children: Reac
     return (due.getTime() - today.getTime()) / 864e5 <= 0;
   }, []);
 
-  const addHabit = useCallback(async (name: string, category: string, period: string, priority: string, startDate?: string | null) => {
+  const addHabit = useCallback(async (name: string, category: string, period: string, priority: string, startDate?: string | null): Promise<string | null> => {
+    if (habits.length >= maxHabits) {
+      return `Free plan allows ${maxHabits} habits. Upgrade to Pro for unlimited habits.`;
+    }
+
     const dueDate = startDate
       ? new Date(startDate + "T12:00:00").toISOString()
       : generateInitialDueDate(period);
@@ -169,7 +184,7 @@ export function HabitsProvider({ children, userEmail, userId }: { children: Reac
         lastCompletedDate: null, freezeCredits: CONFIG.MAX_FREEZE_CREDITS,
       };
       setHabits(prev => [...prev, newHabit]);
-      return;
+      return null;
     }
 
     const { error } = await supabase.from("habits").insert({
@@ -182,9 +197,60 @@ export function HabitsProvider({ children, userEmail, userId }: { children: Reac
       streak: 0,
       freeze_credits: CONFIG.MAX_FREEZE_CREDITS,
     });
-    if (error) console.error("Failed to add habit:", error);
-    else await fetchHabits();
-  }, [isGuest, userId, fetchHabits]);
+    if (error) {
+      console.error("Failed to add habit:", error);
+      return error.message;
+    }
+    await fetchHabits();
+    return null;
+  }, [habits.length, maxHabits, isGuest, userId, fetchHabits]);
+
+  const useStreakFreeze = useCallback(async (habitId: string): Promise<string | null> => {
+    const habit = habits.find((h) => h.id === habitId);
+    if (!habit) return "Habit not found.";
+    if ((habit.freezeCredits || 0) <= 0) return "No freeze credits remaining.";
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+    if (habit.completedDates.includes(yesterdayStr)) {
+      return "Yesterday was already completed — no freeze needed.";
+    }
+
+    const newCredits = habit.freezeCredits - 1;
+    const newStreak = Math.max(habit.streak, 1);
+
+    if (isGuest) {
+      setHabits((prev) =>
+        prev.map((h) =>
+          h.id === habitId
+            ? {
+                ...h,
+                freezeCredits: newCredits,
+                streak: newStreak,
+                completedDates: [...h.completedDates, yesterdayStr],
+                lastCompletedDate: yesterdayStr,
+              }
+            : h
+        )
+      );
+      return null;
+    }
+
+    await supabase.from("habit_completions").insert({
+      habit_id: habitId,
+      user_id: userId!,
+      completed_date: yesterdayStr,
+    });
+    await supabase.from("habits").update({
+      freeze_credits: newCredits,
+      streak: newStreak,
+      last_completed_date: yesterdayStr,
+    }).eq("id", habitId);
+    await fetchHabits();
+    return null;
+  }, [habits, isGuest, userId, fetchHabits]);
 
   const deleteHabit = useCallback(async (id: string) => {
     if (isGuest) {
@@ -311,7 +377,7 @@ export function HabitsProvider({ children, userEmail, userId }: { children: Reac
   return (
     <HabitsContext.Provider
       value={{
-        habits, loading, addHabit, deleteHabit, updateHabit, toggleCompletion,
+        habits, loading, addHabit, deleteHabit, updateHabit, toggleCompletion, useStreakFreeze,
         isHabitDueToday, getTodayStr, calculateTotalXP, calculateLevel,
         calculateWeeklyPoints, getMaxStreak, getTotalFreezeCredits, resetAllData,
       }}

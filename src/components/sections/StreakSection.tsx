@@ -1,16 +1,27 @@
+import { useState } from "react";
 import { useHabits } from "@/hooks/use-habits";
+import { useSubscription } from "@/hooks/use-subscription";
 
 const StreakSection = () => {
-  const { habits, getMaxStreak, getTotalFreezeCredits } = useHabits();
+  const { habits, getMaxStreak, getTotalFreezeCredits, useStreakFreeze } = useHabits();
+  const { limits } = useSubscription();
+  const [msg, setMsg] = useState<string | null>(null);
   const maxStreak = getMaxStreak();
   const freezeCredits = getTotalFreezeCredits();
   const totalCompletions = habits.reduce((s, h) => s + h.completedDates.length, 0);
+
+  const handleFreeze = async (habitId: string) => {
+    const err = await useStreakFreeze(habitId);
+    setMsg(err || "Streak shield used! Yesterday saved.");
+    setTimeout(() => setMsg(null), 3000);
+  };
 
   return (
     <div>
       <div className="mb-6"><h1 className="text-[22px] font-bold">Streak Engine</h1><div className="text-[13px] text-muted-foreground mt-0.5">Don't break the chain</div></div>
 
-      {/* Hero */}
+      {msg && <div className="text-xs px-3 py-2 rounded-lg mb-3 bg-primary/10 text-primary border border-primary/20">{msg}</div>}
+
       <div className="text-center p-8 bg-gradient-to-br from-[#1e1b4b] to-[#312e81] border border-[#4338ca44] rounded-lg mb-5">
         <div className="text-[32px]">🔥</div>
         <div className="text-5xl font-bold font-mono text-pps-orange">{maxStreak}</div>
@@ -20,9 +31,11 @@ const StreakSection = () => {
           <div><div className="text-xl font-bold font-mono">{maxStreak}</div><div className="text-[11px] text-muted-foreground">Best Streak</div></div>
           <div><div className="text-xl font-bold font-mono">{totalCompletions}</div><div className="text-[11px] text-muted-foreground">Total Completions</div></div>
         </div>
+        <p className="text-[11px] text-muted-foreground mt-4">
+          Free: {limits.streakFreezesPerMonth} freeze/month • Pro: 3/month
+        </p>
       </div>
 
-      {/* Per-habit streak cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
         {habits.length === 0 ? (
           <p className="text-muted-foreground text-[13px] text-center py-6 col-span-3">No habits yet.</p>
@@ -43,9 +56,14 @@ const StreakSection = () => {
                 <span>{h.category || "—"} • {h.period}</span>
                 <span>🧊 {h.freezeCredits} freeze</span>
               </div>
-              <div className="text-[11px] mt-1" style={{ color: streak === 0 ? "hsl(var(--destructive))" : "hsl(var(--muted))" }}>
-                {streak === 0 ? "Start today to build your streak!" : "Keep going — don't break it!"}
-              </div>
+              {h.freezeCredits > 0 && streak > 0 && (
+                <button
+                  onClick={() => handleFreeze(h.id)}
+                  className="mt-3 w-full text-[11px] py-1.5 rounded-lg border border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  🛡 Use Streak Shield
+                </button>
+              )}
             </div>
           );
         })}

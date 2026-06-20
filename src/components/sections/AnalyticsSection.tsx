@@ -7,9 +7,15 @@
 
 import { useState, useMemo } from "react";
 import { useHabits } from "@/hooks/use-habits";
+import { useSubscription } from "@/hooks/use-subscription";
+import { useSmartInsights, useAiCoachSummary } from "@/hooks/use-insights";
+import { Link } from "react-router-dom";
 
 const AnalyticsSection = () => {
   const { habits, calculateTotalXP, getMaxStreak, getTodayStr, isHabitDueToday } = useHabits();
+  const { isPro, limits } = useSubscription();
+  const insights = useSmartInsights(isPro);
+  const coach = useAiCoachSummary(isPro);
   const todayStr = getTodayStr();
   const dueToday = habits.filter((h) => isHabitDueToday(h));
   const doneToday = dueToday.filter((h) => h.completedDates.includes(todayStr));
@@ -248,6 +254,33 @@ function HeatmapGrid({ habits }: { habits: ReturnType<typeof useHabits>["habits"
         <span>More</span>
         <span className="ml-auto font-mono text-[10px]">{habits.reduce((s, h) => s + h.completedDates.length, 0)} total contributions</span>
       </div>
+
+      {/* Smart Insights & AI Coach */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold mb-3">Smart Insights {isPro ? "✨" : "🔒"}</h3>
+          <ul className="space-y-2">
+            {insights.map((line, i) => (
+              <li key={i} className="text-[13px] text-muted-foreground leading-relaxed">• {line}</li>
+            ))}
+          </ul>
+          {!isPro && (
+            <Link to="/pricing" className="text-[11px] text-primary mt-3 inline-block hover:underline">Unlock Pro insights →</Link>
+          )}
+        </div>
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold mb-3">Weekly AI Coach {isPro ? "🤖" : "🔒"}</h3>
+          <p className="text-[13px] text-muted-foreground mb-3">{coach.summary}</p>
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Suggestions</div>
+          {coach.suggestions.map((s, i) => (
+            <div key={i} className="text-[13px] mb-1.5">→ {s}</div>
+          ))}
+        </div>
+      </div>
+
+      {!isPro && limits.analyticsDays < Infinity && (
+        <p className="text-[11px] text-muted-foreground mt-4">Free plan shows {limits.analyticsDays}-day analytics. Pro unlocks full history.</p>
+      )}
     </div>
   );
 }

@@ -1,5 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useHabits } from "@/hooks/use-habits";
+import { useAuth } from "@/hooks/use-auth";
+import { useAchievements } from "@/hooks/use-achievements";
+import { useSubscription } from "@/hooks/use-subscription";
+import { CORE_BADGE_IDS } from "@/lib/plans";
 
 interface Badge {
   id: string;
@@ -37,7 +41,10 @@ const BADGES: Badge[] = [
 ];
 
 const AchievementsSection = () => {
+  const { user } = useAuth();
   const { habits, isHabitDueToday, getTodayStr, getMaxStreak, calculateLevel } = useHabits();
+  const { isPro } = useSubscription();
+  const { syncBadges } = useAchievements(user?.id, user?.isGuest);
   const todayStr = getTodayStr();
 
   const stats = useMemo<Stats>(() => {
@@ -55,15 +62,21 @@ const AchievementsSection = () => {
     };
   }, [habits, isHabitDueToday, todayStr, getMaxStreak, calculateLevel]);
 
-  const unlocked = BADGES.filter((b) => b.check(stats));
-  const locked = BADGES.filter((b) => !b.check(stats));
+  useEffect(() => {
+    const earned = BADGES.filter((b) => b.check(stats)).map((b) => b.id);
+    syncBadges(earned);
+  }, [stats, syncBadges]);
+
+  const visibleBadges = isPro ? BADGES : BADGES.filter((b) => CORE_BADGE_IDS.has(b.id));
+  const unlocked = visibleBadges.filter((b) => b.check(stats));
+  const locked = visibleBadges.filter((b) => !b.check(stats));
 
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-[22px] font-bold">Achievements</h1>
         <div className="text-[13px] text-muted-foreground mt-0.5">
-          {unlocked.length}/{BADGES.length} badges unlocked
+          {unlocked.length}/{visibleBadges.length} badges unlocked
         </div>
       </div>
 
@@ -71,12 +84,12 @@ const AchievementsSection = () => {
       <div className="bg-card border border-border rounded-xl p-5 mb-5">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold">Badge Progress</span>
-          <span className="text-xs font-mono text-primary">{Math.round((unlocked.length / BADGES.length) * 100)}%</span>
+          <span className="text-xs font-mono text-primary">{Math.round((unlocked.length / visibleBadges.length) * 100)}%</span>
         </div>
         <div className="bg-surface rounded-full h-2.5">
           <div
             className="h-2.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
-            style={{ width: `${(unlocked.length / BADGES.length) * 100}%` }}
+            style={{ width: `${(unlocked.length / visibleBadges.length) * 100}%` }}
           />
         </div>
       </div>

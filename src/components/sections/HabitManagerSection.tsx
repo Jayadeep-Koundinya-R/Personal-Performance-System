@@ -5,9 +5,19 @@
 
 import { useState } from "react";
 import { useHabits, Habit } from "@/hooks/use-habits";
+import { Link } from "react-router-dom";
+import { useSubscription } from "@/hooks/use-subscription";
+
+const HABIT_STACKS = [
+  { label: "Morning Stack", name: "Morning routine", category: "Health", period: "Daily", priority: "High" },
+  { label: "After coffee → Journal", name: "5-min journal", category: "Mind", period: "Daily", priority: "Medium" },
+  { label: "After lunch → Walk", name: "10-min walk", category: "Health", period: "Daily", priority: "Medium" },
+  { label: "Before bed → Read", name: "Read 10 pages", category: "Growth", period: "Daily", priority: "Low" },
+];
 
 const HabitManagerSection = () => {
   const { habits, addHabit, deleteHabit, updateHabit } = useHabits();
+  const { limits } = useSubscription();
 
   // Add form state
   const [name, setName] = useState("");
@@ -25,10 +35,11 @@ const HabitManagerSection = () => {
   const [editPriority, setEditPriority] = useState("");
   const [editDate, setEditDate] = useState("");
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!name.trim()) { setNameError(true); return; }
     setNameError(false);
-    addHabit(name.trim(), category.trim(), period, priority, startDate || null);
+    const err = await addHabit(name.trim(), category.trim(), period, priority, startDate || null);
+    if (err) { alert(err); return; }
     setName(""); setCategory(""); setPeriod("Daily"); setPriority("High"); setStartDate("");
   };
 
@@ -69,7 +80,29 @@ const HabitManagerSection = () => {
 
   return (
     <div>
-      <div className="mb-6"><h1 className="text-[22px] font-bold">Habit Manager</h1><div className="text-[13px] text-muted-foreground mt-0.5">Add, edit or remove habits</div></div>
+      <div className="mb-6"><h1 className="text-[22px] font-bold">Habit Manager</h1><div className="text-[13px] text-muted-foreground mt-0.5">Add, edit or remove habits ({habits.length}{limits.maxHabits !== Infinity ? `/${limits.maxHabits}` : ""})</div></div>
+
+      <div className="bg-card border border-border rounded-xl p-4 mb-5">
+        <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Habit Stack Templates</h3>
+        <div className="flex flex-wrap gap-2">
+          {HABIT_STACKS.map((stack) => (
+            <button
+              key={stack.label}
+              onClick={async () => {
+                const err = await addHabit(stack.name, stack.category, stack.period, stack.priority);
+                if (err) alert(err);
+              }}
+              className="text-[12px] px-3 py-1.5 rounded-lg border border-border hover:border-primary bg-surface"
+            >
+              {stack.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-2">Atomic Habits-style triggers — one tap to add.</p>
+        {habits.length >= limits.maxHabits && limits.maxHabits !== Infinity && (
+          <p className="text-[11px] text-primary mt-1"><Link to="/pricing">Upgrade to Pro</Link> for unlimited habits.</p>
+        )}
+      </div>
 
       {/* Add form */}
       <div className="bg-card border border-border p-5 rounded-lg mb-5">

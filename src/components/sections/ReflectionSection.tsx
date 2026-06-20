@@ -1,16 +1,6 @@
-/*
-  💡 Reflections Section — same as your inline reflections JS
-  Uses localStorage with user-specific keys, same as your original.
-*/
-
-import { useState, useEffect, useCallback } from "react";
-
-interface ReflectionEntry {
-  date: string;
-  text: string;
-  mood: string;
-  habitsLog: Array<{ name: string; completed: boolean }>;
-}
+import { useState } from "react";
+import { useReflections } from "@/hooks/use-reflections";
+import { Link } from "react-router-dom";
 
 const MOODS = [
   { key: "great", emoji: "😊", label: "Great" },
@@ -19,48 +9,34 @@ const MOODS = [
   { key: "stress", emoji: "😤", label: "Stressed" },
 ];
 
-const ReflectionSection = ({ userEmail }: { userEmail: string | null }) => {
-  const storageKey = `reflections_${userEmail || "guest"}`;
-  const [entries, setEntries] = useState<ReflectionEntry[]>([]);
+const ReflectionSection = () => {
+  const { entries, saveEntry, deleteEntry, loading } = useReflections();
   const [text, setText] = useState("");
   const [mood, setMood] = useState("great");
   const [status, setStatus] = useState<{ text: string; ok: boolean } | null>(null);
 
-  const loadEntries = useCallback(() => {
-    try { setEntries(JSON.parse(localStorage.getItem(storageKey) || "[]")); } catch { setEntries([]); }
-  }, [storageKey]);
-
-  useEffect(() => { loadEntries(); }, [loadEntries]);
-
-  const save = () => {
-    if (!text.trim()) { setStatus({ text: "Write something first.", ok: false }); return; }
-    const today = new Date().toISOString().split("T")[0];
-    const list = [...entries];
-    const idx = list.findIndex((e) => e.date === today);
-    const entry: ReflectionEntry = { date: today, text: text.trim(), mood, habitsLog: [] };
-    if (idx >= 0) list[idx] = entry; else list.unshift(entry);
-    localStorage.setItem(storageKey, JSON.stringify(list));
-    setEntries(list);
-    setText("");
-    setMood("great");
-    setStatus({ text: "Saved ✓", ok: true });
+  const save = async () => {
+    const err = await saveEntry(text, mood);
+    if (err) {
+      setStatus({ text: err, ok: false });
+    } else {
+      setText("");
+      setMood("great");
+      setStatus({ text: "Saved ✓", ok: true });
+    }
     setTimeout(() => setStatus(null), 3000);
   };
 
-  const deleteEntry = (date: string) => {
-    if (!confirm("Delete this reflection?")) return;
-    const list = entries.filter((e) => e.date !== date);
-    localStorage.setItem(storageKey, JSON.stringify(list));
-    setEntries(list);
-  };
-
   const moodLabel: Record<string, string> = { great: "😊 Great", okay: "😐 Okay", low: "😔 Low", stress: "😤 Stressed" };
+
+  if (loading) {
+    return <div className="text-muted-foreground text-sm">Loading reflections...</div>;
+  }
 
   return (
     <div>
       <div className="mb-6"><h1 className="text-[22px] font-bold">Daily Reflections</h1><div className="text-[13px] text-muted-foreground mt-0.5">Write, reflect, grow</div></div>
 
-      {/* Write form */}
       <div className="bg-card border border-border p-5 rounded-lg mb-5">
         <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3.5">Today's Reflection</h3>
         <textarea
@@ -91,10 +67,10 @@ const ReflectionSection = ({ userEmail }: { userEmail: string | null }) => {
         const d = new Date(entry.date + "T12:00:00");
         const dstr = d.toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
         return (
-          <div key={entry.date} className="bg-surface border border-border rounded-[10px] p-4 mb-3">
+          <div key={entry.id} className="bg-surface border border-border rounded-[10px] p-4 mb-3">
             <div className="flex justify-between items-center mb-2">
               <div className="text-[11px] text-muted-foreground font-mono">{dstr}</div>
-              <button onClick={() => deleteEntry(entry.date)} className="bg-destructive/10 text-destructive border border-destructive/20 py-0.5 px-2.5 rounded-lg text-[11px] font-display cursor-pointer hover:bg-destructive/20">
+              <button onClick={() => deleteEntry(entry.id)} className="bg-destructive/10 text-destructive border border-destructive/20 py-0.5 px-2.5 rounded-lg text-[11px] font-display cursor-pointer hover:bg-destructive/20">
                 Delete
               </button>
             </div>
@@ -105,6 +81,10 @@ const ReflectionSection = ({ userEmail }: { userEmail: string | null }) => {
           </div>
         );
       })}
+
+      <p className="text-[11px] text-muted-foreground mt-4">
+        Free plan keeps 7 days of history. <Link to="/pricing" className="text-primary hover:underline">Upgrade to Pro</Link> for unlimited.
+      </p>
     </div>
   );
 };

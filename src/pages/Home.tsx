@@ -28,6 +28,12 @@ const HomePage = () => {
         </div>
         <div className="flex items-center gap-3">
           <Link
+            to="/pricing"
+            className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-4 py-2"
+          >
+            Pricing
+          </Link>
+          <Link
             to="/login?tab=signin"
             className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-4 py-2"
           >
@@ -73,8 +79,8 @@ const HomePage = () => {
         {/* Stats */}
         <div className="flex items-center justify-center gap-10 mt-16 text-center">
           <div>
-            <div className="text-2xl font-bold font-mono text-primary">100%</div>
-            <div className="text-[11px] text-muted-foreground mt-1">Free to Use</div>
+            <div className="text-2xl font-bold font-mono text-primary">Free</div>
+            <div className="text-[11px] text-muted-foreground mt-1">Free to start</div>
           </div>
           <div className="w-px h-8 bg-border" />
           <div>
@@ -108,19 +114,32 @@ const HomePage = () => {
       <section className="max-w-6xl mx-auto px-6 py-16 text-center">
         <div className="bg-gradient-to-br from-primary/10 to-secondary/5 border border-primary/15 rounded-2xl p-10">
           <h2 className="text-2xl font-bold mb-3">Ready to level up?</h2>
-          <p className="text-muted-foreground text-sm mb-6">Start building habits that stick. No account required — try as a guest.</p>
-          <Link
-            to="/login?tab=signup"
-            className="inline-block bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-3 px-8 rounded-lg text-sm font-semibold hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(99,102,241,0.35)] transition-all"
-          >
-            Get Started Free →
-          </Link>
+          <p className="text-muted-foreground text-sm mb-6">Start building habits that stick. Free tier included — upgrade to Pro when you need more.</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Link
+              to="/login?tab=signup"
+              className="inline-block bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-3 px-8 rounded-lg text-sm font-semibold hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(99,102,241,0.35)] transition-all"
+            >
+              Get Started Free →
+            </Link>
+            <Link
+              to="/pricing"
+              className="inline-block text-sm border border-border py-3 px-6 rounded-lg hover:border-primary transition-all"
+            >
+              View Pro Plans
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="border-t border-border py-6 text-center text-[12px] text-muted-foreground">
         <span className="font-mono font-bold text-primary">PPS</span><span className="text-secondary">.</span> — Personal Performance System © {new Date().getFullYear()}
+        <div className="mt-2">
+          <Link to="/pricing" className="hover:text-foreground mr-3">Pricing</Link>
+          <Link to="/privacy" className="hover:text-foreground mr-3">Privacy</Link>
+          <Link to="/terms" className="hover:text-foreground">Terms</Link>
+        </div>
       </footer>
     </div>
   );

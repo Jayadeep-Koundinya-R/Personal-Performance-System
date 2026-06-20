@@ -17,6 +17,7 @@ interface AuthReturn {
   logout: () => void;
   resetPassword: (email: string) => Promise<string | null>;
   updatePassword: (password: string) => Promise<string | null>;
+  loginWithGoogle: () => Promise<string | null>;
   isLoggedIn: boolean;
   loading: boolean;
 }
@@ -115,6 +116,17 @@ export function useAuth(): AuthReturn {
     return null;
   }, []);
 
+  const loginWithGoogle = useCallback(async (): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}dashboard`,
+      },
+    });
+    if (error) return error.message;
+    return null;
+  }, []);
+
   return {
     user,
     login,
@@ -123,6 +135,7 @@ export function useAuth(): AuthReturn {
     logout,
     resetPassword,
     updatePassword,
+    loginWithGoogle,
     isLoggedIn: user !== null,
     loading,
   };

@@ -13,10 +13,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, User } from "@/hooks/use-auth";
-import { useHabits, HabitsProvider } from "@/hooks/use-habits";
+import { useHabits } from "@/hooks/use-habits";
 import { useTheme } from "@/hooks/use-theme";
-import { NotificationProvider, useNotifications } from "@/hooks/use-notifications";
-import { Navigate } from "react-router-dom";
+import { useNotifications } from "@/hooks/use-notifications";
+import { useProfile } from "@/hooks/use-profile";
+import { useUserSettings } from "@/hooks/use-user-settings";
+import { useSubscription } from "@/hooks/use-subscription";
+import { DashboardProviders } from "@/providers/AppProviders";
+import RitualOverlay from "@/components/RitualOverlay";
+import { Navigate, Link } from "react-router-dom";
 
 import AnimatedSection from "@/components/AnimatedSection";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
@@ -136,16 +141,19 @@ function DashboardInner({ user }: { user: User }) {
   const { calculateLevel, calculateTotalXP, habits, getTodayStr, isHabitDueToday } = useHabits();
   const { theme, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAllRead, clearAll } = useNotifications();
+  const { profile } = useProfile();
+  const { settings, completeOnboarding } = useUserSettings();
+  const { isPro } = useSubscription();
 
-  // Onboarding state
-  const onboardingKey = `pps_onboarded_${user.email || "guest"}`;
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    return !localStorage.getItem(onboardingKey);
+  const [showOnboarding, setShowOnboarding] = useState(() => !settings.onboardingCompleted);
+  const [showRitual, setShowRitual] = useState(() => {
+    const today = new Date().toISOString().split("T")[0];
+    return settings.ritualLastDone !== today;
   });
 
-  const dismissOnboarding = () => {
+  const dismissOnboarding = async () => {
     setShowOnboarding(false);
-    localStorage.setItem(onboardingKey, "true");
+    await completeOnboarding();
   };
 
   // ── Celebration state ──
@@ -224,7 +232,7 @@ function DashboardInner({ user }: { user: User }) {
 
   const level = calculateLevel();
   const xp = calculateTotalXP();
-  const displayName = localStorage.getItem(`pps_name_${user.email || "guest"}`) || 
+  const displayName = profile?.displayName ||
     (user.email ? user.email.split("@")[0] : "Guest");
 
   // Navigation handler — allows sections to navigate to other sections
@@ -241,9 +249,9 @@ function DashboardInner({ user }: { user: User }) {
       case "achievements": return <AchievementsSection />;
       case "social": return <SocialSection />;
       case "reports": return <ReportsSection />;
-      case "reflections": return <ReflectionSection userEmail={user.email} />;
+      case "reflections": return <ReflectionSection />;
       case "habits": return <HabitManagerSection />;
-      case "reminders": return <ReminderSection userEmail={user.email} />;
+      case "reminders": return <ReminderSection />;
       case "settings": return <SettingsSection user={user} />;
     }
   };
@@ -253,6 +261,10 @@ function DashboardInner({ user }: { user: User }) {
       {/* Onboarding overlay for new users */}
       <AnimatePresence>
         {showOnboarding && <OnboardingOverlay onDismiss={dismissOnboarding} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showRitual && !showOnboarding && <RitualOverlay onDismiss={() => setShowRitual(false)} />}
       </AnimatePresence>
 
       {/* Celebration overlay for level-ups and badge unlocks */}
@@ -356,6 +368,17 @@ function DashboardInner({ user }: { user: User }) {
             transition={{ delay: 0.4 }}
             className="px-5 py-4 border-t border-border"
           >
+            {!isPro && !user.isGuest && (
+              <Link
+                to="/pricing"
+                className="block mb-3 text-center text-[12px] bg-primary/10 text-primary border border-primary/20 py-2 rounded-lg font-semibold hover:bg-primary/15"
+              >
+                Upgrade to Pro ✨
+              </Link>
+            )}
+            {isPro && (
+              <div className="mb-3 text-center text-[11px] font-semibold text-primary">Pro Member</div>
+            )}
             <div className="flex items-center gap-2.5 bg-surface px-3 py-2.5 rounded-lg border border-border">
               <div className="w-[30px] h-[30px] rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-xs font-bold text-primary-foreground flex-shrink-0">
                 {displayName[0]?.toUpperCase() || "U"}
@@ -478,11 +501,9 @@ const DashboardPage = () => {
   }
 
   return (
-    <HabitsProvider userEmail={user.email} userId={user.id}>
-      <NotificationProvider userEmail={user.email}>
-        <DashboardInner user={user} />
-      </NotificationProvider>
-    </HabitsProvider>
+    <DashboardProviders user={user}>
+      <DashboardInner user={user} />
+    </DashboardProviders>
   );
 };
 

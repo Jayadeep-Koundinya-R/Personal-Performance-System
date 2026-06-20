@@ -1,0 +1,16 @@
+{
+  "name": "PPS - Personal Performance System",
+  "short_name": "PPS",
+  "description": "Gamified habit tracker and personal performance system",
+  "start_url": "/Personal-Performance-System/",
+  "display": "standalone",
+  "background_color": "#0f0f14",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/Personal-Performance-System/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

@@ -145,22 +145,379 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          identity_class: string | null
+          level: number
+          longest_streak: number
+          plan_tier: string
+          referral_code: string | null
+          role: string
+          timezone: string | null
+          total_xp: number
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          identity_class?: string | null
+          level?: number
+          longest_streak?: number
+          plan_tier?: string
+          referral_code?: string | null
+          role?: string
+          timezone?: string | null
+          total_xp?: number
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          identity_class?: string | null
+          level?: number
+          longest_streak?: number
+          plan_tier?: string
+          referral_code?: string | null
+          role?: string
+          timezone?: string | null
+          total_xp?: number
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      accountability_circles: {
+        Row: {
+          created_at: string
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_code?: string
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_code?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
+      circle_members: {
+        Row: {
+          circle_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          circle_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          circle_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          icon: string
+          id: string
+          message: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quests: {
+        Row: {
+          active: boolean
+          description: string
+          id: string
+          quest_key: string
+          quest_type: string
+          target: number
+          title: string
+          xp_reward: number
+        }
+        Insert: {
+          active?: boolean
+          description: string
+          id?: string
+          quest_key: string
+          quest_type?: string
+          target?: number
+          title: string
+          xp_reward?: number
+        }
+        Update: {
+          active?: boolean
+          description?: string
+          id?: string
+          quest_key?: string
+          quest_type?: string
+          target?: number
+          title?: string
+          xp_reward?: number
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          referred_id: string | null
+          referrer_id: string
+          status: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          referred_id?: string | null
+          referrer_id: string
+          status?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          referred_id?: string | null
+          referrer_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      reflections: {
+        Row: {
+          content: string
+          created_at: string
+          habits_log: Json | null
+          id: string
+          mood: string
+          reflection_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          habits_log?: Json | null
+          id?: string
+          mood?: string
+          reflection_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          habits_log?: Json | null
+          id?: string
+          mood?: string
+          reflection_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reminders: {
+        Row: {
+          channel: string
+          created_at: string
+          enabled: boolean
+          habit_id: string | null
+          id: string
+          label: string
+          reminder_time: string
+          repeat_pattern: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          enabled?: boolean
+          habit_id?: string | null
+          id?: string
+          label: string
+          reminder_time: string
+          repeat_pattern?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          enabled?: boolean
+          habit_id?: string | null
+          id?: string
+          label?: string
+          reminder_time?: string
+          repeat_pattern?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          id: string
+          plan: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          plan?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          plan?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_quests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          progress: number
+          quest_id: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          progress?: number
+          quest_id: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          progress?: number
+          quest_id?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          notification_prefs: Json
+          onboarding_completed: boolean
+          ritual_last_done: string | null
+          theme: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          notification_prefs?: Json
+          onboarding_completed?: boolean
+          ritual_last_done?: string | null
+          theme?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          notification_prefs?: Json
+          onboarding_completed?: boolean
+          ritual_last_done?: string | null
+          theme?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_stats: {
+        Row: {
+          level: number
+          longest_streak: number
+          total_xp: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          level?: number
+          longest_streak?: number
+          total_xp?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          level?: number
+          longest_streak?: number
+          total_xp?: number
           updated_at?: string
           user_id?: string
         }
@@ -171,7 +528,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      lookup_user_by_username: {
+        Args: { p_username: string }
+        Returns: {
+          user_id: string
+          display_name: string | null
+          username: string | null
+        }[]
+      }
+      sync_user_stats: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

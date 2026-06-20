@@ -23,7 +23,7 @@ const LoginPage = () => {
   const [signupConfirm, setSignupConfirm] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
 
-  const { login, signup, loginAsGuest, resetPassword, isLoggedIn, loading } = useAuth();
+  const { login, signup, loginAsGuest, resetPassword, isLoggedIn, loading, loginWithGoogle } = useAuth();
 
   if (!loading && isLoggedIn) {
     return <Navigate to="/dashboard" replace />;
@@ -198,15 +198,26 @@ const LoginPage = () => {
               <div className="absolute top-1/2 right-0 w-[40%] h-px bg-border" />
               or
             </div>
+            <button
+              onClick={async () => {
+                const err = await loginWithGoogle();
+                if (err) setMessage({ text: err, type: "error" });
+              }}
+              className="w-full py-2.5 rounded-lg border border-border bg-surface text-foreground font-display text-[13px] cursor-pointer hover:border-primary transition-all mb-2"
+            >
+              Continue with Google
+            </button>
             <button onClick={() => loginAsGuest()}
-              className="w-full py-2.5 rounded-lg border border-border bg-transparent text-muted-foreground font-display text-[13px] cursor-pointer hover:text-foreground hover:border-muted-foreground transition-all">
-              Continue as Guest &nbsp;·&nbsp; Local session
+              className="w-full py-2.5 rounded-lg border border-dashed border-border bg-transparent text-muted-foreground font-display text-[13px] cursor-pointer hover:text-foreground hover:border-muted-foreground transition-all">
+              Try Demo (Guest) — local only
             </button>
           </>
         )}
 
         <div className="text-center text-[11px] text-muted-foreground mt-5">
-          Sign up to save your data across devices.
+          <Link to="/pricing" className="text-primary hover:underline">View plans</Link>
+          {" · "}
+          <Link to="/privacy" className="hover:underline">Privacy</Link>
         </div>
       </div>
     </div>
