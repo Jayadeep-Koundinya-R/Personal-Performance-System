@@ -3,10 +3,8 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
 // https://vitejs.dev/config/
-export default defineConfig(() => ({
-  // Add this line below:
-  base: "/Personal-Performance-System/",
-  
+export default defineConfig({
+  base: "/Personal-Performance-System/", // Add this here
   server: {
     host: "::",
     port: 8080,
@@ -20,4 +18,4 @@ export default defineConfig(() => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-}));
+});
