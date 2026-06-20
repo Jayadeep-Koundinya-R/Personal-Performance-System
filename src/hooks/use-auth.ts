@@ -34,13 +34,25 @@ export function useAuth(): AuthReturn {
   useEffect(() => {
     // Listen for auth changes FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(mapUser(session?.user ?? null));
+      if (session?.user) {
+        setUser(mapUser(session.user));
+      } else if (sessionStorage.getItem("pps_guest") === "true") {
+        setUser({ email: null, isGuest: true });
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
     // Then check existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(mapUser(session?.user ?? null));
+      if (session?.user) {
+        setUser(mapUser(session.user));
+      } else if (sessionStorage.getItem("pps_guest") === "true") {
+        setUser({ email: null, isGuest: true });
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
@@ -74,12 +86,15 @@ export function useAuth(): AuthReturn {
 
   const loginAsGuest = useCallback(() => {
     const guestUser: User = { email: null, isGuest: true };
+    // Persist guest flag so auth listener doesn't overwrite this temporary session
+    try { sessionStorage.setItem("pps_guest", "true"); } catch {}
     setUser(guestUser);
     navigate("/dashboard");
   }, [navigate]);
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
+    try { sessionStorage.removeItem("pps_guest"); } catch {}
     setUser(null);
     navigate("/login");
   }, [navigate]);
