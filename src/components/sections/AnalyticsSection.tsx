@@ -18,12 +18,12 @@ const AnalyticsSection = () => {
   const coach = useAiCoachSummary(isPro);
   const todayStr = getTodayStr();
   const dueToday = habits.filter((h) => isHabitDueToday(h));
-  const doneToday = dueToday.filter((h) => h.completedDates.includes(todayStr));
+  const doneToday = dueToday.filter((h) => (h.completedDates || []).includes(todayStr));
   const pct = dueToday.length > 0 ? Math.round((doneToday.length / dueToday.length) * 100) : 0;
 
   const totalXP = calculateTotalXP();
   const bestStreak = getMaxStreak();
-  const totalDone = habits.reduce((s, h) => s + h.completedDates.length, 0);
+  const totalDone = habits.reduce((s, h) => s + (h.completedDates || []).length, 0);
 
   // Weekly chart
   const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -31,7 +31,7 @@ const AnalyticsSection = () => {
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
     const ds = d.toISOString().split("T")[0];
-    habits.forEach((h) => { if (h.completedDates.includes(ds)) counts[6 - i]++; });
+    habits.forEach((h) => { if ((h.completedDates || []).includes(ds)) counts[6 - i]++; });
   }
   const maxCount = Math.max(...counts, 1);
 
@@ -79,7 +79,7 @@ const AnalyticsSection = () => {
           <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3.5">Per Habit Success Rate</h3>
           {habits.length === 0 ? <p className="text-muted-foreground text-[13px] text-center py-6">No habits yet.</p> : (
             habits.map((h) => {
-              const done = h.completedDates.filter((d) => new Date(d) >= weekAgo).length;
+              const done = (h.completedDates || []).filter((d) => new Date(d) >= weekAgo).length;
               const hPct = Math.min(Math.round((done / 7) * 100), 100);
               const color = hPct >= 80 ? "hsl(var(--green))" : hPct >= 50 ? "hsl(var(--yellow))" : "hsl(var(--destructive))";
               return (
@@ -103,6 +103,33 @@ const AnalyticsSection = () => {
         <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-4">📅 Activity Heatmap — Last 6 Months</h3>
         <HeatmapGrid habits={habits} />
       </div>
+
+      {/* Smart Insights & AI Coach */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold mb-3">Smart Insights {isPro ? "✨" : "🔒"}</h3>
+          <ul className="space-y-2">
+            {insights.map((line, i) => (
+              <li key={i} className="text-[13px] text-muted-foreground leading-relaxed">• {line}</li>
+            ))}
+          </ul>
+          {!isPro && (
+            <Link to="/pricing" className="text-[11px] text-primary mt-3 inline-block hover:underline">Unlock Pro insights →</Link>
+          )}
+        </div>
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold mb-3">Weekly AI Coach {isPro ? "🤖" : "🔒"}</h3>
+          <p className="text-[13px] text-muted-foreground mb-3">{coach.summary}</p>
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Suggestions</div>
+          {coach.suggestions.map((s, i) => (
+            <div key={i} className="text-[13px] mb-1.5">→ {s}</div>
+          ))}
+        </div>
+      </div>
+
+      {!isPro && limits.analyticsDays < Infinity && (
+        <p className="text-[11px] text-muted-foreground mt-4">Free plan shows {limits.analyticsDays}-day analytics. Pro unlocks full history.</p>
+      )}
     </div>
   );
 };
@@ -254,33 +281,6 @@ function HeatmapGrid({ habits }: { habits: ReturnType<typeof useHabits>["habits"
         <span>More</span>
         <span className="ml-auto font-mono text-[10px]">{habits.reduce((s, h) => s + h.completedDates.length, 0)} total contributions</span>
       </div>
-
-      {/* Smart Insights & AI Coach */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
-        <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold mb-3">Smart Insights {isPro ? "✨" : "🔒"}</h3>
-          <ul className="space-y-2">
-            {insights.map((line, i) => (
-              <li key={i} className="text-[13px] text-muted-foreground leading-relaxed">• {line}</li>
-            ))}
-          </ul>
-          {!isPro && (
-            <Link to="/pricing" className="text-[11px] text-primary mt-3 inline-block hover:underline">Unlock Pro insights →</Link>
-          )}
-        </div>
-        <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold mb-3">Weekly AI Coach {isPro ? "🤖" : "🔒"}</h3>
-          <p className="text-[13px] text-muted-foreground mb-3">{coach.summary}</p>
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Suggestions</div>
-          {coach.suggestions.map((s, i) => (
-            <div key={i} className="text-[13px] mb-1.5">→ {s}</div>
-          ))}
-        </div>
-      </div>
-
-      {!isPro && limits.analyticsDays < Infinity && (
-        <p className="text-[11px] text-muted-foreground mt-4">Free plan shows {limits.analyticsDays}-day analytics. Pro unlocks full history.</p>
-      )}
     </div>
   );
 }

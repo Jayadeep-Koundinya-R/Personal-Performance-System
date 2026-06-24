@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useHabits } from "@/hooks/use-habits";
 import { useSubscription } from "@/hooks/use-subscription";
+import { useTheme } from "@/hooks/use-theme";
 
 const StreakSection = () => {
   const { habits, getMaxStreak, getTotalFreezeCredits, useStreakFreeze } = useHabits();
+  const { toggleTheme } = useTheme();
   const { limits } = useSubscription();
   const [msg, setMsg] = useState<string | null>(null);
   const maxStreak = getMaxStreak();
