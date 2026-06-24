@@ -23,8 +23,8 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <AiChatWidget />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <AiChatWidget />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
