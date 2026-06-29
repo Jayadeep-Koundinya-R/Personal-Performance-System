@@ -1,5 +1,6 @@
+// @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 
 const corsHeaders = {
@@ -45,7 +46,7 @@ Deno.serve(async (req: Request) => {
     // Fetch user's active habits that have github triggers
     const { data: habits, error: habitsError } = await supabaseAdmin
       .from("habits")
-      .select("id, name, github_trigger_keywords, completed_dates, last_github_commit_hash")
+      .select("id, name, github_trigger_keywords, last_github_commit_hash, streak, last_completed_date")
       .eq("user_id", userId);
 
     if (habitsError || !habits || habits.length === 0) {
@@ -53,6 +54,21 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    // Fetch today's habit completions for this user to check for duplicates
+    const { data: todayCompletions, error: completionsError } = await supabaseAdmin
+      .from("habit_completions")
+      .select("habit_id")
+      .eq("user_id", userId)
+      .eq("completed_date", todayStr);
+
+    if (completionsError) {
+      console.error("Error fetching today's completions:", completionsError);
+    }
+
+    const completedTodayIds = new Set((todayCompletions || []).map((c: any) => c.habit_id));
 
     const relevantHabits = habits.filter((h) => h.github_trigger_keywords && h.github_trigger_keywords.length > 0);
     
@@ -101,8 +117,6 @@ If none are satisfied, return []. Do not return markdown, just the JSON array.
     }
 
     // Update the matched habits
-    const todayStr = new Date().toISOString().split("T")[0];
-    
     for (const habitId of matchedHabitIds) {
         const habit = relevantHabits.find(h => h.id === habitId);
         if (!habit) continue;
@@ -110,15 +124,44 @@ If none are satisfied, return []. Do not return markdown, just the JSON array.
         // Prevent duplicate trigger for same commit
         if (habit.last_github_commit_hash === latestHash) continue;
 
-        let completedDates = habit.completed_dates || [];
-        if (!completedDates.includes(todayStr)) {
-            completedDates.push(todayStr);
+        // Prevent duplicate completion for today
+        if (completedTodayIds.has(habitId)) {
+            // Update last commit hash to prevent re-triggering
+            await supabaseAdmin
+                .from("habits")
+                .update({ 
+                    last_github_commit_hash: latestHash
+                })
+                .eq("id", habitId);
+            continue;
         }
+
+        // Insert new completion
+        const { error: insertError } = await supabaseAdmin
+            .from("habit_completions")
+            .insert({
+                habit_id: habitId,
+                user_id: userId,
+                completed_date: todayStr,
+            });
+
+        if (insertError) {
+            console.error(`Failed to insert completion for habit ${habitId}:`, insertError);
+            continue;
+        }
+
+        // Calculate new streak
+        const newStreak = habit.last_completed_date
+            ? (Math.round((new Date(todayStr).getTime() - new Date(habit.last_completed_date).getTime()) / 864e5) === 1
+                ? habit.streak + 1 
+                : 1)
+            : 1;
 
         await supabaseAdmin
             .from("habits")
             .update({ 
-                completed_dates: completedDates,
+                streak: newStreak,
+                last_completed_date: todayStr,
                 last_github_commit_hash: latestHash
             })
             .eq("id", habitId);

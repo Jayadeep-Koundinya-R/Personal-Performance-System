@@ -1,3 +1,4 @@
+// @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -12,7 +13,7 @@ Deno.serve(async () => {
 
   const { data: reminders } = await supabase
     .from("reminders")
-    .select("*, profiles!inner(user_id)")
+    .select("*")
     .eq("enabled", true)
     .eq("reminder_time", currentTime);
 
