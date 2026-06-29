@@ -22,6 +22,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { DashboardProviders } from "@/providers/AppProviders";
 import RitualOverlay from "@/components/RitualOverlay";
 import { Navigate, Link } from "react-router-dom";
+import AiChatWidget from "@/components/ui/AiChatWidget";
 
 import AnimatedSection from "@/components/AnimatedSection";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
@@ -478,6 +479,7 @@ function DashboardInner({ user }: { user: User }) {
       {notifOpen && (
         <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
       )}
+      <AiChatWidget />
     </>
   );
 }

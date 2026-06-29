@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
+import { useHabits } from "@/hooks/use-habits";
+import { useReflections } from "@/hooks/use-reflections";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -17,6 +20,8 @@ export default function AiChatWidget() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isLoggedIn } = useAuth();
+  const { habits } = useHabits();
+  const { entries: reflections } = useReflections();
 
   // Scroll to bottom
   useEffect(() => {
@@ -31,20 +36,53 @@ export default function AiChatWidget() {
 
     // Add user message
     const newMsg: Message = { id: Date.now().toString(), sender: "user", text };
-    setMessages(prev => [...prev, newMsg]);
+    const updatedMessages = [...messages, newMsg];
+    setMessages(updatedMessages);
     setInput("");
     setIsTyping(true);
 
-    // TODO: Connect to actual Supabase Edge Function with Gemini
-    // For now, simulate network delay and dummy response
-    setTimeout(() => {
+    try {
+      // Invoke the Supabase Edge Function with full active context
+      const { data, error } = await supabase.functions.invoke("ai-coach-chat", {
+        body: {
+          message: text,
+          habits: habits.map(h => ({
+            name: h.name,
+            category: h.category,
+            streak: h.streak,
+            lastCompletedDate: h.lastCompletedDate,
+            period: h.period,
+          })),
+          reflections: reflections.map(r => ({
+            date: r.date,
+            mood: r.mood,
+            text: r.text,
+          })),
+          chatHistory: messages.slice(-10), // Send last 10 messages for conversation memory
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.text) {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          sender: "ai",
+          text: data.text,
+        }]);
+      } else {
+        throw new Error("No response text returned from AI coach.");
+      }
+    } catch (err: any) {
+      console.error("AI Coach connection error:", err);
       setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
+        id: Date.now().toString(),
         sender: "ai",
-        text: "I've analyzed your recent streaks. You're crushing the Dev-Sync goals, but remember to prioritize your morning routine tomorrow!"
+        text: "Sorry, I had trouble connecting to the network to check your progress. Let's try again in a bit!"
       }]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const quickPrompts = ["Roast my streak 🔥", "Did I hit my goals today? 📊", "Give me a deep-work tip 🧠"];

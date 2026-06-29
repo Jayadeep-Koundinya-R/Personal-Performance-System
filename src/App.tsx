@@ -13,8 +13,6 @@ import PrivacyPage from "./pages/Privacy";
 import TermsPage from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 
-import AiChatWidget from "./components/ui/AiChatWidget";
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -24,7 +22,6 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <AiChatWidget />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
