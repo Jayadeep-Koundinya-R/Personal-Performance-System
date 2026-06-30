@@ -27,21 +27,25 @@ import AiChatWidget from "@/components/ui/AiChatWidget";
 import AnimatedSection from "@/components/AnimatedSection";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
 
+import { lazy, Suspense } from "react";
 import DashboardSection from "@/components/sections/DashboardSection";
 import DailyTrackerSection from "@/components/sections/DailyTrackerSection";
-import AnalyticsSection from "@/components/sections/AnalyticsSection";
-import StreakSection from "@/components/sections/StreakSection";
-import ReflectionSection from "@/components/sections/ReflectionSection";
-import HabitManagerSection from "@/components/sections/HabitManagerSection";
-import ReminderSection from "@/components/sections/ReminderSection";
-import AchievementsSection from "@/components/sections/AchievementsSection";
-import SocialSection from "@/components/sections/SocialSection";
-import ReportsSection from "@/components/sections/ReportsSection";
-import SettingsSection from "@/components/sections/SettingsSection";
+import CalendarSection from "@/components/sections/CalendarSection";
+const AnalyticsSection = lazy(() => import("@/components/sections/AnalyticsSection").then(m => ({ default: m.default })));
+const StreakSection = lazy(() => import("@/components/sections/StreakSection").then(m => ({ default: m.default })));
+const ReflectionSection = lazy(() => import("@/components/sections/ReflectionSection").then(m => ({ default: m.default })));
+const HabitManagerSection = lazy(() => import("@/components/sections/HabitManagerSection").then(m => ({ default: m.default })));
+const ReminderSection = lazy(() => import("@/components/sections/ReminderSection").then(m => ({ default: m.default })));
+const AchievementsSection = lazy(() => import("@/components/sections/AchievementsSection").then(m => ({ default: m.default })));
+const SocialSection = lazy(() => import("@/components/sections/SocialSection").then(m => ({ default: m.default })));
+const ReportsSection = lazy(() => import("@/components/sections/ReportsSection").then(m => ({ default: m.default })));
+const SettingsSection = lazy(() => import("@/components/sections/SettingsSection").then(m => ({ default: m.default })));
+const ExportSection = lazy(() => import("@/components/sections/ExportSection").then(m => ({ default: m.default })));
 
 const NAV_ITEMS = [
   { key: "dashboard", icon: "⚡", label: "Dashboard" },
   { key: "tracker", icon: "📋", label: "Daily Tracker" },
+  { key: "calendar", icon: "📅", label: "Calendar" },
   { key: "analytics", icon: "📊", label: "Analytics" },
   { key: "streak", icon: "🔥", label: "Streak Engine" },
   { key: "achievements", icon: "🏅", label: "Achievements" },
@@ -50,6 +54,7 @@ const NAV_ITEMS = [
   { key: "reflections", icon: "📝", label: "Reflections" },
   { key: "habits", icon: "⚙️", label: "Habit Manager" },
   { key: "reminders", icon: "🔔", label: "Reminders" },
+  { key: "export", icon: "📤", label: "Export" },
   { key: "settings", icon: "🛠", label: "Settings" },
 ] as const;
 
@@ -242,18 +247,26 @@ function DashboardInner({ user }: { user: User }) {
   }, []);
 
   const renderSection = () => {
+    const LoadingFallback = () => (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+
     switch (activeSection) {
       case "dashboard": return <DashboardSection onNavigate={navigateToSection} userEmail={user.email} />;
       case "tracker": return <DailyTrackerSection onNavigate={navigateToSection} />;
-      case "analytics": return <AnalyticsSection />;
-      case "streak": return <StreakSection />;
-      case "achievements": return <AchievementsSection />;
-      case "social": return <SocialSection />;
-      case "reports": return <ReportsSection />;
-      case "reflections": return <ReflectionSection />;
-      case "habits": return <HabitManagerSection />;
-      case "reminders": return <ReminderSection />;
-      case "settings": return <SettingsSection user={user} />;
+      case "calendar": return <CalendarSection />;
+      case "analytics": return <Suspense fallback={<LoadingFallback />}><AnalyticsSection /></Suspense>;
+      case "streak": return <Suspense fallback={<LoadingFallback />}><StreakSection /></Suspense>;
+      case "achievements": return <Suspense fallback={<LoadingFallback />}><AchievementsSection /></Suspense>;
+      case "social": return <Suspense fallback={<LoadingFallback />}><SocialSection /></Suspense>;
+      case "reports": return <Suspense fallback={<LoadingFallback />}><ReportsSection /></Suspense>;
+      case "reflections": return <Suspense fallback={<LoadingFallback />}><ReflectionSection /></Suspense>;
+      case "habits": return <Suspense fallback={<LoadingFallback />}><HabitManagerSection /></Suspense>;
+      case "reminders": return <Suspense fallback={<LoadingFallback />}><ReminderSection /></Suspense>;
+      case "export": return <Suspense fallback={<LoadingFallback />}><ExportSection user={user} /></Suspense>;
+      case "settings": return <Suspense fallback={<LoadingFallback />}><SettingsSection user={user} /></Suspense>;
     }
   };
 

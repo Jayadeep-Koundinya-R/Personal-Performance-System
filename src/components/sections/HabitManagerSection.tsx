@@ -7,6 +7,8 @@ import { useState } from "react";
 import { useHabits, Habit } from "@/hooks/use-habits";
 import { Link } from "react-router-dom";
 import { useSubscription } from "@/hooks/use-subscription";
+import { HABIT_TEMPLATES, HabitTemplate } from "@/lib/habitTemplates";
+import { toast } from "sonner";
 
 const HABIT_STACKS = [
   { label: "Morning Stack", name: "Morning routine", category: "Health", period: "Daily", priority: "High" },
@@ -35,12 +37,45 @@ const HabitManagerSection = () => {
   const [editPriority, setEditPriority] = useState("");
   const [editDate, setEditDate] = useState("");
 
+  // Template modal state
+  const [showTemplates, setShowTemplates] = useState(false);
+
   const handleAdd = async () => {
     if (!name.trim()) { setNameError(true); return; }
     setNameError(false);
     const err = await addHabit(name.trim(), category.trim(), period, priority, startDate || null);
-    if (err) { alert(err); return; }
+    if (err) { toast.error(err); return; }
     setName(""); setCategory(""); setPeriod("Daily"); setPriority("High"); setStartDate("");
+    toast.success("Habit added successfully!");
+  };
+
+  const applyTemplate = async (template: HabitTemplate) => {
+    const habitsToAdd = template.habits.filter((h) => {
+      // Check if habit already exists
+      return !habits.some((existing) => existing.name === h.name);
+    });
+
+    if (habitsToAdd.length === 0) {
+      toast.info("All habits from this template already exist.");
+      return;
+    }
+
+    const habitsRemaining = limits.maxHabits - habits.length;
+    if (habitsToAdd.length > habitsRemaining && limits.maxHabits !== Infinity) {
+      toast.error(`Can only add ${habitsRemaining} more habits. Upgrade to Pro for unlimited.`);
+      return;
+    }
+
+    let addedCount = 0;
+    for (const habit of habitsToAdd) {
+      const err = await addHabit(habit.name, habit.category, habit.period, habit.priority);
+      if (!err) addedCount++;
+    }
+
+    if (addedCount > 0) {
+      toast.success(`Added ${addedCount} habits from ${template.name} template!`);
+    }
+    setShowTemplates(false);
   };
 
   const openEdit = (h: Habit) => {
@@ -83,14 +118,23 @@ const HabitManagerSection = () => {
       <div className="mb-6"><h1 className="text-[22px] font-bold">Habit Manager</h1><div className="text-[13px] text-muted-foreground mt-0.5">Add, edit or remove habits ({habits.length}{limits.maxHabits !== Infinity ? `/${limits.maxHabits}` : ""})</div></div>
 
       <div className="bg-card border border-border rounded-xl p-4 mb-5">
-        <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Habit Stack Templates</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Habit Templates</h3>
+          <button
+            onClick={() => setShowTemplates(true)}
+            className="text-[11px] bg-primary/10 text-primary px-3 py-1.5 rounded-lg hover:bg-primary/20 transition-colors"
+          >
+            Browse All Templates
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           {HABIT_STACKS.map((stack) => (
             <button
               key={stack.label}
               onClick={async () => {
                 const err = await addHabit(stack.name, stack.category, stack.period, stack.priority);
-                if (err) alert(err);
+                if (err) toast.error(err);
+                else toast.success(`Added "${stack.name}" habit!`);
               }}
               className="text-[12px] px-3 py-1.5 rounded-lg border border-border hover:border-primary bg-surface"
             >
@@ -98,7 +142,7 @@ const HabitManagerSection = () => {
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground mt-2">Atomic Habits-style triggers — one tap to add.</p>
+        <p className="text-[11px] text-muted-foreground mt-2">Quick-add habits or browse full template packs.</p>
         {habits.length >= limits.maxHabits && limits.maxHabits !== Infinity && (
           <p className="text-[11px] text-primary mt-1"><Link to="/pricing">Upgrade to Pro</Link> for unlimited habits.</p>
         )}
@@ -218,6 +262,46 @@ const HabitManagerSection = () => {
             <div className="flex gap-2.5 justify-end mt-2">
               <button onClick={() => setEditHabit(null)} className="bg-transparent text-muted-foreground border border-border py-1.5 px-3.5 rounded-lg text-[12.5px] hover:text-foreground hover:border-muted-foreground">Cancel</button>
               <button onClick={saveEdit} className="bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 transition-all">Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template Modal */}
+      {showTemplates && (
+        <div className="fixed inset-0 bg-black/65 flex items-center justify-center z-[1000]" onClick={() => setShowTemplates(false)}>
+          <div className="bg-card border border-border rounded-2xl p-7 w-[600px] max-w-[95vw] max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-lg font-bold">Habit Templates</h2>
+              <button onClick={() => setShowTemplates(false)} className="bg-transparent border-none text-muted-foreground text-xl cursor-pointer hover:text-foreground">✕</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {HABIT_TEMPLATES.map((template) => (
+                <div
+                  key={template.id}
+                  className="bg-surface border border-border rounded-xl p-4 hover:border-primary/50 transition-colors cursor-pointer"
+                  onClick={() => applyTemplate(template)}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="text-3xl">{template.icon}</div>
+                    <div>
+                      <h3 className="font-semibold text-sm">{template.name}</h3>
+                      <p className="text-xs text-muted-foreground">{template.habits.length} habits</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">{template.description}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {template.habits.slice(0, 3).map((h, i) => (
+                      <span key={i} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                        {h.name}
+                      </span>
+                    ))}
+                    {template.habits.length > 3 && (
+                      <span className="text-[10px] text-muted-foreground">+{template.habits.length - 3} more</span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

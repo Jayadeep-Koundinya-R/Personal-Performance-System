@@ -5,6 +5,9 @@ import { useProfile } from "@/hooks/use-profile";
 import { useSubscription } from "@/hooks/use-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
+import { useReflections } from "@/hooks/use-reflections";
+import { exportToCSV, exportToJSON, exportReflectionsToCSV, prepareFullExport } from "@/lib/dataExport";
+import { toast } from "sonner";
 
 const IDENTITY_CLASSES = ["Athlete", "Scholar", "Builder", "Mindful"];
 
@@ -13,12 +16,14 @@ const SettingsSection = ({ user }: { user: User }) => {
   const { habits, resetAllData } = useHabits();
   const { profile, updateProfile } = useProfile();
   const { isPro, openBillingPortal } = useSubscription();
+  const { entries: reflections } = useReflections();
   const [displayName, setDisplayName] = useState(profile?.displayName || "");
   const [username, setUsername] = useState(profile?.username || "");
   const [identityClass, setIdentityClass] = useState(profile?.identityClass || "");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
+  const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
 
   useEffect(() => {
     if (profile) {
@@ -59,31 +64,22 @@ const SettingsSection = ({ user }: { user: User }) => {
   };
 
   const exportData = async () => {
-    if (user.isGuest || !user.id) {
-      const blob = new Blob([JSON.stringify(habits, null, 2)], { type: "application/json" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "pps-export.json";
-      a.click();
-      URL.revokeObjectURL(a.href);
-      return;
+    try {
+      if (exportFormat === "csv") {
+        exportToCSV(habits);
+        if (reflections.length > 0) {
+          exportReflectionsToCSV(reflections);
+        }
+        toast.success("Data exported to CSV successfully!");
+      } else {
+        const fullData = prepareFullExport(habits, reflections);
+        exportToJSON(fullData);
+        toast.success("Data exported to JSON successfully!");
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export data. Please try again.");
     }
-
-    const [reflections, reminders, achievements] = await Promise.all([
-      supabase.from("reflections").select("*").eq("user_id", user.id),
-      supabase.from("reminders").select("*").eq("user_id", user.id),
-      supabase.from("achievements").select("*").eq("user_id", user.id),
-    ]);
-
-    const blob = new Blob(
-      [JSON.stringify({ habits, reflections: reflections.data, reminders: reminders.data, achievements: achievements.data, profile }, null, 2)],
-      { type: "application/json" }
-    );
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "pps-full-export.json";
-    a.click();
-    URL.revokeObjectURL(a.href);
   };
 
   const deleteAccount = async () => {
@@ -177,9 +173,21 @@ const SettingsSection = ({ user }: { user: User }) => {
 
         <div className="bg-card border border-border p-5 rounded-lg">
           <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3.5">Data & Privacy</h3>
-          <div className="flex items-center justify-between py-3.5 border-b border-border">
-            <div><div className="text-sm font-medium">Export Data</div><div className="text-xs text-muted-foreground mt-0.5">{isPro ? "Full account export" : "Habits JSON"}</div></div>
-            <button onClick={exportData} className="bg-transparent text-muted-foreground border border-border py-1.5 px-3.5 rounded-lg text-[12.5px] hover:text-foreground hover:border-muted-foreground">Export</button>
+          <div className="py-3.5 border-b border-border space-y-3">
+            <div className="flex items-center justify-between">
+              <div><div className="text-sm font-medium">Export Data</div><div className="text-xs text-muted-foreground mt-0.5">Habits & reflections</div></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value as "csv" | "json")}
+                className="bg-surface border border-border px-3 py-1.5 rounded-lg text-sm outline-none focus:border-primary"
+              >
+                <option value="json">JSON</option>
+                <option value="csv">CSV</option>
+              </select>
+              <button onClick={exportData} className="bg-primary text-primary-foreground py-1.5 px-3.5 rounded-lg text-[12.5px] hover:opacity-90">Export</button>
+            </div>
           </div>
           <div className="flex items-center justify-between py-3.5 border-b border-border">
             <div><div className="text-sm font-medium">Reset All Data</div><div className="text-xs text-destructive mt-0.5">Cannot be undone</div></div>

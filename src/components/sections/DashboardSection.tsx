@@ -1,6 +1,10 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { InsightCard } from "@/components/dashboard/InsightCard";
+import { TaskSection } from "@/components/dashboard/TaskSection";
+import { LevelWidget } from "@/components/dashboard/LevelWidget";
 
 const MOTIVATIONAL_QUOTES = [
   { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
@@ -498,146 +502,6 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   );
 };
 
-/* ─── Sub-components ─── */
 
-function StatCard({ value, label, icon, trend, progress, variant }: {
-  value: string; label: string; icon: string; trend: React.ReactNode; progress: number;
-  variant: "indigo" | "orange" | "cyan" | "green";
-}) {
-  const variantMap = {
-    indigo: { from: "var(--stat-indigo-from)", to: "var(--stat-indigo-to)", border: "var(--stat-indigo-border)", bar: "hsl(var(--primary))" },
-    orange: { from: "var(--stat-orange-from)", to: "var(--stat-orange-to)", border: "var(--stat-orange-border)", bar: "hsl(var(--orange))" },
-    cyan:   { from: "var(--stat-cyan-from)",   to: "var(--stat-cyan-to)",   border: "var(--stat-cyan-border)",   bar: "hsl(var(--secondary))" },
-    green:  { from: "var(--stat-green-from)",  to: "var(--stat-green-to)",  border: "var(--stat-green-border)",  bar: "hsl(var(--green))" },
-  };
-  const v = variantMap[variant];
-
-  return (
-    <motion.div
-      whileHover={{ scale: 1.03, y: -4 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ type: "spring", stiffness: 400, damping: 20 }}
-      className="rounded-xl p-[18px] px-5 relative overflow-hidden cursor-default"
-      style={{
-        background: `linear-gradient(135deg, hsl(${v.from}), hsl(${v.to}))`,
-        borderWidth: "1px",
-        borderColor: `hsl(${v.border} / 0.5)`,
-        boxShadow: "var(--stat-shadow)",
-      }}
-    >
-      <div className="flex items-center justify-between">
-        <motion.div
-          key={value}
-          initial={{ scale: 1.15, opacity: 0.7 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 15 }}
-          className="text-[28px] font-bold font-mono"
-        >
-          {value}
-        </motion.div>
-        <motion.div
-          whileHover={{ rotate: 15, scale: 1.15 }}
-          className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-          style={{ background: `hsl(${v.border} / 0.3)` }}
-        >
-          {icon}
-        </motion.div>
-      </div>
-      <div className="text-xs text-muted-foreground mt-1">{label}</div>
-      {trend}
-      <div className="rounded-full h-1 mt-2" style={{ background: `hsl(${v.border} / 0.3)` }}>
-        <motion.div
-          className="h-1 rounded-full"
-          initial={false}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          style={{ background: v.bar }}
-        />
-      </div>
-    </motion.div>
-  );
-}
-
-function InsightCard({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) {
-  return (
-    <motion.div
-      whileHover={{ scale: 1.03, y: -2 }}
-      transition={{ type: "spring", stiffness: 400, damping: 20 }}
-      className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3 cursor-default"
-    >
-      <motion.div
-        whileHover={{ rotate: 10 }}
-        className={`w-9 h-9 rounded-lg bg-${color}/15 flex items-center justify-center text-base`}
-      >
-        {icon}
-      </motion.div>
-      <div>
-        <div className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</div>
-        <div className="text-sm font-semibold">{value}</div>
-      </div>
-    </motion.div>
-  );
-}
-
-function TaskSection({ title, borderColor, tasks, renderTask, emptyText, renderEmptyList }: {
-  title: string; borderColor: string; tasks: any[]; renderTask: (h: any, i: number) => React.ReactNode;
-  emptyText: string; renderEmptyList: (t: string) => React.ReactNode;
-}) {
-  return (
-    <motion.div
-      whileHover={{ borderColor: "hsl(var(--primary) / 0.3)" }}
-      className={`bg-card border border-border p-5 rounded-xl border-l-[3px] ${borderColor}`}
-    >
-      <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3.5 flex items-center gap-2">{title}</h3>
-      {tasks.length > 0 ? tasks.map((t, i) => renderTask(t, i)) : renderEmptyList(emptyText)}
-    </motion.div>
-  );
-}
-
-function LevelWidget() {
-  const { calculateLevel, calculateTotalXP } = useHabits();
-  const level = calculateLevel();
-  const xp = calculateTotalXP();
-  const xpInLevel = xp % 100;
-  const levelTitle = level >= 10 ? "Legend" : level >= 7 ? "Master" : level >= 5 ? "Warrior" : level >= 3 ? "Apprentice" : "Beginner";
-
-  return (
-    <>
-      <div className="flex justify-between items-center mb-2">
-        <div>
-          <motion.span
-            key={level}
-            initial={{ scale: 1.3 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 300 }}
-            className="text-xl font-bold font-mono text-primary inline-block"
-          >
-            Lv. {level}
-          </motion.span>
-          <span className="text-[11px] text-muted-foreground ml-2">{levelTitle}</span>
-        </div>
-        <span className="text-muted-foreground font-mono text-xs">{xpInLevel} / 100 XP</span>
-      </div>
-      <div className="bg-surface rounded-full h-1.5">
-        <motion.div
-          className="h-1.5 rounded-full"
-          initial={false}
-          animate={{ width: `${xpInLevel}%` }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          style={{ background: "linear-gradient(90deg, hsl(var(--orange)), hsl(var(--yellow)))" }}
-        />
-      </div>
-      <div className="text-muted-foreground text-[11px] mt-1">{100 - xpInLevel} XP to Level {level + 1}</div>
-      <motion.div
-        key={xp}
-        initial={{ scale: 1.1 }}
-        animate={{ scale: 1 }}
-        className="text-[28px] mt-2 text-center"
-      >
-        {xp} <span className="text-sm text-muted-foreground font-mono">total XP</span>
-      </motion.div>
-    </>
-  );
-}
 
 export default DashboardSection;
