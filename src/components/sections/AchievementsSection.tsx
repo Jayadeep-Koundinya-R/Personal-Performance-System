@@ -108,7 +108,7 @@ const AchievementsSection = () => {
           <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">🏅 Unlocked</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {unlocked.map((b) => (
-              <div key={b.id} className="bg-card border border-primary/20 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+              <div key={b.id} className="bg-card border border-primary/20 rounded-xl p-4 flex items-start gap-3 shadow-sm hover:scale-102 hover:border-primary/40 hover:shadow-md transition-all duration-200">
                 <div className="text-3xl">{b.icon}</div>
                 <div>
                   <div className="text-sm font-bold text-foreground">{b.name}</div>
@@ -127,7 +127,7 @@ const AchievementsSection = () => {
           <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">🔒 Locked</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {locked.map((b) => (
-              <div key={b.id} className="bg-card border border-border rounded-xl p-4 flex items-start gap-3 opacity-50">
+              <div key={b.id} className="bg-card border border-border rounded-xl p-4 flex items-start gap-3 opacity-45 hover:opacity-70 hover:border-border-hover transition-all duration-200">
                 <div className="text-3xl grayscale">{b.icon}</div>
                 <div>
                   <div className="text-sm font-bold text-foreground">{b.name}</div>
@@ -145,7 +145,7 @@ const AchievementsSection = () => {
 
 function MiniStat({ icon, label, value }: { icon: string; label: string; value: number }) {
   return (
-    <div className="bg-card border border-border rounded-xl px-4 py-3 text-center">
+    <div className="bg-card border border-border rounded-xl px-4 py-3 text-center hover:border-primary/20 hover:-translate-y-0.5 shadow-sm hover:shadow-md transition-all duration-200">
       <div className="text-lg">{icon}</div>
       <div className="text-xl font-bold font-mono">{value}</div>
       <div className="text-[11px] text-muted-foreground">{label}</div>

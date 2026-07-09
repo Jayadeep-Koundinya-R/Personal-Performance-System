@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useHabits } from "@/hooks/use-habits";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -6,6 +6,21 @@ const CalendarSection = () => {
   const { habits, getTodayStr } = useHabits();
   const [currentDate, setCurrentDate] = useState(new Date());
   const todayStr = getTodayStr();
+  const [activePopover, setActivePopover] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setActivePopover(null);
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
+  const handleCellClick = (e: React.MouseEvent, date: string | null) => {
+    if (!date) return;
+    e.stopPropagation();
+    setActivePopover(prev => prev === date ? null : date);
+  };
 
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -115,8 +130,9 @@ const CalendarSection = () => {
           {calendarData.map((day, index) => (
             <div
               key={index}
+              onClick={(e) => handleCellClick(e, day.date)}
               className={`
-                aspect-square rounded-lg flex items-center justify-center text-sm font-medium
+                aspect-square rounded-lg flex items-center justify-center text-sm font-medium relative
                 ${day.isToday ? 'ring-2 ring-primary' : ''}
                 ${day.date ? 'hover:scale-105 transition-transform cursor-pointer' : ''}
                 ${getCompletionColor(day.completions)}
@@ -125,12 +141,27 @@ const CalendarSection = () => {
               title={day.date ? `${day.date}: ${day.completions} completions` : ''}
             >
               {day.date ? (
-                <div className="text-center">
-                  <div>{new Date(day.date).getDate()}</div>
-                  {day.completions > 0 && (
-                    <div className="text-xs opacity-75">{day.completions}</div>
+                <>
+                  <div className="text-center">
+                    <div>{new Date(day.date).getDate()}</div>
+                    {day.completions > 0 && (
+                      <div className="text-xs opacity-75">{day.completions}</div>
+                    )}
+                  </div>
+
+                  {activePopover === day.date && (
+                    <div 
+                      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 w-32 bg-popover text-popover-foreground text-xs font-semibold p-2 rounded-lg border border-border shadow-lg z-50 text-center animate-fadeIn pointer-events-auto"
+                      style={{ boxShadow: "var(--card-shadow-hover)" }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="font-bold mb-0.5">{day.date}</div>
+                      <div className="text-primary">{day.completions} completions</div>
+                      {/* Triangle Arrow */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-popover border-r border-b border-border rotate-45 -mt-1" />
+                    </div>
                   )}
-                </div>
+                </>
               ) : null}
             </div>
           ))}

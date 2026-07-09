@@ -198,13 +198,13 @@ function HeatmapGrid({ habits }: { habits: ReturnType<typeof useHabits>["habits"
     return { weeks, monthLabels };
   }, [habits]);
 
-  // Colors for light/dark mode — using CSS classes
+  // Colors for light/dark mode — using dynamic theme-aware HSL classes
   const levelClasses = [
-    "bg-surface dark:bg-surface",
-    "bg-primary/20 dark:bg-[#1e3a5f]",
-    "bg-primary/40 dark:bg-[#1e4d8c]",
-    "bg-primary/60 dark:bg-[#2563eb]",
-    "bg-primary dark:bg-primary",
+    "bg-surface",
+    "bg-primary/20",
+    "bg-primary/40",
+    "bg-primary/70",
+    "bg-primary",
   ];
 
   return (

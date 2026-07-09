@@ -54,8 +54,8 @@ export default function RitualOverlay({ onDismiss }: RitualOverlayProps) {
         </div>
 
         <div className="flex gap-3">
-          <button onClick={finish} className="flex-1 py-2.5 rounded-xl border border-border text-[13px]">Skip</button>
-          <button onClick={quickReflect} className="flex-1 bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2.5 rounded-xl text-[13px] font-semibold">
+          <button onClick={finish} className="flex-1 py-2.5 rounded-xl border border-border text-[13px] text-muted-foreground hover:bg-surface hover:text-foreground transition-all">Skip</button>
+          <button onClick={quickReflect} className="flex-1 bg-gradient-to-br from-primary to-accent text-white py-2.5 rounded-xl text-[13px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 shadow-md">
             Start Day 🚀
           </button>
         </div>

@@ -233,7 +233,7 @@ const ReportsSection = () => {
           </div>
           <button
             onClick={exportPDF}
-            className="bg-gradient-to-br from-primary to-[hsl(var(--secondary))] text-primary-foreground px-5 py-2 rounded-lg text-[13px] font-semibold hover:-translate-y-0.5 transition-all flex items-center gap-2"
+            className="bg-gradient-to-br from-primary to-secondary text-primary-foreground px-5 py-2 rounded-lg text-[13px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 flex items-center gap-2"
           >
             📄 Export PDF
           </button>
@@ -362,19 +362,19 @@ const ReportsSection = () => {
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-2 px-3 text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
+                    <th className="text-left py-2 px-3 text-[11px] text-foreground/75 uppercase tracking-wider font-bold">
                       Habit
                     </th>
-                    <th className="text-left py-2 px-3 text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
+                    <th className="text-left py-2 px-3 text-[11px] text-foreground/75 uppercase tracking-wider font-bold">
                       Category
                     </th>
-                    <th className="text-center py-2 px-3 text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
+                    <th className="text-center py-2 px-3 text-[11px] text-foreground/75 uppercase tracking-wider font-bold">
                       Done
                     </th>
-                    <th className="text-center py-2 px-3 text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
+                    <th className="text-center py-2 px-3 text-[11px] text-foreground/75 uppercase tracking-wider font-bold">
                       Rate
                     </th>
-                    <th className="text-left py-2 px-3 text-[11px] text-muted-foreground uppercase tracking-wider font-semibold w-[120px]">
+                    <th className="text-left py-2 px-3 text-[11px] text-foreground/75 uppercase tracking-wider font-bold w-[120px]">
                       Progress
                     </th>
                   </tr>

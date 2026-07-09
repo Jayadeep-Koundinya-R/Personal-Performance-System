@@ -30,7 +30,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
   const todayStr = getTodayStr();
   const [justCompleted, setJustCompleted] = useState<Set<string>>(new Set());
 
-  const todayHabits = habits.filter((h) => isHabitDueToday(h));
+  const todayHabits = habits.filter((h) => !h.archived && isHabitDueToday(h));
   const doneCount = todayHabits.filter((h) => h.completedDates.includes(todayStr)).length;
   const pct = todayHabits.length > 0 ? Math.round((doneCount / todayHabits.length) * 100) : 0;
 
@@ -43,6 +43,18 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
     const cat = h.category || "Uncategorized";
     if (!grouped[cat]) grouped[cat] = [];
     grouped[cat].push(h);
+  });
+
+  const priorityWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1, Optional: 0 };
+  Object.keys(grouped).forEach((cat) => {
+    grouped[cat].sort((a, b) => {
+      const aDone = a.completedDates.includes(todayStr);
+      const bDone = b.completedDates.includes(todayStr);
+      if (aDone !== bDone) return aDone ? 1 : -1;
+      const pDiff = (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0);
+      if (pDiff !== 0) return pDiff;
+      return a.name.localeCompare(b.name);
+    });
   });
 
   const priClass: Record<string, string> = {
@@ -176,7 +188,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                           )}
                         </AnimatePresence>
                       </button>
-                      <span className={`transition-all duration-200 ${done ? "line-through opacity-45" : ""}`}>{habit.name}</span>
+                      <span className={`transition-all duration-200 ${done ? "line-through opacity-50" : ""}`}>{habit.name}</span>
                     </div>
                     <div className="flex gap-2 items-center relative">
                       <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold font-mono ${priClass[habit.priority] || priClass.Optional}`}>

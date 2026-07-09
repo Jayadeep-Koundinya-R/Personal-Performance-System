@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface UserSettings {
   theme: string;
@@ -7,6 +8,7 @@ export interface UserSettings {
   notificationPrefs: { email: boolean; push: boolean };
   ritualLastDone: string | null;
   identityClass: string | null;
+  defaultReminderSettings: { repeat: string; channel: string; deliveryType: string };
 }
 
 interface UserSettingsContextType {
@@ -23,6 +25,7 @@ const defaultSettings: UserSettings = {
   notificationPrefs: { email: true, push: false },
   ritualLastDone: null,
   identityClass: null,
+  defaultReminderSettings: { repeat: "Daily", channel: "in_app", deliveryType: "notification" },
 };
 
 const UserSettingsContext = createContext<UserSettingsContextType | null>(null);
@@ -50,7 +53,7 @@ export function UserSettingsProvider({
       return;
     }
 
-    const { data } = await supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle();
+        const { data } = await supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle();
     if (data) {
       setSettings({
         theme: data.theme || "system",
@@ -58,6 +61,7 @@ export function UserSettingsProvider({
         notificationPrefs: (data.notification_prefs as UserSettings["notificationPrefs"]) || defaultSettings.notificationPrefs,
         ritualLastDone: data.ritual_last_done,
         identityClass: null,
+        defaultReminderSettings: (data.default_reminder_settings as UserSettings["defaultReminderSettings"]) || defaultSettings.defaultReminderSettings,
       });
     }
     setLoading(false);
@@ -68,6 +72,7 @@ export function UserSettingsProvider({
   }, [load]);
 
   const updateSettings = useCallback(async (updates: Partial<UserSettings>) => {
+    const previousSettings = { ...settings };
     setSettings((prev) => ({ ...prev, ...updates }));
 
     if (isGuest || !userId) return;
@@ -77,9 +82,17 @@ export function UserSettingsProvider({
     if (updates.onboardingCompleted !== undefined) payload.onboarding_completed = updates.onboardingCompleted;
     if (updates.notificationPrefs !== undefined) payload.notification_prefs = updates.notificationPrefs;
     if (updates.ritualLastDone !== undefined) payload.ritual_last_done = updates.ritualLastDone;
+    if (updates.defaultReminderSettings !== undefined) payload.default_reminder_settings = updates.defaultReminderSettings;
 
-    await supabase.from("user_settings").upsert({ user_id: userId, ...payload }, { onConflict: "user_id" });
-  }, [userId, isGuest]);
+    try {
+      const { error } = await supabase.from("user_settings").upsert({ user_id: userId, ...payload }, { onConflict: "user_id" });
+      if (error) throw error;
+    } catch (err) {
+      console.error("Failed to update user settings:", err);
+      setSettings(previousSettings);
+      toast.error("Failed to sync settings with database. Reverting.");
+    }
+  }, [userId, isGuest, settings]);
 
   const completeOnboarding = useCallback(async () => {
     if (isGuest || !userId) {

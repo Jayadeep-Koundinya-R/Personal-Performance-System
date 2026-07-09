@@ -8,15 +8,43 @@ import { Link } from "react-router-dom";
 import { useReflections } from "@/hooks/use-reflections";
 import { exportToCSV, exportToJSON, exportReflectionsToCSV, prepareFullExport } from "@/lib/dataExport";
 import { toast } from "sonner";
+import { useUserSettings } from "@/hooks/use-user-settings";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 const IDENTITY_CLASSES = ["Athlete", "Scholar", "Builder", "Mindful"];
+
+const IDENTITY_OPTIONS = [
+  { value: "", label: "Choose your path" },
+  { value: "Athlete", label: "Athlete" },
+  { value: "Scholar", label: "Scholar" },
+  { value: "Builder", label: "Builder" },
+  { value: "Mindful", label: "Mindful" }
+];
+
+const REPEAT_OPTIONS = [
+  { value: "One-time", label: "One-time" },
+  { value: "Daily", label: "Daily" },
+  { value: "Weekly", label: "Weekly" },
+  { value: "Monthly", label: "Monthly" }
+];
+
+const CHANNEL_OPTIONS = [
+  { value: "in_app", label: "🔔 In-App Alert" },
+  { value: "email", label: "✉️ Email Message" }
+];
+
+const DELIVERY_OPTIONS = [
+  { value: "notification", label: "📱 Passive Banner" },
+  { value: "alarm", label: "🚨 Persistent Alarm" }
+];
 
 const SettingsSection = ({ user }: { user: User }) => {
   const { logout, updatePassword } = useAuth();
   const { habits, resetAllData } = useHabits();
-  const { profile, updateProfile } = useProfile();
+  const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { isPro, openBillingPortal } = useSubscription();
   const { entries: reflections } = useReflections();
+  const { settings, loading: settingsLoading, updateSettings } = useUserSettings();
   const [displayName, setDisplayName] = useState(profile?.displayName || "");
   const [username, setUsername] = useState(profile?.username || "");
   const [identityClass, setIdentityClass] = useState(profile?.identityClass || "");
@@ -24,6 +52,15 @@ const SettingsSection = ({ user }: { user: User }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
+
+  if (profileLoading || settingsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3.5"></div>
+        <div className="text-muted-foreground text-sm font-semibold">Loading settings...</div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (profile) {
@@ -130,16 +167,13 @@ const SettingsSection = ({ user }: { user: User }) => {
           {isPro && (
             <div className="py-3.5 border-b border-border space-y-2">
               <div className="text-sm font-medium">Identity Class</div>
-              <select value={identityClass} onChange={(e) => setIdentityClass(e.target.value)} className={inputClass}>
-                <option value="">Choose your path</option>
-                {IDENTITY_CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <CustomSelect value={identityClass} onChange={setIdentityClass} options={IDENTITY_OPTIONS} />
             </div>
           )}
-          <button onClick={saveProfile} className="mt-3 bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2 px-4 rounded-lg text-[13px] font-semibold">Save Profile</button>
+          <button onClick={saveProfile} className="mt-3 bg-gradient-to-br from-primary to-accent text-white py-2 px-4 rounded-lg text-[13px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 shadow-md">Save Profile</button>
           <div className="flex items-center justify-between py-3.5 mt-2">
             <div className="text-sm font-medium">Sign Out</div>
-            <button onClick={logout} className="bg-destructive/10 text-destructive border border-destructive/20 py-1.5 px-3.5 rounded-lg text-[12.5px] hover:bg-destructive/20">Log Out</button>
+            <button onClick={logout} className="bg-destructive/10 text-destructive border border-destructive/20 py-1.5 px-3.5 rounded-lg text-[12.5px] hover:bg-destructive/20 transition-all duration-200">Log Out</button>
           </div>
         </div>
 
@@ -162,12 +196,97 @@ const SettingsSection = ({ user }: { user: User }) => {
           )}
         </div>
 
+        <div className="bg-card border border-border p-5 rounded-lg">
+          <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3.5">Default Reminder Settings</h3>
+          <div className="space-y-3.5">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Default Repeat Pattern</label>
+              <CustomSelect
+                value={settings?.defaultReminderSettings?.repeat || "Daily"}
+                options={REPEAT_OPTIONS}
+                onChange={(val) => updateSettings({
+                  defaultReminderSettings: {
+                    ...(settings?.defaultReminderSettings || { repeat: "Daily", channel: "in_app", deliveryType: "notification" }),
+                    repeat: val
+                  }
+                })}
+              />
+            </div>
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Default Delivery Channel</label>
+              <CustomSelect
+                value={settings?.defaultReminderSettings?.channel || "in_app"}
+                options={CHANNEL_OPTIONS}
+                onChange={(val) => updateSettings({
+                  defaultReminderSettings: {
+                    ...(settings?.defaultReminderSettings || { repeat: "Daily", channel: "in_app", deliveryType: "notification" }),
+                    channel: val
+                  }
+                })}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Default Alert Type</label>
+              <CustomSelect
+                value={settings?.defaultReminderSettings?.deliveryType || "notification"}
+                options={DELIVERY_OPTIONS}
+                onChange={(val) => updateSettings({
+                  defaultReminderSettings: {
+                    ...(settings?.defaultReminderSettings || { repeat: "Daily", channel: "in_app", deliveryType: "notification" }),
+                    deliveryType: val
+                  }
+                })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border p-5 rounded-lg">
+          <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3.5">Notification Preferences</h3>
+          <div className="flex items-center justify-between py-3.5 border-b border-border">
+            <div>
+              <div className="text-sm font-medium">Email Alerts</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Receive reminders via email</div>
+            </div>
+            <div
+              className={`w-[38px] h-5 rounded-full relative cursor-pointer transition-colors ${settings?.notificationPrefs?.email ? "bg-primary" : "bg-border"}`}
+              onClick={() => updateSettings({
+                notificationPrefs: {
+                  email: !settings?.notificationPrefs?.email,
+                  push: !!settings?.notificationPrefs?.push
+                }
+              })}
+            >
+              <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-all ${settings?.notificationPrefs?.email ? "left-[21px]" : "left-[3px]"}`} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between py-3.5">
+            <div>
+              <div className="text-sm font-medium">In-App Alerts</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Receive reminders in the notification bell</div>
+            </div>
+            <div
+              className={`w-[38px] h-5 rounded-full relative cursor-pointer transition-colors ${settings?.notificationPrefs?.push ? "bg-primary" : "bg-border"}`}
+              onClick={() => updateSettings({
+                notificationPrefs: {
+                  email: !!settings?.notificationPrefs?.email,
+                  push: !settings?.notificationPrefs?.push
+                }
+              })}
+            >
+              <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-all ${settings?.notificationPrefs?.push ? "left-[21px]" : "left-[3px]"}`} />
+            </div>
+          </div>
+        </div>
+
         {!user.isGuest && (
           <div className="bg-card border border-border p-5 rounded-lg">
             <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3.5">Change Password</h3>
             <div className="flex flex-col gap-1.5 mt-2"><label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">New Password</label><input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min 6 characters" className={inputClass} /></div>
             <div className="flex flex-col gap-1.5 mt-3"><label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Confirm New Password</label><input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat new password" className={inputClass} /></div>
-            <button onClick={changePassword} className="mt-3 bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 transition-all">Update Password</button>
+            <button onClick={changePassword} className="mt-3 bg-gradient-to-br from-primary to-accent text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 shadow-md">Update Password</button>
           </div>
         )}
 

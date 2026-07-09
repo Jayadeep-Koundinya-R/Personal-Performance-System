@@ -1,10 +1,11 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Habit } from "@/hooks/use-habits";
+import { toast } from "sonner";
 
 export interface Notification {
   id: string;
-  type: "streak" | "levelup" | "achievement" | "reminder" | "incomplete" | "quest";
+  type: "streak" | "levelup" | "achievement" | "reminder" | "incomplete" | "quest" | "alarm";
   title: string;
   message: string;
   icon: string;
@@ -16,6 +17,7 @@ interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
   addNotification: (n: Omit<Notification, "id" | "time" | "read">) => void;
+  markAsRead: (id: string) => void;
   markAllRead: () => void;
   clearAll: () => void;
 }
@@ -128,24 +130,55 @@ export function NotificationProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const markAsRead = useCallback(async (id: string) => {
+    const previous = [...notifications];
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    if (userId && !isGuest) {
+      try {
+        const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
+        if (error) throw error;
+      } catch (err) {
+        console.error("Failed to mark notification as read:", err);
+        setNotifications(previous);
+        toast.error("Failed to update notification. Reverting.");
+      }
+    }
+  }, [userId, isGuest, notifications]);
+
   const markAllRead = useCallback(async () => {
+    const previous = [...notifications];
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     if (userId && !isGuest) {
-      await supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false);
+      try {
+        const { error } = await supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false);
+        if (error) throw error;
+      } catch (err) {
+        console.error("Failed to mark all read:", err);
+        setNotifications(previous);
+        toast.error("Failed to update notifications. Reverting.");
+      }
     }
-  }, [userId, isGuest]);
+  }, [userId, isGuest, notifications]);
 
   const clearAll = useCallback(async () => {
+    const previous = [...notifications];
     setNotifications([]);
     if (userId && !isGuest) {
-      await supabase.from("notifications").delete().eq("user_id", userId);
+      try {
+        const { error } = await supabase.from("notifications").delete().eq("user_id", userId);
+        if (error) throw error;
+      } catch (err) {
+        console.error("Failed to clear notifications:", err);
+        setNotifications(previous);
+        toast.error("Failed to clear notifications. Reverting.");
+      }
     }
-  }, [userId, isGuest]);
+  }, [userId, isGuest, notifications]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, addNotification, markAllRead, clearAll }}>
+    <NotificationContext.Provider value={{ notifications, unreadCount, addNotification, markAsRead, markAllRead, clearAll }}>
       {children}
     </NotificationContext.Provider>
   );

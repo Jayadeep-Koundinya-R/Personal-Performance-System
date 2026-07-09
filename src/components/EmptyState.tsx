@@ -66,7 +66,7 @@ const EmptyState = ({ icon, title, description, actionLabel, onAction }: EmptySt
           whileHover={{ scale: 1.05, y: -2 }}
           whileTap={{ scale: 0.97 }}
           onClick={onAction}
-          className="bg-gradient-to-br from-primary to-[hsl(239,60%,55%)] text-primary-foreground px-6 py-2.5 rounded-xl text-[13.5px] font-semibold shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-shadow"
+          className="bg-gradient-to-br from-primary to-accent text-primary-foreground px-6 py-2.5 rounded-xl text-[13.5px] font-semibold shadow-md shadow-primary/10 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all duration-200"
         >
           {actionLabel}
         </motion.button>

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 export interface Profile {
   id: string;
@@ -13,12 +14,13 @@ export interface Profile {
   totalXp: number;
   level: number;
   longestStreak: number;
+  timezone: string | null;
 }
 
 interface ProfileContextType {
   profile: Profile | null;
   loading: boolean;
-  updateProfile: (updates: { displayName?: string; username?: string; identityClass?: string }) => Promise<string | null>;
+  updateProfile: (updates: { displayName?: string; username?: string; identityClass?: string; timezone?: string }) => Promise<string | null>;
   refresh: () => Promise<void>;
 }
 
@@ -37,6 +39,7 @@ function mapProfile(row: Record<string, unknown>): Profile {
     totalXp: (row.total_xp as number) || 0,
     level: (row.level as number) || 1,
     longestStreak: (row.longest_streak as number) || 0,
+    timezone: (row.timezone as string) || "UTC",
   };
 }
 
@@ -52,7 +55,17 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
     }
     const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle();
     if (error) console.error("Profile load error:", error);
-    setProfile(data ? mapProfile(data) : null);
+    
+    if (data) {
+      setProfile(mapProfile(data));
+      // Auto-update timezone in database if missing or different from browser
+      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (browserTimezone && data.timezone !== browserTimezone) {
+        await supabase.from("profiles").update({ timezone: browserTimezone }).eq("user_id", userId);
+      }
+    } else {
+      setProfile(null);
+    }
     setLoading(false);
   }, [userId, isGuest]);
 
@@ -60,9 +73,9 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
     refresh();
   }, [refresh]);
 
-  const updateProfile = useCallback(async (updates: { displayName?: string; username?: string; identityClass?: string }) => {
+  const updateProfile = useCallback(async (updates: { displayName?: string; username?: string; identityClass?: string; timezone?: string }) => {
     if (!userId) return "Not signed in.";
-    const payload: Record<string, string> = {};
+    const payload: Database["public"]["Tables"]["profiles"]["Update"] = {};
     if (updates.displayName !== undefined) payload.display_name = updates.displayName.trim();
     if (updates.username !== undefined) {
       const u = updates.username.trim().toLowerCase();
@@ -71,15 +84,29 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
       payload.username = u;
     }
     if (updates.identityClass !== undefined) payload.identity_class = updates.identityClass;
+    if (updates.timezone !== undefined) payload.timezone = updates.timezone;
+
+    const previousProfile = profile;
+
+    if (profile) {
+      setProfile({
+        ...profile,
+        ...(updates.displayName !== undefined ? { displayName: updates.displayName.trim() } : {}),
+        ...(updates.username !== undefined ? { username: updates.username.trim().toLowerCase() } : {}),
+        ...(updates.identityClass !== undefined ? { identityClass: updates.identityClass } : {}),
+        ...(updates.timezone !== undefined ? { timezone: updates.timezone } : {}),
+      });
+    }
 
     const { error } = await supabase.from("profiles").update(payload).eq("user_id", userId);
     if (error) {
+      setProfile(previousProfile);
       if (error.code === "23505") return "Username already taken.";
       return error.message;
     }
     await refresh();
     return null;
-  }, [userId, refresh]);
+  }, [userId, profile, refresh]);
 
   return (
     <ProfileContext.Provider value={{ profile, loading, updateProfile, refresh }}>

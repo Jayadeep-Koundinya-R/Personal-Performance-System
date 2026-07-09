@@ -108,6 +108,12 @@ export type Database = {
           streak: number
           updated_at: string
           user_id: string
+          start_time: string | null
+          end_time: string | null
+          last_start_triggered_at: string | null
+          last_end_triggered_at: string | null
+          color: string | null
+          archived: boolean | null
         }
         Insert: {
           category?: string
@@ -122,6 +128,12 @@ export type Database = {
           streak?: number
           updated_at?: string
           user_id: string
+          start_time?: string | null
+          end_time?: string | null
+          last_start_triggered_at?: string | null
+          last_end_triggered_at?: string | null
+          color?: string | null
+          archived?: boolean | null
         }
         Update: {
           category?: string
@@ -136,6 +148,12 @@ export type Database = {
           streak?: number
           updated_at?: string
           user_id?: string
+          start_time?: string | null
+          end_time?: string | null
+          last_start_triggered_at?: string | null
+          last_end_triggered_at?: string | null
+          color?: string | null
+          archived?: boolean | null
         }
         Relationships: []
       }
@@ -376,6 +394,9 @@ export type Database = {
           repeat_pattern: string
           updated_at: string
           user_id: string
+          delivery_type: string
+          snoozed_until: string | null
+          last_triggered_at: string | null
         }
         Insert: {
           channel?: string
@@ -388,6 +409,9 @@ export type Database = {
           repeat_pattern?: string
           updated_at?: string
           user_id: string
+          delivery_type?: string
+          snoozed_until?: string | null
+          last_triggered_at?: string | null
         }
         Update: {
           channel?: string
@@ -400,6 +424,9 @@ export type Database = {
           repeat_pattern?: string
           updated_at?: string
           user_id?: string
+          delivery_type?: string
+          snoozed_until?: string | null
+          last_triggered_at?: string | null
         }
         Relationships: []
       }
@@ -478,6 +505,7 @@ export type Database = {
           theme: string | null
           updated_at: string
           user_id: string
+          default_reminder_settings: Json
         }
         Insert: {
           created_at?: string
@@ -487,6 +515,7 @@ export type Database = {
           theme?: string | null
           updated_at?: string
           user_id: string
+          default_reminder_settings?: Json
         }
         Update: {
           created_at?: string
@@ -496,6 +525,7 @@ export type Database = {
           theme?: string | null
           updated_at?: string
           user_id?: string
+          default_reminder_settings?: Json
         }
         Relationships: []
       }
@@ -522,6 +552,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      ai_suggestions: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          habit_id: string | null
+          suggested_time: string | null
+          alternative_habit_name: string | null
+          reason: string
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          habit_id?: string | null
+          suggested_time?: string | null
+          alternative_habit_name?: string | null
+          reason: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          habit_id?: string | null
+          suggested_time?: string | null
+          alternative_habit_name?: string | null
+          reason?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_suggestions_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {

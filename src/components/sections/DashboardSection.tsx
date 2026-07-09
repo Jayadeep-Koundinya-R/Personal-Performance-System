@@ -5,6 +5,8 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { InsightCard } from "@/components/dashboard/InsightCard";
 import { TaskSection } from "@/components/dashboard/TaskSection";
 import { LevelWidget } from "@/components/dashboard/LevelWidget";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const MOTIVATIONAL_QUOTES = [
   { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
@@ -106,6 +108,122 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   }, []);
   useEffect(() => { loadReminders(); }, [loadReminders]);
 
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+
+  const loadSuggestions = useCallback(async () => {
+    const { data } = await supabase
+      .from("ai_suggestions")
+      .select("*")
+      .eq("status", "pending");
+    setSuggestions(data || []);
+  }, []);
+
+  const triggerAiAnalysis = useCallback(async () => {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("created_at")
+        .maybeSingle();
+
+      if (!profile) return;
+
+      const profileAgeDays = (Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24);
+      if (profileAgeDays >= 7) {
+        const { data: lastSugg } = await supabase
+          .from("ai_suggestions")
+          .select("created_at")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        const lastRunTime = lastSugg?.[0] ? new Date(lastSugg[0].created_at).getTime() : 0;
+        const daysSinceLastRun = (Date.now() - lastRunTime) / (1000 * 60 * 60 * 24);
+
+        if (daysSinceLastRun >= 7) {
+          console.log("Triggering weekly habit AI coach recommendations...");
+          await supabase.functions.invoke("analyze-habits-ai");
+          loadSuggestions();
+        }
+      }
+    } catch (err) {
+      console.error("AI check error:", err);
+    }
+  }, [loadSuggestions]);
+
+  useEffect(() => {
+    loadSuggestions();
+    triggerAiAnalysis();
+  }, [loadSuggestions, triggerAiAnalysis]);
+
+  const handleAcceptSuggestion = async (sugg: any) => {
+    try {
+      if (sugg.type === "smart_timing" && sugg.suggested_time) {
+        const { data: existing } = await supabase
+          .from("reminders")
+          .select("id")
+          .eq("habit_id", sugg.habit_id);
+
+        if (existing && existing.length > 0) {
+          await supabase
+            .from("reminders")
+            .update({ reminder_time: sugg.suggested_time })
+            .eq("id", existing[0].id);
+        } else {
+          const { data: session } = await supabase.auth.getSession();
+          const userId = session?.session?.user?.id;
+          if (userId) {
+            await supabase.from("reminders").insert({
+              user_id: userId,
+              habit_id: sugg.habit_id,
+              label: `Reminder for ${sugg.habit_name}`,
+              reminder_time: sugg.suggested_time,
+              repeat_pattern: "Daily",
+              channel: "in_app",
+              delivery_type: "notification"
+            });
+          }
+        }
+        toast.success(`Updated reminder for "${sugg.habit_name}" to ${sugg.suggested_time}`);
+      } else if (sugg.type === "struggling_habit") {
+        if (sugg.alternative_habit_name) {
+          await supabase
+            .from("habits")
+            .update({ name: sugg.alternative_habit_name })
+            .eq("id", sugg.habit_id);
+          toast.success(`Renamed habit to "${sugg.alternative_habit_name}"`);
+        }
+        if (sugg.suggested_time) {
+          await supabase
+            .from("reminders")
+            .update({ reminder_time: sugg.suggested_time })
+            .eq("habit_id", sugg.habit_id);
+        }
+      }
+
+      await supabase
+        .from("ai_suggestions")
+        .update({ status: "accepted" })
+        .eq("id", sugg.id);
+      
+      loadSuggestions();
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to apply suggestion");
+    }
+  };
+
+  const handleDismissSuggestion = async (sugg: any) => {
+    try {
+      await supabase
+        .from("ai_suggestions")
+        .update({ status: "dismissed" })
+        .eq("id", sugg.id);
+      loadSuggestions();
+      toast.info("Suggestion dismissed");
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const trend = useMemo(() => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
@@ -150,7 +268,7 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   const high: typeof habits = [];
   const medium: typeof habits = [];
   const upcoming: typeof habits = [];
-  habits.forEach((habit) => {
+  habits.filter((h) => !h.archived).forEach((habit) => {
     if (isHabitDueToday(habit)) critical.push(habit);
     else {
       switch (habit.priority) {
@@ -160,6 +278,29 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
       }
     }
   });
+
+  const priorityWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1, Optional: 0 };
+
+  const sortHabits = (list: typeof habits) => {
+    return [...list].sort((a, b) => {
+      const aDone = a.completedDates.includes(todayStr);
+      const bDone = b.completedDates.includes(todayStr);
+      if (aDone !== bDone) {
+        return aDone ? 1 : -1;
+      }
+      const pDiff = (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0);
+      if (pDiff !== 0) return pDiff;
+      const periodOrder: Record<string, number> = { Today: 0, Daily: 1, Weekly: 2, Monthly: 3 };
+      const periodDiff = (periodOrder[a.period] ?? 0) - (periodOrder[b.period] ?? 0);
+      if (periodDiff !== 0) return periodDiff;
+      return a.name.localeCompare(b.name);
+    });
+  };
+
+  const sortedCritical = sortHabits(critical);
+  const sortedHigh = sortHabits(high);
+  const sortedMedium = sortHabits(medium);
+  const sortedUpcoming = sortHabits(upcoming);
 
   const counts = new Array(7).fill(0);
   for (let i = 6; i >= 0; i--) {
@@ -200,9 +341,9 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         custom={index}
         initial="hidden"
         animate="visible"
-        whileHover={{ x: 4, backgroundColor: "hsl(var(--accent) / 0.3)" }}
+        whileHover={{ x: 4 }}
         transition={{ duration: 0.15 }}
-        className="flex items-center justify-between px-3.5 py-2.5 bg-surface/60 border border-border/60 rounded-lg mb-1.5 text-[13.5px] cursor-default"
+        className="flex items-center justify-between px-3.5 py-2.5 bg-surface/60 border border-border/60 rounded-lg mb-1.5 text-[13.5px] cursor-default hover:bg-accent/[0.08] hover:border-primary/20 transition-all duration-150"
       >
         <div className="flex items-center gap-2.5">
           <input
@@ -303,6 +444,53 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         </div>
       </motion.div>
 
+      {/* AI Suggestions Cards */}
+      {suggestions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-5 bg-card border border-primary/20 rounded-xl p-5 shadow-sm"
+        >
+          <div className="flex items-center justify-between mb-3.5">
+            <h3 className="text-[13px] font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+              <span>💡</span> AI Coach Recommendations
+            </h3>
+            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">Weekly Analysis</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {suggestions.map((sugg) => (
+              <div key={sugg.id} className="bg-surface/50 border border-border/80 rounded-lg p-3.5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[12px] font-bold text-foreground">
+                      {sugg.habit_name || "General Suggestion"}
+                    </span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase ${sugg.type === "smart_timing" ? "bg-secondary/15 text-secondary border border-secondary/20" : "bg-pps-orange/10 text-pps-orange border border-pps-orange/20"}`}>
+                      {sugg.type === "smart_timing" ? "Smart Timing" : "Struggling Habit"}
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">{sugg.reason}</p>
+                </div>
+                <div className="flex items-center gap-2 mt-3.5 justify-end">
+                  <button
+                    onClick={() => handleAcceptSuggestion(sugg)}
+                    className="bg-primary text-white py-1 px-3 rounded text-[11px] font-semibold hover:bg-primary/95 transition-all duration-200"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => handleDismissSuggestion(sugg)}
+                    className="bg-transparent border border-border text-muted-foreground py-1 px-3 rounded text-[11px] font-semibold hover:bg-muted hover:text-foreground transition-all duration-200"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
         {[
@@ -349,7 +537,7 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => onNavigate?.("habits")}
-                className="bg-gradient-to-br from-primary to-[hsl(239,60%,55%)] text-primary-foreground px-6 py-2.5 rounded-xl text-[13.5px] font-semibold shadow-lg shadow-primary/20"
+                className="bg-gradient-to-br from-primary to-accent text-primary-foreground px-6 py-2.5 rounded-xl text-[13.5px] font-semibold shadow-md shadow-primary/10 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all duration-200"
               >
                 + Add Your First Habit
               </motion.button>
@@ -360,10 +548,10 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         {/* Left — Task Lists */}
         <div className="flex flex-col gap-4">
           {[
-            { title: "🔴 Critical Tasks", borderColor: "border-l-destructive", tasks: critical, emptyText: "No critical tasks 🎉" },
-            { title: "🟠 High Priority", borderColor: "border-l-pps-orange", tasks: high, emptyText: "No high priority tasks" },
-            { title: "🟡 Medium Focus", borderColor: "border-l-pps-yellow", tasks: medium, emptyText: "No medium tasks" },
-            { title: "🟢 Upcoming", borderColor: "border-l-pps-green", tasks: upcoming, emptyText: "No upcoming tasks" },
+            { title: "🔴 Critical Tasks", borderColor: "border-l-destructive", tasks: sortedCritical, emptyText: "No critical tasks 🎉" },
+            { title: "🟠 High Priority", borderColor: "border-l-pps-orange", tasks: sortedHigh, emptyText: "No high priority tasks" },
+            { title: "🟡 Medium Focus", borderColor: "border-l-pps-yellow", tasks: sortedMedium, emptyText: "No medium tasks" },
+            { title: "🟢 Upcoming", borderColor: "border-l-pps-green", tasks: sortedUpcoming, emptyText: "No upcoming tasks" },
           ].map((section, i) => (
             <motion.div key={section.title} variants={fadeUp} custom={i + 7} initial="hidden" animate="visible">
               <TaskSection {...section} renderTask={renderTask} renderEmptyList={renderEmptyList} />

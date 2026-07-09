@@ -137,7 +137,7 @@ const LoginPage = () => {
               </button>
             </div>
             <button onClick={handleSignIn} disabled={submitting}
-              className="w-full mt-3 bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(99,102,241,0.35)] transition-all disabled:opacity-50">
+              className="w-full mt-3 bg-gradient-to-br from-primary to-accent text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 disabled:opacity-50 shadow-md">
               {submitting ? "Signing in…" : "Sign In"}
             </button>
           </div>
@@ -164,7 +164,7 @@ const LoginPage = () => {
                 className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary transition-colors w-full" />
             </div>
             <button onClick={handleSignUp} disabled={submitting}
-              className="w-full mt-5 bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(99,102,241,0.35)] transition-all disabled:opacity-50">
+              className="w-full mt-5 bg-gradient-to-br from-primary to-accent text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 disabled:opacity-50 shadow-md">
               {submitting ? "Creating…" : "Create Account"}
             </button>
           </div>
@@ -179,7 +179,7 @@ const LoginPage = () => {
                 className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary transition-colors w-full" />
             </div>
             <button onClick={handleForgotPassword} disabled={submitting}
-              className="w-full mt-3 bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(99,102,241,0.35)] transition-all disabled:opacity-50">
+              className="w-full mt-3 bg-gradient-to-br from-primary to-accent text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 disabled:opacity-50 shadow-md">
               {submitting ? "Sending…" : "Send Reset Link"}
             </button>
             <button

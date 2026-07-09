@@ -61,14 +61,14 @@ function PricingContent() {
               <button
                 disabled={loading || isPro}
                 onClick={() => checkout("monthly")}
-                className="bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                className="bg-gradient-to-br from-primary to-accent text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 shadow-md"
               >
                 {isPro ? "Active Plan" : "Upgrade Monthly"}
               </button>
               <button
                 disabled={loading || isPro}
                 onClick={() => checkout("yearly")}
-                className="border border-primary/30 text-primary py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                className="border border-primary/30 text-primary py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 hover:bg-primary/5 transition-all duration-200"
               >
                 Upgrade Yearly
               </button>

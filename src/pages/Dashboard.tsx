@@ -23,6 +23,9 @@ import { DashboardProviders } from "@/providers/AppProviders";
 import RitualOverlay from "@/components/RitualOverlay";
 import { Navigate, Link } from "react-router-dom";
 import AiChatWidget from "@/components/ui/AiChatWidget";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { HABIT_TEMPLATES } from "@/lib/habitTemplates";
 
 import AnimatedSection from "@/components/AnimatedSection";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
@@ -61,14 +64,27 @@ const NAV_ITEMS = [
 type SectionKey = (typeof NAV_ITEMS)[number]["key"];
 
 /* Onboarding overlay for first-time users */
-function OnboardingOverlay({ onDismiss }: { onDismiss: () => void }) {
+function OnboardingOverlay({ onDismiss, onApplyTemplate }: { onDismiss: () => void; onApplyTemplate: (templateId: string) => Promise<void> }) {
   const [step, setStep] = useState(0);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const steps = [
     { icon: "🎯", title: "Welcome to PPS!", desc: "Your Personal Performance System — track habits, earn XP, and level up your life." },
     { icon: "📋", title: "Add Your First Habit", desc: "Head to the Habit Manager to create habits. They'll appear in your Daily Tracker automatically." },
     { icon: "🔥", title: "Build Streaks & Earn XP", desc: "Complete habits daily to build streaks. Every completion earns 10 XP towards leveling up!" },
     { icon: "🏅", title: "Unlock Achievements", desc: "Hit milestones to unlock badges. Challenge friends on the leaderboard. You're ready!" },
+    { icon: "🌱", title: "Choose a Starter Pack", desc: "Select a ready-made template pack to populate your habits on day 1 (optional)!" },
   ];
+
+  const handleNext = async () => {
+    if (step < steps.length - 1) {
+      setStep(step + 1);
+    } else {
+      if (selectedTemplate) {
+        await onApplyTemplate(selectedTemplate);
+      }
+      onDismiss();
+    }
+  };
 
   return (
     <motion.div
@@ -82,28 +98,51 @@ function OnboardingOverlay({ onDismiss }: { onDismiss: () => void }) {
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.9, y: 20 }}
-        className="bg-card border border-border rounded-2xl p-8 max-w-md w-full text-center"
+        className="bg-card border border-border rounded-2xl p-6 max-w-md w-full text-center"
       >
         <motion.div
           key={step}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          className="mb-6"
+          className="mb-4"
         >
           <motion.div
             animate={{ y: [0, -8, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="text-6xl mb-4"
+            className="text-5xl mb-3"
           >
             {steps[step].icon}
           </motion.div>
-          <h2 className="text-xl font-bold mb-2">{steps[step].title}</h2>
-          <p className="text-[13px] text-muted-foreground leading-relaxed">{steps[step].desc}</p>
+          <h2 className="text-lg font-bold mb-1.5">{steps[step].title}</h2>
+          <p className="text-[12.5px] text-muted-foreground leading-relaxed mb-3">{steps[step].desc}</p>
+
+          {step === 4 && (
+            <div className="grid grid-cols-2 gap-2.5 my-3 max-h-[30vh] overflow-y-auto pr-1 text-left">
+              {HABIT_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  onClick={() => setSelectedTemplate(tmpl.id === selectedTemplate ? null : tmpl.id)}
+                  className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between ${
+                    selectedTemplate === tmpl.id 
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                      : "border-border bg-surface hover:border-primary/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-base">{tmpl.icon}</span>
+                    <span className="text-[11.5px] font-bold text-foreground leading-tight">{tmpl.name}</span>
+                  </div>
+                  <p className="text-[9.5px] text-muted-foreground leading-snug line-clamp-2">{tmpl.description}</p>
+                </button>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Progress dots */}
-        <div className="flex items-center justify-center gap-2 mb-5">
+        <div className="flex items-center justify-center gap-2 mb-4">
           {steps.map((_, i) => (
             <div
               key={i}
@@ -122,10 +161,10 @@ function OnboardingOverlay({ onDismiss }: { onDismiss: () => void }) {
             </button>
           )}
           <button
-            onClick={() => step < steps.length - 1 ? setStep(step + 1) : onDismiss()}
-            className="flex-1 bg-gradient-to-br from-primary to-[hsl(239,60%,55%)] text-primary-foreground py-2.5 rounded-xl text-[13px] font-semibold hover:shadow-lg hover:shadow-primary/20 transition-all"
+            onClick={handleNext}
+            className="flex-1 bg-gradient-to-br from-primary to-accent text-primary-foreground py-2.5 rounded-xl text-[13px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200"
           >
-            {step < steps.length - 1 ? "Next" : "Get Started! 🚀"}
+            {step < steps.length - 1 ? "Next" : selectedTemplate ? "Add & Start! 🚀" : "Get Started! 🚀"}
           </button>
         </div>
 
@@ -140,22 +179,156 @@ function OnboardingOverlay({ onDismiss }: { onDismiss: () => void }) {
   );
 }
 
+/* Persistent Must-Dismiss Alarm Overlay */
+function AlarmOverlay({ alarm, onDismiss, onSnooze, onComplete }: {
+  alarm: any;
+  onDismiss: () => void;
+  onSnooze: () => void;
+  onComplete: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-destructive/30 backdrop-blur-md z-[3000] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ scale: 0.9, y: 30, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.9, y: 30, opacity: 0 }}
+        className="bg-card border-2 border-destructive/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-destructive animate-pulse" />
+        <div className="text-6xl mb-4 animate-bounce">⏰</div>
+        <h2 className="text-2xl font-bold text-destructive mb-2">Habit Alarm!</h2>
+        <p className="text-sm font-semibold mb-6 text-foreground">{alarm.message}</p>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={onComplete}
+            className="w-full bg-pps-green text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-pps-green/90 transition-colors"
+          >
+            ✓ Complete Habit Now
+          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onSnooze}
+              className="flex-1 bg-surface border border-border py-2.5 rounded-xl text-sm font-semibold hover:bg-muted transition-colors text-foreground"
+            >
+              💤 Snooze (10m)
+            </button>
+            <button
+              onClick={onDismiss}
+              className="flex-1 bg-destructive/10 text-destructive border border-destructive/20 py-2.5 rounded-xl text-sm font-semibold hover:bg-destructive/20 transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function DashboardInner({ user }: { user: User }) {
-  const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
+  const [activeSection, setActiveSection] = useState<SectionKey>(() => {
+    const saved = localStorage.getItem("pps_active_section") as SectionKey;
+    if (saved && NAV_ITEMS.some(item => item.key === saved)) {
+      return saved;
+    }
+    return "dashboard";
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const { calculateLevel, calculateTotalXP, habits, getTodayStr, isHabitDueToday } = useHabits();
+  const { calculateLevel, calculateTotalXP, habits, getTodayStr, isHabitDueToday, addHabit, toggleCompletion } = useHabits();
   const { theme, toggleTheme } = useTheme();
-  const { notifications, unreadCount, markAllRead, clearAll } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllRead, clearAll } = useNotifications();
   const { profile } = useProfile();
-  const { settings, completeOnboarding } = useUserSettings();
+  const { settings, loading: settingsLoading, completeOnboarding } = useUserSettings();
   const { isPro } = useSubscription();
 
-  const [showOnboarding, setShowOnboarding] = useState(() => !settings.onboardingCompleted);
-  const [showRitual, setShowRitual] = useState(() => {
-    const today = new Date().toISOString().split("T")[0];
-    return settings.ritualLastDone !== today;
-  });
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showRitual, setShowRitual] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("pps_active_section", activeSection);
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (!settingsLoading && settings) {
+      setShowOnboarding(!settings.onboardingCompleted);
+      const today = new Date().toISOString().split("T")[0];
+      setShowRitual(settings.ritualLastDone !== today);
+    }
+  }, [settingsLoading, settings]);
+
+  const handleApplyTemplate = async (templateId: string) => {
+    const template = HABIT_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+
+    let addedCount = 0;
+    for (const h of template.habits) {
+      if (!habits.some((existing) => existing.name === h.name)) {
+        const err = await addHabit(h.name, h.category, h.period, h.priority);
+        if (!err) addedCount++;
+      }
+    }
+
+    if (addedCount > 0) {
+      toast.success(`Starter pack applied! Added ${addedCount} habits.`);
+    }
+  };
+
+  const activeAlarm = notifications?.find((n) => n.type === "alarm" && !n.read);
+
+  const handleCompleteAlarm = async (alarm: any) => {
+    const match = alarm.message.match(/"([^"]+)"/);
+    const habitName = match ? match[1] : null;
+    const linkedHabit = habits.find((h) => h.name === habitName);
+    if (linkedHabit) {
+      await toggleCompletion(linkedHabit.id);
+      toast.success(`Completed "${linkedHabit.name}"!`);
+    }
+    await markAsRead(alarm.id);
+  };
+
+  const handleSnoozeAlarm = async (alarm: any) => {
+    const match = alarm.message.match(/"([^"]+)"/);
+    const habitName = match ? match[1] : null;
+    const linkedHabit = habits.find((h) => h.name === habitName);
+
+    const { data: reminderData } = await supabase
+      .from("reminders")
+      .select("id")
+      .eq("habit_id", linkedHabit?.id || null)
+      .eq("user_id", user.id!)
+      .maybeSingle();
+
+    if (reminderData) {
+      const snoozeUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      await supabase
+        .from("reminders")
+        .update({ snoozed_until: snoozeUntil })
+        .eq("id", reminderData.id);
+      toast.success("Snoozed alarm for 10 minutes.");
+    } else {
+      const { data: genericReminders } = await supabase
+        .from("reminders")
+        .select("id, label")
+        .eq("user_id", user.id!);
+
+      const matchedGeneric = genericReminders?.find((r) => alarm.message.includes(r.label));
+      if (matchedGeneric) {
+        const snoozeUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        await supabase
+          .from("reminders")
+          .update({ snoozed_until: snoozeUntil })
+          .eq("id", matchedGeneric.id);
+        toast.success("Snoozed alarm for 10 minutes.");
+      }
+    }
+    await markAsRead(alarm.id);
+  };
+
+  const handleDismissAlarm = async (alarm: any) => {
+    await markAsRead(alarm.id);
+    toast.info("Alarm dismissed.");
+  };
 
   const dismissOnboarding = async () => {
     setShowOnboarding(false);
@@ -274,11 +447,22 @@ function DashboardInner({ user }: { user: User }) {
     <>
       {/* Onboarding overlay for new users */}
       <AnimatePresence>
-        {showOnboarding && <OnboardingOverlay onDismiss={dismissOnboarding} />}
+        {showOnboarding && <OnboardingOverlay onDismiss={dismissOnboarding} onApplyTemplate={handleApplyTemplate} />}
       </AnimatePresence>
 
       <AnimatePresence>
         {showRitual && !showOnboarding && <RitualOverlay onDismiss={() => setShowRitual(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeAlarm && (
+          <AlarmOverlay
+            alarm={activeAlarm}
+            onDismiss={() => handleDismissAlarm(activeAlarm)}
+            onSnooze={() => handleSnoozeAlarm(activeAlarm)}
+            onComplete={() => handleCompleteAlarm(activeAlarm)}
+          />
+        )}
       </AnimatePresence>
 
       {/* Celebration overlay for level-ups and badge unlocks */}
@@ -304,14 +488,62 @@ function DashboardInner({ user }: { user: User }) {
           <button onClick={toggleTheme} className="bg-transparent border-none text-foreground text-lg cursor-pointer p-1" title="Toggle theme">
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
-          <button onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) markAllRead(); }} className="bg-transparent border-none text-foreground text-lg cursor-pointer p-1 relative" title="Notifications">
-            🔔
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+          <div className="relative">
+            <button onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) markAllRead(); }} className="bg-transparent border-none text-foreground text-lg cursor-pointer p-1 relative" title="Notifications">
+              🔔
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+            <AnimatePresence>
+              {notifOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute right-0 top-full mt-2 w-72 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden"
+                  style={{ boxShadow: "var(--card-shadow-hover)" }}
+                >
+                  <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                    <span className="font-semibold text-[13px]">Notifications</span>
+                    {notifications.length > 0 && (
+                      <button onClick={clearAll} className="text-[11px] text-destructive hover:underline">Clear all</button>
+                    )}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-muted-foreground text-[13px]">
+                      <div className="text-2xl mb-2">🔕</div>
+                      No notifications yet
+                    </div>
+                  ) : (
+                    <div className="max-h-72 overflow-y-auto">
+                      {notifications.slice(0, 10).map((n, i) => (
+                        <motion.div
+                          key={n.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.03 }}
+                          className={`px-4 py-3 border-b border-border/50 hover:bg-surface/50 transition-colors ${!n.read ? "bg-primary/5" : ""}`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-lg mt-0.5">{n.icon}</span>
+                            <div>
+                              <div className="text-[13px] font-semibold">{n.title}</div>
+                              <div className="text-[11px] text-muted-foreground">{n.message}</div>
+                              <div className="text-[10px] text-muted-foreground mt-1 font-mono">{n.time}</div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
@@ -353,7 +585,7 @@ function DashboardInner({ user }: { user: User }) {
                     py-[11px] px-5 cursor-pointer text-[13.5px] flex items-center gap-2.5
                     border-l-[3px] transition-all duration-200
                     ${activeSection === item.key
-                      ? "text-primary bg-primary/10 border-l-primary font-semibold shadow-[inset_0_0_20px_rgba(99,102,241,0.05)]"
+                      ? "text-primary bg-primary/10 border-l-primary font-semibold shadow-[inset_0_0_20px_hsl(var(--primary)/0.05)]"
                       : "text-muted-foreground border-l-transparent hover:text-foreground hover:bg-primary/[0.04] hover:border-l-primary/30"}
                   `}
                 >
@@ -415,7 +647,7 @@ function DashboardInner({ user }: { user: User }) {
               title="Toggle theme"
             >
               {theme === "dark" ? "☀️" : "🌙"}
-              <span className="text-[12px] text-muted-foreground">{theme === "dark" ? "Light" : "Dark"}</span>
+              <span className="text-[12px] text-foreground">{theme === "dark" ? "Light" : "Dark"}</span>
             </button>
             <div className="relative">
               <button

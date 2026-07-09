@@ -131,10 +131,10 @@ const ExportSection = ({ user }: ExportSectionProps) => {
               <div className="text-sm font-medium">Export Format</div>
               <div className="text-xs text-muted-foreground mt-0.5">Choose file format</div>
             </div>
-            <select
+             <select
               value={exportFormat}
               onChange={(e) => setExportFormat(e.target.value as "csv" | "json")}
-              className="bg-surface border border-border px-3 py-1.5 rounded-lg text-sm outline-none focus:border-primary"
+              className="bg-surface border border-border px-3 py-1.5 rounded-lg text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-all duration-200"
             >
               <option value="json">JSON</option>
               <option value="csv">CSV</option>
@@ -162,7 +162,7 @@ const ExportSection = ({ user }: ExportSectionProps) => {
           <button
             onClick={handleExport}
             disabled={isExporting}
-            className="w-full bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-br from-primary to-accent text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
           >
             {isExporting ? "Exporting..." : "Export Data"}
           </button>

@@ -98,12 +98,12 @@ const CelebrationOverlay = ({ show, onClose, type, title, subtitle, icon }: Cele
             </motion.div>
 
             <motion.button
-              className="mt-5 bg-primary text-primary-foreground px-6 py-2 rounded-lg text-[13px] font-semibold"
+              className="mt-5 bg-gradient-to-br from-primary to-accent text-primary-foreground px-6 py-2 rounded-xl text-[13px] font-semibold shadow-md shadow-primary/10 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
               onClick={onClose}
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, y: -1 }}
               whileTap={{ scale: 0.95 }}
             >
               Awesome!

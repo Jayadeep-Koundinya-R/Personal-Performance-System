@@ -187,8 +187,8 @@ const SocialSection = () => {
             <div key={f.friendshipId} className="flex items-center justify-between py-2">
               <span className="text-sm">{f.displayName} (@{f.username}) wants to be friends</span>
               <div className="flex gap-2">
-                <button onClick={() => acceptFriend(f.friendshipId)} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded-lg">Accept</button>
-                <button onClick={() => removeFriend(f.friendshipId)} className="text-xs text-destructive px-3 py-1 rounded-lg border border-border">Decline</button>
+                <button onClick={() => acceptFriend(f.friendshipId)} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded-lg hover:bg-primary/90 hover:shadow transition-all duration-200">Accept</button>
+                <button onClick={() => removeFriend(f.friendshipId)} className="text-xs text-destructive px-3 py-1 rounded-lg border border-border hover:bg-destructive/10 hover:border-destructive/30 transition-all duration-200">Decline</button>
               </div>
             </div>
           ))}
@@ -214,8 +214,8 @@ const SocialSection = () => {
           <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-4">Rankings</h3>
           <div className="space-y-2">
             {leaderboardData.map((p, i) => (
-              <div key={i} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
-                p.isYou ? "bg-primary/5 border-primary/20" : "bg-surface/60 border-border/60"
+              <div key={i} className={`flex items-center justify-between px-4 py-3 rounded-xl border hover:border-primary/30 transition-all duration-200 ${
+                p.isYou ? "bg-primary/5 border-primary/25 shadow-sm" : "bg-surface/60 border-border/60 hover:bg-surface"
               }`}>
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-bold font-mono w-8 text-center">
@@ -249,7 +249,7 @@ const SocialSection = () => {
                 placeholder="@username"
                 className="flex-1 bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] outline-none focus:border-primary"
               />
-              <button onClick={sendInvite} className="bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold">
+              <button onClick={sendInvite} className="bg-gradient-to-br from-primary to-accent text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 shadow-md">
                 Send Invite
               </button>
             </div>

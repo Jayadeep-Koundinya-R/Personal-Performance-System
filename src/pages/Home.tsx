@@ -64,7 +64,7 @@ const HomePage = () => {
         <div className="flex items-center justify-center gap-4">
           <Link
             to="/login?tab=signup"
-            className="bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-3 px-8 rounded-lg text-sm font-semibold hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(99,102,241,0.35)] transition-all"
+            className="bg-gradient-to-br from-primary to-accent text-white py-3 px-8 rounded-lg text-sm font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 shadow-md"
           >
             Sign Up →
           </Link>
@@ -118,13 +118,13 @@ const HomePage = () => {
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <Link
               to="/login?tab=signup"
-              className="inline-block bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-3 px-8 rounded-lg text-sm font-semibold hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(99,102,241,0.35)] transition-all"
+              className="inline-block bg-gradient-to-br from-primary to-accent text-white py-3 px-8 rounded-lg text-sm font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 shadow-md"
             >
               Get Started Free →
             </Link>
             <Link
               to="/pricing"
-              className="inline-block text-sm border border-border py-3 px-6 rounded-lg hover:border-primary transition-all"
+              className="inline-block text-sm border border-border py-3 px-6 rounded-lg hover:border-primary transition-all duration-200 hover:bg-surface"
             >
               View Pro Plans
             </Link>

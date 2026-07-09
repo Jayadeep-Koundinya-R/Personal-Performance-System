@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const CONFIG = {
   XP_PER_COMPLETION: 10,
@@ -18,12 +19,16 @@ export interface Habit {
   streak: number;
   lastCompletedDate: string | null;
   freezeCredits: number;
+  startTime?: string | null;
+  endTime?: string | null;
+  color?: string;
+  archived?: boolean;
 }
 
 interface HabitsContextType {
   habits: Habit[];
   loading: boolean;
-  addHabit: (name: string, category: string, period: string, priority: string, startDate?: string | null) => Promise<string | null>;
+  addHabit: (name: string, category: string, period: string, priority: string, startDate?: string | null, startTime?: string | null, endTime?: string | null, color?: string) => Promise<string | null>;
   deleteHabit: (id: string) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   toggleCompletion: (id: string) => void;
@@ -119,6 +124,10 @@ export function HabitsProvider({
         streak: h.streak,
         lastCompletedDate: h.last_completed_date,
         freezeCredits: h.freeze_credits,
+        startTime: h.start_time,
+        endTime: h.end_time,
+        color: h.color || "indigo",
+        archived: h.archived || false,
       };
     });
     setHabits(mapped);
@@ -160,12 +169,25 @@ export function HabitsProvider({
 
   const isHabitDueToday = useCallback((habit: Habit): boolean => {
     const today = getToday();
+    const todayStr = getTodayStr();
+    if (habit.completedDates.includes(todayStr)) {
+      return true;
+    }
     const due = new Date(habit.dueDate);
     due.setHours(0, 0, 0, 0);
     return (due.getTime() - today.getTime()) / 864e5 <= 0;
   }, []);
 
-  const addHabit = useCallback(async (name: string, category: string, period: string, priority: string, startDate?: string | null): Promise<string | null> => {
+  const addHabit = useCallback(async (
+    name: string,
+    category: string,
+    period: string,
+    priority: string,
+    startDate?: string | null,
+    startTime?: string | null,
+    endTime?: string | null,
+    color: string = "indigo"
+  ): Promise<string | null> => {
     if (habits.length >= maxHabits) {
       return `Free plan allows ${maxHabits} habits. Upgrade to Pro for unlimited habits.`;
     }
@@ -182,6 +204,7 @@ export function HabitsProvider({
         period: period as Habit["period"],
         dueDate, completedDates: [], streak: 0,
         lastCompletedDate: null, freezeCredits: CONFIG.MAX_FREEZE_CREDITS,
+        startTime, endTime, color, archived: false
       };
       setHabits(prev => [...prev, newHabit]);
       return null;
@@ -196,6 +219,10 @@ export function HabitsProvider({
       due_date: dueDate,
       streak: 0,
       freeze_credits: CONFIG.MAX_FREEZE_CREDITS,
+      start_time: startTime || null,
+      end_time: endTime || null,
+      color,
+      archived: false,
     });
     if (error) {
       console.error("Failed to add habit:", error);
@@ -253,30 +280,56 @@ export function HabitsProvider({
   }, [habits, isGuest, userId, fetchHabits]);
 
   const deleteHabit = useCallback(async (id: string) => {
-    if (isGuest) {
-      setHabits(prev => prev.filter(h => h.id !== id));
-      return;
+    const previousHabits = [...habits];
+
+    // Optimistically update state
+    setHabits(prev => prev.filter(h => h.id !== id));
+
+    if (isGuest) return;
+
+    try {
+      const { error } = await supabase.from("habits").delete().eq("id", id);
+      if (error) throw error;
+      fetchHabits();
+    } catch (dbError) {
+      console.error("Failed to delete habit:", dbError);
+      setHabits(previousHabits);
+      toast.error("Failed to delete habit. Reverting.");
     }
-    const { error } = await supabase.from("habits").delete().eq("id", id);
-    if (error) console.error("Failed to delete habit:", error);
-    else await fetchHabits();
-  }, [isGuest, fetchHabits]);
+  }, [habits, isGuest, fetchHabits]);
 
   const updateHabit = useCallback(async (id: string, updates: Partial<Habit>) => {
-    if (isGuest) {
-      setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
-      return;
+    const previousHabits = [...habits];
+
+    // Optimistically update state
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
+
+    if (isGuest) return;
+
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.category !== undefined) dbUpdates.category = updates.category;
+    if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
+    if (updates.period !== undefined) dbUpdates.period = updates.period;
+    if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
+    if (updates.streak !== undefined) dbUpdates.streak = updates.streak;
+    if (updates.lastCompletedDate !== undefined) dbUpdates.last_completed_date = updates.lastCompletedDate;
+    if (updates.freezeCredits !== undefined) dbUpdates.freeze_credits = updates.freezeCredits;
+    if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
+    if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
+    if (updates.color !== undefined) dbUpdates.color = updates.color;
+    if (updates.archived !== undefined) dbUpdates.archived = updates.archived;
+
+    try {
+      const { error } = await supabase.from("habits").update(dbUpdates).eq("id", id);
+      if (error) throw error;
+      fetchHabits();
+    } catch (dbError) {
+      console.error("Failed to update habit:", dbError);
+      setHabits(previousHabits);
+      toast.error("Failed to update habit. Reverting.");
     }
-    if (updates.name !== undefined) await supabase.from("habits").update({ name: updates.name }).eq("id", id);
-    if (updates.category !== undefined) await supabase.from("habits").update({ category: updates.category }).eq("id", id);
-    if (updates.priority !== undefined) await supabase.from("habits").update({ priority: updates.priority }).eq("id", id);
-    if (updates.period !== undefined) await supabase.from("habits").update({ period: updates.period }).eq("id", id);
-    if (updates.dueDate !== undefined) await supabase.from("habits").update({ due_date: updates.dueDate }).eq("id", id);
-    if (updates.streak !== undefined) await supabase.from("habits").update({ streak: updates.streak }).eq("id", id);
-    if (updates.lastCompletedDate !== undefined) await supabase.from("habits").update({ last_completed_date: updates.lastCompletedDate }).eq("id", id);
-    if (updates.freezeCredits !== undefined) await supabase.from("habits").update({ freeze_credits: updates.freezeCredits }).eq("id", id);
-    await fetchHabits();
-  }, [isGuest, fetchHabits]);
+  }, [habits, isGuest, fetchHabits]);
 
   const toggleCompletion = useCallback(async (id: string) => {
     const habit = habits.find(h => h.id === id);
@@ -284,63 +337,92 @@ export function HabitsProvider({
 
     const todayStr = getTodayStr();
     const isCompleted = habit.completedDates.includes(todayStr);
+    const previousHabits = [...habits];
 
-    if (isGuest) {
-      setHabits(prev => prev.map(h => {
-        if (h.id !== id) return h;
-        const updated = { ...h };
-        if (!isCompleted) {
-          updated.completedDates = [...updated.completedDates, todayStr];
-          if (updated.lastCompletedDate) {
-            const diff = Math.round((new Date(todayStr).getTime() - new Date(updated.lastCompletedDate).getTime()) / 864e5);
-            if (diff === 1) updated.streak++;
-            else if (diff !== 0) updated.streak = 1;
-          } else { updated.streak = 1; }
-          updated.lastCompletedDate = todayStr;
-        } else {
-          updated.completedDates = updated.completedDates.filter(d => d !== todayStr);
-          if (updated.completedDates.length > 0) {
-            const sorted = [...updated.completedDates].sort();
-            updated.lastCompletedDate = sorted[sorted.length - 1];
-            updated.streak = calculateStreakFromDates(updated.completedDates);
-          } else { updated.lastCompletedDate = null; updated.streak = 0; }
-        }
-        return updated;
-      }));
-      return;
-    }
+    // Compute updated locally values
+    let updatedCompletedDates = [...habit.completedDates];
+    let updatedLastCompletedDate = habit.lastCompletedDate;
+    let updatedStreak = habit.streak;
+    let updatedDueDate = habit.dueDate;
 
     if (!isCompleted) {
-      // Add completion
-      await supabase.from("habit_completions").insert({
-        habit_id: id,
-        user_id: userId!,
-        completed_date: todayStr,
-      });
-      // Update streak
-      const newStreak = habit.lastCompletedDate
-        ? (Math.round((new Date(todayStr).getTime() - new Date(habit.lastCompletedDate).getTime()) / 864e5) === 1
-          ? habit.streak + 1 : 1)
-        : 1;
-      await supabase.from("habits").update({
-        streak: newStreak,
-        last_completed_date: todayStr,
-      }).eq("id", id);
+      updatedCompletedDates = [...updatedCompletedDates, todayStr];
+      if (habit.lastCompletedDate) {
+        const diff = Math.round((new Date(todayStr).getTime() - new Date(habit.lastCompletedDate).getTime()) / 864e5);
+        if (diff === 1) updatedStreak = habit.streak + 1;
+        else if (diff !== 0) updatedStreak = 1;
+      } else {
+        updatedStreak = 1;
+      }
+      updatedLastCompletedDate = todayStr;
+
+      const nextDue = new Date();
+      if (habit.period === "Daily") nextDue.setDate(nextDue.getDate() + 1);
+      else if (habit.period === "Weekly") nextDue.setDate(nextDue.getDate() + 7);
+      else if (habit.period === "Monthly") nextDue.setMonth(nextDue.getMonth() + 1);
+      updatedDueDate = nextDue.toISOString();
     } else {
-      // Remove completion
-      await supabase.from("habit_completions").delete()
-        .eq("habit_id", id)
-        .eq("completed_date", todayStr);
-      // Recalculate streak
-      const remainingDates = habit.completedDates.filter(d => d !== todayStr);
-      const newStreak = calculateStreakFromDates(remainingDates);
-      const lastDate = remainingDates.length > 0 ? [...remainingDates].sort().pop()! : null;
-      await supabase.from("habits").update({
-        streak: newStreak,
-        last_completed_date: lastDate,
-      }).eq("id", id);
+      updatedCompletedDates = updatedCompletedDates.filter(d => d !== todayStr);
+      if (updatedCompletedDates.length > 0) {
+        const sorted = [...updatedCompletedDates].sort();
+        updatedLastCompletedDate = sorted[sorted.length - 1];
+        updatedStreak = calculateStreakFromDates(updatedCompletedDates);
+      } else {
+        updatedLastCompletedDate = null;
+        updatedStreak = 0;
+      }
+      updatedDueDate = new Date().toISOString();
     }
-    await fetchHabits();
+
+    // Apply local state update immediately (optimistic UI)
+    setHabits(prev => prev.map(h => h.id === id ? {
+      ...h,
+      completedDates: updatedCompletedDates,
+      lastCompletedDate: updatedLastCompletedDate,
+      streak: updatedStreak,
+      dueDate: updatedDueDate
+    } : h));
+
+    if (isGuest) return;
+
+    try {
+      if (!isCompleted) {
+        // Add completion
+        const { error: insertError } = await supabase.from("habit_completions").insert({
+          habit_id: id,
+          user_id: userId!,
+          completed_date: todayStr,
+        });
+        if (insertError) throw insertError;
+
+        // Update streak and due date
+        const { error: updateError } = await supabase.from("habits").update({
+          streak: updatedStreak,
+          last_completed_date: todayStr,
+          due_date: updatedDueDate,
+        }).eq("id", id);
+        if (updateError) throw updateError;
+      } else {
+        // Remove completion
+        const { error: deleteError } = await supabase.from("habit_completions").delete()
+          .eq("habit_id", id)
+          .eq("completed_date", todayStr);
+        if (deleteError) throw deleteError;
+
+        // Revert streak and due date
+        const { error: updateError } = await supabase.from("habits").update({
+          streak: updatedStreak,
+          last_completed_date: updatedLastCompletedDate,
+          due_date: updatedDueDate,
+        }).eq("id", id);
+        if (updateError) throw updateError;
+      }
+      fetchHabits();
+    } catch (dbError) {
+      console.error("Database update failed:", dbError);
+      setHabits(previousHabits);
+      toast.error("Failed to sync completion with database. Reverting.");
+    }
   }, [habits, isGuest, userId, fetchHabits]);
 
   const calculateTotalXP = useCallback((): number => {

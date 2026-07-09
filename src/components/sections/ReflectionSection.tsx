@@ -47,11 +47,17 @@ const ReflectionSection = () => {
         <div className="flex items-center gap-3.5 mt-3.5 flex-wrap">
           <span className="text-[13px] text-muted-foreground">Mood:</span>
           {MOODS.map((m) => (
-            <span key={m.key} onClick={() => setMood(m.key)} className="text-2xl cursor-pointer transition-opacity" style={{ opacity: mood === m.key ? 1 : 0.4 }}>
+            <span 
+              key={m.key} 
+              onClick={() => setMood(m.key)} 
+              className="text-2xl cursor-pointer transition-all duration-200 hover:scale-125 hover:opacity-100" 
+              style={{ opacity: mood === m.key ? 1 : 0.4 }}
+              title={m.label}
+            >
               {m.emoji}
             </span>
           ))}
-          <button onClick={save} className="ml-auto bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 transition-all">
+          <button onClick={save} className="ml-auto bg-gradient-to-br from-primary to-accent text-white py-2.5 px-5 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
             Save Entry
           </button>
           {status && <span className="text-xs font-semibold" style={{ color: status.ok ? "#22c55e" : "#ef4444" }}>{status.text}</span>}
