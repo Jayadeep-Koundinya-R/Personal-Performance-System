@@ -44,7 +44,7 @@ const SettingsSection = ({ user }: { user: User }) => {
   const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { isPro, openBillingPortal } = useSubscription();
   const { entries: reflections } = useReflections();
-  const { settings, loading: settingsLoading, updateSettings } = useUserSettings();
+  const { settings, loading: settingsLoading, updateSettings, resetOnboarding } = useUserSettings();
   const [displayName, setDisplayName] = useState(profile?.displayName || "");
   const [username, setUsername] = useState(profile?.username || "");
   const [identityClass, setIdentityClass] = useState(profile?.identityClass || "");
@@ -52,6 +52,14 @@ const SettingsSection = ({ user }: { user: User }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
+
+  useEffect(() => {
+    if (profile) {
+      setDisplayName(profile.displayName);
+      setUsername(profile.username);
+      setIdentityClass(profile.identityClass || "");
+    }
+  }, [profile]);
 
   if (profileLoading || settingsLoading) {
     return (
@@ -61,14 +69,6 @@ const SettingsSection = ({ user }: { user: User }) => {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (profile) {
-      setDisplayName(profile.displayName);
-      setUsername(profile.username);
-      setIdentityClass(profile.identityClass || "");
-    }
-  }, [profile]);
 
   const showMsg = (text: string, type: "error" | "success" = "error") => {
     setMsg({ text, type });
@@ -262,7 +262,7 @@ const SettingsSection = ({ user }: { user: User }) => {
               <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-all ${settings?.notificationPrefs?.email ? "left-[21px]" : "left-[3px]"}`} />
             </div>
           </div>
-          <div className="flex items-center justify-between py-3.5">
+          <div className="flex items-center justify-between py-3.5 border-b border-border">
             <div>
               <div className="text-sm font-medium">In-App Alerts</div>
               <div className="text-xs text-muted-foreground mt-0.5">Receive reminders in the notification bell</div>
@@ -279,6 +279,20 @@ const SettingsSection = ({ user }: { user: User }) => {
               <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-all ${settings?.notificationPrefs?.push ? "left-[21px]" : "left-[3px]"}`} />
             </div>
           </div>
+          <div className="flex items-center justify-between py-3.5">
+            <div>
+              <div className="text-sm font-medium">Auto Streak Shield</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Automatically use freeze credits when you miss a habit</div>
+            </div>
+            <div
+              className={`w-[38px] h-5 rounded-full relative cursor-pointer transition-colors ${settings?.autoStreakFreeze ? "bg-primary" : "bg-border"}`}
+              onClick={() => updateSettings({
+                autoStreakFreeze: !settings?.autoStreakFreeze
+              })}
+            >
+              <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-all ${settings?.autoStreakFreeze ? "left-[21px]" : "left-[3px]"}`} />
+            </div>
+          </div>
         </div>
 
         {!user.isGuest && (
@@ -292,6 +306,10 @@ const SettingsSection = ({ user }: { user: User }) => {
 
         <div className="bg-card border border-border p-5 rounded-lg">
           <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-3.5">Data & Privacy</h3>
+          <div className="flex items-center justify-between py-3.5 border-b border-border">
+            <div><div className="text-sm font-medium">Replay Tutorial</div><div className="text-xs text-muted-foreground mt-0.5">Show the onboarding walkthrough again</div></div>
+            <button onClick={async () => { await resetOnboarding(); toast.success("Tutorial will show on next page load. Refreshing…"); setTimeout(() => window.location.reload(), 800); }} className="bg-primary/10 text-primary border border-primary/20 py-1.5 px-3.5 rounded-lg text-[12.5px] hover:bg-primary/20 transition-colors">Replay</button>
+          </div>
           <div className="py-3.5 border-b border-border space-y-3">
             <div className="flex items-center justify-between">
               <div><div className="text-sm font-medium">Export Data</div><div className="text-xs text-muted-foreground mt-0.5">Habits & reflections</div></div>

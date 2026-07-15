@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useHabits } from "@/hooks/use-habits";
 import { useReflections } from "@/hooks/use-reflections";
+import { useSubscription } from "@/hooks/use-subscription";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
@@ -22,6 +23,11 @@ export default function AiChatWidget() {
   const { isLoggedIn } = useAuth();
   const { habits } = useHabits();
   const { entries: reflections } = useReflections();
+  const { limits } = useSubscription();
+
+  const userMessageCount = messages.filter(m => m.sender === "user").length;
+  const conversationLimit = limits.aiConversationLimit;
+  const isLimitReached = conversationLimit !== Infinity && userMessageCount >= conversationLimit;
 
   // Scroll to bottom
   useEffect(() => {
@@ -32,7 +38,7 @@ export default function AiChatWidget() {
   if (!isLoggedIn) return null;
 
   const handleSend = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isLimitReached) return;
 
     // Add user message
     const newMsg: Message = { id: Date.now().toString(), sender: "user", text };
@@ -160,7 +166,20 @@ export default function AiChatWidget() {
                 </div>
               )}
               
-              <form 
+            {isLimitReached ? (
+              <div className="px-4 py-3 text-center">
+                <div className="text-[12px] text-muted-foreground mb-1.5">
+                  You've used all <span className="font-bold text-primary">{conversationLimit}</span> free messages
+                </div>
+                <a
+                  href="/pricing"
+                  className="inline-block text-[12px] font-semibold bg-primary/10 text-primary border border-primary/20 py-1.5 px-4 rounded-full hover:bg-primary hover:text-primary-foreground transition-all"
+                >
+                  Upgrade to Pro for unlimited ✨
+                </a>
+              </div>
+            ) : (
+              <form
                 onSubmit={(e) => { e.preventDefault(); handleSend(input); }}
                 className="flex items-center gap-2 relative"
               >
@@ -168,7 +187,7 @@ export default function AiChatWidget() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask your AI coach..."
+                  placeholder={conversationLimit !== Infinity ? `Ask your AI coach... (${conversationLimit - userMessageCount} left)` : "Ask your AI coach..."}
                   className="flex-1 bg-surface border border-border rounded-full pl-4 pr-10 py-2.5 text-[13px] outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-muted-foreground"
                 />
                 <button 
@@ -179,6 +198,7 @@ export default function AiChatWidget() {
                   ↑
                 </button>
               </form>
+            )}
             </div>
           </motion.div>
         )}

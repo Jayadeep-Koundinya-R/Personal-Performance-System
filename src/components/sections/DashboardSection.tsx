@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
+import { useProfile } from "@/hooks/use-profile";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { InsightCard } from "@/components/dashboard/InsightCard";
 import { TaskSection } from "@/components/dashboard/TaskSection";
@@ -22,6 +23,21 @@ const MOTIVATIONAL_QUOTES = [
 ];
 
 const LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function getUrgencyLevel(habit: any): "normal" | "urgent" | "overdue" {
+  if (!habit.endTime || habit.completedDates.includes(new Date().toISOString().split("T")[0])) {
+    return "normal";
+  }
+  const [endH, endM] = habit.endTime.split(":").map(Number);
+  const now = new Date();
+  const end = new Date();
+  end.setHours(endH, endM, 0, 0);
+
+  const diffMs = end.getTime() - now.getTime();
+  if (diffMs < 0) return "overdue";
+  if (diffMs <= 60 * 60 * 1000) return "urgent"; // 1 hour
+  return "normal";
+}
 
 // Reusable animation variants
 const fadeUp = {
@@ -77,7 +93,7 @@ interface DashboardSectionProps {
 
 const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   const {
-    habits, toggleCompletion, isHabitDueToday, getTodayStr,
+    habits, toggleCompletion, markAllDone, isHabitDueToday, getTodayStr,
     calculateWeeklyPoints, getMaxStreak, getTotalFreezeCredits,
     calculateLevel, calculateTotalXP,
   } = useHabits();
@@ -269,13 +285,20 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   const medium: typeof habits = [];
   const upcoming: typeof habits = [];
   habits.filter((h) => !h.archived).forEach((habit) => {
-    if (isHabitDueToday(habit)) critical.push(habit);
-    else {
-      switch (habit.priority) {
-        case "High": high.push(habit); break;
-        case "Medium": medium.push(habit); break;
-        default: upcoming.push(habit);
-      }
+    switch (habit.priority) {
+      case "High":
+        // Only High-priority habits that are due today are truly "critical"
+        if (isHabitDueToday(habit)) critical.push(habit);
+        else high.push(habit);
+        break;
+      case "Medium":
+        medium.push(habit);
+        break;
+      case "Low":
+      case "Optional":
+      default:
+        upcoming.push(habit);
+        break;
     }
   });
 
@@ -331,7 +354,19 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
     let tagText = "Due " + dueDate.toLocaleDateString(undefined, { weekday: "long" });
     if (diffDays < 0) { tagClass = "bg-destructive/10 text-destructive"; tagText = "Overdue"; }
     else if (diffDays === 0 && isCompletedToday) { tagClass = "bg-pps-green/10 text-pps-green"; tagText = "Done ✓"; }
-    else if (diffDays === 0) { tagClass = "bg-pps-orange/10 text-pps-orange"; tagText = "Due Today"; }
+    else if (diffDays === 0) {
+      const urgency = getUrgencyLevel(habit);
+      if (urgency === "overdue") {
+        tagClass = "bg-destructive/10 text-destructive border border-destructive/20 font-bold animate-pulse";
+        tagText = "Overdue 🚨";
+      } else if (urgency === "urgent") {
+        tagClass = "bg-pps-orange/10 text-pps-orange border border-pps-orange/20 font-bold animate-pulse";
+        tagText = "Urgent ⏳";
+      } else {
+        tagClass = "bg-pps-orange/10 text-pps-orange";
+        tagText = "Due Today";
+      }
+    }
     else if (diffDays === 1) { tagClass = "bg-pps-yellow/10 text-pps-yellow"; tagText = "Tomorrow"; }
 
     return (
@@ -343,7 +378,15 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         animate="visible"
         whileHover={{ x: 4 }}
         transition={{ duration: 0.15 }}
-        className="flex items-center justify-between px-3.5 py-2.5 bg-surface/60 border border-border/60 rounded-lg mb-1.5 text-[13.5px] cursor-default hover:bg-accent/[0.08] hover:border-primary/20 transition-all duration-150"
+        className={`flex items-center justify-between px-3.5 py-2.5 bg-surface/60 border rounded-lg mb-1.5 text-[13.5px] cursor-default hover:bg-accent/[0.08] transition-all duration-150 ${
+          isCompletedToday
+            ? "border-border/60 hover:border-primary/20"
+            : getUrgencyLevel(habit) === "overdue"
+            ? "border-destructive/40 shadow-sm shadow-destructive/5"
+            : getUrgencyLevel(habit) === "urgent"
+            ? "border-pps-orange/40 shadow-sm shadow-pps-orange/5"
+            : "border-border/60 hover:border-primary/20"
+        }`}
       >
         <div className="flex items-center gap-2.5">
           <input
@@ -375,7 +418,8 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
     </motion.div>
   );
 
-  const displayName = userEmail ? userEmail.split("@")[0] : "Guest";
+  const { profile } = useProfile();
+  const displayName = profile?.displayName || (userEmail ? userEmail.split("@")[0] : "Guest");
 
   return (
     <div>
@@ -409,18 +453,28 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
             </motion.span>
           </div>
         </div>
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
-          className="flex items-center gap-2 bg-card border border-border rounded-full px-4 py-2 text-[12px] font-mono"
-        >
-          <span className="text-pps-green font-semibold">✅ {doneToday.length}</span>
-          <span className="text-border">|</span>
-          <span className="text-pps-orange font-semibold">⏳ {dueToday.length - doneToday.length}</span>
-          <span className="text-border">|</span>
-          <span className="text-primary font-semibold">🔥 {maxStreak}</span>
-        </motion.div>
+        <div className="flex items-center gap-2.5">
+          {dueToday.length > 0 && doneToday.length < dueToday.length && (
+            <button
+              onClick={markAllDone}
+              className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground text-xs font-semibold py-1.5 px-3 rounded-lg transition-all duration-200 cursor-pointer"
+            >
+              ⚡ Mark All Done
+            </button>
+          )}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className="flex items-center gap-2 bg-card border border-border rounded-full px-4 py-2 text-[12px] font-mono"
+          >
+            <span className="text-pps-green font-semibold">✅ {doneToday.length}</span>
+            <span className="text-border">|</span>
+            <span className="text-pps-orange font-semibold">⏳ {dueToday.length - doneToday.length}</span>
+            <span className="text-border">|</span>
+            <span className="text-primary font-semibold">🔥 {maxStreak}</span>
+          </motion.div>
+        </div>
       </motion.div>
 
       {/* Quote */}

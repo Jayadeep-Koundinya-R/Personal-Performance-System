@@ -21,12 +21,27 @@ const FloatingXP = ({ habitId }: { habitId: string }) => (
   </motion.span>
 );
 
+function getUrgencyLevel(habit: any): "normal" | "urgent" | "overdue" {
+  if (!habit.endTime || habit.completedDates.includes(new Date().toISOString().split("T")[0])) {
+    return "normal";
+  }
+  const [endH, endM] = habit.endTime.split(":").map(Number);
+  const now = new Date();
+  const end = new Date();
+  end.setHours(endH, endM, 0, 0);
+
+  const diffMs = end.getTime() - now.getTime();
+  if (diffMs < 0) return "overdue";
+  if (diffMs <= 60 * 60 * 1000) return "urgent"; // 1 hour
+  return "normal";
+}
+
 interface DailyTrackerProps {
   onNavigate?: (section: string) => void;
 }
 
 const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
-  const { habits, toggleCompletion, isHabitDueToday, getTodayStr } = useHabits();
+  const { habits, toggleCompletion, markAllDone, isHabitDueToday, getTodayStr } = useHabits();
   const todayStr = getTodayStr();
   const [justCompleted, setJustCompleted] = useState<Set<string>>(new Set());
 
@@ -82,7 +97,17 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-[22px] font-bold">Daily Tracker</h1>
+          <h1 className="text-[22px] font-bold flex items-center gap-3">
+            <span>Daily Tracker</span>
+            {todayHabits.length > 0 && doneCount < todayHabits.length && (
+              <button
+                onClick={markAllDone}
+                className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground text-xs font-semibold py-1 px-2.5 rounded-lg transition-all duration-200 cursor-pointer"
+              >
+                ⚡ Mark All Done
+              </button>
+            )}
+          </h1>
           <div className="text-[13px] text-muted-foreground mt-0.5">Check off as you go — XP updates automatically</div>
         </div>
         <div className="font-mono text-muted-foreground text-[13px]">{dateStr}</div>
@@ -156,7 +181,15 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
-                    className="relative flex items-center justify-between px-3 py-2.5 bg-surface border border-border rounded-lg mb-1.5 text-[13.5px] hover:border-primary/30 transition-colors"
+                    className={`relative flex items-center justify-between px-3 py-2.5 bg-surface border rounded-lg mb-1.5 text-[13.5px] transition-all duration-150 ${
+                      done
+                        ? "border-border hover:border-primary/30"
+                        : getUrgencyLevel(habit) === "overdue"
+                        ? "border-destructive/40 shadow-sm shadow-destructive/5"
+                        : getUrgencyLevel(habit) === "urgent"
+                        ? "border-pps-orange/40 shadow-sm shadow-pps-orange/5"
+                        : "border-border hover:border-primary/30"
+                    }`}
                   >
                     <div className="flex items-center gap-2.5">
                       <button
@@ -191,6 +224,24 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                       <span className={`transition-all duration-200 ${done ? "line-through opacity-50" : ""}`}>{habit.name}</span>
                     </div>
                     <div className="flex gap-2 items-center relative">
+                      {!done && getUrgencyLevel(habit) === "overdue" && (
+                        <motion.span
+                          animate={{ scale: [1, 1.05, 1], opacity: [0.8, 1, 0.8] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 font-bold whitespace-nowrap animate-pulse"
+                        >
+                          🚨 Overdue
+                        </motion.span>
+                      )}
+                      {!done && getUrgencyLevel(habit) === "urgent" && (
+                        <motion.span
+                          animate={{ scale: [1, 1.03, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-pps-orange/10 text-pps-orange border border-pps-orange/20 font-bold whitespace-nowrap"
+                        >
+                          ⏳ Urgent
+                        </motion.span>
+                      )}
                       <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold font-mono ${priClass[habit.priority] || priClass.Optional}`}>
                         {habit.priority}
                       </span>

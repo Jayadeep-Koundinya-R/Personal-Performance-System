@@ -43,7 +43,6 @@ const AchievementsSection = lazy(() => import("@/components/sections/Achievement
 const SocialSection = lazy(() => import("@/components/sections/SocialSection").then(m => ({ default: m.default })));
 const ReportsSection = lazy(() => import("@/components/sections/ReportsSection").then(m => ({ default: m.default })));
 const SettingsSection = lazy(() => import("@/components/sections/SettingsSection").then(m => ({ default: m.default })));
-const ExportSection = lazy(() => import("@/components/sections/ExportSection").then(m => ({ default: m.default })));
 
 const NAV_ITEMS = [
   { key: "dashboard", icon: "⚡", label: "Dashboard" },
@@ -57,7 +56,6 @@ const NAV_ITEMS = [
   { key: "reflections", icon: "📝", label: "Reflections" },
   { key: "habits", icon: "⚙️", label: "Habit Manager" },
   { key: "reminders", icon: "🔔", label: "Reminders" },
-  { key: "export", icon: "📤", label: "Export" },
   { key: "settings", icon: "🛠", label: "Settings" },
 ] as const;
 
@@ -226,13 +224,8 @@ function AlarmOverlay({ alarm, onDismiss, onSnooze, onComplete }: {
 }
 
 function DashboardInner({ user }: { user: User }) {
-  const [activeSection, setActiveSection] = useState<SectionKey>(() => {
-    const saved = localStorage.getItem("pps_active_section") as SectionKey;
-    if (saved && NAV_ITEMS.some(item => item.key === saved)) {
-      return saved;
-    }
-    return "dashboard";
-  });
+  const { logout } = useAuth();
+  const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const { calculateLevel, calculateTotalXP, habits, getTodayStr, isHabitDueToday, addHabit, toggleCompletion } = useHabits();
@@ -245,9 +238,14 @@ function DashboardInner({ user }: { user: User }) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRitual, setShowRitual] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem("pps_active_section", activeSection);
-  }, [activeSection]);
+  // 7-day guest trial expiry check
+  const guestTrialExpired = (() => {
+    if (!user.isGuest) return false;
+    const createdAt = localStorage.getItem("pps_guest_created_at");
+    if (!createdAt) return false;
+    const elapsed = Date.now() - new Date(createdAt).getTime();
+    return elapsed >= 7 * 24 * 60 * 60 * 1000;
+  })();
 
   useEffect(() => {
     if (!settingsLoading && settings) {
@@ -438,7 +436,6 @@ function DashboardInner({ user }: { user: User }) {
       case "reflections": return <Suspense fallback={<LoadingFallback />}><ReflectionSection /></Suspense>;
       case "habits": return <Suspense fallback={<LoadingFallback />}><HabitManagerSection /></Suspense>;
       case "reminders": return <Suspense fallback={<LoadingFallback />}><ReminderSection /></Suspense>;
-      case "export": return <Suspense fallback={<LoadingFallback />}><ExportSection user={user} /></Suspense>;
       case "settings": return <Suspense fallback={<LoadingFallback />}><SettingsSection user={user} /></Suspense>;
     }
   };
@@ -474,6 +471,43 @@ function DashboardInner({ user }: { user: User }) {
         subtitle={celebration.subtitle}
         icon={celebration.icon}
       />
+
+      {/* Guest Trial Expired Overlay */}
+      {guestTrialExpired && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[5000] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            className="bg-card border border-border rounded-2xl p-8 max-w-md w-full text-center shadow-2xl"
+          >
+            <div className="text-6xl mb-4">⏰</div>
+            <h2 className="text-xl font-bold mb-2">Your 7-Day Trial Has Ended</h2>
+            <p className="text-[13px] text-muted-foreground mb-5 leading-relaxed">
+              Your guest trial has expired. Create a free account to save all your progress and continue building your habits!
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <Link
+                to="/login?tab=signup"
+                className="w-full py-3 rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 text-center"
+              >
+                Create Free Account →
+              </Link>
+              <Link
+                to="/login"
+                className="w-full py-2.5 rounded-xl border border-border text-muted-foreground text-[12.5px] hover:text-foreground transition-colors text-center"
+              >
+                Sign In to Existing Account
+              </Link>
+              <button
+                onClick={logout}
+                className="text-[11px] text-muted-foreground hover:text-foreground bg-transparent border-none cursor-pointer mt-1"
+              >
+                Exit to Home
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between px-5 py-4 bg-card border-b border-border sticky top-0 z-[1002]" style={{ boxShadow: "var(--card-shadow)" }}>
@@ -544,6 +578,13 @@ function DashboardInner({ user }: { user: User }) {
               )}
             </AnimatePresence>
           </div>
+          <button
+            onClick={logout}
+            className="bg-transparent border-none text-muted-foreground hover:text-destructive cursor-pointer p-1.5 flex items-center justify-center transition-colors"
+            title="Log out"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </button>
         </div>
       </div>
 
@@ -710,6 +751,14 @@ function DashboardInner({ user }: { user: User }) {
                 )}
               </AnimatePresence>
             </div>
+            <button
+              onClick={logout}
+              className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm cursor-pointer hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-colors flex items-center gap-2"
+              title="Log out"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              <span className="text-[12px] font-medium">Logout</span>
+            </button>
           </header>
 
           <main className="flex-1 px-8 py-7 overflow-y-auto">

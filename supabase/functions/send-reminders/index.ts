@@ -292,9 +292,10 @@ Deno.serve(async (req: Request) => {
               if (emailRes.ok) sentCount++;
             }
           } else {
-            const notificationType = deliveryType === "alarm" ? "alarm" : "reminder";
-            const title = deliveryType === "alarm" ? "🚨 Habit Alarm!" : "🔔 Habit Reminder";
-            const icon = deliveryType === "alarm" ? "⏰" : "🔔";
+            const forceAlarm = habit.start_alarm === true;
+            const notificationType = forceAlarm || deliveryType === "alarm" ? "alarm" : "reminder";
+            const title = forceAlarm || deliveryType === "alarm" ? "🚨 Habit Alarm!" : "🔔 Habit Reminder";
+            const icon = forceAlarm || deliveryType === "alarm" ? "⏰" : "🔔";
 
             await supabase.from("notifications").insert({
               user_id: habit.user_id,
@@ -355,9 +356,10 @@ Deno.serve(async (req: Request) => {
                 if (emailRes.ok) sentCount++;
               }
             } else {
-              const notificationType = deliveryType === "alarm" ? "alarm" : "reminder";
-              const title = deliveryType === "alarm" ? "🚨 Habit Alarm!" : "🔔 Habit Reminder";
-              const icon = deliveryType === "alarm" ? "⏰" : "🔔";
+              const forceAlarm = habit.end_alarm === true;
+              const notificationType = forceAlarm || deliveryType === "alarm" ? "alarm" : "reminder";
+              const title = forceAlarm || deliveryType === "alarm" ? "🚨 Habit Alarm!" : "🔔 Habit Reminder";
+              const icon = forceAlarm || deliveryType === "alarm" ? "⏰" : "🔔";
 
               await supabase.from("notifications").insert({
                 user_id: habit.user_id,

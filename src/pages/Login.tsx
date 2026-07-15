@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Navigate, Link, useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 const LoginPage = () => {
   const [searchParams] = useSearchParams();
@@ -22,6 +23,8 @@ const LoginPage = () => {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
+  const [guestExpanded, setGuestExpanded] = useState(false);
+  const [guestName, setGuestName] = useState("");
 
   const { login, signup, loginAsGuest, resetPassword, isLoggedIn, loading, loginWithGoogle } = useAuth();
 
@@ -207,9 +210,9 @@ const LoginPage = () => {
             >
               Continue with Google
             </button>
-            <button onClick={() => loginAsGuest()}
+            <button onClick={() => setGuestExpanded(true)}
               className="w-full py-2.5 rounded-lg border border-dashed border-border bg-transparent text-muted-foreground font-display text-[13px] cursor-pointer hover:text-foreground hover:border-muted-foreground transition-all">
-              Try Demo (Guest) — local only
+              Try Demo (Guest Mode) — 7-day trial
             </button>
           </>
         )}
@@ -220,6 +223,73 @@ const LoginPage = () => {
           <Link to="/privacy" className="hover:underline">Privacy</Link>
         </div>
       </div>
+
+      {/* Initialize Avatar (Guest Mode Setup Modal) */}
+      <AnimatePresence>
+        {guestExpanded && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[5000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              className="bg-card border border-border rounded-2xl p-7 max-w-sm w-full text-center space-y-5 shadow-2xl relative overflow-hidden"
+              style={{ boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.4)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="text-5xl animate-bounce">⚡</div>
+              <div>
+                <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  Initialize Your Avatar
+                </h2>
+                <p className="text-[12.5px] text-muted-foreground mt-1.5 leading-relaxed">
+                  To personalize your performance metrics, earn daily XP, and build consistency, what should we call you?
+                </p>
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider pl-1">Display Name</label>
+                <input
+                  type="text"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Enter your name (e.g. Alex)"
+                  className="w-full bg-surface border border-border px-4 py-3 rounded-xl text-foreground text-[14px] font-display outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-all placeholder:text-muted-foreground/60"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && guestName.trim()) {
+                      loginAsGuest(guestName.trim());
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    if (!guestName.trim()) return;
+                    loginAsGuest(guestName.trim());
+                  }}
+                  disabled={!guestName.trim()}
+                  className="w-full py-3 bg-gradient-to-br from-primary to-accent text-primary-foreground text-[13.5px] font-bold rounded-xl hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  Enter Performance System →
+                </button>
+                <button
+                  onClick={() => setGuestExpanded(false)}
+                  className="w-full py-2.5 text-[12px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-transparent border-none"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div className="text-[10px] text-muted-foreground/80 mt-1">
+                🔒 Data stored locally • 7-day free trial
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

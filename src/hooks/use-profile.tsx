@@ -48,7 +48,27 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!userId || isGuest) {
+    if (isGuest) {
+      // Build a synthetic guest profile from localStorage
+      const guestName = localStorage.getItem("pps_guest_name") || "Guest";
+      setProfile({
+        id: "guest",
+        userId: "guest",
+        displayName: guestName,
+        username: "guest",
+        avatarUrl: null,
+        planTier: "free",
+        identityClass: null,
+        referralCode: null,
+        totalXp: 0,
+        level: 1,
+        longestStreak: 0,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      setLoading(false);
+      return;
+    }
+    if (!userId) {
       setProfile(null);
       setLoading(false);
       return;
@@ -74,6 +94,20 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
   }, [refresh]);
 
   const updateProfile = useCallback(async (updates: { displayName?: string; username?: string; identityClass?: string; timezone?: string }) => {
+    if (isGuest) {
+      // Guest profile updates persist to localStorage
+      if (updates.displayName !== undefined) {
+        localStorage.setItem("pps_guest_name", updates.displayName.trim());
+      }
+      if (profile) {
+        setProfile({
+          ...profile,
+          ...(updates.displayName !== undefined ? { displayName: updates.displayName.trim() } : {}),
+          ...(updates.identityClass !== undefined ? { identityClass: updates.identityClass } : {}),
+        });
+      }
+      return null;
+    }
     if (!userId) return "Not signed in.";
     const payload: Database["public"]["Tables"]["profiles"]["Update"] = {};
     if (updates.displayName !== undefined) payload.display_name = updates.displayName.trim();
@@ -106,7 +140,7 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
     }
     await refresh();
     return null;
-  }, [userId, profile, refresh]);
+  }, [userId, isGuest, profile, refresh]);
 
   return (
     <ProfileContext.Provider value={{ profile, loading, updateProfile, refresh }}>

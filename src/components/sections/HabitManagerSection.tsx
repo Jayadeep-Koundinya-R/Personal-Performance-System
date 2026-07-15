@@ -62,6 +62,8 @@ const HabitManagerSection = () => {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [color, setColor] = useState("indigo");
+  const [startAlarm, setStartAlarm] = useState(false);
+  const [endAlarm, setEndAlarm] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [nameError, setNameError] = useState(false);
 
@@ -75,6 +77,8 @@ const HabitManagerSection = () => {
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
   const [editColor, setEditColor] = useState("indigo");
+  const [editStartAlarm, setEditStartAlarm] = useState(false);
+  const [editEndAlarm, setEditEndAlarm] = useState(false);
 
   // Tab state (active vs archived)
   const [viewTab, setViewTab] = useState<"active" | "archived">("active");
@@ -85,9 +89,9 @@ const HabitManagerSection = () => {
   const handleAdd = async () => {
     if (!name.trim()) { setNameError(true); return; }
     setNameError(false);
-    const err = await addHabit(name.trim(), category.trim(), period, priority, startDate || null, startTime || null, endTime || null, color);
+    const err = await addHabit(name.trim(), category.trim(), period, priority, startDate || null, startTime || null, endTime || null, color, startAlarm, endAlarm);
     if (err) { toast.error(err); return; }
-    setName(""); setCategory(""); setPeriod("Daily"); setPriority("High"); setStartDate(""); setStartTime(""); setEndTime(""); setColor("indigo");
+    setName(""); setCategory(""); setPeriod("Daily"); setPriority("High"); setStartDate(""); setStartTime(""); setEndTime(""); setColor("indigo"); setStartAlarm(false); setEndAlarm(false);
     toast.success("Habit added successfully!");
   };
 
@@ -129,6 +133,8 @@ const HabitManagerSection = () => {
     setEditStartTime(h.startTime || "");
     setEditEndTime(h.endTime || "");
     setEditColor(h.color || "indigo");
+    setEditStartAlarm(h.startAlarm || false);
+    setEditEndAlarm(h.endAlarm || false);
   };
 
   const saveEdit = () => {
@@ -142,6 +148,8 @@ const HabitManagerSection = () => {
       startTime: editStartTime || null,
       endTime: editEndTime || null,
       color: editColor,
+      startAlarm: editStartAlarm,
+      endAlarm: editEndAlarm,
     });
     setEditHabit(null);
   };
@@ -289,6 +297,18 @@ const HabitManagerSection = () => {
                   className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full"
                 />
                 <span className="text-[10px] text-muted-foreground">Triggers automatic "Time to start" reminder</span>
+                {startTime && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="checkbox"
+                      id="startAlarm"
+                      checked={startAlarm}
+                      onChange={(e) => setStartAlarm(e.target.checked)}
+                      className="accent-primary w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <label htmlFor="startAlarm" className="text-[11.5px] text-muted-foreground cursor-pointer font-semibold">🚨 Start Alarm Override</label>
+                  </div>
+                )}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">End Time</label>
@@ -299,6 +319,18 @@ const HabitManagerSection = () => {
                   className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full"
                 />
                 <span className="text-[10px] text-muted-foreground">Triggers automatic "Time's up" reminder if incomplete</span>
+                {endTime && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="checkbox"
+                      id="endAlarm"
+                      checked={endAlarm}
+                      onChange={(e) => setEndAlarm(e.target.checked)}
+                      className="accent-primary w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <label htmlFor="endAlarm" className="text-[11.5px] text-muted-foreground cursor-pointer font-semibold">🚨 End Alarm Override</label>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -472,10 +504,34 @@ const HabitManagerSection = () => {
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Start Time <span className="text-[9px] text-muted-foreground normal-case">(optional)</span></label>
                   <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full" />
+                  {editStartTime && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="checkbox"
+                        id="editStartAlarm"
+                        checked={editStartAlarm}
+                        onChange={(e) => setEditStartAlarm(e.target.checked)}
+                        className="accent-primary w-3.5 h-3.5 cursor-pointer"
+                      />
+                      <label htmlFor="editStartAlarm" className="text-[11.5px] text-muted-foreground cursor-pointer font-semibold">🚨 Start Alarm Override</label>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">End Time <span className="text-[9px] text-muted-foreground normal-case">(optional)</span></label>
                   <input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full" />
+                  {editEndTime && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="checkbox"
+                        id="editEndAlarm"
+                        checked={editEndAlarm}
+                        onChange={(e) => setEditEndAlarm(e.target.checked)}
+                        className="accent-primary w-3.5 h-3.5 cursor-pointer"
+                      />
+                      <label htmlFor="editEndAlarm" className="text-[11.5px] text-muted-foreground cursor-pointer font-semibold">🚨 End Alarm Override</label>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

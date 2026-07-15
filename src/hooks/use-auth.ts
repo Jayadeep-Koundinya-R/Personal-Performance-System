@@ -13,7 +13,7 @@ interface AuthReturn {
   user: User | null;
   login: (email: string, password: string) => Promise<string | null>;
   signup: (email: string, password: string, confirm: string) => Promise<string | null>;
-  loginAsGuest: () => void;
+  loginAsGuest: (name?: string) => void;
   logout: () => void;
   resetPassword: (email: string) => Promise<string | null>;
   updatePassword: (password: string) => Promise<string | null>;
@@ -80,6 +80,12 @@ async function migrateGuestData(userId: string): Promise<void> {
           streak: habit.streak || 0,
           freeze_credits: habit.freezeCredits || 2,
           last_completed_date: habit.lastCompletedDate || null,
+          start_time: habit.startTime || null,
+          end_time: habit.endTime || null,
+          color: habit.color || "indigo",
+          archived: habit.archived || false,
+          start_alarm: habit.startAlarm || false,
+          end_alarm: habit.endAlarm || false,
         });
 
         if (habitError) {
@@ -145,6 +151,7 @@ async function migrateGuestData(userId: string): Promise<void> {
         repeat_pattern: r.repeat || "Every Day",
         enabled: r.enabled ?? true,
         channel: r.channel || "in_app",
+        delivery_type: r.deliveryType || "notification",
       }));
 
       if (remindersToInsert.length > 0) {
@@ -155,10 +162,30 @@ async function migrateGuestData(userId: string): Promise<void> {
       }
     }
 
+    // 4. Migrate user settings (like auto_streak_freeze and default_reminder_settings)
+    const rawSettings = localStorage.getItem("pps_settings_guest");
+    if (rawSettings) {
+      try {
+        const settings = JSON.parse(rawSettings);
+        const payload: Record<string, any> = {};
+        if (settings.theme !== undefined) payload.theme = settings.theme;
+        if (settings.onboardingCompleted !== undefined) payload.onboarding_completed = settings.onboardingCompleted;
+        if (settings.notificationPrefs !== undefined) payload.notification_prefs = settings.notificationPrefs;
+        if (settings.ritualLastDone !== undefined) payload.ritual_last_done = settings.ritualLastDone;
+        if (settings.defaultReminderSettings !== undefined) payload.default_reminder_settings = settings.defaultReminderSettings;
+        if (settings.autoStreakFreeze !== undefined) payload.auto_streak_freeze = settings.autoStreakFreeze;
+
+        await supabase.from("user_settings").upsert({ user_id: userId, ...payload }, { onConflict: "user_id" });
+      } catch (e) {
+        console.error("Failed to migrate guest settings:", e);
+      }
+    }
+
     // Safely delete client storage variables once database returns clean states
     localStorage.removeItem("habits_guest");
     localStorage.removeItem("reflections_guest");
     localStorage.removeItem("reminders_guest");
+    localStorage.removeItem("pps_settings_guest");
     try {
       sessionStorage.removeItem("pps_guest");
     } catch {}
@@ -228,10 +255,18 @@ export function useAuth(): AuthReturn {
     return null;
   }, [navigate]);
 
-  const loginAsGuest = useCallback(() => {
+  const loginAsGuest = useCallback((name?: string) => {
     const guestUser: User = { email: null, isGuest: true };
     // Persist guest flag so auth listener doesn't overwrite this temporary session
     try { sessionStorage.setItem("pps_guest", "true"); } catch {}
+    // Save guest display name
+    if (name) {
+      localStorage.setItem("pps_guest_name", name.trim());
+    }
+    // Set 7-day trial start timestamp (only on first guest login)
+    if (!localStorage.getItem("pps_guest_created_at")) {
+      localStorage.setItem("pps_guest_created_at", new Date().toISOString());
+    }
     setUser(guestUser);
     navigate("/dashboard");
   }, [navigate]);

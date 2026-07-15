@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useUserSettings } from "@/hooks/use-user-settings";
 
 export const CONFIG = {
   XP_PER_COMPLETION: 10,
@@ -23,15 +24,18 @@ export interface Habit {
   endTime?: string | null;
   color?: string;
   archived?: boolean;
+  startAlarm?: boolean;
+  endAlarm?: boolean;
 }
 
 interface HabitsContextType {
   habits: Habit[];
   loading: boolean;
-  addHabit: (name: string, category: string, period: string, priority: string, startDate?: string | null, startTime?: string | null, endTime?: string | null, color?: string) => Promise<string | null>;
-  deleteHabit: (id: string) => void;
-  updateHabit: (id: string, updates: Partial<Habit>) => void;
-  toggleCompletion: (id: string) => void;
+  addHabit: (name: string, category: string, period: string, priority: string, startDate?: string | null, startTime?: string | null, endTime?: string | null, color?: string, startAlarm?: boolean, endAlarm?: boolean) => Promise<string | null>;
+  deleteHabit: (id: string) => Promise<void>;
+  updateHabit: (id: string, updates: Partial<Habit>) => Promise<void>;
+  toggleCompletion: (id: string) => Promise<void>;
+  markAllDone: () => Promise<void>;
   useStreakFreeze: (habitId: string) => Promise<string | null>;
   isHabitDueToday: (habit: Habit) => boolean;
   getTodayStr: () => string;
@@ -40,7 +44,7 @@ interface HabitsContextType {
   calculateWeeklyPoints: () => number;
   getMaxStreak: () => number;
   getTotalFreezeCredits: () => number;
-  resetAllData: () => void;
+  resetAllData: () => Promise<void>;
 }
 
 function getTodayStr(): string {
@@ -87,6 +91,8 @@ export function HabitsProvider({
 }) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [autoChecked, setAutoChecked] = useState(false);
+  const { settings, loading: settingsLoading } = useUserSettings();
   const isGuest = !userId;
 
   const fetchHabits = useCallback(async () => {
@@ -128,6 +134,8 @@ export function HabitsProvider({
         endTime: h.end_time,
         color: h.color || "indigo",
         archived: h.archived || false,
+        startAlarm: h.start_alarm || false,
+        endAlarm: h.end_alarm || false,
       };
     });
     setHabits(mapped);
@@ -167,6 +175,7 @@ export function HabitsProvider({
     }
   }, [habits, isGuest, userEmail]);
 
+
   const isHabitDueToday = useCallback((habit: Habit): boolean => {
     const today = getToday();
     const todayStr = getTodayStr();
@@ -186,10 +195,12 @@ export function HabitsProvider({
     startDate?: string | null,
     startTime?: string | null,
     endTime?: string | null,
-    color: string = "indigo"
+    color: string = "indigo",
+    startAlarm?: boolean,
+    endAlarm?: boolean
   ): Promise<string | null> => {
-    if (habits.length >= maxHabits) {
-      return `Free plan allows ${maxHabits} habits. Upgrade to Pro for unlimited habits.`;
+    if (habits.length >= maxHabits && maxHabits !== Infinity) {
+      return "Habit limit reached. Please upgrade.";
     }
 
     const dueDate = startDate
@@ -204,7 +215,9 @@ export function HabitsProvider({
         period: period as Habit["period"],
         dueDate, completedDates: [], streak: 0,
         lastCompletedDate: null, freezeCredits: CONFIG.MAX_FREEZE_CREDITS,
-        startTime, endTime, color, archived: false
+        startTime, endTime, color, archived: false,
+        startAlarm: startAlarm || false,
+        endAlarm: endAlarm || false
       };
       setHabits(prev => [...prev, newHabit]);
       return null;
@@ -223,6 +236,8 @@ export function HabitsProvider({
       end_time: endTime || null,
       color,
       archived: false,
+      start_alarm: startAlarm || false,
+      end_alarm: endAlarm || false
     });
     if (error) {
       console.error("Failed to add habit:", error);
@@ -279,6 +294,45 @@ export function HabitsProvider({
     return null;
   }, [habits, isGuest, userId, fetchHabits]);
 
+  // Automatic streak freeze check on habits load
+  useEffect(() => {
+    if (loading || settingsLoading || autoChecked || !settings?.autoStreakFreeze) return;
+
+    const checkAndAutoFreeze = async () => {
+      setAutoChecked(true); // Set immediately to prevent concurrency issues
+      
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+      let anyFrozen = false;
+
+      for (const habit of habits) {
+        const lastCompleted = habit.lastCompletedDate;
+        if (
+          habit.streak > 0 &&
+          habit.freezeCredits > 0 &&
+          lastCompleted &&
+          lastCompleted < yesterdayStr &&
+          !habit.completedDates.includes(yesterdayStr) &&
+          !habit.archived
+        ) {
+          console.log(`Auto-applying streak freeze for habit: ${habit.name}`);
+          const err = await useStreakFreeze(habit.id);
+          if (!err) {
+            anyFrozen = true;
+          }
+        }
+      }
+
+      if (anyFrozen) {
+        toast.success("Streak Shield auto-applied to preserve your streak!");
+      }
+    };
+
+    checkAndAutoFreeze();
+  }, [habits, loading, settingsLoading, autoChecked, settings?.autoStreakFreeze, useStreakFreeze]);
+
   const deleteHabit = useCallback(async (id: string) => {
     const previousHabits = [...habits];
 
@@ -319,6 +373,8 @@ export function HabitsProvider({
     if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
     if (updates.color !== undefined) dbUpdates.color = updates.color;
     if (updates.archived !== undefined) dbUpdates.archived = updates.archived;
+    if (updates.startAlarm !== undefined) dbUpdates.start_alarm = updates.startAlarm;
+    if (updates.endAlarm !== undefined) dbUpdates.end_alarm = updates.endAlarm;
 
     try {
       const { error } = await supabase.from("habits").update(dbUpdates).eq("id", id);
@@ -425,6 +481,81 @@ export function HabitsProvider({
     }
   }, [habits, isGuest, userId, fetchHabits]);
 
+  const markAllDone = useCallback(async (): Promise<void> => {
+    const todayStr = getTodayStr();
+    const habitsToComplete = habits.filter(h => !h.archived && isHabitDueToday(h) && !h.completedDates.includes(todayStr));
+    if (habitsToComplete.length === 0) return;
+
+    const previousHabits = [...habits];
+    const updatedHabitsMap = new Map<string, Partial<Habit>>();
+    
+    habitsToComplete.forEach(habit => {
+      let updatedStreak = habit.streak;
+      if (habit.lastCompletedDate) {
+        const diff = Math.round((new Date(todayStr).getTime() - new Date(habit.lastCompletedDate).getTime()) / 864e5);
+        if (diff === 1) updatedStreak = habit.streak + 1;
+        else if (diff !== 0) updatedStreak = 1;
+      } else {
+        updatedStreak = 1;
+      }
+
+      const nextDue = new Date();
+      if (habit.period === "Daily") nextDue.setDate(nextDue.getDate() + 1);
+      else if (habit.period === "Weekly") nextDue.setDate(nextDue.getDate() + 7);
+      else if (habit.period === "Monthly") nextDue.setMonth(nextDue.getMonth() + 1);
+      const updatedDueDate = nextDue.toISOString();
+
+      updatedHabitsMap.set(habit.id, {
+        completedDates: [...habit.completedDates, todayStr],
+        lastCompletedDate: todayStr,
+        streak: updatedStreak,
+        dueDate: updatedDueDate
+      });
+    });
+
+    // Optimistically update React state in a single call
+    setHabits(prev => prev.map(h => {
+      const updates = updatedHabitsMap.get(h.id);
+      return updates ? { ...h, ...updates } : h;
+    }));
+
+    if (isGuest) {
+      toast.success(`Completed all ${habitsToComplete.length} due habits!`);
+      return;
+    }
+
+    try {
+      const completions = habitsToComplete.map(h => ({
+        habit_id: h.id,
+        user_id: userId!,
+        completed_date: todayStr
+      }));
+      const { error: insertError } = await supabase.from("habit_completions").insert(completions);
+      if (insertError) throw insertError;
+
+      const updatePromises = habitsToComplete.map(h => {
+        const updates = updatedHabitsMap.get(h.id)!;
+        return supabase.from("habits").update({
+          streak: updates.streak,
+          last_completed_date: todayStr,
+          due_date: updates.dueDate,
+        }).eq("id", h.id);
+      });
+
+      const results = await Promise.all(updatePromises);
+      for (const res of results) {
+        if (res.error) throw res.error;
+      }
+      
+      toast.success(`Completed all ${habitsToComplete.length} due habits!`);
+      fetchHabits();
+    } catch (err) {
+      console.error("Failed to bulk complete habits:", err);
+      setHabits(previousHabits);
+      toast.error("Failed to complete all habits. Reverting.");
+    }
+  }, [habits, isGuest, userId, fetchHabits, isHabitDueToday]);
+
   const calculateTotalXP = useCallback((): number => {
     return habits.reduce((sum, h) => sum + h.completedDates.length * CONFIG.XP_PER_COMPLETION, 0);
   }, [habits]);
@@ -459,7 +590,7 @@ export function HabitsProvider({
   return (
     <HabitsContext.Provider
       value={{
-        habits, loading, addHabit, deleteHabit, updateHabit, toggleCompletion, useStreakFreeze,
+        habits, loading, addHabit, deleteHabit, updateHabit, toggleCompletion, markAllDone, useStreakFreeze,
         isHabitDueToday, getTodayStr, calculateTotalXP, calculateLevel,
         calculateWeeklyPoints, getMaxStreak, getTotalFreezeCredits, resetAllData,
       }}

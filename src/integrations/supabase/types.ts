@@ -114,6 +114,8 @@ export type Database = {
           last_end_triggered_at: string | null
           color: string | null
           archived: boolean | null
+          start_alarm: boolean
+          end_alarm: boolean
         }
         Insert: {
           category?: string
@@ -134,6 +136,8 @@ export type Database = {
           last_end_triggered_at?: string | null
           color?: string | null
           archived?: boolean | null
+          start_alarm?: boolean
+          end_alarm?: boolean
         }
         Update: {
           category?: string
@@ -154,6 +158,8 @@ export type Database = {
           last_end_triggered_at?: string | null
           color?: string | null
           archived?: boolean | null
+          start_alarm?: boolean
+          end_alarm?: boolean
         }
         Relationships: []
       }
@@ -506,6 +512,7 @@ export type Database = {
           updated_at: string
           user_id: string
           default_reminder_settings: Json
+          auto_streak_freeze: boolean
         }
         Insert: {
           created_at?: string
@@ -516,6 +523,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           default_reminder_settings?: Json
+          auto_streak_freeze?: boolean
         }
         Update: {
           created_at?: string
@@ -526,6 +534,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           default_reminder_settings?: Json
+          auto_streak_freeze?: boolean
         }
         Relationships: []
       }

@@ -2,18 +2,19 @@ export type PlanTier = "free" | "pro";
 
 export const PLAN_LIMITS = {
   free: {
-    maxHabits: Infinity,
+    maxHabits: 15,
     maxReminders: Infinity,
-    reflectionHistoryDays: Infinity,
-    analyticsDays: Infinity,
-    achievements: "all" as const,
+    reflectionHistoryDays: 7,
+    analyticsDays: 7,
+    achievements: "core" as const,
     streakFreezesPerMonth: 3,
     pdfReports: "unlimited" as const,
-    socialFeatures: true,
-    customThemes: true,
-    shareCardsWatermark: false,
+    socialFeatures: false,
+    customThemes: false,
+    shareCardsWatermark: true,
     aiCoach: true,
-    smartInsights: true,
+    smartInsights: false,
+    aiConversationLimit: 10,
   },
   pro: {
     maxHabits: Infinity,
@@ -28,6 +29,7 @@ export const PLAN_LIMITS = {
     shareCardsWatermark: false,
     aiCoach: true,
     smartInsights: true,
+    aiConversationLimit: Infinity,
   },
 } as const;
 
@@ -51,5 +53,5 @@ export function getPlanLimits(tier: PlanTier) {
 }
 
 export function isPro(tier: PlanTier) {
-  return true;
+  return tier === "pro";
 }
