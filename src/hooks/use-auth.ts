@@ -38,11 +38,16 @@ function generateUUID(): string {
   });
 }
 
+/** Prevents concurrent migration if both onAuthStateChange and getSession fire */
+let migrationInProgress = false;
+
 /**
  * Migrates local storage guest data (habits, completions, reflections, reminders)
  * into Supabase tables under the newly authenticated user.
  */
 async function migrateGuestData(userId: string): Promise<void> {
+  if (migrationInProgress) return;
+  migrationInProgress = true;
   try {
     const rawHabits = localStorage.getItem("habits_guest");
     const rawReflections = localStorage.getItem("reflections_guest");
@@ -192,6 +197,8 @@ async function migrateGuestData(userId: string): Promise<void> {
     console.log("Guest data successfully migrated to database.");
   } catch (err) {
     console.error("Failed to complete guest data migration:", err);
+  } finally {
+    migrationInProgress = false;
   }
 }
 

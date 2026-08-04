@@ -67,12 +67,15 @@ export function RemindersProvider({
       try {
         const raw = JSON.parse(localStorage.getItem(GUEST_KEY(userEmail)) || "[]");
         setReminders(
-          raw.map((r: { id: number; label: string; time: string; repeat: string; enabled: boolean }) => ({
+          raw.map((r: any) => ({
             id: String(r.id),
             label: r.label,
             time: r.time,
             repeat: r.repeat,
             enabled: r.enabled,
+            habitId: r.habitId || null,
+            channel: r.channel || "in_app",
+            deliveryType: r.deliveryType || "notification",
           }))
         );
       } catch {

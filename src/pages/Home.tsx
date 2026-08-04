@@ -79,8 +79,8 @@ const HomePage = () => {
         {/* Stats */}
         <div className="flex items-center justify-center gap-10 mt-16 text-center">
           <div>
-            <div className="text-2xl font-bold font-mono text-primary">Free</div>
-            <div className="text-[11px] text-muted-foreground mt-1">Free to start</div>
+            <div className="text-2xl font-bold font-mono text-primary">$0</div>
+            <div className="text-[11px] text-muted-foreground mt-1">Free tier included</div>
           </div>
           <div className="w-px h-8 bg-border" />
           <div>

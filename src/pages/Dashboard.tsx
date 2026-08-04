@@ -19,6 +19,7 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { useProfile } from "@/hooks/use-profile";
 import { useUserSettings } from "@/hooks/use-user-settings";
 import { useSubscription } from "@/hooks/use-subscription";
+import { useReminderScheduler } from "@/hooks/use-reminder-scheduler";
 import { DashboardProviders } from "@/providers/AppProviders";
 import RitualOverlay from "@/components/RitualOverlay";
 import { Navigate, Link } from "react-router-dom";
@@ -234,6 +235,9 @@ function DashboardInner({ user }: { user: User }) {
   const { profile } = useProfile();
   const { settings, loading: settingsLoading, completeOnboarding } = useUserSettings();
   const { isPro } = useSubscription();
+
+  // In-app reminder scheduler — checks every 60s for due reminders and habit time alerts
+  useReminderScheduler();
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRitual, setShowRitual] = useState(false);

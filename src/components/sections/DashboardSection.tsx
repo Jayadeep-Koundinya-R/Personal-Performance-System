@@ -1,9 +1,10 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
 import { useProfile } from "@/hooks/use-profile";
+import { useReminders } from "@/hooks/use-reminders";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { InsightCard } from "@/components/dashboard/InsightCard";
+import CelebrationOverlay from "@/components/CelebrationOverlay";
 import { TaskSection } from "@/components/dashboard/TaskSection";
 import { LevelWidget } from "@/components/dashboard/LevelWidget";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,38 +40,46 @@ function getUrgencyLevel(habit: any): "normal" | "urgent" | "overdue" {
   return "normal";
 }
 
+function getTimeBlock(habit: any): "morning" | "afternoon" | "evening" | "anytime" {
+  if (!habit.startTime) return "anytime";
+  const [h] = habit.startTime.split(":").map(Number);
+  if (isNaN(h)) return "anytime";
+  if (h >= 5 && h < 12) return "morning";
+  if (h >= 12 && h < 17) return "afternoon";
+  return "evening";
+}
+
+function getCurrentTimeBlock(): "morning" | "afternoon" | "evening" {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return "morning";
+  if (h >= 12 && h < 17) return "afternoon";
+  return "evening";
+}
+
 // Reusable animation variants
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
     opacity: 1, y: 0,
-    transition: { delay: i * 0.06, duration: 0.4, ease: "easeOut" },
-  }),
-};
-
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.92 },
-  visible: (i: number) => ({
-    opacity: 1, scale: 1,
-    transition: { delay: i * 0.08, duration: 0.35, ease: "easeOut" },
-  }),
-};
-
-const slideRight = {
-  hidden: { opacity: 0, x: -20 },
-  visible: (i: number) => ({
-    opacity: 1, x: 0,
     transition: { delay: i * 0.05, duration: 0.35, ease: "easeOut" },
   }),
 };
 
-interface Reminder {
-  id: number;
-  label: string;
-  time: string;
-  repeat: string;
-  enabled: boolean;
-}
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.94 },
+  visible: (i: number) => ({
+    opacity: 1, scale: 1,
+    transition: { delay: i * 0.06, duration: 0.3, ease: "easeOut" },
+  }),
+};
+
+const slideRight = {
+  hidden: { opacity: 0, x: -15 },
+  visible: (i: number) => ({
+    opacity: 1, x: 0,
+    transition: { delay: i * 0.04, duration: 0.3, ease: "easeOut" },
+  }),
+};
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -86,6 +95,49 @@ function formatTime12(t: string) {
   return `${hh % 12 || 12}:${mm < 10 ? "0" : ""}${mm} ${ampm}`;
 }
 
+/** Circular SVG Momentum Gauge */
+function MomentumGauge({ percentage }: { percentage: number }) {
+  const radius = 32;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  let statusText = "Ready to Launch 🚀";
+  let statusColor = "text-muted-foreground";
+  if (percentage === 100) { statusText = "Unstoppable! 🏆"; statusColor = "text-pps-green font-bold"; }
+  else if (percentage >= 75) { statusText = "Crushing It! 🔥"; statusColor = "text-primary font-bold"; }
+  else if (percentage >= 50) { statusText = "In The Zone ⚡"; statusColor = "text-pps-orange font-bold"; }
+  else if (percentage > 0) { statusText = "Getting Started 🌱"; statusColor = "text-secondary font-bold"; }
+
+  return (
+    <div className="flex items-center gap-4 bg-surface/50 border border-border/80 rounded-xl p-3.5 mb-3">
+      <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
+        <svg className="w-full h-full transform -rotate-90">
+          <circle cx="40" cy="40" r={radius} className="stroke-surface" strokeWidth="7" fill="transparent" />
+          <motion.circle
+            cx="40" cy="40" r={radius}
+            className="stroke-primary"
+            strokeWidth="7"
+            strokeDasharray={circumference}
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            strokeLinecap="round"
+            fill="transparent"
+          />
+        </svg>
+        <div className="absolute text-center">
+          <span className="text-base font-bold font-mono text-foreground">{percentage}%</span>
+        </div>
+      </div>
+      <div>
+        <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Daily Momentum</div>
+        <div className={`text-[13px] mt-0.5 ${statusColor}`}>{statusText}</div>
+        <div className="text-[11px] text-muted-foreground mt-1">Complete due habits to boost score</div>
+      </div>
+    </div>
+  );
+}
+
 interface DashboardSectionProps {
   onNavigate?: (section: string) => void;
   userEmail?: string | null;
@@ -93,45 +145,167 @@ interface DashboardSectionProps {
 
 const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   const {
-    habits, toggleCompletion, markAllDone, isHabitDueToday, getTodayStr,
+    habits, addHabit, toggleCompletion, markAllDone, isHabitDueToday, getTodayStr,
     calculateWeeklyPoints, getMaxStreak, getTotalFreezeCredits,
-    calculateLevel, calculateTotalXP,
   } = useHabits();
 
   const todayStr = getTodayStr();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // View mode switcher: Priority vs Time-block
+  const [viewMode, setViewMode] = useState<"priority" | "timeblock">(() => {
+    try {
+      return (localStorage.getItem("pps_dashboard_view_mode") as "priority" | "timeblock") || "priority";
+    } catch {
+      return "priority";
+    }
+  });
+
+  const handleViewModeChange = (mode: "priority" | "timeblock") => {
+    setViewMode(mode);
+    try { localStorage.setItem("pps_dashboard_view_mode", mode); } catch {}
+  };
+
+  // Energy/Mood logger pill
+  const [mood, setMood] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`pps_today_mood_${todayStr}`) || null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Daily Scratchpad Note state
+  const [dailyNote, setDailyNote] = useState<string>(() => {
+    try {
+      return localStorage.getItem(`pps_daily_note_${todayStr}`) || "";
+    } catch {
+      return "";
+    }
+  });
+
+  const handleDailyNoteChange = (text: string) => {
+    setDailyNote(text);
+    try {
+      localStorage.setItem(`pps_daily_note_${todayStr}`, text);
+    } catch {}
+  };
+
+  const handleMoodSelect = (mVal: string, mLabel: string) => {
+    setMood(mVal);
+    try { localStorage.setItem(`pps_today_mood_${todayStr}`, mVal); } catch {}
+    toast.success(`Energy logged: ${mLabel}`, { description: "Your energy state is updated for today!" });
+  };
+
+  // Quick Habit creation state
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickName, setQuickName] = useState("");
+  const [quickPriority, setQuickPriority] = useState("Medium");
+  const [quickPeriod, setQuickPeriod] = useState("Daily");
+  const [quickTime, setQuickTime] = useState("");
+
+  const handleQuickAddSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickName.trim()) {
+      toast.error("Please enter a habit name");
+      return;
+    }
+    const err = await addHabit(
+      quickName.trim(),
+      "General",
+      quickPeriod,
+      quickPriority,
+      new Date().toISOString().split("T")[0],
+      quickTime || null,
+      null,
+      "indigo",
+      false,
+      false
+    );
+    if (!err) {
+      toast.success(`Habit "${quickName.trim()}" created!`);
+      setQuickName("");
+      setQuickTime("");
+      setShowQuickAdd(false);
+    } else {
+      toast.error(err);
+    }
+  };
+
   const dueToday = habits.filter((h) => isHabitDueToday(h));
   const doneToday = dueToday.filter((h) => h.completedDates.includes(todayStr));
   const completionRate = dueToday.length > 0 ? Math.round((doneToday.length / dueToday.length) * 100) : 0;
+  const nextUpHabit = useMemo(() => {
+    return dueToday.find((h) => !h.completedDates.includes(todayStr));
+  }, [dueToday, todayStr]);
   const maxStreak = getMaxStreak();
   const freezeCredits = getTotalFreezeCredits();
   const weeklyPoints = calculateWeeklyPoints();
+
+  // --- Completion Celebration ---
+  const [showCelebration, setShowCelebration] = useState(false);
+  const prevCompletionRef = useRef(completionRate);
+
+  useEffect(() => {
+    const wasNotComplete = prevCompletionRef.current < 100;
+    prevCompletionRef.current = completionRate;
+
+    // Only trigger when transitioning TO 100% (not on initial load at 100%)
+    if (completionRate === 100 && dueToday.length > 0 && wasNotComplete) {
+      const celebKey = `pps_celebrated_${todayStr}`;
+      try {
+        if (localStorage.getItem(celebKey)) return; // Already celebrated today
+        localStorage.setItem(celebKey, "1");
+      } catch { /* localStorage unavailable */ }
+
+      // Small delay so the checkbox animation finishes first
+      setTimeout(() => {
+        setShowCelebration(true);
+        toast.success("🏆 Perfect Day Bonus: +25 XP!", {
+          description: "You completed every habit due today. Incredible discipline!",
+          duration: 5000,
+        });
+      }, 400);
+    }
+  }, [completionRate, dueToday.length, todayStr]);
+
+  // Keyboard shortcuts (Q: Quick Add, M: Mark All Done)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      if (activeTag === "input" || activeTag === "textarea" || activeTag === "select") return;
+      if (e.key === "q" || e.key === "Q") {
+        e.preventDefault();
+        setShowQuickAdd((prev) => !prev);
+      } else if ((e.key === "m" || e.key === "M") && dueToday.length > 0 && doneToday.length < dueToday.length) {
+        e.preventDefault();
+        markAllDone();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dueToday.length, doneToday.length, markAllDone]);
 
   const dateStr = new Date().toLocaleDateString(undefined, {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const loadReminders = useCallback(() => {
-    try {
-      const raw = localStorage.getItem("currentUser");
-      const email = raw ? (JSON.parse(raw).email || "guest") : "guest";
-      const key = `reminders_${email}`;
-      setReminders(JSON.parse(localStorage.getItem(key) || "[]").filter((r: Reminder) => r.enabled));
-    } catch { setReminders([]); }
-  }, []);
-  useEffect(() => { loadReminders(); }, [loadReminders]);
+  const { reminders: allReminders } = useReminders();
+  const reminders = allReminders.filter(r => r.enabled);
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
 
   const loadSuggestions = useCallback(async () => {
-    const { data } = await supabase
-      .from("ai_suggestions")
-      .select("*")
-      .eq("status", "pending");
-    setSuggestions(data || []);
+    try {
+      const { data, error } = await supabase
+        .from("ai_suggestions")
+        .select("*")
+        .eq("status", "pending");
+      if (!error) setSuggestions(data || []);
+    } catch {
+      // Silently ignore — AI suggestions table may not exist yet
+    }
   }, []);
 
   const triggerAiAnalysis = useCallback(async () => {
@@ -155,13 +329,12 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         const daysSinceLastRun = (Date.now() - lastRunTime) / (1000 * 60 * 60 * 24);
 
         if (daysSinceLastRun >= 7) {
-          console.log("Triggering weekly habit AI coach recommendations...");
           await supabase.functions.invoke("analyze-habits-ai");
           loadSuggestions();
         }
       }
-    } catch (err) {
-      console.error("AI check error:", err);
+    } catch {
+      // Silently ignore
     }
   }, [loadSuggestions]);
 
@@ -267,19 +440,39 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
     return MOTIVATIONAL_QUOTES[dayOfYear % MOTIVATIONAL_QUOTES.length];
   }, []);
 
-  const bestCategory = useMemo(() => {
-    const catMap: Record<string, number> = {};
-    habits.forEach((h) => {
-      const cat = h.category || "Uncategorized";
-      catMap[cat] = (catMap[cat] || 0) + h.completedDates.length;
-    });
-    let best = { name: "—", count: 0 };
-    Object.entries(catMap).forEach(([name, done]) => {
-      if (done > best.count) best = { name, count: done };
-    });
-    return best;
+  const heatmapDays = useMemo(() => {
+    const list = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().split("T")[0];
+      let done = 0;
+      habits.forEach((h) => {
+        if (h.completedDates.includes(ds)) done++;
+      });
+      list.push({ dateStr: ds, dayNum: d.getDate(), count: done, isToday: i === 0 });
+    }
+    return list;
   }, [habits]);
 
+
+  // Sorting habits helper
+  const priorityWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1, Optional: 0 };
+  const sortHabits = (list: typeof habits) => {
+    return [...list].sort((a, b) => {
+      const aDone = a.completedDates.includes(todayStr);
+      const bDone = b.completedDates.includes(todayStr);
+      if (aDone !== bDone) return aDone ? 1 : -1;
+      const pDiff = (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0);
+      if (pDiff !== 0) return pDiff;
+      const periodOrder: Record<string, number> = { Today: 0, Daily: 1, Weekly: 2, Monthly: 3 };
+      const periodDiff = (periodOrder[a.period] ?? 0) - (periodOrder[b.period] ?? 0);
+      if (periodDiff !== 0) return periodDiff;
+      return a.name.localeCompare(b.name);
+    });
+  };
+
+  // Priority View lists
   const critical: typeof habits = [];
   const high: typeof habits = [];
   const medium: typeof habits = [];
@@ -287,7 +480,6 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   habits.filter((h) => !h.archived).forEach((habit) => {
     switch (habit.priority) {
       case "High":
-        // Only High-priority habits that are due today are truly "critical"
         if (isHabitDueToday(habit)) critical.push(habit);
         else high.push(habit);
         break;
@@ -302,28 +494,16 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
     }
   });
 
-  const priorityWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1, Optional: 0 };
-
-  const sortHabits = (list: typeof habits) => {
-    return [...list].sort((a, b) => {
-      const aDone = a.completedDates.includes(todayStr);
-      const bDone = b.completedDates.includes(todayStr);
-      if (aDone !== bDone) {
-        return aDone ? 1 : -1;
-      }
-      const pDiff = (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0);
-      if (pDiff !== 0) return pDiff;
-      const periodOrder: Record<string, number> = { Today: 0, Daily: 1, Weekly: 2, Monthly: 3 };
-      const periodDiff = (periodOrder[a.period] ?? 0) - (periodOrder[b.period] ?? 0);
-      if (periodDiff !== 0) return periodDiff;
-      return a.name.localeCompare(b.name);
-    });
-  };
-
   const sortedCritical = sortHabits(critical);
   const sortedHigh = sortHabits(high);
   const sortedMedium = sortHabits(medium);
   const sortedUpcoming = sortHabits(upcoming);
+
+  // Time-Block View lists
+  const morningHabits = sortHabits(habits.filter((h) => !h.archived && getTimeBlock(h) === "morning"));
+  const afternoonHabits = sortHabits(habits.filter((h) => !h.archived && getTimeBlock(h) === "afternoon"));
+  const eveningHabits = sortHabits(habits.filter((h) => !h.archived && getTimeBlock(h) === "evening"));
+  const anytimeHabits = sortHabits(habits.filter((h) => !h.archived && getTimeBlock(h) === "anytime"));
 
   const counts = new Array(7).fill(0);
   for (let i = 6; i >= 0; i--) {
@@ -396,6 +576,11 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
             className="accent-primary w-4 h-4 cursor-pointer flex-shrink-0"
           />
           <span className={isCompletedToday ? "line-through opacity-45" : ""}>{habit.name}</span>
+          {habit.startTime && (
+            <span className="text-[11px] font-mono text-muted-foreground bg-surface border border-border/40 px-1.5 py-0.5 rounded">
+              {formatTime12(habit.startTime)}
+            </span>
+          )}
         </div>
         <motion.span
           initial={{ scale: 0.8, opacity: 0 }}
@@ -421,6 +606,12 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   const { profile } = useProfile();
   const displayName = profile?.displayName || (userEmail ? userEmail.split("@")[0] : "Guest");
 
+  const MOOD_OPTIONS = [
+    { label: "⚡ Focused", val: "high" },
+    { label: "😊 Good", val: "good" },
+    { label: "😴 Low Energy", val: "low" },
+  ];
+
   return (
     <div>
       {/* Greeting Header */}
@@ -428,11 +619,11 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         initial={{ opacity: 0, y: -15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2"
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3"
       >
         <div>
-          <h1 className="text-2xl font-bold">
-            {getGreeting()}, <span className="text-primary">{displayName}</span>{" "}
+          <h1 className="text-2xl font-bold flex items-center gap-2 flex-wrap">
+            <span>{getGreeting()}, <span className="text-primary">{displayName}</span></span>
             <motion.span
               animate={{ rotate: [0, 14, -8, 14, -4, 10, 0] }}
               transition={{ duration: 2.5, ease: "easeInOut", repeat: Infinity, repeatDelay: 3 }}
@@ -441,32 +632,66 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
               👋
             </motion.span>
           </h1>
-          <div className="text-[13px] text-muted-foreground mt-0.5">
-            {dateStr}
+          <div className="text-[13px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+            <span>{dateStr}</span>
             <motion.span
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.3, type: "spring", stiffness: 300 }}
-              className="inline-block text-[11px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full ml-2 font-mono align-middle"
+              className="inline-block text-[11px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full font-mono"
             >
-              {dueToday.length} habit{dueToday.length !== 1 ? "s" : ""} due
+              {dueToday.length} habit{dueToday.length !== 1 ? "s" : ""} due today
             </motion.span>
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
+
+        {/* Right Header Actions */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Mood/Energy Pill Logger */}
+          <div className="flex items-center gap-1 bg-surface/70 border border-border/80 px-2 py-1 rounded-full text-xs">
+            <span className="text-[10px] text-muted-foreground font-semibold px-1">Energy:</span>
+            {MOOD_OPTIONS.map((m) => (
+              <button
+                key={m.val}
+                onClick={() => handleMoodSelect(m.val, m.label)}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
+                  mood === m.val
+                    ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                    : "hover:bg-accent/15 text-muted-foreground"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Quick Add Habit Button */}
+          <button
+            onClick={() => setShowQuickAdd(!showQuickAdd)}
+            className="bg-surface border border-border hover:border-primary/40 text-foreground text-xs font-semibold py-1.5 px-3 rounded-lg transition-all duration-200 cursor-pointer flex items-center gap-1.5"
+            title="Press 'Q' on keyboard"
+          >
+            <span>✨</span>
+            <span>+ Quick Add</span>
+            <kbd className="hidden sm:inline-block text-[10px] bg-muted/60 text-muted-foreground px-1.5 py-0.2 rounded border border-border font-mono">Q</kbd>
+          </button>
+
           {dueToday.length > 0 && doneToday.length < dueToday.length && (
             <button
               onClick={markAllDone}
-              className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground text-xs font-semibold py-1.5 px-3 rounded-lg transition-all duration-200 cursor-pointer"
+              className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground text-xs font-semibold py-1.5 px-3 rounded-lg transition-all duration-200 cursor-pointer flex items-center gap-1.5"
+              title="Press 'M' on keyboard"
             >
-              ⚡ Mark All Done
+              <span>⚡ Mark All Done</span>
+              <kbd className="hidden sm:inline-block text-[10px] bg-primary/20 px-1.5 py-0.2 rounded font-mono">M</kbd>
             </button>
           )}
+
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
-            className="flex items-center gap-2 bg-card border border-border rounded-full px-4 py-2 text-[12px] font-mono"
+            className="flex items-center gap-2 bg-card border border-border rounded-full px-3.5 py-1.5 text-[12px] font-mono"
           >
             <span className="text-pps-green font-semibold">✅ {doneToday.length}</span>
             <span className="text-border">|</span>
@@ -477,25 +702,86 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         </div>
       </motion.div>
 
-      {/* Quote */}
+      {/* Quick Add Habit Dropdown Panel */}
+      <AnimatePresence>
+        {showQuickAdd && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-5 overflow-hidden"
+          >
+            <form
+              onSubmit={handleQuickAddSubmit}
+              className="bg-card border border-primary/30 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
+            >
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Habit name (e.g., Drink 2L Water, Read 15 mins)..."
+                  value={quickName}
+                  onChange={(e) => setQuickName(e.target.value)}
+                  className="w-full bg-surface border border-border px-3 py-2 rounded-lg text-sm outline-none focus:border-primary"
+                  autoFocus
+                />
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={quickPriority}
+                  onChange={(e) => setQuickPriority(e.target.value)}
+                  className="bg-surface border border-border px-2.5 py-2 rounded-lg text-xs outline-none focus:border-primary"
+                >
+                  <option value="High">High Priority</option>
+                  <option value="Medium">Medium Priority</option>
+                  <option value="Low">Low Priority</option>
+                </select>
+                <select
+                  value={quickPeriod}
+                  onChange={(e) => setQuickPeriod(e.target.value)}
+                  className="bg-surface border border-border px-2.5 py-2 rounded-lg text-xs outline-none focus:border-primary"
+                >
+                  <option value="Daily">Daily</option>
+                  <option value="Today">Today Only</option>
+                  <option value="Weekly">Weekly</option>
+                </select>
+                <input
+                  type="time"
+                  value={quickTime}
+                  onChange={(e) => setQuickTime(e.target.value)}
+                  className="bg-surface border border-border px-2.5 py-2 rounded-lg text-xs outline-none focus:border-primary"
+                  title="Start Time (Optional)"
+                />
+                <button
+                  type="submit"
+                  className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition-all cursor-pointer"
+                >
+                  Save Habit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickAdd(false)}
+                  className="bg-transparent border border-border text-muted-foreground text-xs py-2 px-3 rounded-lg hover:bg-muted hover:text-foreground transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Quote Strip */}
       <motion.div
-        initial={{ opacity: 0, x: -30 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.15, duration: 0.5 }}
-        whileHover={{ scale: 1.01 }}
-        className="mb-5 bg-gradient-to-r from-primary/8 via-secondary/5 to-transparent border border-primary/10 rounded-xl px-5 py-4 flex items-start gap-3"
+        initial={{ opacity: 0, y: -5 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, duration: 0.4 }}
+        className="mb-4 bg-surface/60 border border-border/50 rounded-lg px-3.5 py-2 flex items-center justify-between gap-3 text-xs"
       >
-        <motion.span
-          animate={{ rotate: [0, 10, -10, 0] }}
-          transition={{ duration: 3, repeat: Infinity, repeatDelay: 4 }}
-          className="text-2xl mt-0.5"
-        >
-          💡
-        </motion.span>
-        <div>
-          <p className="text-[13.5px] italic text-foreground/85">"{dailyQuote.text}"</p>
-          <p className="text-[11px] text-muted-foreground mt-1 font-mono">— {dailyQuote.author}</p>
+        <div className="flex items-center gap-2 overflow-hidden truncate">
+          <span className="text-sm flex-shrink-0">💡</span>
+          <span className="italic text-foreground/80 truncate">"{dailyQuote.text}"</span>
         </div>
+        <span className="text-[11px] text-muted-foreground font-mono flex-shrink-0">— {dailyQuote.author}</span>
       </motion.div>
 
       {/* AI Suggestions Cards */}
@@ -528,13 +814,13 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
                 <div className="flex items-center gap-2 mt-3.5 justify-end">
                   <button
                     onClick={() => handleAcceptSuggestion(sugg)}
-                    className="bg-primary text-white py-1 px-3 rounded text-[11px] font-semibold hover:bg-primary/95 transition-all duration-200"
+                    className="bg-primary text-white py-1 px-3 rounded text-[11px] font-semibold hover:bg-primary/95 transition-all duration-200 cursor-pointer"
                   >
                     Accept
                   </button>
                   <button
                     onClick={() => handleDismissSuggestion(sugg)}
-                    className="bg-transparent border border-border text-muted-foreground py-1 px-3 rounded text-[11px] font-semibold hover:bg-muted hover:text-foreground transition-all duration-200"
+                    className="bg-transparent border border-border text-muted-foreground py-1 px-3 rounded text-[11px] font-semibold hover:bg-muted hover:text-foreground transition-all duration-200 cursor-pointer"
                   >
                     Dismiss
                   </button>
@@ -559,22 +845,51 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         ))}
       </div>
 
-      {/* Quick Insights */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-5">
-        {[
-          { icon: "🏅", label: "Best Category", value: bestCategory.name, color: "primary" },
-          { icon: "📈", label: "Total Habits", value: `${habits.length} tracked`, color: "pps-orange" },
-          { icon: "✅", label: "All-Time Done", value: `${habits.reduce((s, h) => s + h.completedDates.length, 0)} completions`, color: "pps-green" },
-        ].map((insight, i) => (
-          <motion.div key={insight.label} variants={fadeUp} custom={i + 4} initial="hidden" animate="visible">
-            <InsightCard {...insight} />
-          </motion.div>
-        ))}
+
+
+      {/* View Switcher Header Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <span>{viewMode === "priority" ? "🎯 Focus By Priority" : "⏰ Focus By Time Block"}</span>
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {viewMode === "priority"
+              ? "Habits organized by urgency and priority level"
+              : "Habits grouped by time of day (Morning, Afternoon, Evening)"}
+          </p>
+        </div>
+
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-xl text-xs font-semibold">
+          <button
+            onClick={() => handleViewModeChange("priority")}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              viewMode === "priority"
+                ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span>🎯</span>
+            <span>Priority View</span>
+          </button>
+          <button
+            onClick={() => handleViewModeChange("timeblock")}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              viewMode === "timeblock"
+                ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span>⏰</span>
+            <span>Time Block View</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
-      {habits.length === 0 ? (
+        {habits.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -591,159 +906,250 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => onNavigate?.("habits")}
-                className="bg-gradient-to-br from-primary to-accent text-primary-foreground px-6 py-2.5 rounded-xl text-[13.5px] font-semibold shadow-md shadow-primary/10 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all duration-200"
+                className="bg-gradient-to-br from-primary to-accent text-primary-foreground px-6 py-2.5 rounded-xl text-[13.5px] font-semibold shadow-md shadow-primary/10 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
               >
                 + Add Your First Habit
               </motion.button>
             </div>
           </motion.div>
         ) : (
-        <>
-        {/* Left — Task Lists */}
-        <div className="flex flex-col gap-4">
-          {[
-            { title: "🔴 Critical Tasks", borderColor: "border-l-destructive", tasks: sortedCritical, emptyText: "No critical tasks 🎉" },
-            { title: "🟠 High Priority", borderColor: "border-l-pps-orange", tasks: sortedHigh, emptyText: "No high priority tasks" },
-            { title: "🟡 Medium Focus", borderColor: "border-l-pps-yellow", tasks: sortedMedium, emptyText: "No medium tasks" },
-            { title: "🟢 Upcoming", borderColor: "border-l-pps-green", tasks: sortedUpcoming, emptyText: "No upcoming tasks" },
-          ].map((section, i) => (
-            <motion.div key={section.title} variants={fadeUp} custom={i + 7} initial="hidden" animate="visible">
-              <TaskSection {...section} renderTask={renderTask} renderEmptyList={renderEmptyList} />
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Right — Widgets */}
-        <div className="flex flex-col gap-4">
-          {/* Today's Progress */}
-          <motion.div variants={scaleIn} custom={7} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-5">
-            <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2.5">Today's Progress</h4>
-            <motion.div
-              key={doneToday.length}
-              initial={{ scale: 1.2 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 15 }}
-              className="text-[28px] font-bold font-mono text-primary"
-            >
-              {doneToday.length}/{dueToday.length}
-            </motion.div>
-            <div className="text-muted-foreground text-xs mt-1">habits completed</div>
-            <div className="bg-surface rounded-full h-2 mt-2.5">
-              <motion.div
-                className="h-2 rounded-full bg-gradient-to-r from-primary to-secondary"
-                initial={false}
-                animate={{ width: `${completionRate}%` }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-              />
-            </div>
-            <div className="mt-3 space-y-1">
-              <AnimatePresence>
-                {dueToday.map((h, i) => {
-                  const done = h.completedDates.includes(todayStr);
-                  return (
-                    <motion.div
-                      key={h.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="flex items-center gap-2 text-[12px]"
-                    >
-                      <motion.span animate={done ? { scale: [1, 1.3, 1] } : {}} transition={{ duration: 0.3 }} className={done ? "text-pps-green" : "text-muted-foreground"}>
-                        {done ? "✅" : "⬜"}
-                      </motion.span>
-                      <span className={done ? "text-muted-foreground line-through" : "text-foreground/80"}>{h.name}</span>
-                    </motion.div>
-                  );
-                })}
+          <>
+            {/* Left — Task Lists (Dynamically toggles between Priority & Time-block view) */}
+            <div className="flex flex-col gap-4">
+              <AnimatePresence mode="wait">
+                {viewMode === "priority" ? (
+                  <motion.div
+                    key="priority-view"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex flex-col gap-4"
+                  >
+                    {[
+                      { title: "🔴 Critical Tasks", borderColor: "border-l-destructive", tasks: sortedCritical, emptyText: "No critical tasks 🎉" },
+                      { title: "🟠 High Priority", borderColor: "border-l-pps-orange", tasks: sortedHigh, emptyText: "No high priority tasks" },
+                      { title: "🟡 Medium Focus", borderColor: "border-l-pps-yellow", tasks: sortedMedium, emptyText: "No medium tasks" },
+                      { title: "🟢 Upcoming", borderColor: "border-l-pps-green", tasks: sortedUpcoming, emptyText: "No upcoming tasks" },
+                    ].map((section, i) => (
+                      <motion.div key={section.title} variants={fadeUp} custom={i + 7} initial="hidden" animate="visible">
+                        <TaskSection {...section} renderTask={renderTask} renderEmptyList={renderEmptyList} />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="timeblock-view"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex flex-col gap-4"
+                  >
+                    {[
+                      { key: "morning", title: "🌅 Morning Ritual (05:00 - 12:00)", borderColor: "border-l-secondary", tasks: morningHabits, emptyText: "No morning habits scheduled" },
+                      { key: "afternoon", title: "☀️ Afternoon Focus (12:00 - 17:00)", borderColor: "border-l-pps-orange", tasks: afternoonHabits, emptyText: "No afternoon habits scheduled" },
+                      { key: "evening", title: "🌙 Evening Wind-down (17:00 - 00:00)", borderColor: "border-l-primary", tasks: eveningHabits, emptyText: "No evening habits scheduled" },
+                      { key: "anytime", title: "⏰ Flexible & Anytime", borderColor: "border-l-pps-green", tasks: anytimeHabits, emptyText: "No flexible habits" },
+                    ].map((section, i) => {
+                      const isCurrent = section.key === getCurrentTimeBlock();
+                      return (
+                        <motion.div key={section.title} variants={fadeUp} custom={i + 7} initial="hidden" animate="visible" className={isCurrent ? "ring-2 ring-primary/40 rounded-xl shadow-sm" : ""}>
+                          <TaskSection
+                            {...section}
+                            title={isCurrent ? `${section.title} — 📍 NOW` : section.title}
+                            renderTask={renderTask}
+                            renderEmptyList={renderEmptyList}
+                          />
+                        </motion.div>
+                      );
+                    })}
+                  </motion.div>
+                )}
               </AnimatePresence>
             </div>
-          </motion.div>
 
-          {/* Reminders Widget */}
-          <motion.div variants={scaleIn} custom={8} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-5">
-            <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2.5 flex items-center gap-1.5">
-              <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 5 }}>🔔</motion.span>
-              Upcoming Reminders
-            </h4>
-            {reminders.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground text-[12px]">
-                <div className="text-xl mb-1">🔕</div>
-                No active reminders
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {reminders.slice(0, 4).map((r, i) => (
-                  <motion.div
-                    key={r.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.06 }}
-                    whileHover={{ scale: 1.02, x: 3 }}
-                    className="flex items-center justify-between px-3 py-2 bg-surface/60 border border-border/60 rounded-lg"
-                  >
-                    <div>
-                      <div className="text-[13px] font-semibold">{r.label}</div>
-                      <div className="text-[11px] text-muted-foreground">{r.repeat}</div>
+            {/* Right — Widgets */}
+            <div className="flex flex-col gap-4">
+              {/* Today's Progress + Circular Momentum Gauge */}
+              <motion.div variants={scaleIn} custom={7} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-5">
+                <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Today's Progress</h4>
+                
+                {/* Circular Momentum Gauge */}
+                <MomentumGauge percentage={completionRate} />
+
+                {/* Next Up Hero Focus Action */}
+                {nextUpHabit ? (
+                  <div className="mt-3 p-2.5 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="text-xs">⚡</span>
+                      <div className="overflow-hidden">
+                        <div className="text-[10px] uppercase font-mono tracking-wider text-primary font-bold">Next Focus</div>
+                        <div className="text-xs font-semibold text-foreground truncate">{nextUpHabit.name}</div>
+                      </div>
                     </div>
-                    <span className="text-[12px] font-mono text-secondary font-semibold">{formatTime12(r.time)}</span>
-                  </motion.div>
-                ))}
-                {reminders.length > 4 && (
-                  <div className="text-[11px] text-muted-foreground text-center">+{reminders.length - 4} more</div>
+                    <button
+                      onClick={() => toggleCompletion(nextUpHabit.id)}
+                      className="bg-primary text-primary-foreground text-[11px] font-bold px-2.5 py-1 rounded-md hover:bg-primary/90 transition-all flex-shrink-0 cursor-pointer shadow-xs"
+                    >
+                      Done ✓
+                    </button>
+                  </div>
+                ) : dueToday.length > 0 ? (
+                  <div className="mt-3 p-2 text-center text-xs text-pps-green font-semibold bg-pps-green/10 border border-pps-green/20 rounded-lg">
+                    🏆 All due habits completed!
+                  </div>
+                ) : null}
+
+                <div className="mt-3 space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                  <AnimatePresence>
+                    {dueToday.map((h, i) => {
+                      const done = h.completedDates.includes(todayStr);
+                      return (
+                        <motion.div
+                          key={h.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          className="flex items-center justify-between text-[12px] py-1 border-b border-border/30 last:border-0"
+                        >
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <motion.span animate={done ? { scale: [1, 1.3, 1] } : {}} transition={{ duration: 0.3 }} className={done ? "text-pps-green" : "text-muted-foreground"}>
+                              {done ? "✅" : "⬜"}
+                            </motion.span>
+                            <span className={`truncate ${done ? "text-muted-foreground line-through" : "text-foreground/80"}`}>{h.name}</span>
+                          </div>
+                          {h.startTime && (
+                            <span className="text-[10px] font-mono text-muted-foreground">{formatTime12(h.startTime)}</span>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+
+              {/* Reminders Widget */}
+              <motion.div variants={scaleIn} custom={8} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-5">
+                <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2.5 flex items-center gap-1.5">
+                  <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 5 }}>🔔</motion.span>
+                  Upcoming Reminders
+                </h4>
+                {reminders.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground text-[12px]">
+                    <div className="text-xl mb-1">🔕</div>
+                    No active reminders
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {reminders.slice(0, 4).map((r, i) => (
+                      <motion.div
+                        key={r.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.06 }}
+                        whileHover={{ scale: 1.02, x: 3 }}
+                        className="flex items-center justify-between px-3 py-2 bg-surface/60 border border-border/60 rounded-lg"
+                      >
+                        <div>
+                          <div className="text-[13px] font-semibold">{r.label}</div>
+                          <div className="text-[11px] text-muted-foreground">{r.repeat}</div>
+                        </div>
+                        <span className="text-[12px] font-mono text-secondary font-semibold">{formatTime12(r.time)}</span>
+                      </motion.div>
+                    ))}
+                    {reminders.length > 4 && (
+                      <div className="text-[11px] text-muted-foreground text-center">+{reminders.length - 4} more</div>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
-          </motion.div>
+              </motion.div>
 
-          {/* Weekly Snapshot */}
-          <motion.div variants={scaleIn} custom={9} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-5">
-            <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2.5">Weekly Snapshot</h4>
-            <div className="flex items-end gap-2 h-[130px] mt-3">
-              {LABELS.map((label, i) => {
-                const h = Math.max(Math.round((counts[i] / maxCount) * 100), 4);
-                const isToday = i === 6;
-                return (
-                  <motion.div
-                    key={label}
-                    className="flex-1 flex flex-col items-center gap-1"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 + i * 0.07 }}
-                  >
-                    <div className="text-[10px] font-mono font-semibold text-foreground/70 mb-0.5">{counts[i]}</div>
-                    <motion.div
-                      className="w-full rounded-t"
-                      initial={{ height: 0 }}
-                      animate={{ height: `${h}%` }}
-                      transition={{ delay: 0.7 + i * 0.07, duration: 0.5, ease: "easeOut" }}
-                      whileHover={{ scaleX: 1.15 }}
-                      style={{
-                        background: isToday
-                          ? "linear-gradient(180deg, hsl(var(--secondary)), hsl(var(--secondary) / 0.6))"
-                          : "linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))",
-                        minHeight: "4px",
-                      }}
-                    />
-                    <div className={`text-[10px] font-mono ${isToday ? "text-secondary font-bold" : "text-muted-foreground"}`}>{label}</div>
-                  </motion.div>
-                );
-              })}
+              {/* Quick Daily Scratchpad Note Widget */}
+              <motion.div variants={scaleIn} custom={9} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-4">
+                <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 flex items-center justify-between">
+                  <span>📝 Daily Scratchpad</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">Auto-saved</span>
+                </h4>
+                <textarea
+                  value={dailyNote}
+                  onChange={(e) => handleDailyNoteChange(e.target.value)}
+                  placeholder="Log a quick thought, win, or note for today..."
+                  className="w-full bg-surface border border-border/80 rounded-lg p-2.5 text-xs outline-none focus:border-primary resize-none h-20 leading-relaxed font-sans"
+                />
+              </motion.div>
+
+              {/* 30-Day Activity Heatmap Grid */}
+              <motion.div variants={scaleIn} custom={10} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-5">
+                <div className="flex justify-between items-center mb-2.5">
+                  <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+                    <span>🔥</span> 30-Day Activity Grid
+                  </h4>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    {heatmapDays.filter(d => d.count > 0).length} active days
+                  </span>
+                </div>
+                <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5 mt-3">
+                  {heatmapDays.map((d, i) => {
+                    let bgClass = "bg-surface/50 border border-border/40 text-muted-foreground";
+                    if (d.count >= 4) bgClass = "bg-primary text-primary-foreground font-bold border border-primary/50 shadow-xs";
+                    else if (d.count >= 2) bgClass = "bg-primary/80 text-white border border-primary/40 font-semibold";
+                    else if (d.count >= 1) bgClass = "bg-primary/30 text-foreground border border-primary/30 font-medium";
+
+                    return (
+                      <motion.div
+                        key={d.dateStr}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.012 }}
+                        whileHover={{ scale: 1.15 }}
+                        title={`${d.dateStr}: ${d.count} completion${d.count !== 1 ? "s" : ""}`}
+                        className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] font-mono cursor-pointer transition-all ${bgClass} ${d.isToday ? "ring-2 ring-secondary" : ""}`}
+                      >
+                        <span>{d.dayNum}</span>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+
+              {/* Level Progress */}
+              <motion.div variants={scaleIn} custom={10} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-5">
+                <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2.5">Level Progress</h4>
+                <LevelWidget />
+              </motion.div>
+
+              {/* Latest Badge Goal */}
+              <motion.div variants={scaleIn} custom={11} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-xl flex-shrink-0">
+                  {maxStreak >= 7 ? "⚔️" : maxStreak >= 3 ? "🔥" : "🌱"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Active Milestone</div>
+                  <div className="text-[12.5px] font-bold text-foreground truncate">
+                    {maxStreak >= 7 ? "Week Warrior Goal" : maxStreak >= 3 ? "On a Roll (3-Day Streak)" : "First Step Goal"}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    {maxStreak >= 7 ? "Maintain streak to earn Master badge" : `${Math.max(0, 3 - maxStreak)} more days to 3-day badge`}
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
-
-          {/* Level Progress */}
-          <motion.div variants={scaleIn} custom={10} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-5">
-            <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2.5">Level Progress</h4>
-            <LevelWidget />
-          </motion.div>
-        </div>
-        </>
+          </>
         )}
       </div>
+
+      {/* Completion Celebration Overlay */}
+      <CelebrationOverlay
+        show={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        type="badge"
+        title="All Habits Done!"
+        subtitle="You crushed every single habit today. Keep this momentum going!"
+        icon="🎉"
+      />
     </div>
   );
 };
-
-
 
 export default DashboardSection;
