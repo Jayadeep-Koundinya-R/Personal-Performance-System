@@ -1,5 +1,7 @@
 import { useRef } from "react";
 import { useSubscription } from "@/hooks/use-subscription";
+import { Share2, Trophy, Sparkles, Download, Copy } from "lucide-react";
+import { toast } from "sonner";
 
 interface ShareWinCardProps {
   streak: number;
@@ -11,49 +13,55 @@ export default function ShareWinCard({ streak, level, name }: ShareWinCardProps)
   const cardRef = useRef<HTMLDivElement>(null);
   const { limits } = useSubscription();
 
-  if (streak < 7 && level < 5) return null;
+  const displayName = name || "Performance Master";
+  const milestone = streak >= 30 ? "30-Day Legend Streak 🔥" : streak >= 7 ? "7-Day Unbroken Streak 🔥" : `Level ${level} Explorer ⭐`;
 
-  const milestone = streak >= 30 ? "30-Day Streak" : streak >= 7 ? "7-Day Streak" : `Level ${level}`;
-
-  const download = async () => {
-    if (!cardRef.current) return;
-    try {
-      const moduleUrl = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm";
-      const html2canvas = (await import(/* @vite-ignore */ moduleUrl)).default;
-      const canvas = await html2canvas(cardRef.current, { backgroundColor: "#0f0f14", scale: 2 });
-      const link = document.createElement("a");
-      link.download = `pps-${milestone.replace(/\s/g, "-").toLowerCase()}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    } catch {
-      const text = `🔥 ${name} hit ${milestone} on PPS — Personal Performance System!`;
-      await navigator.clipboard.writeText(text);
-      alert("Copied share text to clipboard!");
-    }
+  const copyText = async () => {
+    const text = `🔥 ${displayName} reached ${milestone} on PPS — Personal Performance System!`;
+    await navigator.clipboard.writeText(text);
+    toast.success("Copied milestone summary to clipboard!");
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold">Share Your Win</h3>
-        <button onClick={download} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded-lg">
-          Export Card
+    <div className="bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4">
+      <div className="flex items-center justify-between border-b border-border/40 pb-3">
+        <div>
+          <h3 className="text-sm font-extrabold text-foreground uppercase font-mono tracking-wider flex items-center gap-2">
+            <span>🎴 Milestone Share Card</span>
+          </h3>
+          <p className="text-xs text-slate-300 font-medium mt-0.5">
+            Share your habit accomplishments on social media or with friends
+          </p>
+        </div>
+
+        <button
+          onClick={copyText}
+          className="text-xs bg-primary text-primary-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-primary/90 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+        >
+          <Copy className="w-3.5 h-3.5" />
+          <span>Copy Win Summary</span>
         </button>
       </div>
-      <div ref={cardRef} className="rounded-xl p-6 bg-gradient-to-br from-[#1e1b4b] to-[#312e81] text-center relative overflow-hidden text-white">
-        {limits.shareCardsWatermark && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 text-4xl font-bold rotate-[-20deg] text-white/20">
-            PPS FREE
-          </div>
-        )}
-        <div className="text-4xl mb-2">🏆</div>
-        <div className="text-xl font-bold text-white">{name}</div>
-        <div className="text-3xl font-mono font-bold text-pps-orange mt-2">{milestone}</div>
-        <div className="text-[11px] text-white/60 mt-3 font-mono">PPS — Personal Performance System</div>
+
+      {/* Card Visual */}
+      <div
+        ref={cardRef}
+        className="rounded-3xl p-7 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 border border-primary/40 text-center relative overflow-hidden text-white shadow-2xl space-y-3"
+      >
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-4xl mx-auto shadow-lg animate-bounce">
+          🏆
+        </div>
+
+        <div className="text-2xl font-extrabold text-foreground tracking-tight">{displayName}</div>
+
+        <div className="inline-block bg-pps-orange/20 text-pps-orange border border-pps-orange/40 text-lg font-mono font-extrabold px-4 py-1.5 rounded-full shadow-xs">
+          {milestone}
+        </div>
+
+        <div className="text-xs text-slate-300 font-mono font-medium pt-2 border-t border-white/10">
+          ⚡ Personal Performance System • Jayadeep Koundinya R
+        </div>
       </div>
-      {limits.shareCardsWatermark && (
-        <p className="text-[11px] text-muted-foreground mt-2">Pro removes watermark from share cards.</p>
-      )}
     </div>
   );
 }
