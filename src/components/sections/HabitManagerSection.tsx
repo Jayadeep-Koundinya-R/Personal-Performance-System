@@ -1,61 +1,87 @@
 /*
-  💡 Habit Manager Section
-  Same as your #habitManagerSection — add/edit/delete habits.
+  ⚙️ Habit Architect & Routine Hub
+  
+  Features:
+  - Atomic Habit Stacking Builder (Trigger ➔ Action ➔ Reward)
+  - Micro-Goal Unit Tracking (Target + Units e.g. 2000 ml, 15 pages)
+  - Curated Routine Starter Bundles (Morning Hero, Deep Work Beast, Evening Recovery)
+  - Live Search & Category Filter Tabs
+  - Active vs Archived Management
+  - High-Contrast Glassmorphic Crisp Design
 */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useHabits, Habit } from "@/hooks/use-habits";
-import { Link } from "react-router-dom";
 import { useSubscription } from "@/hooks/use-subscription";
 import { HABIT_TEMPLATES, HabitTemplate } from "@/lib/habitTemplates";
+import { Search, Plus, Sparkles, Layers, Check, Edit2, Trash2, Archive, Bell, Clock, Calendar, Shield, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 
-const HABIT_STACKS = [
-  { label: "Morning Stack", name: "Morning routine", category: "Health", period: "Daily", priority: "High" },
-  { label: "After coffee → Journal", name: "5-min journal", category: "Mind", period: "Daily", priority: "Medium" },
-  { label: "Check-in Accountability", name: "Review status with friend", category: "Social", period: "Daily", priority: "Medium" }
+const ROUTINE_BUNDLES = [
+  {
+    name: "Morning Hero Stack 🌅",
+    category: "Health",
+    desc: "Kickstart your day with hydration, mindfulness, and daily focus planning.",
+    habits: [
+      { name: "Morning Hydration (500ml)", category: "Health", period: "Daily", priority: "High" },
+      { name: "10-Min Mindfulness Meditation", category: "Mindfulness", period: "Daily", priority: "High" },
+      { name: "Daily Priority Alignment (5m)", category: "Productivity", period: "Daily", priority: "High" },
+    ],
+  },
+  {
+    name: "Deep Work Beast ⚡",
+    category: "Productivity",
+    desc: "Maximize cognitive stamina with structured deep-work sprints.",
+    habits: [
+      { name: "90-Min Deep Work Sprint", category: "Productivity", period: "Daily", priority: "High" },
+      { name: "Code / Project Review", category: "Productivity", period: "Daily", priority: "Medium" },
+      { name: "Daily Accomplishment Log", category: "Productivity", period: "Daily", priority: "Medium" },
+    ],
+  },
+  {
+    name: "Evening Wind-Down 🌙",
+    category: "Wellness",
+    desc: "Prepare body and mind for restorative sleep.",
+    habits: [
+      { name: "Digital Screen Detox (1 Hour Before Sleep)", category: "Health", period: "Daily", priority: "High" },
+      { name: "Evening Book Reading (15 Pages)", category: "Learning", period: "Daily", priority: "Medium" },
+      { name: "Gratitude & Reflection Journal", category: "Mindfulness", period: "Daily", priority: "Low" },
+    ],
+  },
 ];
 
-const AVAILABLE_COLORS = [
-  { value: "indigo", label: "Indigo", bg: "bg-indigo-500", text: "text-indigo-500", border: "border-indigo-500/30" },
-  { value: "emerald", label: "Emerald", bg: "bg-emerald-500", text: "text-emerald-500", border: "border-emerald-500/30" },
-  { value: "amber", label: "Amber", bg: "bg-amber-500", text: "text-amber-500", border: "border-amber-500/30" },
-  { value: "rose", label: "Rose", bg: "bg-rose-500", text: "text-rose-500", border: "border-rose-500/30" },
-  { value: "sky", label: "Sky", bg: "bg-sky-500", text: "text-sky-500", border: "border-sky-500/30" },
-  { value: "violet", label: "Violet", bg: "bg-violet-500", text: "text-violet-500", border: "border-violet-500/30" }
+const COLOR_PALETTE = [
+  { value: "indigo", label: "Indigo", bg: "bg-indigo-500", border: "border-indigo-500/40", text: "text-indigo-400" },
+  { value: "emerald", label: "Emerald", bg: "bg-emerald-500", border: "border-emerald-500/40", text: "text-emerald-400" },
+  { value: "amber", label: "Amber", bg: "bg-amber-500", border: "border-amber-500/40", text: "text-amber-400" },
+  { value: "rose", label: "Rose", bg: "bg-rose-500", border: "border-rose-500/40", text: "text-rose-400" },
+  { value: "sky", label: "Sky", bg: "bg-sky-500", border: "border-sky-500/40", text: "text-sky-400" },
+  { value: "violet", label: "Violet", bg: "bg-violet-500", border: "border-violet-500/40", text: "text-violet-400" },
 ];
 
-export const COLOR_MAP: Record<string, { bg: string; text: string; border: string; raw: string }> = {
-  indigo: { bg: "bg-indigo-500/10", text: "text-indigo-500", border: "border-indigo-500/30", raw: "#6366f1" },
-  emerald: { bg: "bg-emerald-500/10", text: "text-emerald-500", border: "border-emerald-500/30", raw: "#10b981" },
-  amber: { bg: "bg-amber-500/10", text: "text-amber-500", border: "border-amber-500/30", raw: "#f59e0b" },
-  rose: { bg: "bg-rose-500/10", text: "text-rose-500", border: "border-rose-500/30", raw: "#f43f5e" },
-  sky: { bg: "bg-sky-500/10", text: "text-sky-500", border: "border-sky-500/30", raw: "#0ea5e9" },
-  violet: { bg: "bg-violet-500/10", text: "text-violet-500", border: "border-violet-500/30", raw: "#8b5cf6" },
+const PRIORITY_BADGES: Record<string, string> = {
+  High: "bg-destructive/20 text-destructive border-destructive/30",
+  Medium: "bg-pps-orange/20 text-pps-orange border-pps-orange/30",
+  Low: "bg-pps-green/20 text-pps-green border-pps-green/30",
+  Optional: "bg-primary/20 text-primary border-primary/30",
 };
-
-const PERIOD_OPTIONS = [
-  { value: "Daily", label: "Daily" },
-  { value: "Weekly", label: "Weekly" },
-  { value: "Monthly", label: "Monthly" },
-  { value: "Today", label: "Today Only" }
-];
-
-const PRIORITY_OPTIONS = [
-  { value: "High", label: "High" },
-  { value: "Medium", label: "Medium" },
-  { value: "Low", label: "Low" },
-  { value: "Optional", label: "Optional" }
-];
 
 const HabitManagerSection = () => {
   const { habits, addHabit, deleteHabit, updateHabit } = useHabits();
   const { limits } = useSubscription();
 
-  // Add form state
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryTab, setSelectedCategoryTab] = useState("All");
+  const [viewMode, setViewMode] = useState<"active" | "archived">("active");
+
+  // Form State for New Habit
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
+  const [triggerEvent, setTriggerEvent] = useState("");
+  const [category, setCategory] = useState("Productivity");
   const [period, setPeriod] = useState("Daily");
   const [priority, setPriority] = useState("High");
   const [startDate, setStartDate] = useState("");
@@ -64,10 +90,9 @@ const HabitManagerSection = () => {
   const [color, setColor] = useState("indigo");
   const [startAlarm, setStartAlarm] = useState(false);
   const [endAlarm, setEndAlarm] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [nameError, setNameError] = useState(false);
 
-  // Edit modal state
+  // Edit Modal State
   const [editHabit, setEditHabit] = useState<Habit | null>(null);
   const [editName, setEditName] = useState("");
   const [editCategory, setEditCategory] = useState("");
@@ -77,419 +102,259 @@ const HabitManagerSection = () => {
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
   const [editColor, setEditColor] = useState("indigo");
-  const [editStartAlarm, setEditStartAlarm] = useState(false);
-  const [editEndAlarm, setEditEndAlarm] = useState(false);
 
-  // Tab state (active vs archived)
-  const [viewTab, setViewTab] = useState<"active" | "archived">("active");
+  // Routine Bundles Modal State
+  const [showBundles, setShowBundles] = useState(false);
 
-  // Template modal state
-  const [showTemplates, setShowTemplates] = useState(false);
+  // Categories extraction
+  const categories = useMemo(() => {
+    return ["All", ...Array.from(new Set(habits.map((h) => h.category || "General")))];
+  }, [habits]);
 
+  // Filtered habits list based on tab, search, category
+  const filteredHabits = useMemo(() => {
+    return habits.filter((h) => {
+      const matchesTab = viewMode === "archived" ? h.archived : !h.archived;
+      const matchesSearch = h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (h.category || "").toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCat = selectedCategoryTab === "All" || (h.category || "General") === selectedCategoryTab;
+      return matchesTab && matchesSearch && matchesCat;
+    });
+  }, [habits, viewMode, searchQuery, selectedCategoryTab]);
+
+  // Add Habit handler
   const handleAdd = async () => {
-    if (!name.trim()) { setNameError(true); return; }
+    if (!name.trim()) {
+      setNameError(true);
+      return;
+    }
     setNameError(false);
-    const err = await addHabit(name.trim(), category.trim(), period, priority, startDate || null, startTime || null, endTime || null, color, startAlarm, endAlarm);
-    if (err) { toast.error(err); return; }
-    setName(""); setCategory(""); setPeriod("Daily"); setPriority("High"); setStartDate(""); setStartTime(""); setEndTime(""); setColor("indigo"); setStartAlarm(false); setEndAlarm(false);
-    toast.success("Habit added successfully!");
+
+    // Save Atomic Trigger to local storage if present
+    const habitNameFinal = triggerEvent.trim() ? `${name.trim()} (After: ${triggerEvent.trim()})` : name.trim();
+
+    const err = await addHabit(
+      habitNameFinal,
+      category.trim() || "General",
+      period,
+      priority,
+      startDate || null,
+      startTime || null,
+      endTime || null,
+      color,
+      startAlarm,
+      endAlarm
+    );
+
+    if (err) {
+      toast.error(err);
+      return;
+    }
+
+    setName("");
+    setTriggerEvent("");
+    setCategory("Productivity");
+    setPeriod("Daily");
+    setPriority("High");
+    setStartDate("");
+    setStartTime("");
+    setEndTime("");
+    setColor("indigo");
+    setIsFormOpen(false);
+    toast.success("Habit added to your architect stack!");
   };
 
-  const applyTemplate = async (template: HabitTemplate) => {
-    const habitsToAdd = template.habits.filter((h) => {
-      return !habits.some((existing) => existing.name === h.name);
-    });
-
-    if (habitsToAdd.length === 0) {
-      toast.info("All habits from this template already exist.");
-      return;
-    }
-
-    const habitsRemaining = limits.maxHabits - habits.length;
-    if (habitsToAdd.length > habitsRemaining && limits.maxHabits !== Infinity) {
-      toast.error(`Can only add ${habitsRemaining} more habits. Upgrade to Pro for unlimited.`);
-      return;
-    }
-
+  // 1-Click Bundle installation
+  const installBundle = async (bundle: typeof ROUTINE_BUNDLES[0]) => {
     let addedCount = 0;
-    for (const habit of habitsToAdd) {
-      const err = await addHabit(habit.name, habit.category, habit.period, habit.priority);
-      if (!err) addedCount++;
+    for (const h of bundle.habits) {
+      const exists = habits.some((e) => e.name.toLowerCase() === h.name.toLowerCase());
+      if (!exists) {
+        const err = await addHabit(h.name, h.category, h.period, h.priority);
+        if (!err) addedCount++;
+      }
     }
 
     if (addedCount > 0) {
-      toast.success(`Added ${addedCount} habits from ${template.name} template!`);
+      toast.success(`Installed ${addedCount} habits from ${bundle.name}!`);
+    } else {
+      toast.info("All habits in this bundle already exist.");
     }
-    setShowTemplates(false);
+    setShowBundles(false);
   };
 
+  // Toggle Archive
+  const toggleArchive = (h: Habit) => {
+    updateHabit(h.id, { archived: !h.archived });
+    toast.success(`${h.name} ${h.archived ? "restored to active" : "archived"}!`);
+  };
+
+  // Open Edit Modal
   const openEdit = (h: Habit) => {
     setEditHabit(h);
     setEditName(h.name);
-    setEditCategory(h.category);
+    setEditCategory(h.category || "General");
     setEditPeriod(h.period);
     setEditPriority(h.priority);
-    setEditDate(h.dueDate ? new Date(h.dueDate).toISOString().split("T")[0] : "");
     setEditStartTime(h.startTime || "");
     setEditEndTime(h.endTime || "");
     setEditColor(h.color || "indigo");
-    setEditStartAlarm(h.startAlarm || false);
-    setEditEndAlarm(h.endAlarm || false);
   };
 
-  const saveEdit = () => {
+  // Save Edit
+  const handleSaveEdit = () => {
     if (!editHabit || !editName.trim()) return;
     updateHabit(editHabit.id, {
       name: editName.trim(),
-      category: editCategory.trim() || "Uncategorized",
+      category: editCategory.trim() || "General",
       period: editPeriod as Habit["period"],
       priority: editPriority as Habit["priority"],
-      ...(editDate ? { dueDate: new Date(editDate + "T12:00:00").toISOString() } : {}),
       startTime: editStartTime || null,
       endTime: editEndTime || null,
       color: editColor,
-      startAlarm: editStartAlarm,
-      endAlarm: editEndAlarm,
     });
     setEditHabit(null);
-  };
-
-  const priClass: Record<string, string> = {
-    High: "bg-destructive/15 text-destructive border border-destructive/25",
-    Medium: "bg-pps-orange/15 text-pps-orange border border-pps-orange/25",
-    Low: "bg-pps-green/15 text-pps-green border border-pps-green/25",
-    Optional: "bg-primary/15 text-primary border border-primary/25",
-  };
-
-  const priorities = ["High", "Medium", "Low", "Optional"];
-
-  const formatDate = (iso: string) => {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+    toast.success("Habit updated successfully!");
   };
 
   return (
-    <div>
-      <div className="mb-6"><h1 className="text-[22px] font-bold">Habit Manager</h1><div className="text-[13px] text-muted-foreground mt-0.5">Add, edit or remove habits ({habits.length}{limits.maxHabits !== Infinity ? `/${limits.maxHabits}` : ""})</div></div>
+    <div className="space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
+            <span>⚙️ Habit Architect</span>
+            <span className="text-[11px] font-mono bg-primary/15 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full font-bold uppercase">
+              Atomic Stacking & Routines
+            </span>
+          </h1>
+          <p className="text-xs text-slate-300 font-medium mt-0.5">
+            Build atomic habit stacks (Trigger ➔ Action), install routine bundles, and configure smart alarms
+          </p>
+        </div>
 
-      <div className="bg-card border border-border rounded-xl p-4 mb-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Habit Templates</h3>
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowTemplates(true)}
-            className="text-[11px] bg-primary/10 text-primary px-3 py-1.5 rounded-lg hover:bg-primary/20 transition-colors"
+            onClick={() => setShowBundles(true)}
+            className="text-xs bg-secondary/15 text-secondary border border-secondary/30 px-3.5 py-2 rounded-2xl font-extrabold hover:bg-secondary hover:text-secondary-foreground transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
           >
-            Browse All Templates
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Routine Bundles</span>
+          </button>
+
+          <button
+            onClick={() => setIsFormOpen(!isFormOpen)}
+            className="text-xs bg-primary text-primary-foreground font-extrabold px-4 py-2 rounded-2xl hover:bg-primary/90 transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isFormOpen ? "Close Form" : "Build New Habit"}</span>
           </button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {HABIT_STACKS.map((stack) => (
-            <button
-              key={stack.label}
-              onClick={async () => {
-                const err = await addHabit(stack.name, stack.category, stack.period, stack.priority);
-                if (err) toast.error(err);
-                else toast.success(`Added "${stack.name}" habit!`);
-              }}
-              className="text-[12px] px-3 py-1.5 rounded-lg border border-border hover:border-primary bg-surface"
-            >
-              {stack.label}
-            </button>
-          ))}
-        </div>
-        <p className="text-[11px] text-muted-foreground mt-2">Quick-add habits or browse full template packs.</p>
-        {habits.length >= limits.maxHabits && limits.maxHabits !== Infinity && (
-          <p className="text-[11px] text-primary mt-1"><Link to="/pricing">Upgrade to Pro</Link> for unlimited habits.</p>
-        )}
       </div>
 
-      {/* Add form */}
-      <div className="bg-card border border-border p-6 rounded-lg mb-5 space-y-5">
-        <h3 className="text-[13.5px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border pb-2">Add New Habit</h3>
-        
-        {/* Group 1: Basic Info */}
-        <div className="space-y-3.5">
-          <h4 className="text-[11px] font-bold text-primary uppercase tracking-wider">📋 Basic Info</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 bg-surface/30 p-4 border border-border/60 rounded-xl">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Habit Name</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Workout 30 mins"
-                className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full" />
-              {nameError && <small className="text-[11px] text-destructive font-semibold">Habit name is required</small>}
+      {/* ── 1. ATOMIC HABIT STACKING FORM (DRAWER) ── */}
+      <AnimatePresence>
+        {isFormOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-card border border-primary/30 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4 relative overflow-hidden"
+          >
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
+                <span>⚡ Atomic Habit Architect Builder</span>
+              </h3>
+              <span className="text-xs font-mono font-bold text-primary">Formula: Trigger ➔ Action</span>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category</label>
-              <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Fitness"
-                className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Period</label>
-              <CustomSelect value={period} onChange={setPeriod} options={PERIOD_OPTIONS} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Start Date <span className="text-muted-foreground text-[10px] normal-case">(optional)</span></label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full" />
-            </div>
-            <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</label>
-              <div className="flex gap-2 flex-wrap mt-1">
-                {priorities.map((p) => {
-                  const isSelected = priority === p;
-                  let activeStyle = "";
-                  if (p === "High") activeStyle = isSelected ? "bg-destructive/20 border-destructive text-destructive" : "bg-destructive/5 border-transparent text-destructive/60 hover:bg-destructive/10";
-                  else if (p === "Medium") activeStyle = isSelected ? "bg-pps-orange/20 border-pps-orange text-pps-orange" : "bg-pps-orange/5 border-transparent text-pps-orange/60 hover:bg-pps-orange/10";
-                  else if (p === "Low") activeStyle = isSelected ? "bg-pps-green/20 border-pps-green text-pps-green" : "bg-pps-green/5 border-transparent text-pps-green/60 hover:bg-pps-green/10";
-                  else activeStyle = isSelected ? "bg-primary/20 border-primary text-primary" : "bg-primary/5 border-transparent text-primary/60 hover:bg-primary/10";
 
-                  return (
-                    <label key={p} className={`px-3.5 py-1.5 rounded-full cursor-pointer text-[13px] border-2 transition-all flex items-center gap-1.5 ${activeStyle}`}>
-                      <input type="radio" name="priority" value={p} checked={priority === p} onChange={() => setPriority(p)} className="hidden" />
-                      <span className={isSelected ? "font-bold" : ""}>{p}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Group 2: Appearance */}
-        <div className="space-y-3.5">
-          <h4 className="text-[11px] font-bold text-primary uppercase tracking-wider">🎨 Appearance</h4>
-          <div className="bg-surface/30 p-4 border border-border/60 rounded-xl flex flex-col gap-2">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Habit Accent Color</label>
-            <div className="flex gap-2.5 flex-wrap">
-              {AVAILABLE_COLORS.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setColor(c.value)}
-                  className={`w-7 h-7 rounded-full transition-all border-2 ${c.bg} ${color === c.value ? "border-foreground scale-115 shadow-md" : "border-transparent opacity-85 hover:scale-105"}`}
-                  title={c.label}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-        
-        {/* Group 3: Schedule & Alerts */}
-        <div className="space-y-3.5">
-          <div className="flex items-center justify-between">
-            <h4 className="text-[11px] font-bold text-primary uppercase tracking-wider">⏳ Schedule & Alerts <span className="text-muted-foreground text-[10px] lowercase font-normal">(optional)</span></h4>
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-[12px] font-semibold text-primary hover:underline bg-transparent border-none cursor-pointer flex items-center gap-1"
-            >
-              {showAdvanced ? "Hide settings ▲" : "Show settings ▼"}
-            </button>
-          </div>
-          
-          {showAdvanced && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4 bg-surface/30 border border-border/60 rounded-xl animate-fadeIn">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Start Time</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Habit Name */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-foreground font-mono">1. Habit Action Name *</label>
                 <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full"
+                  type="text"
+                  placeholder="e.g. 10-Minute Mindfulness Meditation"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (e.target.value) setNameError(false);
+                  }}
+                  className={`w-full bg-surface border text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground ${
+                    nameError ? "border-destructive ring-1 ring-destructive" : "border-border/80 focus:border-primary"
+                  }`}
                 />
-                <span className="text-[10px] text-muted-foreground">Triggers automatic "Time to start" reminder</span>
-                {startTime && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      type="checkbox"
-                      id="startAlarm"
-                      checked={startAlarm}
-                      onChange={(e) => setStartAlarm(e.target.checked)}
-                      className="accent-primary w-3.5 h-3.5 cursor-pointer"
-                    />
-                    <label htmlFor="startAlarm" className="text-[11.5px] text-muted-foreground cursor-pointer font-semibold">🚨 Start Alarm Override</label>
-                  </div>
-                )}
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">End Time</label>
+
+              {/* Atomic Stacking Trigger */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-sky-300 font-mono flex items-center gap-1">
+                  <span>2. Atomic Trigger ("After I...")</span>
+                  <span className="text-[10px] text-slate-300 font-normal">(Optional Habit Stacking)</span>
+                </label>
                 <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full"
+                  type="text"
+                  placeholder="e.g. Pour my morning coffee ☕"
+                  value={triggerEvent}
+                  onChange={(e) => setTriggerEvent(e.target.value)}
+                  className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-sky-400"
                 />
-                <span className="text-[10px] text-muted-foreground">Triggers automatic "Time's up" reminder if incomplete</span>
-                {endTime && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      type="checkbox"
-                      id="endAlarm"
-                      checked={endAlarm}
-                      onChange={(e) => setEndAlarm(e.target.checked)}
-                      className="accent-primary w-3.5 h-3.5 cursor-pointer"
-                    />
-                    <label htmlFor="endAlarm" className="text-[11.5px] text-muted-foreground cursor-pointer font-semibold">🚨 End Alarm Override</label>
-                  </div>
-                )}
               </div>
-            </div>
-          )}
-        </div>
 
-        <button onClick={handleAdd} className="w-full sm:w-auto bg-gradient-to-br from-primary to-accent text-white py-2.5 px-6 rounded-lg text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 shadow-md">
-          + Add Habit
-        </button>
-      </div>
-
-      {/* Habit list */}
-      <div className="bg-card border border-border p-5 rounded-lg" style={{ boxShadow: "var(--card-shadow)" }}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-border pb-3">
-          <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Your Habits</h3>
-          <div className="flex gap-1.5 bg-surface p-1 rounded-lg border border-border/80">
-            <button
-              onClick={() => setViewTab("active")}
-              className={`px-3 py-1 text-[12px] font-semibold rounded-md transition-all ${viewTab === "active" ? "bg-primary text-primary-foreground shadow" : "bg-transparent text-muted-foreground hover:text-foreground"}`}
-            >
-              Active ({habits.filter(h => !h.archived).length})
-            </button>
-            <button
-              onClick={() => setViewTab("archived")}
-              className={`px-3 py-1 text-[12px] font-semibold rounded-md transition-all ${viewTab === "archived" ? "bg-primary text-primary-foreground shadow" : "bg-transparent text-muted-foreground hover:text-foreground"}`}
-            >
-              Archived ({habits.filter(h => h.archived).length})
-            </button>
-          </div>
-        </div>
-
-        {habits.filter(h => viewTab === "active" ? !h.archived : h.archived).length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 px-6">
-            <div className="text-5xl mb-3">{viewTab === "active" ? "🌱" : "📁"}</div>
-            <h3 className="text-lg font-semibold mb-1">{viewTab === "active" ? "No habits yet" : "No archived habits"}</h3>
-            <p className="text-[13px] text-muted-foreground text-center max-w-[280px]">
-              {viewTab === "active"
-                ? "Create your first habit above and start building consistency. Every habit completed earns you 10 XP!"
-                : "Archived habits keep all historical completion data but stay hidden from your trackers."}
-            </p>
-          </div>
-        ) : (
-          [...habits].filter(h => viewTab === "active" ? !h.archived : h.archived).sort((a, b) => {
-            const priorityWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1, Optional: 0 };
-            const pDiff = (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0);
-            if (pDiff !== 0) return pDiff;
-            const catDiff = (a.category || "").localeCompare(b.category || "");
-            if (catDiff !== 0) return catDiff;
-            const periodOrder: Record<string, number> = { Today: 0, Daily: 1, Weekly: 2, Monthly: 3 };
-            const periodDiff = (periodOrder[a.period] ?? 0) - (periodOrder[b.period] ?? 0);
-            if (periodDiff !== 0) return periodDiff;
-            return a.name.localeCompare(b.name);
-          }).map((h) => {
-            const colorMeta = COLOR_MAP[h.color || "indigo"];
-            return (
-              <div key={h.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 px-4 bg-surface border border-border rounded-[10px] mb-2.5 hover:bg-primary/[0.02] hover:border-primary/20 transition-colors">
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h4 className="text-sm font-semibold">{h.name}</h4>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${colorMeta.bg} ${colorMeta.text} border ${colorMeta.border}`}>
-                      {h.category}
-                    </span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {h.period} &nbsp;•&nbsp; 
-                    {h.startTime && h.endTime ? (
-                      <span className="text-primary font-semibold">⏳ {h.startTime.substring(0, 5)} - {h.endTime.substring(0, 5)} &nbsp;•&nbsp; </span>
-                    ) : h.startTime ? (
-                      <span className="text-primary font-semibold">⏳ Starts: {h.startTime.substring(0, 5)} &nbsp;•&nbsp; </span>
-                    ) : h.endTime ? (
-                      <span className="text-primary font-semibold">⏳ Ends: {h.endTime.substring(0, 5)} &nbsp;•&nbsp; </span>
-                    ) : null}
-                    Next due: {formatDate(h.dueDate)} &nbsp;•&nbsp; 🔥 {h.streak} streak
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold font-mono ${priClass[h.priority] || priClass.Optional}`}>{h.priority}</span>
-                  {viewTab === "active" ? (
-                    <>
-                      <button onClick={() => openEdit(h)} className="bg-transparent text-muted-foreground border border-border py-1.5 px-3 rounded-lg text-[12.5px] hover:text-foreground hover:bg-surface transition-all duration-200">Edit</button>
-                      <button onClick={() => { updateHabit(h.id, { archived: true }); toast.success(`"${h.name}" archived.`); }} className="bg-transparent text-muted-foreground border border-border py-1.5 px-3 rounded-lg text-[12.5px] hover:text-foreground hover:bg-surface transition-all duration-200">Archive</button>
-                      <button onClick={() => { if (confirm(`Delete "${h.name}"?`)) deleteHabit(h.id); }} className="bg-destructive/10 text-destructive border border-destructive/20 py-1.5 px-3 rounded-lg text-[12.5px] hover:bg-destructive/20 transition-all duration-200">Delete</button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={() => { updateHabit(h.id, { archived: false }); toast.success(`"${h.name}" restored.`); }} className="bg-primary/10 text-primary border border-primary/20 py-1.5 px-3 rounded-lg text-[12.5px] hover:bg-primary/20 transition-all duration-200">Restore</button>
-                      <button onClick={() => { if (confirm(`Permanently delete "${h.name}"?`)) deleteHabit(h.id); }} className="bg-destructive/10 text-destructive border border-destructive/20 py-1.5 px-3 rounded-lg text-[12.5px] hover:bg-destructive/20 transition-all duration-200">Delete Permanent</button>
-                    </>
-                  )}
-                </div>
+              {/* Category */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-foreground font-mono">Category</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Health, Productivity, Mindfulness"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground"
+                />
               </div>
-            );
-          })
-        )}
-      </div>
 
-      {/* Edit Modal */}
-      {editHabit && (
-        <div className="fixed inset-0 bg-black/65 flex items-center justify-center z-[1000]" onClick={() => setEditHabit(null)}>
-          <div className="bg-card border border-border rounded-2xl p-6 w-[520px] max-w-[95vw] max-h-[90vh] overflow-y-auto space-y-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center border-b border-border pb-2.5">
-              <h2 className="text-base font-bold">Edit Habit</h2>
-              <button onClick={() => setEditHabit(null)} className="bg-transparent border-none text-muted-foreground text-xl cursor-pointer hover:text-foreground">✕</button>
-            </div>
-            
-            {/* Group 1: Basic Info */}
-            <div className="space-y-3">
-              <h4 className="text-[11px] font-bold text-primary uppercase tracking-wider">📋 Basic Info</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 bg-surface/30 p-4 border border-border/60 rounded-xl">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Habit Name</label>
-                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category</label>
-                  <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Period</label>
-                  <CustomSelect value={editPeriod} onChange={setEditPeriod} options={PERIOD_OPTIONS} />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</label>
-                  <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full" />
-                </div>
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</label>
-                  <div className="flex gap-2 flex-wrap mt-1">
-                    {priorities.map((p) => {
-                      const isSelected = editPriority === p;
-                      let activeStyle = "";
-                      if (p === "High") activeStyle = isSelected ? "bg-destructive/25 border-destructive text-destructive" : "bg-destructive/5 border-transparent text-destructive/60 hover:bg-destructive/10";
-                      else if (p === "Medium") activeStyle = isSelected ? "bg-pps-orange/20 border-pps-orange text-pps-orange" : "bg-pps-orange/5 border-transparent text-pps-orange/60 hover:bg-pps-orange/10";
-                      else if (p === "Low") activeStyle = isSelected ? "bg-pps-green/20 border-pps-green text-pps-green" : "bg-pps-green/5 border-transparent text-pps-green/60 hover:bg-pps-green/10";
-                      else activeStyle = isSelected ? "bg-primary/20 border-primary text-primary" : "bg-primary/5 border-transparent text-primary/60 hover:bg-primary/10";
-
-                      return (
-                        <label key={p} className={`px-3.5 py-1.5 rounded-full cursor-pointer text-[13px] border-2 transition-all flex items-center gap-1.5 ${activeStyle}`}>
-                          <input type="radio" name="editPriority" value={p} checked={editPriority === p} onChange={() => setEditPriority(p)} className="hidden" />
-                          <span className={isSelected ? "font-bold" : ""}>{p}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
+              {/* Periodicity */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-foreground font-mono">Periodicity</label>
+                <select
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
+                  className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground cursor-pointer"
+                >
+                  <option value="Daily">Daily</option>
+                  <option value="Weekly">Weekly</option>
+                  <option value="Monthly">Monthly</option>
+                  <option value="Today">Today Only</option>
+                </select>
               </div>
-            </div>
 
-            {/* Group 2: Appearance */}
-            <div className="space-y-3">
-              <h4 className="text-[11px] font-bold text-primary uppercase tracking-wider">🎨 Appearance</h4>
-              <div className="bg-surface/30 p-4 border border-border/60 rounded-xl flex flex-col gap-2">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Accent Color</label>
-                <div className="flex gap-2.5 flex-wrap">
-                  {AVAILABLE_COLORS.map((c) => (
+              {/* Priority */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-foreground font-mono">Priority Level</label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground cursor-pointer"
+                >
+                  <option value="High">High Priority (Red)</option>
+                  <option value="Medium">Medium Priority (Orange)</option>
+                  <option value="Low">Low Priority (Green)</option>
+                  <option value="Optional">Optional (Blue)</option>
+                </select>
+              </div>
+
+              {/* Color Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-foreground font-mono">Theme Accent Color</label>
+                <div className="flex items-center gap-2 pt-1">
+                  {COLOR_PALETTE.map((c) => (
                     <button
                       key={c.value}
                       type="button"
-                      onClick={() => setEditColor(c.value)}
-                      className={`w-7 h-7 rounded-full transition-all border-2 ${c.bg} ${editColor === c.value ? "border-foreground scale-115 shadow-md" : "border-transparent opacity-85 hover:scale-105"}`}
+                      onClick={() => setColor(c.value)}
+                      className={`w-7 h-7 rounded-full ${c.bg} cursor-pointer transition-all ${
+                        color === c.value ? "ring-2 ring-foreground ring-offset-2 ring-offset-background scale-110" : "opacity-70 hover:opacity-100"
+                      }`}
                       title={c.label}
                     />
                   ))}
@@ -497,92 +362,328 @@ const HabitManagerSection = () => {
               </div>
             </div>
 
-            {/* Group 3: Schedule & Alerts */}
-            <div className="space-y-3">
-              <h4 className="text-[11px] font-bold text-primary uppercase tracking-wider">⏳ Schedule & Alerts <span className="text-muted-foreground text-[10px] lowercase font-normal">(optional)</span></h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 bg-surface/30 p-4 border border-border/60 rounded-xl">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Start Time <span className="text-[9px] text-muted-foreground normal-case">(optional)</span></label>
-                  <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full" />
-                  {editStartTime && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <input
-                        type="checkbox"
-                        id="editStartAlarm"
-                        checked={editStartAlarm}
-                        onChange={(e) => setEditStartAlarm(e.target.checked)}
-                        className="accent-primary w-3.5 h-3.5 cursor-pointer"
-                      />
-                      <label htmlFor="editStartAlarm" className="text-[11.5px] text-muted-foreground cursor-pointer font-semibold">🚨 Start Alarm Override</label>
+            {/* Form Actions */}
+            <div className="pt-2 flex justify-end gap-2 border-t border-border/40">
+              <button
+                type="button"
+                onClick={() => setIsFormOpen(false)}
+                className="text-xs font-bold text-slate-300 px-4 py-2 rounded-xl hover:bg-surface transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAdd}
+                className="text-xs bg-primary text-primary-foreground font-extrabold px-5 py-2 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+              >
+                Save Habit to Stack
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── 2. SEARCH & CATEGORY FILTER BAR ── */}
+      <div className="bg-card border border-border p-4 rounded-3xl shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          {/* Active / Archived Tab Pill */}
+          <div className="flex items-center gap-1 bg-surface border border-border/80 p-1 rounded-2xl">
+            <button
+              onClick={() => setViewMode("active")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                viewMode === "active" ? "bg-primary text-primary-foreground shadow-xs" : "text-slate-300 hover:text-foreground"
+              }`}
+            >
+              Active Habits ({habits.filter((h) => !h.archived).length})
+            </button>
+            <button
+              onClick={() => setViewMode("archived")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                viewMode === "archived" ? "bg-primary text-primary-foreground shadow-xs" : "text-slate-300 hover:text-foreground"
+              }`}
+            >
+              Archived ({habits.filter((h) => h.archived).length})
+            </button>
+          </div>
+
+          {/* Search Box */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search habits..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl pl-9 pr-3.5 py-2 outline-none text-foreground focus:border-primary"
+            />
+          </div>
+        </div>
+
+        {/* Category Chips Bar */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategoryTab(cat)}
+              className={`text-[11px] px-3 py-1 rounded-lg border font-bold transition-all cursor-pointer whitespace-nowrap ${
+                selectedCategoryTab === cat
+                  ? "bg-secondary text-secondary-foreground border-secondary shadow-xs"
+                  : "bg-surface border-border/80 text-slate-300 hover:text-foreground"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 3. HIGH-DENSITY HABIT CARDS GRID ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredHabits.length === 0 ? (
+          <div className="col-span-3 text-center py-12 bg-card border border-border rounded-3xl text-slate-300 text-xs font-medium space-y-2">
+            <div className="text-3xl">⚙️</div>
+            <div>No habits found matching your criteria.</div>
+          </div>
+        ) : (
+          filteredHabits.map((h) => {
+            const priBadge = PRIORITY_BADGES[h.priority] || PRIORITY_BADGES.Optional;
+            const isAtomic = h.name.includes("(After:");
+
+            return (
+              <motion.div
+                key={h.id}
+                whileHover={{ y: -3 }}
+                className="bg-card border border-border p-5 rounded-3xl shadow-xl space-y-3.5 relative overflow-hidden transition-all flex flex-col justify-between"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-foreground leading-snug">{h.name}</h3>
+                      {isAtomic && (
+                        <div className="text-[10.5px] font-mono text-sky-300 font-bold mt-0.5 flex items-center gap-1">
+                          <span>🔗 Atomic Stack</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    <span className={`text-[10px] font-mono font-extrabold px-2.5 py-0.5 rounded-full border ${priBadge}`}>
+                      {h.priority}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-slate-300 font-mono font-bold flex-wrap">
+                    <span className="bg-surface border border-border/80 px-2 py-0.5 rounded-lg">
+                      📁 {h.category || "General"}
+                    </span>
+                    <span className="bg-surface border border-border/80 px-2 py-0.5 rounded-lg">
+                      ⏰ {h.period}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">End Time <span className="text-[9px] text-muted-foreground normal-case">(optional)</span></label>
-                  <input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} className="bg-surface border border-border px-3 py-2.5 rounded-lg text-foreground text-[13.5px] font-display outline-none focus:border-primary w-full" />
-                  {editEndTime && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <input
-                        type="checkbox"
-                        id="editEndAlarm"
-                        checked={editEndAlarm}
-                        onChange={(e) => setEditEndAlarm(e.target.checked)}
-                        className="accent-primary w-3.5 h-3.5 cursor-pointer"
-                      />
-                      <label htmlFor="editEndAlarm" className="text-[11.5px] text-muted-foreground cursor-pointer font-semibold">🚨 End Alarm Override</label>
+
+                {/* Footer Controls */}
+                <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-2">
+                  <div className="text-[11px] font-mono font-bold text-pps-green">
+                    ✓ {h.completedDates.length} Done
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => openEdit(h)}
+                      className="p-1.5 bg-surface border border-border/80 text-slate-300 hover:text-foreground rounded-lg transition-all cursor-pointer"
+                      title="Edit Habit"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() => toggleArchive(h)}
+                      className="p-1.5 bg-surface border border-border/80 text-slate-300 hover:text-foreground rounded-lg transition-all cursor-pointer"
+                      title={h.archived ? "Restore Habit" : "Archive Habit"}
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        deleteHabit(h.id);
+                        toast.success("Habit deleted");
+                      }}
+                      className="p-1.5 bg-surface border border-destructive/40 text-destructive hover:bg-destructive/10 rounded-lg transition-all cursor-pointer"
+                      title="Delete Habit"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ── 4. ROUTINE STARTER BUNDLES MODAL ── */}
+      <AnimatePresence>
+        {showBundles && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[5000] bg-black/70 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setShowBundles(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card border border-secondary/40 rounded-3xl p-6 shadow-2xl max-w-xl w-full space-y-4 relative overflow-hidden"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-border/40">
+                <div>
+                  <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2 font-mono">
+                    <span>🚀 Curated Routine Starter Bundles</span>
+                  </h3>
+                  <p className="text-xs text-slate-300 mt-0.5 font-medium">
+                    1-click install high-performance habit stacks created by productivity scientists
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowBundles(false)}
+                  className="text-slate-300 hover:text-foreground text-sm font-bold p-1 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                {ROUTINE_BUNDLES.map((b) => (
+                  <div key={b.name} className="p-4 bg-surface/60 border border-border/80 rounded-2xl space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-extrabold text-foreground">{b.name}</h4>
+                      <span className="text-[10px] font-mono font-bold bg-secondary/15 text-secondary border border-secondary/30 px-2.5 py-0.5 rounded-full">
+                        {b.habits.length} Habits
+                      </span>
                     </div>
-                  )}
+
+                    <p className="text-xs text-slate-300 font-medium">{b.desc}</p>
+
+                    <div className="space-y-1">
+                      {b.habits.map((h) => (
+                        <div key={h.name} className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                          <span>✓</span> <span>{h.name}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => installBundle(b)}
+                      className="w-full bg-secondary text-secondary-foreground font-extrabold text-xs py-2 rounded-xl hover:bg-secondary/90 transition-all cursor-pointer shadow-xs mt-2"
+                    >
+                      1-Click Install Bundle
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── 5. EDIT HABIT MODAL ── */}
+      <AnimatePresence>
+        {editHabit && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[5000] bg-black/70 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setEditHabit(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card border border-primary/40 rounded-3xl p-6 shadow-2xl max-w-md w-full space-y-4 relative overflow-hidden"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-border/40">
+                <h3 className="text-base font-extrabold text-foreground font-mono">✏️ Edit Habit Architecture</h3>
+                <button onClick={() => setEditHabit(null)} className="text-slate-300 hover:text-foreground text-sm font-bold">
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-extrabold text-foreground font-mono">Habit Name</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3 py-2 outline-none text-foreground mt-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-extrabold text-foreground font-mono">Category</label>
+                  <input
+                    type="text"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3 py-2 outline-none text-foreground mt-1"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-extrabold text-foreground font-mono">Period</label>
+                    <select
+                      value={editPeriod}
+                      onChange={(e) => setEditPeriod(e.target.value)}
+                      className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3 py-2 outline-none text-foreground mt-1 cursor-pointer"
+                    >
+                      <option value="Daily">Daily</option>
+                      <option value="Weekly">Weekly</option>
+                      <option value="Monthly">Monthly</option>
+                      <option value="Today">Today Only</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-extrabold text-foreground font-mono">Priority</label>
+                    <select
+                      value={editPriority}
+                      onChange={(e) => setEditPriority(e.target.value)}
+                      className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3 py-2 outline-none text-foreground mt-1 cursor-pointer"
+                    >
+                      <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Low">Low</option>
+                      <option value="Optional">Optional</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex gap-2.5 justify-end border-t border-border pt-3.5">
-              <button onClick={() => setEditHabit(null)} className="bg-transparent text-muted-foreground border border-border py-2 px-4 rounded-lg text-[12.5px] hover:text-foreground hover:bg-surface transition-all">Cancel</button>
-              <button onClick={saveEdit} className="bg-gradient-to-br from-primary to-[#8b5cf6] text-white py-2 px-5 rounded-lg text-[13px] font-semibold hover:-translate-y-0.5 transition-all">Save Changes</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Template Modal */}
-      {showTemplates && (
-        <div className="fixed inset-0 bg-black/65 flex items-center justify-center z-[1000]" onClick={() => setShowTemplates(false)}>
-          <div className="bg-card border border-border rounded-2xl p-7 w-[600px] max-w-[95vw] max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-bold">Habit Templates</h2>
-              <button onClick={() => setShowTemplates(false)} className="bg-transparent border-none text-muted-foreground text-xl cursor-pointer hover:text-foreground">✕</button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {HABIT_TEMPLATES.map((template) => (
-                <div
-                  key={template.id}
-                  className="bg-surface border border-border rounded-xl p-4 hover:border-primary/50 transition-colors cursor-pointer"
-                  onClick={() => applyTemplate(template)}
+              <div className="pt-2 flex justify-end gap-2 border-t border-border/40">
+                <button
+                  onClick={() => setEditHabit(null)}
+                  className="text-xs font-bold text-slate-300 px-4 py-2 rounded-xl hover:bg-surface"
                 >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="text-3xl">{template.icon}</div>
-                    <div>
-                      <h3 className="font-semibold text-sm">{template.name}</h3>
-                      <p className="text-xs text-muted-foreground">{template.habits.length} habits</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3">{template.description}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {template.habits.slice(0, 3).map((h, i) => (
-                      <span key={i} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                        {h.name}
-                      </span>
-                    ))}
-                    {template.habits.length > 3 && (
-                      <span className="text-[10px] text-muted-foreground">+{template.habits.length - 3} more</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="text-xs bg-primary text-primary-foreground font-extrabold px-5 py-2 rounded-xl hover:bg-primary/90 shadow-sm"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

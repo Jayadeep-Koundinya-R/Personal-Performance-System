@@ -633,10 +633,10 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
                 📋 Today's Habit Execution
               </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-slate-300 font-medium mt-0.5">
                 Check off habits or click ⚡ Focus to launch them into the Pomodoro room
               </p>
             </div>
@@ -651,14 +651,14 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                   <button
                     key={cat}
                     onClick={() => setSelectedCat(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-1.5 border ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-1.5 border ${
                       isSelected
-                        ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
-                        : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-surface border-border/80 text-slate-200 hover:text-foreground hover:border-primary/40"
                     }`}
                   >
                     <span>{cat}</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isSelected ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-extrabold ${isSelected ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted/80 text-slate-200 border border-border/60"}`}>
                       {catDone}/{catHabits.length}
                     </span>
                   </button>
@@ -677,8 +677,8 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                 className="bg-card border border-border p-5 rounded-2xl shadow-xs space-y-3"
               >
                 <div className="flex items-center justify-between pb-2 border-b border-border/40">
-                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{cat}</h3>
-                  <span className="text-xs font-mono text-muted-foreground">{catDone}/{catHabits.length} completed</span>
+                  <h3 className="text-xs font-extrabold text-sky-300 uppercase tracking-wider font-mono">{cat}</h3>
+                  <span className="text-xs font-mono font-extrabold text-slate-200">{catDone}/{catHabits.length} completed</span>
                 </div>
 
                 <AnimatePresence>
@@ -730,7 +730,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                                 )}
                               </AnimatePresence>
                             </button>
-                            <span className={`font-semibold truncate ${done ? "line-through opacity-50" : "text-foreground"}`}>
+                            <span className={`truncate ${done ? "line-through text-slate-300 font-bold opacity-85" : "text-foreground font-extrabold"}`}>
                               {habit.name}
                             </span>
                           </div>
@@ -744,7 +744,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                                   <button
                                     key={mins}
                                     onClick={() => timer.startHabitFocus(habit, mins)}
-                                    className="text-[10px] font-mono text-primary font-semibold hover:bg-primary/10 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                                    className="text-[10px] font-mono text-primary font-bold hover:bg-primary/20 px-1.5 py-0.5 rounded transition-all cursor-pointer"
                                     title={`Start ${mins}m focus for this habit`}
                                   >
                                     {mins}m
@@ -755,7 +755,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
 
                             <button
                               onClick={() => timer.startHabitFocus(habit)}
-                              className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground text-[11px] font-bold py-1 px-2.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                              className="bg-primary/15 text-primary border border-primary/30 hover:bg-primary hover:text-primary-foreground text-[11px] font-bold py-1 px-2.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                               title="Launch into Focus Room"
                             >
                               <span>⚡</span>
@@ -767,10 +767,10 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                                 setActiveNoteHabitId(activeNoteHabitId === habit.id ? null : habit.id);
                                 setNoteInput(note || "");
                               }}
-                              className={`text-[11px] px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                              className={`text-[11px] px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1 font-bold ${
                                 note
-                                  ? "bg-secondary/10 border-secondary/30 text-secondary font-semibold"
-                                  : "bg-surface border-border text-muted-foreground hover:text-foreground"
+                                  ? "bg-secondary/15 border-secondary/30 text-secondary"
+                                  : "bg-surface border-border/80 text-slate-200 hover:text-foreground"
                               }`}
                               title="Add log note"
                             >

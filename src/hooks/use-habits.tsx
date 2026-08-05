@@ -387,12 +387,12 @@ export function HabitsProvider({
     }
   }, [habits, isGuest, fetchHabits]);
 
-  const toggleCompletion = useCallback(async (id: string) => {
+  const toggleCompletion = useCallback(async (id: string, targetDateStr?: string) => {
     const habit = habits.find(h => h.id === id);
     if (!habit) return;
 
-    const todayStr = getTodayStr();
-    const isCompleted = habit.completedDates.includes(todayStr);
+    const dateToToggle = targetDateStr || getTodayStr();
+    const isCompleted = habit.completedDates.includes(dateToToggle);
     const previousHabits = [...habits];
 
     // Compute updated locally values
@@ -402,15 +402,15 @@ export function HabitsProvider({
     let updatedDueDate = habit.dueDate;
 
     if (!isCompleted) {
-      updatedCompletedDates = [...updatedCompletedDates, todayStr];
+      updatedCompletedDates = [...updatedCompletedDates, dateToToggle];
       if (habit.lastCompletedDate) {
-        const diff = Math.round((new Date(todayStr).getTime() - new Date(habit.lastCompletedDate).getTime()) / 864e5);
+        const diff = Math.round((new Date(dateToToggle).getTime() - new Date(habit.lastCompletedDate).getTime()) / 864e5);
         if (diff === 1) updatedStreak = habit.streak + 1;
         else if (diff !== 0) updatedStreak = 1;
       } else {
         updatedStreak = 1;
       }
-      updatedLastCompletedDate = todayStr;
+      updatedLastCompletedDate = dateToToggle;
 
       const nextDue = new Date();
       if (habit.period === "Daily") nextDue.setDate(nextDue.getDate() + 1);
@@ -418,7 +418,7 @@ export function HabitsProvider({
       else if (habit.period === "Monthly") nextDue.setMonth(nextDue.getMonth() + 1);
       updatedDueDate = nextDue.toISOString();
     } else {
-      updatedCompletedDates = updatedCompletedDates.filter(d => d !== todayStr);
+      updatedCompletedDates = updatedCompletedDates.filter(d => d !== dateToToggle);
       if (updatedCompletedDates.length > 0) {
         const sorted = [...updatedCompletedDates].sort();
         updatedLastCompletedDate = sorted[sorted.length - 1];
@@ -447,14 +447,14 @@ export function HabitsProvider({
         const { error: insertError } = await supabase.from("habit_completions").insert({
           habit_id: id,
           user_id: userId!,
-          completed_date: todayStr,
+          completed_date: dateToToggle,
         });
         if (insertError) throw insertError;
 
         // Update streak and due date
         const { error: updateError } = await supabase.from("habits").update({
           streak: updatedStreak,
-          last_completed_date: todayStr,
+          last_completed_date: dateToToggle,
           due_date: updatedDueDate,
         }).eq("id", id);
         if (updateError) throw updateError;
@@ -462,7 +462,7 @@ export function HabitsProvider({
         // Remove completion
         const { error: deleteError } = await supabase.from("habit_completions").delete()
           .eq("habit_id", id)
-          .eq("completed_date", todayStr);
+          .eq("completed_date", dateToToggle);
         if (deleteError) throw deleteError;
 
         // Revert streak and due date
@@ -479,7 +479,7 @@ export function HabitsProvider({
       setHabits(previousHabits);
       toast.error("Failed to sync completion with database. Reverting.");
     }
-  }, [habits, isGuest, userId, fetchHabits]);
+  }, [habits, isGuest, userId, fetchHabits, getTodayStr]);
 
   const markAllDone = useCallback(async (): Promise<void> => {
     const todayStr = getTodayStr();
