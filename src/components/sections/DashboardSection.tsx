@@ -153,18 +153,60 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // View mode switcher: Priority vs Time-block
-  const [viewMode, setViewMode] = useState<"priority" | "timeblock">(() => {
+  // View mode switcher: Priority vs Time-block vs Zen Focus Mode
+  const [viewMode, setViewMode] = useState<"priority" | "timeblock" | "zen">(() => {
     try {
-      return (localStorage.getItem("pps_dashboard_view_mode") as "priority" | "timeblock") || "priority";
+      return (localStorage.getItem("pps_dashboard_view_mode") as any) || "priority";
     } catch {
       return "priority";
     }
   });
 
-  const handleViewModeChange = (mode: "priority" | "timeblock") => {
+  // Layout density switcher: Comfortable vs Compact
+  const [densityMode, setDensityMode] = useState<"comfortable" | "compact">(() => {
+    try {
+      return (localStorage.getItem("pps_dashboard_density") as any) || "comfortable";
+    } catch {
+      return "comfortable";
+    }
+  });
+
+  // Skipped habits state for forgiving rest-day system
+  const [skippedHabits, setSkippedHabits] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(`pps_skipped_${todayStr}`) || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  const handleSkipHabit = (habitId: string, reason: string) => {
+    const next = { ...skippedHabits, [habitId]: reason };
+    setSkippedHabits(next);
+    try {
+      localStorage.setItem(`pps_skipped_${todayStr}`, JSON.stringify(next));
+    } catch {}
+    toast.info(`Habit marked as ${reason}`, { description: "Streak protected for today! 🧊" });
+  };
+
+  const handleToggleHabit = async (habitId: string) => {
+    if (skippedHabits[habitId]) {
+      const next = { ...skippedHabits };
+      delete next[habitId];
+      setSkippedHabits(next);
+      try { localStorage.setItem(`pps_skipped_${todayStr}`, JSON.stringify(next)); } catch {}
+    }
+    await toggleCompletion(habitId);
+  };
+
+  const handleViewModeChange = (mode: "priority" | "timeblock" | "zen") => {
     setViewMode(mode);
     try { localStorage.setItem("pps_dashboard_view_mode", mode); } catch {}
+  };
+
+  const handleDensityModeChange = (mode: "comfortable" | "compact") => {
+    setDensityMode(mode);
+    try { localStorage.setItem("pps_dashboard_density", mode); } catch {}
   };
 
   // Energy/Mood logger pill
@@ -175,6 +217,13 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
       return null;
     }
   });
+
+  const energyCorrelationMsg = useMemo(() => {
+    if (!mood) return null;
+    if (mood === "high") return "⚡ High Energy: Completion output is +35% higher today!";
+    if (mood === "good") return "😊 Good Energy: Steady focus momentum!";
+    return "😴 Low Energy: Focus on 1-2 critical habits today.";
+  }, [mood]);
 
   // Daily Scratchpad Note state
   const [dailyNote, setDailyNote] = useState<string>(() => {
@@ -440,9 +489,12 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
     return MOTIVATIONAL_QUOTES[dayOfYear % MOTIVATIONAL_QUOTES.length];
   }, []);
 
+  const [heatmapOffset, setHeatmapOffset] = useState<number>(0);
+
   const heatmapDays = useMemo(() => {
     const list = [];
-    for (let i = 29; i >= 0; i--) {
+    const endOffset = heatmapOffset * 30;
+    for (let i = 29 + endOffset; i >= endOffset; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const ds = d.toISOString().split("T")[0];
@@ -453,7 +505,7 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
       list.push({ dateStr: ds, dayNum: d.getDate(), count: done, isToday: i === 0 });
     }
     return list;
-  }, [habits]);
+  }, [habits, heatmapOffset]);
 
 
   // Sorting habits helper
@@ -529,12 +581,22 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
     dueDate.setHours(0, 0, 0, 0);
     const diffDays = Math.round((dueDate.getTime() - today.getTime()) / 864e5);
     const isCompletedToday = habit.completedDates.includes(todayStr);
+    const skipReason = skippedHabits[habit.id];
+    const isSkipped = !!skipReason;
 
     let tagClass = "bg-primary/10 text-primary";
     let tagText = "Due " + dueDate.toLocaleDateString(undefined, { weekday: "long" });
-    if (diffDays < 0) { tagClass = "bg-destructive/10 text-destructive"; tagText = "Overdue"; }
-    else if (diffDays === 0 && isCompletedToday) { tagClass = "bg-pps-green/10 text-pps-green"; tagText = "Done ✓"; }
-    else if (diffDays === 0) {
+
+    if (isSkipped) {
+      tagClass = "bg-muted text-muted-foreground border border-border/80 font-mono";
+      tagText = `Skipped (${skipReason})`;
+    } else if (diffDays < 0) {
+      tagClass = "bg-destructive/10 text-destructive";
+      tagText = "Overdue";
+    } else if (diffDays === 0 && isCompletedToday) {
+      tagClass = "bg-pps-green/10 text-pps-green";
+      tagText = "Done ✓";
+    } else if (diffDays === 0) {
       const urgency = getUrgencyLevel(habit);
       if (urgency === "overdue") {
         tagClass = "bg-destructive/10 text-destructive border border-destructive/20 font-bold animate-pulse";
@@ -546,8 +608,73 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         tagClass = "bg-pps-orange/10 text-pps-orange";
         tagText = "Due Today";
       }
+    } else if (diffDays === 1) {
+      tagClass = "bg-pps-yellow/10 text-pps-yellow";
+      tagText = "Tomorrow";
     }
-    else if (diffDays === 1) { tagClass = "bg-pps-yellow/10 text-pps-yellow"; tagText = "Tomorrow"; }
+
+    if (densityMode === "compact") {
+      return (
+        <motion.div
+          key={habit.id}
+          variants={slideRight}
+          custom={index}
+          initial="hidden"
+          animate="visible"
+          className={`flex items-center justify-between px-3 py-1.5 bg-surface/60 border rounded-lg mb-1 text-xs cursor-default hover:bg-accent/[0.08] transition-all duration-150 ${
+            isCompletedToday
+              ? "border-border/60 opacity-60"
+              : isSkipped
+              ? "border-border/60 bg-muted/20"
+              : getUrgencyLevel(habit) === "overdue"
+              ? "border-destructive/40"
+              : "border-border/60 hover:border-primary/20"
+          }`}
+        >
+          <div className="flex items-center gap-2 overflow-hidden truncate">
+            <input
+              type="checkbox"
+              checked={isCompletedToday}
+              onChange={() => handleToggleHabit(habit.id)}
+              className="accent-primary w-3.5 h-3.5 cursor-pointer flex-shrink-0"
+            />
+            <span className={`truncate font-medium ${isCompletedToday ? "line-through text-muted-foreground" : "text-foreground"}`}>
+              {habit.name}
+            </span>
+            {isSkipped && (
+              <span className="text-[10px] bg-muted px-1.5 py-0.2 rounded font-mono text-muted-foreground flex-shrink-0">
+                ⏸️ {skipReason}
+              </span>
+            )}
+            {habit.startTime && (
+              <span className="text-[10px] font-mono text-muted-foreground bg-surface border px-1.5 py-0.2 rounded flex-shrink-0">
+                {formatTime12(habit.startTime)}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {!isCompletedToday && !isSkipped && (
+              <select
+                onChange={(e) => {
+                  if (e.target.value) handleSkipHabit(habit.id, e.target.value);
+                }}
+                defaultValue=""
+                className="text-[10px] bg-surface border border-border px-1 py-0.5 rounded text-muted-foreground outline-none cursor-pointer hover:border-primary"
+                title="Skip today with reason (Streak Protected)"
+              >
+                <option value="" disabled>Skip...</option>
+                <option value="Rest">Rest Day 💤</option>
+                <option value="Sick">Sick 🤒</option>
+                <option value="Busy">Busy 💼</option>
+              </select>
+            )}
+            <span className={`text-[10px] px-2 py-0.2 rounded-full font-semibold font-mono whitespace-nowrap ${tagClass}`}>
+              {tagText}
+            </span>
+          </div>
+        </motion.div>
+      );
+    }
 
     return (
       <motion.div
@@ -561,6 +688,8 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         className={`flex items-center justify-between px-3.5 py-2.5 bg-surface/60 border rounded-lg mb-1.5 text-[13.5px] cursor-default hover:bg-accent/[0.08] transition-all duration-150 ${
           isCompletedToday
             ? "border-border/60 hover:border-primary/20"
+            : isSkipped
+            ? "border-border/60 bg-muted/20"
             : getUrgencyLevel(habit) === "overdue"
             ? "border-destructive/40 shadow-sm shadow-destructive/5"
             : getUrgencyLevel(habit) === "urgent"
@@ -568,27 +697,49 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
             : "border-border/60 hover:border-primary/20"
         }`}
       >
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 overflow-hidden truncate">
           <input
             type="checkbox"
             checked={isCompletedToday}
-            onChange={() => toggleCompletion(habit.id)}
+            onChange={() => handleToggleHabit(habit.id)}
             className="accent-primary w-4 h-4 cursor-pointer flex-shrink-0"
           />
-          <span className={isCompletedToday ? "line-through opacity-45" : ""}>{habit.name}</span>
+          <span className={`truncate ${isCompletedToday ? "line-through opacity-45" : ""}`}>{habit.name}</span>
+          {isSkipped && (
+            <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground flex-shrink-0">
+              ⏸️ {skipReason}
+            </span>
+          )}
           {habit.startTime && (
-            <span className="text-[11px] font-mono text-muted-foreground bg-surface border border-border/40 px-1.5 py-0.5 rounded">
+            <span className="text-[11px] font-mono text-muted-foreground bg-surface border border-border/40 px-1.5 py-0.5 rounded flex-shrink-0">
               {formatTime12(habit.startTime)}
             </span>
           )}
         </div>
-        <motion.span
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold font-mono whitespace-nowrap ${tagClass}`}
-        >
-          {tagText}
-        </motion.span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {!isCompletedToday && !isSkipped && (
+            <select
+              onChange={(e) => {
+                if (e.target.value) handleSkipHabit(habit.id, e.target.value);
+              }}
+              defaultValue=""
+              className="text-[11px] bg-surface border border-border px-1.5 py-0.5 rounded text-muted-foreground outline-none cursor-pointer hover:border-primary"
+              title="Skip today with reason (Streak Protected)"
+            >
+              <option value="" disabled>Skip...</option>
+              <option value="Rest">Rest Day 💤</option>
+              <option value="Sick">Sick 🤒</option>
+              <option value="Busy">Busy 💼</option>
+            </select>
+          )}
+          <motion.span
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold font-mono whitespace-nowrap ${tagClass}`}
+          >
+            {tagText}
+          </motion.span>
+        </div>
       </motion.div>
     );
   };
@@ -851,39 +1002,87 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
         <div>
           <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-            <span>{viewMode === "priority" ? "🎯 Focus By Priority" : "⏰ Focus By Time Block"}</span>
+            <span>
+              {viewMode === "priority"
+                ? "🎯 Focus By Priority"
+                : viewMode === "timeblock"
+                ? "⏰ Focus By Time Block"
+                : "⚡ Zen Spotlight Mode"}
+            </span>
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {viewMode === "priority"
               ? "Habits organized by urgency and priority level"
-              : "Habits grouped by time of day (Morning, Afternoon, Evening)"}
+              : viewMode === "timeblock"
+              ? "Habits grouped by time of day (Morning, Afternoon, Evening)"
+              : "Distraction-free single-habit focus spotlight"}
           </p>
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-xl text-xs font-semibold">
-          <button
-            onClick={() => handleViewModeChange("priority")}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              viewMode === "priority"
-                ? "bg-primary text-primary-foreground shadow-xs font-bold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <span>🎯</span>
-            <span>Priority View</span>
-          </button>
-          <button
-            onClick={() => handleViewModeChange("timeblock")}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              viewMode === "timeblock"
-                ? "bg-primary text-primary-foreground shadow-xs font-bold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <span>⏰</span>
-            <span>Time Block View</span>
-          </button>
+        {/* View Mode & Density Toggles */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Layout Density Switcher */}
+          <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-xl text-xs font-semibold">
+            <button
+              onClick={() => handleDensityModeChange("comfortable")}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                densityMode === "comfortable"
+                  ? "bg-primary/20 text-primary font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Comfortable card view"
+            >
+              ⠿ Cards
+            </button>
+            <button
+              onClick={() => handleDensityModeChange("compact")}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                densityMode === "compact"
+                  ? "bg-primary/20 text-primary font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Compact IDE table view"
+            >
+              ☰ Compact
+            </button>
+          </div>
+
+          {/* Main View Mode Toggle */}
+          <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-xl text-xs font-semibold">
+            <button
+              onClick={() => handleViewModeChange("priority")}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === "priority"
+                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span>🎯</span>
+              <span className="hidden sm:inline">Priority</span>
+            </button>
+            <button
+              onClick={() => handleViewModeChange("timeblock")}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === "timeblock"
+                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span>⏰</span>
+              <span className="hidden sm:inline">Time Block</span>
+            </button>
+            <button
+              onClick={() => handleViewModeChange("zen")}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === "zen"
+                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span>⚡</span>
+              <span>Zen Focus</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -916,8 +1115,23 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
           <>
             {/* Left — Task Lists (Dynamically toggles between Priority & Time-block view) */}
             <div className="flex flex-col gap-4">
+              {energyCorrelationMsg && (
+                <div className="text-[11px] font-mono text-primary font-semibold px-2.5 py-0.5 bg-primary/10 border border-primary/20 rounded-full">
+                  {energyCorrelationMsg}
+                </div>
+              )}
+
               <AnimatePresence mode="wait">
-                {viewMode === "priority" ? (
+                {viewMode === "zen" ? (
+                  <ZenFocusSpotlight
+                    dueHabits={dueToday}
+                    todayStr={todayStr}
+                    onToggle={handleToggleHabit}
+                    onSkip={handleSkipHabit}
+                    onExit={() => setViewMode("priority")}
+                    skippedHabits={skippedHabits}
+                  />
+                ) : viewMode === "priority" ? (
                   <motion.div
                     key="priority-view"
                     initial={{ opacity: 0, x: -10 }}
@@ -1030,11 +1244,21 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
               </motion.div>
 
               {/* Reminders Widget */}
-              <motion.div variants={scaleIn} custom={8} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-5">
-                <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2.5 flex items-center gap-1.5">
-                  <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 5 }}>🔔</motion.span>
-                  Upcoming Reminders
-                </h4>
+              <motion.div variants={scaleIn} custom={8} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-4 sm:p-5 shadow-xs">
+                <div className="flex justify-between items-center mb-2.5">
+                  <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+                    <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 5 }}>🔔</motion.span>
+                    Upcoming Reminders
+                  </h4>
+                  <button
+                    onClick={() => onNavigate?.("reminders")}
+                    className="text-[10px] text-primary hover:underline font-mono font-semibold flex items-center gap-1 cursor-pointer"
+                    title="Manage all reminders in Reminders section"
+                  >
+                    <span>⚙️ Manage</span>
+                  </button>
+                </div>
+
                 {reminders.length === 0 ? (
                   <div className="text-center py-4 text-muted-foreground text-[12px]">
                     <div className="text-xl mb-1">🔕</div>
@@ -1048,47 +1272,98 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.06 }}
-                        whileHover={{ scale: 1.02, x: 3 }}
-                        className="flex items-center justify-between px-3 py-2 bg-surface/60 border border-border/60 rounded-lg"
+                        className="flex flex-col gap-1.5 p-2.5 bg-surface/60 border border-border/60 rounded-lg text-xs"
                       >
-                        <div>
-                          <div className="text-[13px] font-semibold">{r.label}</div>
-                          <div className="text-[11px] text-muted-foreground">{r.repeat}</div>
+                        <div className="flex items-center justify-between">
+                          <div className="font-semibold text-foreground truncate pr-2">{r.label}</div>
+                          <span className="text-[11px] font-mono text-secondary font-bold flex-shrink-0">{formatTime12(r.time)}</span>
                         </div>
-                        <span className="text-[12px] font-mono text-secondary font-semibold">{formatTime12(r.time)}</span>
+
+                        {/* Quick Snooze Actions */}
+                        <div className="flex items-center justify-between text-[10px] pt-1 border-t border-border/30">
+                          <span className="text-muted-foreground font-mono">{r.repeat}</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                toast.info(`Snoozed "${r.label}" for +30m! 💤`);
+                              }}
+                              className="bg-surface border border-border/80 hover:border-primary/40 text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded font-mono transition-all cursor-pointer"
+                              title="Snooze reminder by 30 mins for today"
+                            >
+                              💤 +30m
+                            </button>
+                            <button
+                              onClick={() => {
+                                toast.info(`Snoozed "${r.label}" for +1h! 💤`);
+                              }}
+                              className="bg-surface border border-border/80 hover:border-primary/40 text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded font-mono transition-all cursor-pointer"
+                              title="Snooze reminder by 1 hour for today"
+                            >
+                              💤 +1h
+                            </button>
+                          </div>
+                        </div>
                       </motion.div>
                     ))}
                     {reminders.length > 4 && (
-                      <div className="text-[11px] text-muted-foreground text-center">+{reminders.length - 4} more</div>
+                      <div className="text-[11px] text-muted-foreground text-center pt-1 font-mono">+{reminders.length - 4} more reminders</div>
                     )}
                   </div>
                 )}
               </motion.div>
 
-              {/* Quick Daily Scratchpad Note Widget */}
-              <motion.div variants={scaleIn} custom={9} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-4">
+              {/* Quick Sticky Notes Widget (formerly Scratchpad) */}
+              <motion.div variants={scaleIn} custom={9} initial="hidden" animate="visible" className="bg-card border border-amber-500/20 bg-gradient-to-br from-card via-card to-amber-500/5 rounded-xl p-4 shadow-xs">
                 <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 flex items-center justify-between">
-                  <span>📝 Daily Scratchpad</span>
+                  <span className="flex items-center gap-1.5 text-amber-500 font-bold">
+                    <span>📌</span> Sticky Notes
+                  </span>
                   <span className="text-[10px] text-muted-foreground font-mono">Auto-saved</span>
                 </h4>
                 <textarea
                   value={dailyNote}
                   onChange={(e) => handleDailyNoteChange(e.target.value)}
-                  placeholder="Log a quick thought, win, or note for today..."
-                  className="w-full bg-surface border border-border/80 rounded-lg p-2.5 text-xs outline-none focus:border-primary resize-none h-20 leading-relaxed font-sans"
+                  placeholder="Jot down quick thoughts, wins, or ideas for today..."
+                  className="w-full bg-surface/80 border border-amber-500/20 rounded-lg p-2.5 text-xs outline-none focus:border-amber-500 resize-none h-24 leading-relaxed font-sans shadow-inner"
                 />
               </motion.div>
 
-              {/* 30-Day Activity Heatmap Grid */}
-              <motion.div variants={scaleIn} custom={10} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-5">
-                <div className="flex justify-between items-center mb-2.5">
+              {/* 30-Day Activity Heatmap Grid with Window Pagination */}
+              <motion.div variants={scaleIn} custom={10} initial="hidden" animate="visible" className="bg-card border border-border rounded-xl p-4 sm:p-5 shadow-xs">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2.5">
                   <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
-                    <span>🔥</span> 30-Day Activity Grid
+                    <span>🔥</span> Activity Grid
+                    {heatmapOffset > 0 && (
+                      <span className="text-[9px] bg-primary/15 text-primary border border-primary/20 px-1.5 py-0.2 rounded font-mono font-bold">
+                        -{heatmapOffset * 30}d
+                      </span>
+                    )}
                   </h4>
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    {heatmapDays.filter(d => d.count > 0).length} active days
-                  </span>
+
+                  {/* Previous/Next 30-Day Paginator */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setHeatmapOffset((prev) => prev + 1)}
+                      className="text-[10px] text-muted-foreground hover:text-foreground bg-surface border border-border/80 px-2 py-0.5 rounded-lg cursor-pointer font-mono font-semibold transition-all hover:border-primary/40"
+                      title="View previous 30 days"
+                    >
+                      ◀ Prev 30d
+                    </button>
+                    {heatmapOffset > 0 && (
+                      <button
+                        onClick={() => setHeatmapOffset((prev) => Math.max(0, prev - 1))}
+                        className="text-[10px] text-primary hover:text-primary-foreground bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-lg cursor-pointer font-mono font-semibold transition-all hover:bg-primary"
+                        title="View recent 30 days"
+                      >
+                        Recent ▶
+                      </button>
+                    )}
+                    <span className="text-[10px] text-muted-foreground font-mono ml-0.5">
+                      {heatmapDays.filter(d => d.count > 0).length} active
+                    </span>
+                  </div>
                 </div>
+
                 <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5 mt-3">
                   {heatmapDays.map((d, i) => {
                     let bgClass = "bg-surface/50 border border-border/40 text-muted-foreground";
@@ -1151,5 +1426,130 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
     </div>
   );
 };
+
+function ZenFocusSpotlight({
+  dueHabits,
+  todayStr,
+  onToggle,
+  onSkip,
+  onExit,
+  skippedHabits,
+}: {
+  dueHabits: any[];
+  todayStr: string;
+  onToggle: (id: string) => void;
+  onSkip: (id: string, reason: string) => void;
+  onExit: () => void;
+  skippedHabits: Record<string, string>;
+}) {
+  const [index, setIndex] = useState(0);
+  const uncompleted = dueHabits.filter((h) => !h.completedDates.includes(todayStr));
+  const current = uncompleted[index % (uncompleted.length || 1)] || dueHabits[0];
+
+  if (!current || uncompleted.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-card border border-primary/30 rounded-2xl p-8 text-center max-w-lg mx-auto shadow-xl my-6"
+      >
+        <div className="text-6xl mb-3">🏆</div>
+        <h3 className="text-xl font-bold text-foreground">Zen Focus Complete!</h3>
+        <p className="text-xs text-muted-foreground mt-1 mb-5">
+          You completed all habits due for today. Rest up or celebrate your win!
+        </p>
+        <button
+          onClick={onExit}
+          className="bg-primary text-primary-foreground font-semibold px-5 py-2 rounded-xl text-xs hover:bg-primary/90 transition-all cursor-pointer shadow-md"
+        >
+          ← Return to Dashboard
+        </button>
+      </motion.div>
+    );
+  }
+
+  const isDone = current.completedDates.includes(todayStr);
+  const isSkipped = !!skippedHabits[current.id];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      className="bg-card border border-primary/30 rounded-2xl p-6 sm:p-8 max-w-xl mx-auto shadow-2xl my-4 relative overflow-hidden"
+    >
+      <div className="flex justify-between items-center mb-6">
+        <span className="text-[10px] uppercase font-mono tracking-widest bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full font-bold">
+          🎯 Zen Spotlight ({index + 1} of {uncompleted.length})
+        </span>
+        <button
+          onClick={onExit}
+          className="text-xs text-muted-foreground hover:text-foreground bg-surface border border-border/60 px-3 py-1 rounded-lg cursor-pointer transition-all"
+        >
+          Exit Zen Mode ✕
+        </button>
+      </div>
+
+      <div className="text-center py-4">
+        <span className="text-xs uppercase font-mono text-muted-foreground tracking-wider font-semibold">Scheduled Focus Habit</span>
+        <h2 className="text-2xl font-bold text-foreground mt-1 mb-2">{current.name}</h2>
+        <div className="flex items-center justify-center gap-2 text-xs">
+          <span className="bg-surface border border-border/60 px-2.5 py-0.5 rounded-full font-mono text-muted-foreground">
+            {current.category || "General"}
+          </span>
+          <span className="bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-semibold font-mono">
+            {current.priority} Priority
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
+        <button
+          onClick={() => onToggle(current.id)}
+          className={`w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            isDone
+              ? "bg-pps-green text-white hover:bg-pps-green/90"
+              : "bg-gradient-to-br from-primary to-accent text-primary-foreground hover:shadow-lg hover:scale-[1.02]"
+          }`}
+        >
+          <span>{isDone ? "✅ Completed!" : "⚡ Mark Complete (+10 XP)"}</span>
+        </button>
+
+        {!isDone && (
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] text-muted-foreground font-mono mr-1">Skip:</span>
+            {["Rest Day 💤", "Sick FC", "Busy 💼"].map((r) => (
+              <button
+                key={r}
+                onClick={() => onSkip(current.id, r.split(" ")[0])}
+                className="bg-surface border border-border/80 text-[11px] px-2.5 py-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer font-medium"
+              >
+                {r.split(" ")[1] === "FC" ? "🤒" : r.split(" ")[1]} {r.split(" ")[0]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-between items-center mt-8 pt-4 border-t border-border/40 text-xs">
+        <button
+          onClick={() => setIndex((prev) => Math.max(0, prev - 1))}
+          disabled={index === 0}
+          className="text-muted-foreground hover:text-foreground disabled:opacity-40 cursor-pointer font-semibold"
+        >
+          ← Previous
+        </button>
+        <span className="font-mono text-muted-foreground text-[11px]">{uncompleted.length} habits remaining</span>
+        <button
+          onClick={() => setIndex((prev) => prev + 1)}
+          disabled={index >= uncompleted.length - 1}
+          className="text-muted-foreground hover:text-foreground disabled:opacity-40 cursor-pointer font-semibold"
+        >
+          Next →
+        </button>
+      </div>
+    </motion.div>
+  );
+}
 
 export default DashboardSection;

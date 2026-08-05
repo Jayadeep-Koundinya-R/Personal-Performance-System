@@ -270,10 +270,8 @@ export function useAuth(): AuthReturn {
     if (name) {
       localStorage.setItem("pps_guest_name", name.trim());
     }
-    // Set 7-day trial start timestamp (only on first guest login)
-    if (!localStorage.getItem("pps_guest_created_at")) {
-      localStorage.setItem("pps_guest_created_at", new Date().toISOString());
-    }
+    // Set/refresh guest trial start timestamp
+    localStorage.setItem("pps_guest_created_at", new Date().toISOString());
     setUser(guestUser);
     navigate("/dashboard");
   }, [navigate]);

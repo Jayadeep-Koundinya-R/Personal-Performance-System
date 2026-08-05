@@ -7,6 +7,7 @@ import { ReflectionsProvider } from "@/hooks/use-reflections";
 import { RemindersProvider } from "@/hooks/use-reminders";
 import { HabitsProvider } from "@/hooks/use-habits";
 import { NotificationProvider } from "@/hooks/use-notifications";
+import { FocusTimerProvider } from "@/hooks/use-focus-timer";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useHabits } from "@/hooks/use-habits";
 
@@ -19,7 +20,9 @@ function NotificationBridge({ children, user }: { children: ReactNode; user: Use
       isGuest={user.isGuest}
       habits={habits}
     >
-      {children}
+      <FocusTimerProvider>
+        {children}
+      </FocusTimerProvider>
     </NotificationProvider>
   );
 }

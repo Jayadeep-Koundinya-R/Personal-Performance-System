@@ -30,6 +30,8 @@ import { HABIT_TEMPLATES } from "@/lib/habitTemplates";
 
 import AnimatedSection from "@/components/AnimatedSection";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
+import FloatingMiniTimer from "@/components/FloatingMiniTimer";
+import { useFocusTimer } from "@/hooks/use-focus-timer";
 
 import { lazy, Suspense } from "react";
 import DashboardSection from "@/components/sections/DashboardSection";
@@ -47,7 +49,7 @@ const SettingsSection = lazy(() => import("@/components/sections/SettingsSection
 
 const NAV_ITEMS = [
   { key: "dashboard", icon: "⚡", label: "Dashboard" },
-  { key: "tracker", icon: "📋", label: "Daily Tracker" },
+  { key: "tracker", icon: "🎯", label: "Focus Studio" },
   { key: "calendar", icon: "📅", label: "Calendar" },
   { key: "analytics", icon: "📊", label: "Analytics" },
   { key: "streak", icon: "🔥", label: "Streak Engine" },
@@ -235,16 +237,18 @@ function DashboardInner({ user }: { user: User }) {
   const { profile } = useProfile();
   const { settings, loading: settingsLoading, completeOnboarding } = useUserSettings();
   const { isPro } = useSubscription();
+  const focusTimer = useFocusTimer();
 
   // In-app reminder scheduler — checks every 60s for due reminders and habit time alerts
   useReminderScheduler();
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRitual, setShowRitual] = useState(false);
+  const [dismissedTrial, setDismissedTrial] = useState(false);
 
   // 7-day guest trial expiry check
   const guestTrialExpired = (() => {
-    if (!user.isGuest) return false;
+    if (!user.isGuest || dismissedTrial) return false;
     const createdAt = localStorage.getItem("pps_guest_created_at");
     if (!createdAt) return false;
     const elapsed = Date.now() - new Date(createdAt).getTime();
@@ -482,12 +486,19 @@ function DashboardInner({ user }: { user: User }) {
           <motion.div
             initial={{ scale: 0.9, y: 20, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
-            className="bg-card border border-border rounded-2xl p-8 max-w-md w-full text-center shadow-2xl"
+            className="bg-card border border-border rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative"
           >
+            <button
+              onClick={() => setDismissedTrial(true)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground text-sm font-bold p-1 cursor-pointer"
+              title="Close modal"
+            >
+              ✕
+            </button>
             <div className="text-6xl mb-4">⏰</div>
             <h2 className="text-xl font-bold mb-2">Your 7-Day Trial Has Ended</h2>
             <p className="text-[13px] text-muted-foreground mb-5 leading-relaxed">
-              Your guest trial has expired. Create a free account to save all your progress and continue building your habits!
+              Your guest demo trial period is complete. You can create a free account to save your habits forever, or continue using the Free Tier!
             </p>
             <div className="flex flex-col gap-2.5">
               <Link
@@ -496,18 +507,33 @@ function DashboardInner({ user }: { user: User }) {
               >
                 Create Free Account →
               </Link>
-              <Link
-                to="/login"
-                className="w-full py-2.5 rounded-xl border border-border text-muted-foreground text-[12.5px] hover:text-foreground transition-colors text-center"
-              >
-                Sign In to Existing Account
-              </Link>
               <button
-                onClick={logout}
-                className="text-[11px] text-muted-foreground hover:text-foreground bg-transparent border-none cursor-pointer mt-1"
+                onClick={() => {
+                  setDismissedTrial(true);
+                  toast.info("Continuing on Free Tier (5 habit limit)");
+                }}
+                className="w-full py-2.5 rounded-xl border border-primary/30 bg-primary/10 text-primary font-semibold text-[12.5px] hover:bg-primary/20 transition-colors text-center cursor-pointer"
               >
-                Exit to Home
+                Continue on Free Tier
               </button>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-2 px-1">
+                <button
+                  onClick={() => {
+                    localStorage.setItem("pps_guest_created_at", new Date().toISOString());
+                    setDismissedTrial(true);
+                    toast.success("Demo trial reset for 7 days!");
+                  }}
+                  className="hover:text-foreground underline bg-transparent border-none cursor-pointer"
+                >
+                  Reset Demo Timer (7 Days)
+                </button>
+                <button
+                  onClick={logout}
+                  className="hover:text-foreground underline bg-transparent border-none cursor-pointer"
+                >
+                  Exit to Home
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -641,6 +667,14 @@ function DashboardInner({ user }: { user: User }) {
                     {item.icon}
                   </motion.span>
                   <span>{item.label}</span>
+                  {item.key === "tracker" && focusTimer.isRunning && activeSection !== "tracker" && (
+                    <motion.div
+                      animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="ml-auto w-2 h-2 rounded-full bg-pps-green shadow-[0_0_6px_hsl(var(--pps-green))]"
+                      title="Focus session active"
+                    />
+                  )}
                   {activeSection === item.key && (
                     <motion.div
                       layoutId="activeNav"
@@ -777,6 +811,7 @@ function DashboardInner({ user }: { user: User }) {
       {notifOpen && (
         <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
       )}
+      <FloatingMiniTimer activeSection={activeSection} onNavigate={(s) => setActiveSection(s as any)} />
       <AiChatWidget />
     </>
   );

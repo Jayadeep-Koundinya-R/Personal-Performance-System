@@ -94,7 +94,11 @@ export default function AiChatWidget() {
   const quickPrompts = ["Roast my streak 🔥", "Did I hit my goals today? 📊", "Give me a deep-work tip 🧠"];
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end">
+    <motion.div
+      drag
+      dragMomentum={false}
+      className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end select-none"
+    >
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -221,6 +225,6 @@ export default function AiChatWidget() {
           {isOpen ? "✕" : "🤖"}
         </span>
       </motion.button>
-    </div>
+    </motion.div>
   );
 }
