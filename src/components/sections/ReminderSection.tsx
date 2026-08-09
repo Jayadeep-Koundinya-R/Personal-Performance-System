@@ -17,6 +17,7 @@ import { useHabits } from "@/hooks/use-habits";
 import { useUserSettings } from "@/hooks/use-user-settings";
 import { Bell, Clock, Volume2, Plus, Check, Trash2, Shield, Sparkles, Zap, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import EmptyState from "@/components/EmptyState";
 
 const CIRCADIAN_PRESETS = [
   { label: "Morning Hero Stack Alarm 🌅", time: "07:00", repeat: "Daily", deliveryType: "alarm", desc: "Start your day with hydration & mindfulness" },
@@ -332,9 +333,14 @@ const ReminderSection = () => {
 
         <div className="space-y-2.5">
           {reminders.length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border rounded-3xl text-slate-300 text-xs font-medium space-y-2">
-              <div className="text-3xl">🔔</div>
-              <div>No active alarms configured. Use the form above or 1-click circadian presets!</div>
+            <div className="bg-card border border-border/80 rounded-3xl p-4">
+              <EmptyState
+                icon="🔔"
+                title="No Active Alarms Configured"
+                description="Configure habit-linked alarms, circadian schedule presets, or user reminders above!"
+                actionLabel="Set New Alarm"
+                onAction={() => setIsFormOpen(true)}
+              />
             </div>
           ) : (
             reminders.map((r) => {

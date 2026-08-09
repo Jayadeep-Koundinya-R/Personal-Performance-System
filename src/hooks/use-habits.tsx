@@ -64,12 +64,22 @@ function generateInitialDueDate(period: string): string {
   return today.toISOString();
 }
 
+function parseUTCDate(dateStr: string): number {
+  if (!dateStr) return 0;
+  const cleanStr = dateStr.split("T")[0];
+  const parts = cleanStr.split("-").map(Number);
+  if (parts.length === 3 && !parts.some(isNaN)) {
+    return Date.UTC(parts[0], parts[1] - 1, parts[2]);
+  }
+  return new Date(dateStr).getTime();
+}
+
 function calculateStreakFromDates(dates: string[]): number {
   if (!dates || !dates.length) return 0;
   const sorted = [...dates].sort().reverse();
   let streak = 1;
   for (let i = 0; i < sorted.length - 1; i++) {
-    const diff = Math.round((new Date(sorted[i]).getTime() - new Date(sorted[i + 1]).getTime()) / 864e5);
+    const diff = Math.round((parseUTCDate(sorted[i]) - parseUTCDate(sorted[i + 1])) / 864e5);
     if (diff === 1) streak++;
     else break;
   }
@@ -142,12 +152,61 @@ export function HabitsProvider({
     setLoading(false);
   }, [userId, isGuest]);
 
-  // Load habits from database
+  // Load habits from database or localStorage
   useEffect(() => {
     if (isGuest) {
       try {
-        setHabits(JSON.parse(localStorage.getItem(`habits_${userEmail || "guest"}`) || "[]"));
-      } catch { setHabits([]); }
+        const saved = localStorage.getItem(`habits_${userEmail || "guest"}`);
+        if (saved === null) {
+          const defaultHabits: Habit[] = [
+            {
+              id: "demo-1",
+              name: "Hydrate & Drink Water 💧",
+              category: "Health",
+              priority: "High",
+              period: "Daily",
+              dueDate: new Date().toISOString(),
+              completedDates: [],
+              streak: 3,
+              lastCompletedDate: null,
+              freezeCredits: 2,
+              color: "indigo"
+            },
+            {
+              id: "demo-2",
+              name: "20-Min Deep Work Sprint 💻",
+              category: "Productivity",
+              priority: "High",
+              period: "Daily",
+              dueDate: new Date().toISOString(),
+              completedDates: [],
+              streak: 5,
+              lastCompletedDate: null,
+              freezeCredits: 2,
+              color: "sky"
+            },
+            {
+              id: "demo-3",
+              name: "Read 10 Pages of Growth 📚",
+              category: "Mindset",
+              priority: "Medium",
+              period: "Daily",
+              dueDate: new Date().toISOString(),
+              completedDates: [],
+              streak: 2,
+              lastCompletedDate: null,
+              freezeCredits: 2,
+              color: "emerald"
+            }
+          ];
+          localStorage.setItem(`habits_${userEmail || "guest"}`, JSON.stringify(defaultHabits));
+          setHabits(defaultHabits);
+        } else {
+          setHabits(JSON.parse(saved));
+        }
+      } catch (err) {
+        setHabits([]);
+      }
       setLoading(false);
       return;
     }
@@ -395,16 +454,19 @@ export function HabitsProvider({
     const isCompleted = habit.completedDates.includes(dateToToggle);
     const previousHabits = [...habits];
 
-    // Compute updated locally values
+    // Deduplicate and compute updated values
     let updatedCompletedDates = [...habit.completedDates];
     let updatedLastCompletedDate = habit.lastCompletedDate;
     let updatedStreak = habit.streak;
     let updatedDueDate = habit.dueDate;
 
     if (!isCompleted) {
-      updatedCompletedDates = [...updatedCompletedDates, dateToToggle];
+      // Prevent duplicate dates in array
+      if (!updatedCompletedDates.includes(dateToToggle)) {
+        updatedCompletedDates = [...updatedCompletedDates, dateToToggle];
+      }
       if (habit.lastCompletedDate) {
-        const diff = Math.round((new Date(dateToToggle).getTime() - new Date(habit.lastCompletedDate).getTime()) / 864e5);
+        const diff = Math.round((parseUTCDate(dateToToggle) - parseUTCDate(habit.lastCompletedDate)) / 864e5);
         if (diff === 1) updatedStreak = habit.streak + 1;
         else if (diff !== 0) updatedStreak = 1;
       } else {
@@ -443,13 +505,13 @@ export function HabitsProvider({
 
     try {
       if (!isCompleted) {
-        // Add completion
+        // Add completion - handle potential unique constraint error (code 23505) gracefully
         const { error: insertError } = await supabase.from("habit_completions").insert({
           habit_id: id,
           user_id: userId!,
           completed_date: dateToToggle,
         });
-        if (insertError) throw insertError;
+        if (insertError && insertError.code !== "23505") throw insertError;
 
         // Update streak and due date
         const { error: updateError } = await supabase.from("habits").update({
@@ -474,10 +536,24 @@ export function HabitsProvider({
         if (updateError) throw updateError;
       }
       fetchHabits();
-    } catch (dbError) {
+    } catch (dbError: any) {
       console.error("Database update failed:", dbError);
-      setHabits(previousHabits);
-      toast.error("Failed to sync completion with database. Reverting.");
+      
+      // Check for Session Expiry (401, JWT expired, etc.)
+      const isAuthError = dbError?.status === 401 || 
+        dbError?.message?.toLowerCase().includes("jwt") || 
+        dbError?.message?.toLowerCase().includes("session") ||
+        dbError?.code === "PGRST301";
+
+      if (isAuthError) {
+        toast.error("Session expired — please log in again.", {
+          description: "Your change was saved locally, but could not sync to cloud.",
+          duration: 7000,
+        });
+      } else {
+        setHabits(previousHabits);
+        toast.error("Failed to sync completion with database. Reverting.");
+      }
     }
   }, [habits, isGuest, userId, fetchHabits, getTodayStr]);
 

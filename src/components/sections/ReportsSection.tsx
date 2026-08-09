@@ -19,6 +19,7 @@ import { FileText, Download, TrendingUp, Calendar, Award, Check, Sparkles, Zap, 
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import EmptyState from "@/components/EmptyState";
 
 type Period = "week" | "month";
 
@@ -312,8 +313,12 @@ const ReportsSection = () => {
 
         <div className="space-y-2.5">
           {report.habitMatrix.length === 0 ? (
-            <div className="text-center py-10 bg-surface/50 border border-border rounded-2xl text-slate-300 text-xs font-medium">
-              No habit performance data available for this period.
+            <div className="bg-card border border-border/80 rounded-3xl p-4">
+              <EmptyState
+                icon="📈"
+                title="No Performance Data Yet"
+                description="Start completing habits to generate executive performance analytics and downloadable PDF reports!"
+              />
             </div>
           ) : (
             report.habitMatrix.map(({ habit, done, rate, status }, idx) => {

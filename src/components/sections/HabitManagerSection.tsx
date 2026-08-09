@@ -17,6 +17,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { HABIT_TEMPLATES, HabitTemplate } from "@/lib/habitTemplates";
 import { Search, Plus, Sparkles, Layers, Check, Edit2, Trash2, Archive, Bell, Clock, Calendar, Shield, Tag } from "lucide-react";
 import { toast } from "sonner";
+import EmptyState from "@/components/EmptyState";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 
 const ROUTINE_BUNDLES = [
@@ -440,9 +441,14 @@ const HabitManagerSection = () => {
       {/* ── 3. HIGH-DENSITY HABIT CARDS GRID ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredHabits.length === 0 ? (
-          <div className="col-span-3 text-center py-12 bg-card border border-border rounded-3xl text-slate-300 text-xs font-medium space-y-2">
-            <div className="text-3xl">⚙️</div>
-            <div>No habits found matching your criteria.</div>
+          <div className="col-span-3 bg-card border border-border/80 rounded-3xl p-4">
+            <EmptyState
+              icon="⚙️"
+              title="No Habits Found"
+              description="Create your first habit or install a 1-click curated routine bundle below!"
+              actionLabel="Add Habit"
+              onAction={() => setIsFormOpen(true)}
+            />
           </div>
         ) : (
           filteredHabits.map((h) => {

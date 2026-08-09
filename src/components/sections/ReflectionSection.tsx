@@ -17,6 +17,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { BookOpen, Sparkles, Search, Tag, Smile, Frown, Meh, Flame, Zap, Trash2, Copy, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import EmptyState from "@/components/EmptyState";
 
 const MOODS = [
   { key: "unstoppable", emoji: "🔥", label: "Unstoppable", color: "text-amber-400" },
@@ -258,14 +259,19 @@ const ReflectionSection = () => {
           </div>
         </div>
 
-        {/* Entries Stream */}
-        <div className="space-y-3">
-          {filteredEntries.length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border rounded-3xl text-slate-300 text-xs font-medium space-y-2">
-              <div className="text-3xl">📝</div>
-              <div>No reflection entries found. Write your first reflection above!</div>
-            </div>
-          ) : (
+          {/* Entries Stream */}
+          <div className="space-y-3">
+            {filteredEntries.length === 0 ? (
+              <div className="bg-card border border-border/80 rounded-3xl p-4">
+                <EmptyState
+                  icon="📝"
+                  title="No Reflections Found"
+                  description="Write daily intentions, track your energy, and record your growth journal!"
+                  actionLabel="Write Reflection"
+                  onAction={() => window.scrollTo({ top: 150, behavior: "smooth" })}
+                />
+              </div>
+            ) : (
             filteredEntries.map((entry) => {
               const d = new Date(entry.date + "T12:00:00");
               const dstr = d.toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });

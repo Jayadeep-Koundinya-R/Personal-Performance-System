@@ -15,11 +15,14 @@ import PrivacyPage from "./pages/Privacy";
 import TermsPage from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 
+import PwaUpdatePrompt from "@/components/ui/PwaUpdatePrompt";
+
 const queryClient = new QueryClient();
 
 const App = () => (
   <ErrorBoundary>
     <PerformanceMonitor />
+    <PwaUpdatePrompt />
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>

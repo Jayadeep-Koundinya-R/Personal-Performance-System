@@ -1,4 +1,5 @@
 export type PlanTier = "free" | "pro";
+export type CurrencyRegion = "IN" | "GLOBAL";
 
 export const PLAN_LIMITS = {
   free: {
@@ -33,6 +34,32 @@ export const PLAN_LIMITS = {
   },
 } as const;
 
+export const REGIONAL_PRICING = {
+  IN: {
+    regionName: "India (PPP Discounted)",
+    flag: "🇮🇳",
+    currencySymbol: "₹",
+    currencyCode: "INR",
+    proMonthly: 199, // ₹199/month (~$2.40 / $2.63)
+    proYearly: 1999, // ₹1999/year (~$24.00 / $26.26)
+    proMonthlyUSD: 2.63,
+    proYearlyUSD: 26.26,
+    savingsBadge: "Save 44%",
+  },
+  GLOBAL: {
+    regionName: "International / Global",
+    flag: "🌐",
+    currencySymbol: "$",
+    currencyCode: "USD",
+    proMonthly: 9.99,
+    proYearly: 99.99,
+    proMonthlyUSD: 9.99,
+    proYearlyUSD: 99.99,
+    savingsBadge: "Save 44%",
+  },
+} as const;
+
+// Legacy fallback
 export const PRICING = {
   proMonthly: 8.99,
   proYearly: 59.99,
@@ -47,6 +74,20 @@ export const CORE_BADGE_IDS = new Set([
   "completions_50",
   "perfect_day",
 ]);
+
+export function detectUserRegion(): CurrencyRegion {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz && (tz.includes("Kolkata") || tz.includes("Calcutta") || tz.includes("Asia/Colombo"))) {
+      return "IN";
+    }
+    const lang = navigator.language || "";
+    if (lang.includes("en-IN") || lang.includes("hi")) {
+      return "IN";
+    }
+  } catch (e) {}
+  return "GLOBAL";
+}
 
 export function getPlanLimits(tier: PlanTier) {
   return PLAN_LIMITS[tier];

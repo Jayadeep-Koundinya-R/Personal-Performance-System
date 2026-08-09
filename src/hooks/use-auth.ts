@@ -13,13 +13,36 @@ interface AuthReturn {
   user: User | null;
   login: (email: string, password: string) => Promise<string | null>;
   signup: (email: string, password: string, confirm: string) => Promise<string | null>;
-  loginAsGuest: (name?: string) => void;
+  loginAsGuest: (name?: string, remember?: boolean) => void;
   logout: () => void;
   resetPassword: (email: string) => Promise<string | null>;
   updatePassword: (password: string) => Promise<string | null>;
   loginWithGoogle: () => Promise<string | null>;
   isLoggedIn: boolean;
   loading: boolean;
+  guestDaysRemaining: number;
+  isGuestTrialExpired: boolean;
+}
+
+const TRIAL_DURATION_DAYS = 7;
+
+function getGuestTrialDaysRemaining(): number {
+  const createdAtStr = localStorage.getItem("pps_guest_created_at");
+  if (!createdAtStr) return TRIAL_DURATION_DAYS;
+  const createdAt = new Date(createdAtStr).getTime();
+  const now = new Date().getTime();
+  const elapsedDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+  const remaining = Math.ceil(TRIAL_DURATION_DAYS - elapsedDays);
+  return Math.max(0, remaining);
+}
+
+function checkIsGuestTrialExpired(): boolean {
+  const createdAtStr = localStorage.getItem("pps_guest_created_at");
+  if (!createdAtStr) return false;
+  const createdAt = new Date(createdAtStr).getTime();
+  const now = new Date().getTime();
+  const elapsedDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+  return elapsedDays >= TRIAL_DURATION_DAYS;
 }
 
 function mapUser(su: SupabaseUser | null): User | null {
@@ -38,13 +61,8 @@ function generateUUID(): string {
   });
 }
 
-/** Prevents concurrent migration if both onAuthStateChange and getSession fire */
 let migrationInProgress = false;
 
-/**
- * Migrates local storage guest data (habits, completions, reflections, reminders)
- * into Supabase tables under the newly authenticated user.
- */
 async function migrateGuestData(userId: string): Promise<void> {
   if (migrationInProgress) return;
   migrationInProgress = true;
@@ -53,14 +71,11 @@ async function migrateGuestData(userId: string): Promise<void> {
     const rawReflections = localStorage.getItem("reflections_guest");
     const rawReminders = localStorage.getItem("reminders_guest");
 
-    // Skip if there is no guest data to migrate
     if (!rawHabits && !rawReflections && !rawReminders) return;
 
     console.log("Guest data found. Auto-migrating progress to account...");
-
     const habitIdMap = new Map<string, string>();
 
-    // 1. Migrate Habits and nested completions
     if (rawHabits) {
       let guestHabits: any[] = [];
       try {
@@ -73,7 +88,6 @@ async function migrateGuestData(userId: string): Promise<void> {
         const newHabitId = generateUUID();
         habitIdMap.set(habit.id, newHabitId);
 
-        // Insert habit row
         const { error: habitError } = await supabase.from("habits").insert({
           id: newHabitId,
           user_id: userId,
@@ -98,7 +112,6 @@ async function migrateGuestData(userId: string): Promise<void> {
           continue;
         }
 
-        // Insert completions associated with this habit
         if (habit.completedDates && habit.completedDates.length > 0) {
           const completionsToInsert = habit.completedDates.map((dateStr: string) => ({
             habit_id: newHabitId,
@@ -114,7 +127,6 @@ async function migrateGuestData(userId: string): Promise<void> {
       }
     }
 
-    // 2. Migrate Reflections
     if (rawReflections) {
       let guestReflections: any[] = [];
       try {
@@ -139,7 +151,6 @@ async function migrateGuestData(userId: string): Promise<void> {
       }
     }
 
-    // 3. Migrate Reminders (re-linking back to correct newly generated habit UUIDs)
     if (rawReminders) {
       let guestReminders: any[] = [];
       try {
@@ -167,7 +178,6 @@ async function migrateGuestData(userId: string): Promise<void> {
       }
     }
 
-    // 4. Migrate user settings (like auto_streak_freeze and default_reminder_settings)
     const rawSettings = localStorage.getItem("pps_settings_guest");
     if (rawSettings) {
       try {
@@ -186,14 +196,13 @@ async function migrateGuestData(userId: string): Promise<void> {
       }
     }
 
-    // Safely delete client storage variables once database returns clean states
     localStorage.removeItem("habits_guest");
     localStorage.removeItem("reflections_guest");
     localStorage.removeItem("reminders_guest");
     localStorage.removeItem("pps_settings_guest");
-    try {
-      sessionStorage.removeItem("pps_guest");
-    } catch {}
+    localStorage.removeItem("pps_guest");
+    localStorage.removeItem("pps_guest_created_at");
+    try { sessionStorage.removeItem("pps_guest"); } catch {}
     console.log("Guest data successfully migrated to database.");
   } catch (err) {
     console.error("Failed to complete guest data migration:", err);
@@ -207,13 +216,16 @@ export function useAuth(): AuthReturn {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const isGuestPersistent = localStorage.getItem("pps_guest") === "true";
+  const isGuestSession = sessionStorage.getItem("pps_guest") === "true";
+  const hasGuestSession = isGuestPersistent || isGuestSession;
+
   useEffect(() => {
-    // Listen for auth changes FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(mapUser(session.user));
         migrateGuestData(session.user.id);
-      } else if (sessionStorage.getItem("pps_guest") === "true") {
+      } else if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
         setUser({ email: null, isGuest: true });
       } else {
         setUser(null);
@@ -221,12 +233,11 @@ export function useAuth(): AuthReturn {
       setLoading(false);
     });
 
-    // Then check existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(mapUser(session.user));
         migrateGuestData(session.user.id);
-      } else if (sessionStorage.getItem("pps_guest") === "true") {
+      } else if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
         setUser({ email: null, isGuest: true });
       } else {
         setUser(null);
@@ -262,34 +273,49 @@ export function useAuth(): AuthReturn {
     return null;
   }, [navigate]);
 
-  const loginAsGuest = useCallback((name?: string) => {
+  const loginAsGuest = useCallback((name?: string, remember: boolean = true) => {
     const guestUser: User = { email: null, isGuest: true };
-    // Persist guest flag so auth listener doesn't overwrite this temporary session
-    try { sessionStorage.setItem("pps_guest", "true"); } catch {}
-    // Save guest display name
+    if (remember) {
+      localStorage.setItem("pps_guest", "true");
+    } else {
+      sessionStorage.setItem("pps_guest", "true");
+    }
+    
     if (name) {
       localStorage.setItem("pps_guest_name", name.trim());
     }
-    // Set/refresh guest trial start timestamp
-    localStorage.setItem("pps_guest_created_at", new Date().toISOString());
+    if (!localStorage.getItem("pps_guest_created_at")) {
+      localStorage.setItem("pps_guest_created_at", new Date().toISOString());
+    }
     setUser(guestUser);
     navigate("/dashboard");
   }, [navigate]);
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem("pps_guest");
     try { sessionStorage.removeItem("pps_guest"); } catch {}
     setUser(null);
     navigate("/login");
   }, [navigate]);
 
   const resetPassword = useCallback(async (email: string): Promise<string | null> => {
-    if (!email) return "Please enter your email.";
-    const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) return error.message;
-    return null;
+    if (!email) return "Please enter your email address.";
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase(), {
+        redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}reset-password`,
+      });
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("configuration") || msg.includes("provider") || error.status === 400 || error.status === 422) {
+          return "Password reset service is currently unconfigured or unavailable. Please contact support or try logging in with your password.";
+        }
+        return error.message;
+      }
+      return null;
+    } catch (err: any) {
+      return "Unable to connect to authentication service. Please check your internet connection.";
+    }
   }, []);
 
   const updatePassword = useCallback(async (password: string): Promise<string | null> => {
@@ -310,6 +336,9 @@ export function useAuth(): AuthReturn {
     return null;
   }, []);
 
+  const daysRemaining = user?.isGuest ? getGuestTrialDaysRemaining() : 7;
+  const isExpired = user?.isGuest ? checkIsGuestTrialExpired() : false;
+
   return {
     user,
     login,
@@ -321,5 +350,7 @@ export function useAuth(): AuthReturn {
     loginWithGoogle,
     isLoggedIn: user !== null,
     loading,
+    guestDaysRemaining: daysRemaining,
+    isGuestTrialExpired: isExpired,
   };
 }

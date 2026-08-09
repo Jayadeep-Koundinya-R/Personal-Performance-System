@@ -31,6 +31,8 @@ import { HABIT_TEMPLATES } from "@/lib/habitTemplates";
 import AnimatedSection from "@/components/AnimatedSection";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
 import FloatingMiniTimer from "@/components/FloatingMiniTimer";
+import GuestTrialBanner from "@/components/ui/GuestTrialBanner";
+import GuestTrialExpiredModal from "@/components/GuestTrialExpiredModal";
 import { useFocusTimer } from "@/hooks/use-focus-timer";
 
 import { lazy, Suspense } from "react";
@@ -481,63 +483,7 @@ function DashboardInner({ user }: { user: User }) {
       />
 
       {/* Guest Trial Expired Overlay */}
-      {guestTrialExpired && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[5000] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ scale: 0.9, y: 20, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            className="bg-card border border-border rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative"
-          >
-            <button
-              onClick={() => setDismissedTrial(true)}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground text-sm font-bold p-1 cursor-pointer"
-              title="Close modal"
-            >
-              ✕
-            </button>
-            <div className="text-6xl mb-4">⏰</div>
-            <h2 className="text-xl font-bold mb-2">Your 7-Day Trial Has Ended</h2>
-            <p className="text-[13px] text-muted-foreground mb-5 leading-relaxed">
-              Your guest demo trial period is complete. You can create a free account to save your habits forever, or continue using the Free Tier!
-            </p>
-            <div className="flex flex-col gap-2.5">
-              <Link
-                to="/login?tab=signup"
-                className="w-full py-3 rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground text-[13.5px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 text-center"
-              >
-                Create Free Account →
-              </Link>
-              <button
-                onClick={() => {
-                  setDismissedTrial(true);
-                  toast.info("Continuing on Free Tier (5 habit limit)");
-                }}
-                className="w-full py-2.5 rounded-xl border border-primary/30 bg-primary/10 text-primary font-semibold text-[12.5px] hover:bg-primary/20 transition-colors text-center cursor-pointer"
-              >
-                Continue on Free Tier
-              </button>
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-2 px-1">
-                <button
-                  onClick={() => {
-                    localStorage.setItem("pps_guest_created_at", new Date().toISOString());
-                    setDismissedTrial(true);
-                    toast.success("Demo trial reset for 7 days!");
-                  }}
-                  className="hover:text-foreground underline bg-transparent border-none cursor-pointer"
-                >
-                  Reset Demo Timer (7 Days)
-                </button>
-                <button
-                  onClick={logout}
-                  className="hover:text-foreground underline bg-transparent border-none cursor-pointer"
-                >
-                  Exit to Home
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <GuestTrialExpiredModal />
 
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between px-5 py-4 bg-card border-b border-border sticky top-0 z-[1002]" style={{ boxShadow: "var(--card-shadow)" }}>
@@ -718,6 +664,7 @@ function DashboardInner({ user }: { user: User }) {
 
         {/* Main */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          <GuestTrialBanner />
           {/* Top bar — desktop only */}
           <header className="hidden md:flex items-center justify-end px-8 py-3 border-b border-border bg-card gap-3" style={{ boxShadow: "var(--card-shadow)" }}>
             <button

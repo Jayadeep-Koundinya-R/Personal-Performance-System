@@ -203,7 +203,7 @@ const AchievementsSection = () => {
     syncBadges(earned);
   }, [stats, syncBadges]);
 
-  const visibleBadges = isPro ? BADGES : BADGES.filter((b) => CORE_BADGE_IDS.has(b.id));
+  const visibleBadges = BADGES;
 
   const filteredBadges = useMemo(() => {
     if (selectedCatFilter === "all") return visibleBadges;
@@ -310,14 +310,25 @@ const AchievementsSection = () => {
         {filteredBadges.map((badge) => {
           const prog = badge.getProgress(stats);
           const isUnlocked = prog.pct >= 100;
+          const isProBadge = !CORE_BADGE_IDS.has(badge.id);
+          const isLockedProTease = !isPro && isProBadge;
 
           return (
             <motion.div
               key={badge.id}
               whileHover={{ y: -3 }}
+              onClick={() => {
+                if (isLockedProTease) {
+                  toast.info(`🔒 Pro Exclusive Badge: "${badge.name}"`, {
+                    description: "Upgrade to Pro on the Pricing page to unlock seasonal achievements & rewards!",
+                  });
+                }
+              }}
               className={`p-5 rounded-3xl border shadow-xl space-y-3.5 relative overflow-hidden transition-all flex flex-col justify-between ${
                 isUnlocked
                   ? "bg-gradient-to-br from-pps-yellow/10 via-card to-pps-green/10 border-pps-yellow/40 shadow-pps-yellow/10"
+                  : isLockedProTease
+                  ? "bg-card/70 border-primary/30 opacity-80 cursor-pointer"
                   : "bg-card border-border/80 opacity-80"
               }`}
             >
@@ -333,6 +344,11 @@ const AchievementsSection = () => {
                     <h3 className="text-sm font-extrabold text-foreground flex items-center gap-1.5">
                       <span>{badge.name}</span>
                       {isUnlocked && <Check className="w-4 h-4 text-pps-green font-bold" />}
+                      {isLockedProTease && (
+                        <span title="Pro Exclusive">
+                          <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        </span>
+                      )}
                     </h3>
                     <div className="text-[11px] text-slate-300 font-mono font-bold mt-0.5">
                       {badge.requirementText}
@@ -340,11 +356,18 @@ const AchievementsSection = () => {
                   </div>
                 </div>
 
-                <span className={`text-[10.5px] font-mono font-extrabold px-2.5 py-0.5 rounded-full border ${
-                  isUnlocked ? "bg-pps-yellow/20 text-pps-yellow border-pps-yellow/30" : "bg-muted text-slate-400"
-                }`}>
-                  +{badge.xpReward} XP
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`text-[10.5px] font-mono font-extrabold px-2.5 py-0.5 rounded-full border ${
+                    isUnlocked ? "bg-pps-yellow/20 text-pps-yellow border-pps-yellow/30" : "bg-muted text-slate-400"
+                  }`}>
+                    +{badge.xpReward} XP
+                  </span>
+                  {isLockedProTease && (
+                    <span className="text-[9.5px] font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-1.5 py-0.2 rounded-md flex items-center gap-1">
+                      🔒 PRO
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Description */}

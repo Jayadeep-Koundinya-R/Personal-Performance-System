@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useReminders } from "@/hooks/use-reminders";
 import { useHabits } from "@/hooks/use-habits";
 import { useNotifications } from "@/hooks/use-notifications";
+import { scheduleNativeLocalNotification, initNativeNotificationListeners } from "@/lib/native-notifications";
 import { toast } from "sonner";
 
 /**
@@ -99,6 +100,12 @@ export function useReminderScheduler() {
                 : r.label,
               icon: "🚨",
             });
+            scheduleNativeLocalNotification({
+              id: Math.abs(parseInt(r.id.replace(/\D/g, "").slice(0, 8))) || Math.floor(Math.random() * 100000),
+              title: "⏰ Habit Alarm!",
+              body: habitName ? `Time to complete "${habitName}"` : r.label,
+              extra: { reminderId: r.id, type: "alarm" },
+            });
           } else {
             addNotificationRef.current({
               type: "reminder",
@@ -109,6 +116,12 @@ export function useReminderScheduler() {
             toast.info(r.label, {
               description: "Scheduled reminder",
               duration: 8000,
+            });
+            scheduleNativeLocalNotification({
+              id: Math.abs(parseInt(r.id.replace(/\D/g, "").slice(0, 8))) || Math.floor(Math.random() * 100000),
+              title: "🔔 Reminder",
+              body: r.label,
+              extra: { reminderId: r.id, type: "reminder" },
             });
           }
         }
@@ -137,6 +150,12 @@ export function useReminderScheduler() {
                   description: "Habit start time reached",
                   duration: 8000,
                 });
+                scheduleNativeLocalNotification({
+                  id: Math.abs(parseInt(habit.id.replace(/\D/g, "").slice(0, 8))) || Math.floor(Math.random() * 100000),
+                  title: "🟢 Time to Start!",
+                  body: `Time to start "${habit.name}"`,
+                  extra: { habitId: habit.id, type: "start" },
+                });
               }
             }
           }
@@ -159,6 +178,12 @@ export function useReminderScheduler() {
                   description: "Habit end time reached — complete it now!",
                   duration: 10000,
                 });
+                scheduleNativeLocalNotification({
+                  id: Math.abs(parseInt(habit.id.replace(/\D/g, "").slice(0, 8))) || Math.floor(Math.random() * 100000),
+                  title: "🔴 Time's Up!",
+                  body: `Deadline reached for "${habit.name}" — complete it now!`,
+                  extra: { habitId: habit.id, type: "end" },
+                });
               }
             }
           }
@@ -168,9 +193,16 @@ export function useReminderScheduler() {
       }
     };
 
-    // Run check immediately on mount, then every 60 seconds
+    // Initialize native notification tap listener on native mobile devices
+    initNativeNotificationListeners((extra) => {
+      if (extra?.type === "alarm") {
+        toast.info("Opened from native alarm notification");
+      }
+    });
+
+    // Run check immediately on mount, then every 10 seconds
     check();
-    const interval = setInterval(check, 60_000);
+    const interval = setInterval(check, 10_000);
     return () => {
       clearInterval(interval);
     };

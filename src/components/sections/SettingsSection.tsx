@@ -462,7 +462,9 @@ const SettingsSection = ({ user }: { user: User }) => {
             <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
               <span>🔌 Ecosystem Integrations Hub</span>
             </h3>
-            <span className="text-xs font-mono font-bold text-sky-300">Pro Early Access</span>
+            <span className="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
+              Planned for v2.0
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -470,11 +472,23 @@ const SettingsSection = ({ user }: { user: User }) => {
               { name: "Google Calendar Sync", icon: "📅", desc: "Sync habit schedule with Google Calendar" },
               { name: "Apple Health & Fitness", icon: "🍎", desc: "Auto-sync workout & water habit logs" },
               { name: "Notion & API Export", icon: "📝", desc: "Export daily reflections directly to Notion" },
+              { name: "Zapier & Webhooks", icon: "⚡", desc: "Trigger automated workflows on habit completions" },
+              { name: "Spotify Focus Audio", icon: "🎧", desc: "Sync ambient focus playlists with Focus Studio" },
+              { name: "IFTTT Automation", icon: "🔄", desc: "Connect smart home lights & devices" },
             ].map((item) => (
-              <div key={item.name} className="border border-dashed border-border/80 rounded-2xl p-4 space-y-1.5 bg-surface/40">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{item.icon}</span>
-                  <div className="text-xs font-extrabold text-foreground">{item.name}</div>
+              <div
+                key={item.name}
+                onClick={() => toast.info(`🔌 ${item.name}`, { description: "Integration planned for v2.0 release!" })}
+                className="border border-dashed border-border/80 rounded-2xl p-4 space-y-2 bg-surface/30 opacity-75 cursor-not-allowed hover:border-primary/40 transition-all relative overflow-hidden"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{item.icon}</span>
+                    <div className="text-xs font-extrabold text-foreground">{item.name}</div>
+                  </div>
+                  <span className="text-[9.5px] font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-1.5 py-0.2 rounded-md">
+                    Coming Soon
+                  </span>
                 </div>
                 <p className="text-[11px] text-slate-300 font-medium">{item.desc}</p>
               </div>

@@ -6,9 +6,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: 'list',
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:8080/Personal-Performance-System/',
     trace: 'on-first-retry',
   },
 
@@ -17,19 +17,11 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
   ],
 
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:8080',
-    reuseExistingServer: !process.env.CI,
+    url: 'http://localhost:8080/Personal-Performance-System/',
+    reuseExistingServer: true,
   },
 });

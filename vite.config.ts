@@ -5,7 +5,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: "/Personal-Performance-System/", // Add this here
+  base: process.env.CAPACITOR_BUILD === "true" ? "./" : "/Personal-Performance-System/",
   server: {
     host: "::",
     port: 8080,
