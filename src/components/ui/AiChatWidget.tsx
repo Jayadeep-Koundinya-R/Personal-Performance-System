@@ -303,9 +303,12 @@ export default function AiChatWidget() {
                   <h3 className="font-extrabold text-sm text-foreground flex items-center gap-1.5 font-mono">
                     <span>Performance AI Coach</span>
                   </h3>
-                  <p className="text-[10.5px] text-pps-green font-mono font-bold uppercase tracking-wider flex items-center gap-1">
+                  <p className="text-[10.5px] text-pps-green font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-pps-green animate-pulse" />
                     <span>Online & Analyzing</span>
+                    <span className="text-[9.5px] bg-primary/15 text-primary border border-primary/30 px-2 py-0.2 rounded-full font-mono font-bold lowercase tracking-normal">
+                      ai-v1.5
+                    </span>
                   </p>
                 </div>
               </div>

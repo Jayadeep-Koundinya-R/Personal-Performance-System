@@ -17,8 +17,8 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import ShareWinCard from "@/components/ShareWinCard";
 import AccountabilityCircles from "@/components/AccountabilityCircles";
-import { useQuests } from "@/hooks/use-quests";
-import { Trophy, Users, Shield, Share2, Sparkles, Flame, Check, Plus, UserPlus, Zap } from "lucide-react";
+import { useClassrooms } from "@/hooks/use-classrooms";
+import { Trophy, Users, Shield, Share2, Sparkles, Flame, Check, Plus, UserPlus, Zap, GraduationCap, Code } from "lucide-react";
 import { toast } from "sonner";
 
 interface FriendProfile {
@@ -35,11 +35,17 @@ interface FriendProfile {
 }
 
 const SocialSection = () => {
-  const { habits, getMaxStreak, calculateTotalXP, calculateLevel, getTodayStr } = useHabits();
+  const { habits, getMaxStreak, calculateTotalXP, calculateLevel, getTodayStr, addHabit } = useHabits();
   const { profile } = useProfile();
   const { isPro } = useSubscription();
+  const { classrooms, assignedHabits, createClassroom, joinClassroom, assignHabit } = useClassrooms();
 
-  const [activeTab, setActiveTab] = useState<"leaderboard" | "quests" | "circles" | "share">("leaderboard");
+  const [activeTab, setActiveTab] = useState<"leaderboard" | "quests" | "circles" | "share" | "classrooms">("leaderboard");
+  const [joinCode, setJoinCode] = useState("");
+  const [newClassName, setNewClassName] = useState("");
+  const [newClassDesc, setNewClassDesc] = useState("");
+  const [assignName, setAssignName] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [inviteUsername, setInviteUsername] = useState("");
 
@@ -113,6 +119,7 @@ const SocialSection = () => {
             { key: "leaderboard", label: "🏆 Leaderboard" },
             { key: "quests", label: "⚔️ Co-Op Quests" },
             { key: "circles", label: "🛡️ Accountability Circles" },
+            { key: "classrooms", label: "🏫 Institutional Classrooms" },
             { key: "share", label: "🎴 Share Win Cards" },
           ].map((tab) => (
             <button
@@ -252,6 +259,158 @@ const SocialSection = () => {
       {activeTab === "circles" && (
         <div className="bg-card border border-border p-5 rounded-3xl shadow-xl">
           <AccountabilityCircles userId={currentUserId || ""} isPro={isPro} />
+        </div>
+      )}
+
+      {activeTab === "classrooms" && (
+        <div className="space-y-5">
+          {/* Join or Create Classroom Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Join via Invite Code */}
+            <div className="bg-card border border-border p-5 rounded-3xl shadow-xl space-y-3">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-extrabold text-foreground">Join a Classroom</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter your 6-character class invite code provided by your teacher or professor.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. NEET26"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  className="bg-surface border border-border/80 text-xs font-mono font-bold uppercase rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary flex-1"
+                />
+                <button
+                  onClick={async () => {
+                    const err = await joinClassroom(joinCode);
+                    if (err) toast.error(err);
+                    else setJoinCode("");
+                  }}
+                  className="text-xs bg-primary text-primary-foreground font-extrabold px-4 py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+                >
+                  Join Class
+                </button>
+              </div>
+            </div>
+
+            {/* Create Classroom (Teachers) */}
+            <div className="bg-card border border-border p-5 rounded-3xl shadow-xl space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-pps-yellow" />
+                <h3 className="text-sm font-extrabold text-foreground">Create New Classroom</h3>
+              </div>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Classroom Name (e.g. 12th Science Batch A)"
+                  value={newClassName}
+                  onChange={(e) => setNewClassName(e.target.value)}
+                  className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2 outline-none text-foreground focus:border-primary"
+                />
+                <input
+                  type="text"
+                  placeholder="Subject / Description"
+                  value={newClassDesc}
+                  onChange={(e) => setNewClassDesc(e.target.value)}
+                  className="w-full bg-surface border border-border/80 text-xs rounded-xl px-3.5 py-2 outline-none text-foreground focus:border-primary"
+                />
+                <button
+                  onClick={async () => {
+                    const err = await createClassroom(newClassName, newClassDesc);
+                    if (err) toast.error(err);
+                    else {
+                      setNewClassName("");
+                      setNewClassDesc("");
+                    }
+                  }}
+                  className="w-full text-xs bg-gradient-to-r from-primary to-accent text-white font-extrabold py-2 rounded-xl hover:opacity-95 transition-all cursor-pointer shadow-sm"
+                >
+                  Create & Generate Code
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Classroom List & Assigned Habits */}
+          <div className="bg-card border border-border p-5 sm:p-6 rounded-3xl shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-primary" />
+                <span>Active Institutional Classrooms ({classrooms.length})</span>
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {classrooms.map((cls) => {
+                const clsAssigned = assignedHabits.filter((a) => a.classroomId === cls.id);
+                return (
+                  <div key={cls.id} className="p-4 bg-surface/60 border border-border/80 rounded-2xl space-y-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-extrabold text-foreground">{cls.name}</div>
+                        <span className="text-[10.5px] font-mono font-extrabold bg-primary/15 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full">
+                          Code: {cls.inviteCode}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{cls.description}</p>
+                      <div className="text-[11px] font-mono text-slate-300 mt-2">
+                        👥 {cls.memberCount} enrolled students · {clsAssigned.length} assigned habits
+                      </div>
+
+                      {/* Assigned Habits */}
+                      {clsAssigned.length > 0 && (
+                        <div className="mt-3 space-y-1.5 pt-2 border-t border-border/40">
+                          <div className="text-[10.5px] font-mono font-bold text-muted-foreground uppercase tracking-wider">Mandatory Class Habits:</div>
+                          {clsAssigned.map((a) => (
+                            <div key={a.id} className="flex items-center justify-between text-xs bg-card/80 border border-border/60 px-3 py-1.5 rounded-xl font-medium">
+                              <span>{a.habitName}</span>
+                              <button
+                                onClick={async () => {
+                                  await addHabit(a.habitName, a.category, a.period, "High");
+                                  toast.success(`Added assigned habit "${a.habitName}" to your tracker!`);
+                                }}
+                                className="text-[10px] bg-primary/15 text-primary font-bold px-2 py-0.5 rounded-lg hover:bg-primary hover:text-white transition-all cursor-pointer"
+                              >
+                                + Import to My Tracker
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Teacher Action: Assign New Habit */}
+                    <div className="pt-3 border-t border-border/40 flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Assign new habit to class..."
+                        value={selectedClassId === cls.id ? assignName : ""}
+                        onChange={(e) => {
+                          setSelectedClassId(cls.id);
+                          setAssignName(e.target.value);
+                        }}
+                        className="bg-card border border-border/80 text-xs font-medium rounded-xl px-3 py-1.5 outline-none text-foreground focus:border-primary flex-1"
+                      />
+                      <button
+                        onClick={async () => {
+                          if (selectedClassId === cls.id && assignName.trim()) {
+                            await assignHabit(cls.id, assignName, "Learning", "Daily");
+                            setAssignName("");
+                          }
+                        }}
+                        className="text-xs bg-surface border border-border/80 text-foreground font-bold px-3 py-1.5 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs flex-shrink-0"
+                      >
+                        Assign
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 

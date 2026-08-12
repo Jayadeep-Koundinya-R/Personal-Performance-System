@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
 import { useProfile } from "@/hooks/use-profile";
 import { useReminders } from "@/hooks/use-reminders";
+import { useLifecycleNudges } from "@/hooks/use-lifecycle-nudges";
 import { StatCard } from "@/components/dashboard/StatCard";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
 import { TaskSection } from "@/components/dashboard/TaskSection";
 import { LevelWidget } from "@/components/dashboard/LevelWidget";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 const MOTIVATIONAL_QUOTES = [
   { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
@@ -763,8 +765,32 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
     { label: "😴 Low Energy", val: "low" },
   ];
 
+  const nudge = useLifecycleNudges();
+
   return (
     <div>
+      {/* Active Lifecycle / Retention Nudge Banner */}
+      {nudge && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-5 bg-gradient-to-r from-primary/15 via-card to-accent/10 border border-primary/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md"
+        >
+          <div className="flex items-center gap-3">
+            <div className="text-2xl p-2 bg-primary/10 rounded-xl">{nudge.icon}</div>
+            <div>
+              <div className="text-sm font-extrabold text-foreground">{nudge.title}</div>
+              <div className="text-xs text-muted-foreground">{nudge.message}</div>
+            </div>
+          </div>
+          <Link
+            to="/login?tab=signup"
+            className="text-xs bg-gradient-to-r from-primary to-accent text-white font-extrabold px-4 py-2 rounded-xl hover:opacity-95 transition-all shadow-sm flex-shrink-0 text-center"
+          >
+            {nudge.ctaText}
+          </Link>
+        </motion.div>
+      )}
       {/* Greeting Header */}
       <motion.div
         initial={{ opacity: 0, y: -15 }}

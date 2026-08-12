@@ -19,6 +19,7 @@ import { REGIONAL_PRICING, CurrencyRegion } from "@/lib/plans";
 import { useAuth } from "@/hooks/use-auth";
 import { useSubscription, SubscriptionProvider } from "@/hooks/use-subscription";
 import { Globe, MapPin, Check, ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 
 /* ── feature comparison data ────────────────────────── */
 
@@ -114,12 +115,19 @@ function PricingContent() {
     return "";
   }, [interval, region]);
 
+  const [isCheckoutSubmitting, setIsCheckoutSubmitting] = useState(false);
+
   const checkout = async () => {
     if (!isLoggedIn) {
       window.location.href = `${import.meta.env.BASE_URL}login?tab=signup`;
       return;
     }
-    await startCheckout(interval);
+    setIsCheckoutSubmitting(true);
+    const err = await startCheckout(interval);
+    if (err) {
+      toast.error(err);
+      setIsCheckoutSubmitting(false);
+    }
   };
 
   const categories = [...new Set(FEATURES.map(f => f.category))];
@@ -390,11 +398,11 @@ function PricingContent() {
             </div>
 
             <button
-              disabled={loading || isPro}
+              disabled={loading || isPro || isCheckoutSubmitting}
               onClick={checkout}
               className="w-full bg-gradient-to-br from-primary to-accent text-white py-3 rounded-xl text-sm font-bold disabled:opacity-50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/25 transition-all duration-200 shadow-md cursor-pointer"
             >
-              {isPro ? "Active Plan ✓" : `Upgrade to Pro — ${perMonthDisplay}/mo`}
+              {isPro ? "Active Plan ✓" : isCheckoutSubmitting ? "Connecting to Checkout..." : `Upgrade to Pro — ${perMonthDisplay}/mo`}
             </button>
           </motion.div>
         </div>

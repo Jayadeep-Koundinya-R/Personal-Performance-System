@@ -97,7 +97,7 @@ describe("useHabits Hook", () => {
     const today = result.current.getTodayStr();
 
     await act(async () => {
-      await result.current.toggleCompletion(targetId, today);
+      await result.current.toggleCompletion(targetId);
     });
 
     const habitAfterFirst = result.current.habits.find((h) => h.id === targetId);
@@ -105,7 +105,7 @@ describe("useHabits Hook", () => {
 
     // Toggling again on completed date uncompletes it
     await act(async () => {
-      await result.current.toggleCompletion(targetId, today);
+      await result.current.toggleCompletion(targetId);
     });
 
     const habitAfterSecond = result.current.habits.find((h) => h.id === targetId);

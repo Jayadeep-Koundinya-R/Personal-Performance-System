@@ -250,13 +250,26 @@ export function useAuth(): AuthReturn {
 
   const login = useCallback(async (email: string, password: string): Promise<string | null> => {
     if (!email || !password) return "Please fill in all fields.";
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.toLowerCase(),
-      password,
-    });
-    if (error) return error.message;
-    navigate("/dashboard");
-    return null;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password,
+      });
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("email not confirmed") || msg.includes("confirm your email")) {
+          return "Your email address has not been confirmed yet. Please check your inbox for a confirmation link.";
+        }
+        if (msg.includes("invalid login credentials") || msg.includes("invalid credentials")) {
+          return "Invalid email or password. Please try again or click Reset Password.";
+        }
+        return error.message;
+      }
+      navigate("/dashboard");
+      return null;
+    } catch (err: any) {
+      return err?.message || "An unexpected error occurred during sign in. Please try again.";
+    }
   }, [navigate]);
 
   const signup = useCallback(async (email: string, password: string, confirm: string): Promise<string | null> => {
@@ -264,13 +277,23 @@ export function useAuth(): AuthReturn {
     if (password.length < 6) return "Password must be at least 6 characters.";
     if (password !== confirm) return "Passwords do not match.";
 
-    const { error } = await supabase.auth.signUp({
-      email: email.toLowerCase(),
-      password,
-    });
-    if (error) return error.message;
-    navigate("/dashboard");
-    return null;
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.toLowerCase().trim(),
+        password,
+      });
+      if (error) return error.message;
+
+      // If Supabase has email confirmation enabled, user session won't be immediately active
+      if (data?.user && !data.session) {
+        return "SUCCESS_CONFIRMATION_REQUIRED";
+      }
+
+      navigate("/dashboard");
+      return null;
+    } catch (err: any) {
+      return err?.message || "An unexpected error occurred during registration.";
+    }
   }, [navigate]);
 
   const loginAsGuest = useCallback((name?: string, remember: boolean = true) => {
@@ -302,8 +325,12 @@ export function useAuth(): AuthReturn {
   const resetPassword = useCallback(async (email: string): Promise<string | null> => {
     if (!email) return "Please enter your email address.";
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase(), {
-        redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}reset-password`,
+      const origin = window.location.origin.replace(/\/+$/, "");
+      const basePath = (import.meta.env.BASE_URL || "").replace(/\/+$/, "");
+      const redirectUrl = `${origin}${basePath}/reset-password`;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
+        redirectTo: redirectUrl,
       });
       if (error) {
         const msg = error.message.toLowerCase();
@@ -326,14 +353,43 @@ export function useAuth(): AuthReturn {
   }, []);
 
   const loginWithGoogle = useCallback(async (): Promise<string | null> => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}dashboard`,
-      },
-    });
-    if (error) return error.message;
-    return null;
+    try {
+      const origin = window.location.origin.replace(/\/+$/, "");
+      const basePath = (import.meta.env.BASE_URL || "").replace(/\/+$/, "");
+      const redirectUrl = `${origin}${basePath}/dashboard`;
+
+      console.log("🌐 Initiating Google OAuth with redirect URL:", redirectUrl);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        console.error("Google Sign-In OAuth error:", error);
+        const msg = error.message.toLowerCase();
+        if (msg.includes("provider") || msg.includes("not enabled") || msg.includes("unsupported")) {
+          return "Google Authentication is not enabled in your Supabase project. Please configure the Google Provider in Supabase Auth Dashboard.";
+        }
+        return error.message;
+      }
+
+      if (data?.url) {
+        window.location.href = data.url;
+        return null;
+      }
+
+      return null;
+    } catch (err: any) {
+      console.error("Google Sign-In exception:", err);
+      return err?.message || "Failed to initiate Google Authentication.";
+    }
   }, []);
 
   const daysRemaining = user?.isGuest ? getGuestTrialDaysRemaining() : 7;

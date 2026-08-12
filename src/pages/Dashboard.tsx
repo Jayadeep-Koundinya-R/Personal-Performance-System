@@ -24,6 +24,8 @@ import { DashboardProviders } from "@/providers/AppProviders";
 import RitualOverlay from "@/components/RitualOverlay";
 import { Navigate, Link } from "react-router-dom";
 import AiChatWidget from "@/components/ui/AiChatWidget";
+import VoiceControlModal from "@/components/ui/VoiceControlModal";
+import { Mic } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { HABIT_TEMPLATES } from "@/lib/habitTemplates";
@@ -238,7 +240,7 @@ function DashboardInner({ user }: { user: User }) {
   const { notifications, unreadCount, markAsRead, markAllRead, clearAll } = useNotifications();
   const { profile } = useProfile();
   const { settings, loading: settingsLoading, completeOnboarding } = useUserSettings();
-  const { isPro } = useSubscription();
+  const { isPro, refresh: refreshSub } = useSubscription();
   const focusTimer = useFocusTimer();
 
   // In-app reminder scheduler — checks every 60s for due reminders and habit time alerts
@@ -247,6 +249,7 @@ function DashboardInner({ user }: { user: User }) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRitual, setShowRitual] = useState(false);
   const [dismissedTrial, setDismissedTrial] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
 
   // 7-day guest trial expiry check
   const guestTrialExpired = (() => {
@@ -256,6 +259,23 @@ function DashboardInner({ user }: { user: User }) {
     const elapsed = Date.now() - new Date(createdAt).getTime();
     return elapsed >= 7 * 24 * 60 * 60 * 1000;
   })();
+
+  // Handle return from successful Stripe checkout (?upgraded=1)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("upgraded") === "1") {
+      refreshSub();
+      setCelebration({
+        show: true,
+        type: "levelup",
+        title: "Welcome to PPS Pro! 👑",
+        subtitle: "Your subscription is active. All premium features, unlimited habits & AI insights are unlocked!",
+        icon: "👑",
+      });
+      toast.success("Welcome to PPS Pro! 👑 All premium features unlocked.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [refreshSub]);
 
   useEffect(() => {
     if (!settingsLoading && settings) {
@@ -760,6 +780,21 @@ function DashboardInner({ user }: { user: User }) {
       )}
       <FloatingMiniTimer activeSection={activeSection} onNavigate={(s) => setActiveSection(s as any)} />
       <AiChatWidget />
+
+      {/* Voice Commands FAB button */}
+      <button
+        onClick={() => setShowVoiceModal(true)}
+        className="fixed bottom-6 left-6 z-[9998] w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent text-white flex items-center justify-center shadow-xl hover:scale-105 transition-all cursor-pointer border border-primary/40"
+        title="Voice Commands Studio"
+      >
+        <Mic className="w-5 h-5" />
+      </button>
+
+      <VoiceControlModal
+        isOpen={showVoiceModal}
+        onClose={() => setShowVoiceModal(false)}
+        onNavigate={(s) => setActiveSection(s as any)}
+      />
     </>
   );
 }

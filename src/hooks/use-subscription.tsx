@@ -58,31 +58,39 @@ export function SubscriptionProvider({ children, userId, isGuest }: { children: 
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
         body: { interval, userId },
       });
-      if (error) return error.message;
+      if (error) {
+        console.error("Checkout invocation error:", error);
+        return error.message || "Failed to launch payment checkout session.";
+      }
       if (data?.url) {
         window.location.href = data.url;
         return null;
       }
-      return data?.error || "Checkout unavailable. Configure Stripe in Supabase.";
-    } catch {
-      return "Checkout unavailable. Configure Stripe edge functions.";
+      return data?.error || "Checkout session unavailable. Please ensure Stripe environment keys are configured.";
+    } catch (err: any) {
+      console.error("Checkout exception:", err);
+      return err?.message || "Checkout service is currently unreachable. Please check your internet connection.";
     }
   }, [userId]);
 
   const openBillingPortal = useCallback(async (): Promise<string | null> => {
-    if (!userId) return "Please sign in.";
+    if (!userId) return "Please sign in to access billing management.";
     try {
       const { data, error } = await supabase.functions.invoke("create-portal-session", {
         body: { userId },
       });
-      if (error) return error.message;
+      if (error) {
+        console.error("Billing portal error:", error);
+        return error.message || "Failed to open billing portal.";
+      }
       if (data?.url) {
         window.location.href = data.url;
         return null;
       }
-      return "Billing portal unavailable.";
-    } catch {
-      return "Billing portal unavailable.";
+      return data?.error || "Billing management is currently unavailable for your account.";
+    } catch (err: any) {
+      console.error("Portal exception:", err);
+      return err?.message || "Billing portal service is unreachable.";
     }
   }, [userId]);
 

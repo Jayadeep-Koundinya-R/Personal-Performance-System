@@ -20,11 +20,11 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { useReflections } from "@/hooks/use-reflections";
-import { exportToCSV, exportToJSON, exportReflectionsToCSV, prepareFullExport } from "@/lib/dataExport";
+import { exportToCSV, exportToJSON, exportReflectionsToCSV, prepareFullExport, parseAndValidateBackup } from "@/lib/dataExport";
 import { toast } from "sonner";
 import { useUserSettings } from "@/hooks/use-user-settings";
 import { CustomSelect } from "@/components/ui/CustomSelect";
-import { User as UserIcon, Lock, Bell, Shield, Download, RefreshCw, LogOut, Sparkles, Check, Key, Calendar, Smartphone, FileText } from "lucide-react";
+import { User as UserIcon, Lock, Bell, Shield, Download, Upload, RefreshCw, LogOut, Sparkles, Check, Key, Calendar, Smartphone, FileText } from "lucide-react";
 
 const IDENTITY_OPTIONS = [
   { value: "", label: "Choose your path" },
@@ -53,10 +53,10 @@ const DELIVERY_OPTIONS = [
 
 const SettingsSection = ({ user }: { user: User }) => {
   const { logout, updatePassword } = useAuth();
-  const { habits, resetAllData } = useHabits();
+  const { habits, resetAllData, addHabit } = useHabits();
   const { profile, loading: profileLoading, updateProfile } = useProfile();
-  const { isPro, openBillingPortal } = useSubscription();
-  const { entries: reflections } = useReflections();
+  const { isPro, currentPeriodEnd, openBillingPortal } = useSubscription();
+  const { entries: reflections, saveEntry } = useReflections();
   const { settings, loading: settingsLoading, updateSettings, resetOnboarding } = useUserSettings();
 
   const [displayName, setDisplayName] = useState(profile?.displayName || "");
@@ -138,6 +138,47 @@ const SettingsSection = ({ user }: { user: User }) => {
       console.error("Export error:", error);
       toast.error("Failed to export data.");
     }
+  };
+
+  // Restore / Import Data Backup Handler
+  const handleImportBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const content = e.target?.result as string;
+      const res = parseAndValidateBackup(content);
+      if (!res.success || !res.data) {
+        toast.error(res.error || "Failed to parse backup file.");
+        return;
+      }
+
+      if (!confirm(`Restore backup containing ${res.data.habits.length} habits and ${res.data.reflections.length} reflections? This will import missing items to your account.`)) {
+        return;
+      }
+
+      let restoredHabits = 0;
+      for (const h of res.data.habits) {
+        if (!habits.some((existing) => existing.name === h.name)) {
+          await addHabit(h.name, h.category, h.period, h.priority, h.dueDate, h.startTime, h.endTime, h.color);
+          restoredHabits++;
+        }
+      }
+
+      let restoredReflections = 0;
+      for (const r of res.data.reflections) {
+        if (!reflections.some((existing) => existing.date === r.date)) {
+          await saveEntry(r.text, r.mood);
+          restoredReflections++;
+        }
+      }
+
+      toast.success(`Backup restored! Imported ${restoredHabits} new habits & ${restoredReflections} reflections.`);
+    };
+
+    reader.readAsText(file);
+    event.target.value = "";
   };
 
   // Reset All Data
@@ -253,23 +294,28 @@ const SettingsSection = ({ user }: { user: User }) => {
           </div>
 
           <div className="space-y-3.5">
-            <div className="p-4 bg-surface/60 border border-border/80 rounded-2xl flex items-center justify-between">
+            <div className="p-4 bg-surface/60 border border-border/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-extrabold text-foreground">Current Membership Tier</div>
-                <div className="text-sm font-mono font-extrabold text-primary mt-0.5">{isPro ? "Pro Tier (Unlimited Access)" : "Free Tier"}</div>
+                <div className="text-sm font-mono font-extrabold text-primary mt-0.5">{isPro ? "Pro Tier (Unlimited Access 👑)" : "Free Tier"}</div>
+                {isPro && currentPeriodEnd && (
+                  <div className="text-[11px] font-mono text-muted-foreground mt-1">
+                    Renews: {new Date(currentPeriodEnd).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </div>
+                )}
               </div>
 
               {isPro ? (
                 <button
                   onClick={handleBilling}
-                  className="text-xs bg-surface border border-border/80 text-foreground font-extrabold px-3.5 py-1.5 rounded-xl hover:bg-muted/40 transition-all cursor-pointer"
+                  className="text-xs bg-surface border border-border/80 text-foreground font-extrabold px-3.5 py-2 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
                 >
-                  Manage Billing
+                  <span>Manage Billing & Invoices</span>
                 </button>
               ) : (
                 <Link
                   to="/pricing"
-                  className="text-xs bg-primary text-primary-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+                  className="text-xs bg-gradient-to-r from-primary to-accent text-white font-extrabold px-4 py-2 rounded-xl hover:opacity-95 transition-all cursor-pointer shadow-sm text-center"
                 >
                   Upgrade to Pro 👑
                 </Link>
@@ -438,6 +484,24 @@ const SettingsSection = ({ user }: { user: User }) => {
               >
                 Download Data Backup ({exportFormat.toUpperCase()})
               </button>
+            {/* Restore Backup */}
+            <div className="p-3.5 bg-surface/60 border border-border/80 rounded-2xl space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-extrabold text-foreground">Restore Data Backup</div>
+                  <div className="text-[11px] text-slate-300 font-medium mt-0.5">Import habits & reflections from a JSON backup</div>
+                </div>
+                <label className="text-xs bg-surface border border-border/80 text-foreground font-extrabold px-3 py-1.5 rounded-xl hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs">
+                  <Upload className="w-3.5 h-3.5 text-primary" />
+                  <span>Choose JSON File</span>
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleImportBackup}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
 
             {/* Reset All Data */}

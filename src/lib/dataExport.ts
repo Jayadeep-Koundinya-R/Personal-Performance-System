@@ -71,3 +71,65 @@ export function prepareFullExport(habits: Habit[], reflections: ReflectionEntry[
     version: "1.0.0",
   };
 }
+
+export function parseAndValidateBackup(jsonString: string): { success: boolean; data?: ExportData; error?: string } {
+  try {
+    if (!jsonString || typeof jsonString !== "string") {
+      return { success: false, error: "Empty or invalid backup data." };
+    }
+
+    const parsed = JSON.parse(jsonString);
+
+    if (typeof parsed !== "object" || parsed === null) {
+      return { success: false, error: "Invalid backup format: root must be a JSON object." };
+    }
+
+    // Check if habits array or reflections array exists
+    const habits = Array.isArray(parsed.habits) ? parsed.habits : [];
+    const reflections = Array.isArray(parsed.reflections) ? parsed.reflections : [];
+
+    if (habits.length === 0 && reflections.length === 0) {
+      return { success: false, error: "Backup file contains no habits or reflections data." };
+    }
+
+    // Validate habits structures
+    for (const h of habits) {
+      if (!h.name || typeof h.name !== "string") {
+        return { success: false, error: "Corrupted habit entry: missing name string." };
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        habits: habits.map((h: any) => ({
+          id: h.id || String(Date.now() + Math.random()),
+          name: h.name,
+          category: h.category || "General",
+          priority: h.priority || "Medium",
+          period: h.period || "Daily",
+          dueDate: h.dueDate || new Date().toISOString(),
+          completedDates: Array.isArray(h.completedDates) ? h.completedDates : [],
+          streak: typeof h.streak === "number" ? h.streak : 0,
+          lastCompletedDate: h.lastCompletedDate || null,
+          freezeCredits: typeof h.freezeCredits === "number" ? h.freezeCredits : 2,
+          startTime: h.startTime || null,
+          endTime: h.endTime || null,
+          color: h.color || "indigo",
+          archived: !!h.archived,
+        })),
+        reflections: reflections.map((r: any) => ({
+          id: r.id || String(Date.now() + Math.random()),
+          date: r.date || new Date().toISOString().split("T")[0],
+          text: r.text || "",
+          mood: r.mood || "great",
+          habitsLog: Array.isArray(r.habitsLog) ? r.habitsLog : [],
+        })),
+        exportDate: parsed.exportDate || new Date().toISOString(),
+        version: parsed.version || "1.0.0",
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: `JSON Parse Error: ${err?.message || "Invalid JSON formatting."}` };
+  }
+}
