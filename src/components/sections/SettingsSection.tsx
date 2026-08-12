@@ -484,6 +484,7 @@ const SettingsSection = ({ user }: { user: User }) => {
               >
                 Download Data Backup ({exportFormat.toUpperCase()})
               </button>
+            </div>
             {/* Restore Backup */}
             <div className="p-3.5 bg-surface/60 border border-border/80 rounded-2xl space-y-2">
               <div className="flex items-center justify-between">
