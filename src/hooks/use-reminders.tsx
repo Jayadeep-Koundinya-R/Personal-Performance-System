@@ -102,7 +102,24 @@ export function RemindersProvider({
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+
+    if (!isGuest && userId) {
+      const channel = supabase
+        .channel("reminders-changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "reminders", filter: `user_id=eq.${userId}` },
+          () => {
+            refresh();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [refresh, isGuest, userId]);
 
   const addReminder = useCallback(async (
     label: string,

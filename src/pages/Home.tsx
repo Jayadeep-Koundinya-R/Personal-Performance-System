@@ -18,6 +18,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/use-auth";
 
 /* ── data ────────────────────────────────────────────── */
 
@@ -29,6 +30,7 @@ const FEATURES = [
   { icon: "🔥", title: "Streak Engine", desc: "Unbroken chain counters, global rank tiers, emergency alerts, and streak shield protection." },
   { icon: "🏅", title: "Achievements", desc: "Unlock milestone badges, claim bonus XP, and build your trophy wall as you level up." },
   { icon: "👥", title: "Social Hub", desc: "Global leaderboard, accountability circles, co-op quests, and shareable win cards." },
+  { icon: "📚", title: "Focus Rooms & Study Squads", desc: "Permanent study groups, drop-in voice rooms, note sharing channels, and squad habit tracking." },
   { icon: "📈", title: "Executive Reports", desc: "Generate PDF reports, download CSV data, and analyze week-over-week growth trends." },
   { icon: "📝", title: "Reflections Journal", desc: "Daily guided prompts, mood & energy tracking, custom tags, and historical timeline search." },
   { icon: "⚙️", title: "Habit Architect", desc: "Create, edit, archive habits with categories, priorities, time windows, colors, and alarm links." },
@@ -51,6 +53,7 @@ const COMPETITORS = [
   { feature: "Deep Analytics & Forecasts", pps: true, habitica: false, streaks: false, notion: false },
   { feature: "PDF & CSV Reports", pps: true, habitica: false, streaks: false, notion: false },
   { feature: "Daily Reflections Journal", pps: true, habitica: false, streaks: false, notion: true },
+  { feature: "Drop-In Study Rooms & Notes Hub", pps: true, habitica: false, streaks: false, notion: false },
   { feature: "Global Leaderboard", pps: true, habitica: true, streaks: false, notion: false },
   { feature: "PWA / Installable", pps: true, habitica: false, streaks: false, notion: false },
   { feature: "100% Free Tier", pps: true, habitica: true, streaks: false, notion: true },
@@ -88,6 +91,7 @@ const stagger = {
 
 const HomePage = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const { isLoggedIn } = useAuth();
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -102,10 +106,18 @@ const HomePage = () => {
             <a href="#features" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-lg hover:bg-surface hidden sm:inline-flex">Features</a>
             <a href="#how-it-works" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-lg hover:bg-surface hidden sm:inline-flex">How It Works</a>
             <Link to="/pricing" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-lg hover:bg-surface">Pricing</Link>
-            <Link to="/login?tab=signin" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-lg hover:bg-surface">Login</Link>
-            <Link to="/login?tab=signup" className="text-[13px] bg-primary text-primary-foreground px-4 py-2 rounded-xl font-bold hover:opacity-90 transition-all ml-1 shadow-md shadow-primary/20">
-              Sign Up Free
-            </Link>
+            {isLoggedIn ? (
+              <Link to="/dashboard" className="text-[13px] bg-primary text-primary-foreground px-4 py-2 rounded-xl font-bold hover:opacity-90 transition-all ml-1 shadow-md shadow-primary/20">
+                Open Dashboard →
+              </Link>
+            ) : (
+              <>
+                <Link to="/login?tab=signin" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-lg hover:bg-surface">Login</Link>
+                <Link to="/login?tab=signup" className="text-[13px] bg-primary text-primary-foreground px-4 py-2 rounded-xl font-bold hover:opacity-90 transition-all ml-1 shadow-md shadow-primary/20">
+                  Sign Up Free
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -142,11 +154,19 @@ const HomePage = () => {
           </motion.p>
 
           <motion.div variants={fadeUp} custom={3} className="flex items-center justify-center gap-4 flex-wrap">
-            <Link to="/login?tab=signup"
-              className="bg-gradient-to-br from-primary to-accent text-white py-3.5 px-9 rounded-xl text-sm font-bold hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 shadow-lg shadow-primary/20"
-            >
-              Start Free — No Credit Card →
-            </Link>
+            {isLoggedIn ? (
+              <Link to="/dashboard"
+                className="bg-gradient-to-br from-primary to-accent text-white py-3.5 px-9 rounded-xl text-sm font-bold hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 shadow-lg shadow-primary/20"
+              >
+                Go to Dashboard →
+              </Link>
+            ) : (
+              <Link to="/login?tab=signup"
+                className="bg-gradient-to-br from-primary to-accent text-white py-3.5 px-9 rounded-xl text-sm font-bold hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 shadow-lg shadow-primary/20"
+              >
+                Start Free — No Credit Card →
+              </Link>
+            )}
             <a href="#features"
               className="text-sm text-foreground border border-border/80 py-3.5 px-7 rounded-xl hover:border-primary/50 hover:bg-surface transition-all duration-200 font-semibold"
             >

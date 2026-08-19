@@ -95,7 +95,24 @@ export function UserSettingsProvider({
 
   useEffect(() => {
     load();
-  }, [load]);
+
+    if (!isGuest && userId) {
+      const channel = supabase
+        .channel("user-settings-changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "user_settings", filter: `user_id=eq.${userId}` },
+          () => {
+            load();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [load, isGuest, userId]);
 
   const updateSettings = useCallback(async (updates: Partial<UserSettings>) => {
     const previousSettings = { ...settings };

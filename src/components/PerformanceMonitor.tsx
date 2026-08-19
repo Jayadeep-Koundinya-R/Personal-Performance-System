@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { onCLS, onINP, onLCP, onFCP, onTTFB } from "web-vitals";
+import { isNativeMobile } from "@/lib/native-notifications";
 
 interface Metric {
   name: string;
@@ -15,13 +15,16 @@ declare global {
 
 export function PerformanceMonitor() {
   useEffect(() => {
+    // Skip web-vitals on native mobile — PerformanceObserver may not be
+    // fully supported in Android WebViews and can throw uncaught errors.
+    if (isNativeMobile()) return;
+
     const logMetric = (metric: Metric) => {
       console.log(`[Performance] ${metric.name}:`, {
         value: metric.value,
         rating: metric.rating,
       });
 
-      // Send to analytics service in production
       if (import.meta.env.PROD && window.gtag) {
         window.gtag("event", metric.name, {
           event_category: "Web Vitals",
@@ -31,14 +34,19 @@ export function PerformanceMonitor() {
       }
     };
 
-    // Core Web Vitals
-    onLCP(logMetric);
-    onINP(logMetric); // Replaces onFID in newer versions
-    onCLS(logMetric);
-
-    // Other useful metrics
-    onFCP(logMetric);
-    onTTFB(logMetric);
+    try {
+      import("web-vitals").then(({ onCLS, onINP, onLCP, onFCP, onTTFB }) => {
+        onLCP(logMetric);
+        onINP(logMetric);
+        onCLS(logMetric);
+        onFCP(logMetric);
+        onTTFB(logMetric);
+      }).catch(() => {
+        // Silently ignore — web-vitals not critical
+      });
+    } catch {
+      // Silently ignore
+    }
   }, []);
 
   return null;

@@ -1,21 +1,36 @@
-import { useRegisterSW } from "virtual:pwa-register/react";
 import { RefreshCw, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { isNativeMobile } from "@/lib/native-notifications";
 
-export default function PwaUpdatePrompt() {
+/**
+ * Dynamically import useRegisterSW only when NOT on native mobile.
+ * This avoids pulling in the virtual:pwa-register module in Capacitor builds
+ * where it may be a no-op or unavailable.
+ */
+let useRegisterSW: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mod = await import("virtual:pwa-register/react");
+  useRegisterSW = mod.useRegisterSW;
+} catch {
+  // Will be null — handled below
+}
+
+function PwaUpdatePromptInner() {
+  if (!useRegisterSW) return null;
+
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegistered(r) {
+    onRegistered(r: any) {
       if (r) {
-        // Check for SW update every 15 minutes while app is open
         setInterval(() => {
           r.update().catch(() => {});
         }, 15 * 60 * 1000);
       }
     },
-    onRegisterError(error) {
+    onRegisterError(error: any) {
       console.error("SW Registration Error:", error);
     },
   });
@@ -61,4 +76,10 @@ export default function PwaUpdatePrompt() {
       </div>
     </AnimatePresence>
   );
+}
+
+export default function PwaUpdatePrompt() {
+  // On native mobile, skip entirely — no service workers
+  if (typeof window !== "undefined" && isNativeMobile()) return null;
+  return <PwaUpdatePromptInner />;
 }

@@ -1,176 +1,93 @@
 /*
-  🤖 Masterwork AI Performance Coach & Smart Assistant
+  🤖 AI Performance Coach — Phase 2 Pro Engine with Conversation Memory
   
-  Features:
-  - Smart Local Fallback Coach Engine (Analyzes active habits, pending tasks & streaks locally)
+  Architecture:
+  - Intent Classifier (src/lib/ai/intentClassifier.ts) identifies user intent
+  - Response Templates (src/lib/ai/responseTemplates.ts) generate contextual replies
+  - Coach Engine (src/lib/ai/coachEngine.ts) orchestrates the pipeline
+  - AI Chat Service (src/lib/ai/aiChatService.ts) manages:
+    * Continuous conversation memory across sessions (ai_conversations table & cache)
+    * Pro-only gating to Gemini 2.0 Flash Edge Function
+    * Instant offline & free user local engine fallback
   - 1-Click Pending Habit Checkoff Cards inside Chat
-  - Expanded Quick Action Prompts (Roast, Daily Audit, Procrastination, Streak Rescue)
-  - High-Contrast Glassmorphic Crisp Design
+  - Clear history action & model badge indicator
 */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useHabits } from "@/hooks/use-habits";
 import { useReflections } from "@/hooks/use-reflections";
+import { useProfile } from "@/hooks/use-profile";
 import { useSubscription } from "@/hooks/use-subscription";
-import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Flame, Check, Zap, MessageSquare, Shield, X, Send } from "lucide-react";
+import { useReminders } from "@/hooks/use-reminders";
+import { useFocusTimer } from "@/hooks/use-focus-timer";
+import { buildHabitContext } from "@/lib/ai/coachEngine";
+import {
+  loadConversationHistory,
+  saveConversationMessage,
+  clearConversationHistory,
+  dispatchCoachMessage,
+  type ChatMessage,
+} from "@/lib/ai/aiChatService";
+import type { AgentActionPayload } from "@/lib/ai/agentTools";
+import { Sparkles, Trash2, X, Send, Zap, Plus, Shield, Bell, Clock, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
-interface Message {
-  id: string;
-  sender: "ai" | "user";
-  text: string;
-  actionHabits?: { id: string; name: string }[];
-}
-
-// Local Smart Coach Fallback Generator with Short-Term Conversation Memory
-function generateLocalCoachAdvice(
-  prompt: string,
-  habits: any[],
-  reflections: any[],
-  getMaxStreak: () => number,
-  isHabitDueToday: (h: any) => boolean,
-  getTodayStr: () => string,
-  chatHistory: Message[] = []
-): { text: string; actionHabits?: { id: string; name: string }[] } {
-  const todayStr = getTodayStr();
-  const dueHabits = habits.filter((h) => isHabitDueToday(h) && !h.archived);
-  const completedToday = dueHabits.filter((h) => (h.completedDates || []).includes(todayStr));
-  const pendingToday = dueHabits.filter((h) => !(h.completedDates || []).includes(todayStr));
-  const maxStreak = getMaxStreak();
-
-  const lower = prompt.toLowerCase();
-  const lastUserMsg = chatHistory.filter(m => m.sender === "user").slice(-2)[0]?.text?.toLowerCase() || "";
-
-  // 1. Roast Performance
-  if (lower.includes("roast") || lower.includes("burn")) {
-    if (pendingToday.length > 0) {
-      return {
-        text: `🔥 ROAST ALERT: You have ${pendingToday.length} pending habits today including "${pendingToday[0]?.name}"! Your best streak is ${maxStreak} days, but excuses don't build momentum. Knock these out right now!`,
-        actionHabits: pendingToday.map((h) => ({ id: h.id, name: h.name })),
-      };
-    } else if (dueHabits.length > 0) {
-      return {
-        text: `🔥 Clean sweep today! 100% of your habits are done. I wanted to roast you, but you're actually executing. Keep this ${maxStreak}-day streak alive!`,
-      };
-    } else {
-      return {
-        text: `🔥 You don't have any habits configured for today! Build a new habit in Habit Architect before you start slacking!`,
-      };
-    }
-  }
-
-  // 2. Daily Audit / Pending Tasks
-  if (lower.includes("audit") || lower.includes("goal") || lower.includes("pending")) {
-    if (pendingToday.length > 0) {
-      return {
-        text: `📋 DAILY AUDIT: You have completed ${completedToday.length}/${dueHabits.length} habits today (${Math.round((completedToday.length / (dueHabits.length || 1)) * 100)}%).\n\nPending items remaining:`,
-        actionHabits: pendingToday.map((h) => ({ id: h.id, name: h.name })),
-      };
-    } else {
-      return {
-        text: `🎯 EXCELLENT: You are 100% completed for today! All ${completedToday.length} due habits checked off cleanly.`,
-      };
-    }
-  }
-
-  // 3. Procrastination / Focus
-  if (lower.includes("procrastinat") || lower.includes("work") || lower.includes("focus")) {
-    return {
-      text: `🧠 DEEP FOCUS TIP: Use the 2-Minute Rule. Start your hardest pending habit for just 120 seconds in Focus Studio. Action creates motivation, not the other way around!`,
-    };
-  }
-
-  // 4. Streak Rescue
-  if (lower.includes("streak") || lower.includes("rescue") || lower.includes("shield")) {
-    return {
-      text: `🛡️ STREAK ADVICE: Your best streak is ${maxStreak} days. Don't break the chain! If you are at risk today, complete at least 1 high-priority habit or deploy a Streak Shield!`,
-    };
-  }
-
-  // Generic Intelligent Reply
-  return {
-    text: `⚡ COACH ANALYSIS: You've completed ${completedToday.length}/${dueHabits.length} habits today with a top streak of ${maxStreak} days. Stay focused on high-priority goals!`,
-    actionHabits: pendingToday.slice(0, 3).map((h) => ({ id: h.id, name: h.name })),
-  };
-}
-
-async function fetchDirectGeminiResponse(
-  apiKey: string,
-  userMessage: string,
-  habits: any[],
-  reflections: any[],
-  chatHistory: Message[]
-): Promise<string | null> {
-  try {
-    const habitsContext = habits.map(h => `- ${h.name} (${h.category}): Streak ${h.streak} days, last completed: ${h.lastCompletedDate || "never"}`).join("\n");
-    const reflectionsContext = reflections.slice(0, 3).map(r => `- ${r.date}: Mood ${r.mood}, Note: "${r.text}"`).join("\n");
-
-    const systemPrompt = `You are the AI Performance Coach for Personal Performance System (PPS). Your job is to motivate, audit, roast, or advise the user based on their real habit data.
-User's Active Habits:
-${habitsContext || "No habits logged yet."}
-
-User's Recent Reflections:
-${reflectionsContext || "No recent reflections."}
-
-Be concise, constructive, action-oriented, and encouraging (or funny/spicy if they ask for a roast). Keep responses under 4 sentences.`;
-
-    // Filter chat history to ensure strict alternating roles (user -> model -> user)
-    const rawHistory = chatHistory.slice(-6).map(m => ({
-      role: m.sender === "user" ? "user" : "model",
-      parts: [{ text: m.text }]
-    }));
-
-    const sanitizedContents: { role: string; parts: { text: string }[] }[] = [];
-    for (const msg of rawHistory) {
-      if (sanitizedContents.length === 0 || sanitizedContents[sanitizedContents.length - 1].role !== msg.role) {
-        sanitizedContents.push(msg);
-      }
-    }
-
-    if (sanitizedContents.length > 0 && sanitizedContents[sanitizedContents.length - 1].role === "user") {
-      sanitizedContents.pop();
-    }
-
-    sanitizedContents.push({ role: "user", parts: [{ text: userMessage }] });
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: sanitizedContents,
-      }),
-    });
-
-    if (!response.ok) return null;
-    const json = await response.json();
-    const replyText = json.candidates?.[0]?.content?.parts?.[0]?.text;
-    return replyText || null;
-  } catch {
-    return null;
-  }
+/**
+ * Resolve action habit placeholder IDs to real habit IDs by name matching.
+ */
+function resolveActionHabitIds(
+  actions: { id: string; name: string }[] | undefined,
+  habits: any[]
+): { id: string; name: string }[] | undefined {
+  if (!actions || actions.length === 0) return undefined;
+  return actions.map((a) => {
+    const match = habits.find((h) => h.name === a.name);
+    return match ? { id: match.id, name: a.name } : a;
+  });
 }
 
 export default function AiChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      sender: "ai",
-      text: "Hey! I'm your AI Performance Coach. Ask me for a performance roast, daily audit, or focus tips!",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { isLoggedIn } = useAuth();
-  const { habits, toggleCompletion, isHabitDueToday, getTodayStr, getMaxStreak } = useHabits();
+  const { isLoggedIn, user } = useAuth();
+  const { habits, addHabit, toggleCompletion, useStreakFreeze, isHabitDueToday, getTodayStr, getMaxStreak } = useHabits();
   const { entries: reflections } = useReflections();
-  const { limits } = useSubscription();
+  const { addReminder } = useReminders();
+  const { changeTimerMode, startTimer, setActiveTaskName, setLinkedHabitId } = useFocusTimer();
+  const { profile } = useProfile();
+  const { limits, isPro } = useSubscription();
+
+  // Load conversation memory when user signs in or opens widget
+  useEffect(() => {
+    let isMounted = true;
+    async function loadHistory() {
+      setIsLoadingHistory(true);
+      const history = await loadConversationHistory(user?.id);
+      if (isMounted) {
+        setMessages(history);
+        setIsLoadingHistory(false);
+      }
+    }
+    if (isLoggedIn) {
+      loadHistory();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoggedIn, user?.id]);
+
+  // Build habit context once (memoized) — used by the local coach engine
+  const habitContext = useMemo(
+    () => buildHabitContext(habits, reflections, getMaxStreak, isHabitDueToday, getTodayStr, profile?.displayName || "there"),
+    [habits, reflections, getMaxStreak, isHabitDueToday, getTodayStr, profile?.displayName]
+  );
 
   const userMessageCount = messages.filter((m) => m.sender === "user").length;
   const conversationLimit = limits.aiConversationLimit;
@@ -183,103 +100,159 @@ export default function AiChatWidget() {
 
   if (!isLoggedIn) return null;
 
-  const handleSend = async (text: string) => {
-    if (!text.trim() || isLimitReached) return;
+  const handleExecuteAgentAction = async (msgId: string, action: AgentActionPayload) => {
+    try {
+      if (action.actionType === "CREATE_HABIT") {
+        const p = action.parameters;
+        const err = await addHabit(p.name, p.category, p.period, p.priority);
+        if (err) {
+          toast.error(err);
+          return;
+        }
+        toast.success(`✨ Created habit "${p.name}"!`);
+      } else if (action.actionType === "FREEZE_STREAK") {
+        const p = action.parameters;
+        if (p.habitId) {
+          const err = await useStreakFreeze(p.habitId);
+          if (err) {
+            toast.error(err);
+            return;
+          }
+          toast.success(`🛡️ Streak Shield activated for "${p.habitName}"!`);
+        }
+      } else if (action.actionType === "SCHEDULE_REMINDER") {
+        const p = action.parameters;
+        const err = await addReminder(
+          p.habitName,
+          p.time,
+          p.repeatPattern,
+          p.habitId || null,
+          "in_app",
+          p.deliveryType
+        );
+        if (err) {
+          toast.error(err);
+          return;
+        }
+        toast.success(`⏰ ${p.deliveryType === "alarm" ? "Alarm" : "Reminder"} scheduled for ${p.displayTime}!`);
+      } else if (action.actionType === "START_FOCUS_TIMER") {
+        const p = action.parameters;
+        if (p.habitName) setActiveTaskName(p.habitName);
+        if (p.habitId) setLinkedHabitId(p.habitId);
+        changeTimerMode("custom", p.durationMinutes);
+        startTimer();
+        toast.success(`🎯 Launched ${p.durationMinutes}-minute focus session!`);
+      }
 
-    const newMsg: Message = { id: Date.now().toString(), sender: "user", text };
-    setMessages((prev) => [...prev, newMsg]);
+      // Mark action as executed in state
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgId && m.agentAction
+            ? { ...m, agentAction: { ...m.agentAction, status: "executed" } }
+            : m
+        )
+      );
+    } catch (err: any) {
+      console.error("Failed to execute agent action:", err);
+      toast.error("Failed to execute action. Please try again.");
+    }
+  };
+
+  const handleSend = async (text: string) => {
+    if (!text.trim() || isLimitReached || isTyping) return;
+
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender: "user",
+      text,
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
 
+    // Save user message to persistent history
+    saveConversationMessage(user?.id, {
+      sender: "user",
+      text,
+    });
+
     try {
-      // 1. Attempt Supabase Edge Function invoke
-      const { data, error } = await supabase.functions.invoke("ai-coach-chat", {
-        body: {
-          message: text,
-          habits: habits.map((h) => ({
-            name: h.name,
-            category: h.category,
-            streak: h.streak,
-            lastCompletedDate: h.lastCompletedDate,
-            period: h.period,
-          })),
-          reflections: reflections.map((r) => ({
-            date: r.date,
-            mood: r.mood,
-            text: r.text,
-          })),
-          chatHistory: messages.slice(-10),
-        },
+      // Dispatch message through Pro Gemini 2.0 or local Smart Coach
+      const result = await dispatchCoachMessage({
+        message: text,
+        habitContext,
+        isPro,
+        userId: user?.id,
+        habits,
+        reflections,
+        chatHistory: messages,
       });
 
-      if (!error && data?.text) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender: "ai",
-            text: data.text,
-          },
-        ]);
-        return;
-      }
+      const resolvedActions = resolveActionHabitIds(result.actionHabits, habits);
 
-      // 2. Direct Gemini API call if VITE_GEMINI_API_KEY is present
-      const clientApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
-      if (clientApiKey) {
-        const geminiReply = await fetchDirectGeminiResponse(
-          clientApiKey,
-          text,
-          habits,
-          reflections,
-          messages
-        );
-        if (geminiReply) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              sender: "ai",
-              text: geminiReply,
-            },
-          ]);
-          return;
-        }
-      }
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: "ai",
+        text: result.text,
+        actionHabits: resolvedActions,
+        agentAction: result.agentAction,
+        model: result.model,
+        source: result.source,
+        created_at: new Date().toISOString(),
+      };
 
-      // 3. Fall back to Local Smart Coach Engine
-      const fallback = generateLocalCoachAdvice(text, habits, reflections, getMaxStreak, isHabitDueToday, getTodayStr, messages);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          sender: "ai",
-          text: fallback.text,
-          actionHabits: fallback.actionHabits,
-        },
-      ]);
+      setMessages((prev) => [...prev, aiMsg]);
+
+      // Save AI response to persistent history
+      saveConversationMessage(user?.id, {
+        sender: "ai",
+        text: result.text,
+        actionHabits: resolvedActions,
+        agentAction: result.agentAction,
+        model: result.model,
+        intent: result.detectedIntent,
+      });
     } catch (err: any) {
-      // Graceful local engine fallback on exception
-      const fallback = generateLocalCoachAdvice(text, habits, reflections, getMaxStreak, isHabitDueToday, getTodayStr, messages);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          sender: "ai",
-          text: fallback.text,
-          actionHabits: fallback.actionHabits,
-        },
-      ]);
+      console.error("AI Coach dispatch exception:", err);
+      // Fallback message
+      const fallbackMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: "ai",
+        text: "I ran into a temporary hiccup, but keep pushing on your daily habits! Ask me for a roast or daily audit anytime.",
+        source: "local",
+        model: "local",
+      };
+      setMessages((prev) => [...prev, fallbackMsg]);
     } finally {
       setIsTyping(false);
     }
   };
 
+  const handleClearChat = async () => {
+    await clearConversationHistory(user?.id);
+    setMessages([
+      {
+        id: "cleared-greeting",
+        sender: "ai",
+        text: "Conversation cleared. What would you like to work on next?",
+        source: "local",
+        model: "local",
+      },
+    ]);
+    toast.success("Chat history cleared");
+  };
+
   const quickPrompts = [
+    "Add habit: Read 20 pages at 9 PM 📖",
+    "Start 25m focus timer 🎯",
+    "Set alarm for 7:00 AM ⏰",
+    "Freeze my streak 🛡️",
+    "Daily Audit 📋",
     "Roast my performance 🔥",
-    "Daily Audit & Pending Tasks 📋",
-    "How to beat procrastination 🧠",
-    "Streak Rescue Advice 🛡️",
+    "Motivate me 💪",
+    "Help ❓",
   ];
 
   return (
@@ -291,70 +264,140 @@ export default function AiChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="mb-4 w-[360px] sm:w-[380px] max-h-[520px] h-[75vh] bg-card/95 backdrop-blur-2xl border border-primary/40 rounded-3xl flex flex-col shadow-2xl overflow-hidden"
+            className="mb-4 w-[360px] sm:w-[380px] max-h-[540px] h-[78vh] bg-card/95 backdrop-blur-2xl border border-primary/40 rounded-3xl flex flex-col shadow-2xl overflow-hidden"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-primary/20 via-card to-secondary/20 border-b border-border/40 p-4 flex justify-between items-center">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-xl flex-shrink-0">
+                <div className="w-9 h-9 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-xl flex-shrink-0 shadow-inner">
                   🤖
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-foreground flex items-center gap-1.5 font-mono">
                     <span>Performance AI Coach</span>
                   </h3>
-                  <p className="text-[10.5px] text-pps-green font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 mt-0.5">
+                  <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-pps-green animate-pulse" />
-                    <span>Online & Analyzing</span>
-                    <span className="text-[9.5px] bg-primary/15 text-primary border border-primary/30 px-2 py-0.2 rounded-full font-mono font-bold lowercase tracking-normal">
-                      ai-v1.5
-                    </span>
-                  </p>
+                    <span className="text-[10px] text-muted-foreground font-mono font-bold">Online</span>
+                    {isPro ? (
+                      <span className="text-[9.5px] bg-gradient-to-r from-amber-500/20 to-primary/20 text-amber-400 border border-amber-500/30 px-2 py-0.2 rounded-full font-mono font-bold flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                        <span>Gemini 2.0 Pro</span>
+                      </span>
+                    ) : (
+                      <span className="text-[9.5px] bg-primary/15 text-primary border border-primary/30 px-2 py-0.2 rounded-full font-mono font-bold flex items-center gap-1">
+                        <Zap className="w-2.5 h-2.5 text-primary" />
+                        <span>Smart Local AI</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-slate-300 hover:text-foreground p-1.5 rounded-xl hover:bg-surface transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleClearChat}
+                  title="Clear Chat History"
+                  className="text-muted-foreground hover:text-destructive p-1.5 rounded-xl hover:bg-surface transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  title="Close Coach"
+                  className="text-muted-foreground hover:text-foreground p-1.5 rounded-xl hover:bg-surface transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Messages Body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-[88%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-sm space-y-2 font-medium ${
-                      msg.sender === "user"
-                        ? "bg-primary text-primary-foreground font-bold rounded-br-xs"
-                        : "bg-surface border border-border/80 text-foreground rounded-bl-xs"
-                    }`}
-                  >
-                    <div className="whitespace-pre-line">{msg.text}</div>
-
-                    {/* Action Habits Buttons inside Chat */}
-                    {msg.actionHabits && msg.actionHabits.length > 0 && (
-                      <div className="pt-2 border-t border-border/40 space-y-1.5">
-                        <div className="text-[10.5px] font-mono font-extrabold text-primary uppercase">1-Click Quick Complete:</div>
-                        {msg.actionHabits.map((h) => (
-                          <button
-                            key={h.id}
-                            onClick={() => {
-                              toggleCompletion(h.id);
-                              toast.success(`Completed ${h.name}!`);
-                            }}
-                            className="w-full text-left text-[11px] font-extrabold bg-primary/15 text-primary border border-primary/30 px-3 py-1.5 rounded-xl hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer flex items-center justify-between"
-                          >
-                            <span>✓ Complete "{h.name}"</span>
-                            <span>+10 XP</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center h-32 text-muted-foreground text-xs font-mono">
+                  <div className="animate-pulse flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span>Loading conversation memory…</span>
                   </div>
                 </div>
-              ))}
+              ) : (
+                messages.map((msg) => (
+                  <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[88%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-sm space-y-2 font-medium ${
+                        msg.sender === "user"
+                          ? "bg-primary text-primary-foreground font-bold rounded-br-xs"
+                          : "bg-surface border border-border/80 text-foreground rounded-bl-xs"
+                      }`}
+                    >
+                      <div className="whitespace-pre-line">{msg.text}</div>
+
+                      {/* Action Habits Buttons inside Chat */}
+                      {msg.actionHabits && msg.actionHabits.length > 0 && (
+                        <div className="pt-2 border-t border-border/40 space-y-1.5">
+                          <div className="text-[10.5px] font-mono font-extrabold text-primary uppercase">1-Click Quick Complete:</div>
+                          {msg.actionHabits.map((h) => (
+                            <button
+                              key={h.id}
+                              onClick={() => {
+                                toggleCompletion(h.id);
+                                toast.success(`Completed ${h.name}!`);
+                              }}
+                              className="w-full text-left text-[11px] font-extrabold bg-primary/15 text-primary border border-primary/30 px-3 py-1.5 rounded-xl hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer flex items-center justify-between"
+                            >
+                              <span>✓ Complete "{h.name}"</span>
+                              <span>+10 XP</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Autonomous Agent Interactive Tool Cards */}
+                      {msg.agentAction && (
+                        <div className="pt-2 border-t border-border/50">
+                          <div className="bg-card/90 border border-primary/40 rounded-xl p-3 space-y-2.5 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-mono font-extrabold text-primary uppercase tracking-wider flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-primary" />
+                                <span>Agent Action</span>
+                              </span>
+                              {msg.agentAction.status === "executed" && (
+                                <span className="text-[9.5px] font-mono font-bold text-pps-green flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-pps-green" />
+                                  <span>Executed</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div>
+                              <div className="font-extrabold text-foreground text-xs">{msg.agentAction.title}</div>
+                              <div className="text-[11px] text-muted-foreground mt-0.5">{msg.agentAction.description}</div>
+                            </div>
+
+                            {msg.agentAction.status === "executed" ? (
+                              <div className="bg-pps-green/10 border border-pps-green/30 text-pps-green text-[11px] font-bold py-1.5 px-3 rounded-lg text-center flex items-center justify-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Action Successfully Completed</span>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleExecuteAgentAction(msg.id, msg.agentAction!)}
+                                className="w-full bg-gradient-to-r from-primary to-accent text-white font-extrabold text-xs py-2 px-3 rounded-xl shadow-md shadow-primary/20 hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                              >
+                                {msg.agentAction.actionType === "CREATE_HABIT" && <Plus className="w-3.5 h-3.5" />}
+                                {msg.agentAction.actionType === "FREEZE_STREAK" && <Shield className="w-3.5 h-3.5" />}
+                                {msg.agentAction.actionType === "SCHEDULE_REMINDER" && <Bell className="w-3.5 h-3.5" />}
+                                {msg.agentAction.actionType === "START_FOCUS_TIMER" && <Clock className="w-3.5 h-3.5" />}
+                                <span>Confirm & Execute →</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
 
               {isTyping && (
                 <div className="flex justify-start">
@@ -422,3 +465,4 @@ export default function AiChatWidget() {
     </motion.div>
   );
 }
+

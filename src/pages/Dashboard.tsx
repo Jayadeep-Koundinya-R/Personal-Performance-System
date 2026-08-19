@@ -36,6 +36,8 @@ import FloatingMiniTimer from "@/components/FloatingMiniTimer";
 import GuestTrialBanner from "@/components/ui/GuestTrialBanner";
 import GuestTrialExpiredModal from "@/components/GuestTrialExpiredModal";
 import { useFocusTimer } from "@/hooks/use-focus-timer";
+import { ActiveCallProvider } from "@/context/ActiveCallContext";
+import { FloatingCallPiP } from "@/components/focus-rooms/FloatingCallPiP";
 
 import { lazy, Suspense } from "react";
 import DashboardSection from "@/components/sections/DashboardSection";
@@ -47,7 +49,7 @@ const ReflectionSection = lazy(() => import("@/components/sections/ReflectionSec
 const HabitManagerSection = lazy(() => import("@/components/sections/HabitManagerSection").then(m => ({ default: m.default })));
 const ReminderSection = lazy(() => import("@/components/sections/ReminderSection").then(m => ({ default: m.default })));
 const AchievementsSection = lazy(() => import("@/components/sections/AchievementsSection").then(m => ({ default: m.default })));
-const SocialSection = lazy(() => import("@/components/sections/SocialSection").then(m => ({ default: m.default })));
+import SocialSection from "@/components/sections/SocialSection";
 const ReportsSection = lazy(() => import("@/components/sections/ReportsSection").then(m => ({ default: m.default })));
 const SettingsSection = lazy(() => import("@/components/sections/SettingsSection").then(m => ({ default: m.default })));
 
@@ -58,10 +60,10 @@ const NAV_ITEMS = [
   { key: "analytics", icon: "📊", label: "Analytics" },
   { key: "streak", icon: "🔥", label: "Streak Engine" },
   { key: "achievements", icon: "🏅", label: "Achievements" },
-  { key: "social", icon: "👥", label: "Social" },
+  { key: "social", icon: "👥", label: "Social & Focus Hub" },
   { key: "reports", icon: "📈", label: "Reports" },
   { key: "reflections", icon: "📝", label: "Reflections" },
-  { key: "habits", icon: "⚙️", label: "Habit Manager" },
+  { key: "habits", icon: "⚙️", label: "Habit Architect" },
   { key: "reminders", icon: "🔔", label: "Reminders" },
   { key: "settings", icon: "🛠", label: "Settings" },
 ] as const;
@@ -248,17 +250,24 @@ function DashboardInner({ user }: { user: User }) {
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRitual, setShowRitual] = useState(false);
-  const [dismissedTrial, setDismissedTrial] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
 
-  // 7-day guest trial expiry check
-  const guestTrialExpired = (() => {
-    if (!user.isGuest || dismissedTrial) return false;
+  // 7-day guest trial expiry — auto-logout expired guest users
+  useEffect(() => {
+    if (!user.isGuest) return;
     const createdAt = localStorage.getItem("pps_guest_created_at");
-    if (!createdAt) return false;
+    if (!createdAt) return;
     const elapsed = Date.now() - new Date(createdAt).getTime();
-    return elapsed >= 7 * 24 * 60 * 60 * 1000;
-  })();
+    if (elapsed >= 7 * 24 * 60 * 60 * 1000) {
+      // Clear guest data and force redirect to login
+      localStorage.removeItem("pps_guest");
+      localStorage.removeItem("pps_guest_created_at");
+      try { sessionStorage.removeItem("pps_guest"); } catch {}
+      window.location.hash = "#/login?tab=signup";
+      window.location.reload();
+    }
+  }, [user.isGuest]);
+
 
   // Handle return from successful Stripe checkout (?upgraded=1)
   useEffect(() => {
@@ -597,10 +606,14 @@ function DashboardInner({ user }: { user: User }) {
         )}
       </AnimatePresence>
 
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex h-screen overflow-hidden bg-3d-ambient relative selection:bg-primary selection:text-white">
+        {/* 3D Ambient Space Glow Orbs */}
+        <div className="glow-orb-primary -top-20 -left-20 opacity-30" />
+        <div className="glow-orb-cyan top-1/2 -right-20 opacity-25" />
+
         {/* Sidebar */}
         <aside className={`
-          w-[230px] bg-card border-r border-border flex flex-col flex-shrink-0
+          w-[230px] bg-card/90 backdrop-blur-xl border-r border-border/80 flex flex-col flex-shrink-0
           md:relative md:translate-x-0
           fixed top-0 bottom-0 left-0 z-[1001] transition-transform duration-300
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
@@ -779,6 +792,7 @@ function DashboardInner({ user }: { user: User }) {
         <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
       )}
       <FloatingMiniTimer activeSection={activeSection} onNavigate={(s) => setActiveSection(s as any)} />
+      <FloatingCallPiP />
       <AiChatWidget />
 
       {/* Voice Commands FAB button */}
@@ -819,7 +833,9 @@ const DashboardPage = () => {
 
   return (
     <DashboardProviders user={user}>
-      <DashboardInner user={user} />
+      <ActiveCallProvider>
+        <DashboardInner user={user} />
+      </ActiveCallProvider>
     </DashboardProviders>
   );
 };

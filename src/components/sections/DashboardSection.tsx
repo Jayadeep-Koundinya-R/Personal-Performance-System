@@ -1166,16 +1166,89 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
                     transition={{ duration: 0.25 }}
                     className="flex flex-col gap-4"
                   >
-                    {[
-                      { title: "🔴 Critical Tasks", borderColor: "border-l-destructive", tasks: sortedCritical, emptyText: "No critical tasks 🎉" },
-                      { title: "🟠 High Priority", borderColor: "border-l-pps-orange", tasks: sortedHigh, emptyText: "No high priority tasks" },
-                      { title: "🟡 Medium Focus", borderColor: "border-l-pps-yellow", tasks: sortedMedium, emptyText: "No medium tasks" },
-                      { title: "🟢 Upcoming", borderColor: "border-l-pps-green", tasks: sortedUpcoming, emptyText: "No upcoming tasks" },
-                    ].map((section, i) => (
-                      <motion.div key={section.title} variants={fadeUp} custom={i + 7} initial="hidden" animate="visible">
-                        <TaskSection {...section} renderTask={renderTask} renderEmptyList={renderEmptyList} />
+                    {habits.length === 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="p-6 sm:p-8 rounded-3xl border border-primary/30 bg-gradient-to-br from-card via-surface/60 to-primary/10 shadow-xl space-y-5 text-center sm:text-left"
+                      >
+                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                          <div className="w-14 h-14 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-3xl shadow-sm flex-shrink-0">
+                            🚀
+                          </div>
+                          <div className="space-y-1">
+                            <h3 className="text-lg font-black text-foreground font-mono">
+                              Welcome to Your Command Dashboard!
+                            </h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                              You don't have any habits tracked yet. Kickstart your streak right now by clicking any of the popular starter habits below or creating your own in Habit Architect!
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 1-Click Starter Habits Grid */}
+                        <div className="space-y-2">
+                          <div className="text-[11px] font-mono font-extrabold uppercase text-primary tracking-wider">
+                            ⚡ 1-Click Starter Habits:
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                            {[
+                              { name: "📚 Read 15 Minutes", cat: "Learning", period: "Daily", priority: "High" },
+                              { name: "💧 Drink 2L Water", cat: "Health", period: "Daily", priority: "Medium" },
+                              { name: "💻 30-min Deep Work Sprint", cat: "Productivity", period: "Daily", priority: "High" },
+                              { name: "🏃 20-min Exercise / Walk", cat: "Fitness", period: "Daily", priority: "Medium" },
+                              { name: "🧘 5-min Daily Reflection", cat: "Mindfulness", period: "Daily", priority: "Low" },
+                              { name: "🎯 Plan Top 3 Daily Goals", cat: "Productivity", period: "Daily", priority: "High" },
+                            ].map((starter, idx) => (
+                              <button
+                                key={idx}
+                                onClick={async () => {
+                                  await addHabit(starter.name, starter.cat, starter.period, starter.priority);
+                                  toast.success(`Added "${starter.name}" to your schedule! 🎉`);
+                                }}
+                                className="p-3 rounded-2xl bg-surface/80 border border-border/80 hover:border-primary/50 hover:bg-primary/5 transition-all text-left flex items-center justify-between group cursor-pointer"
+                              >
+                                <div className="space-y-0.5 min-w-0 pr-2">
+                                  <div className="text-xs font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                                    {starter.name}
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground font-mono">
+                                    {starter.cat} • {starter.priority}
+                                  </div>
+                                </div>
+                                <span className="text-xs font-bold px-2 py-1 rounded-lg bg-primary/15 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all flex-shrink-0">
+                                  + Add
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Custom Habit Action */}
+                        <div className="pt-3 border-t border-border/40 flex flex-wrap items-center justify-between gap-3">
+                          <span className="text-xs text-muted-foreground font-medium">
+                            Want complete customization?
+                          </span>
+                          <button
+                            onClick={() => onNavigate?.("habits")}
+                            className="px-4 py-2 bg-primary text-primary-foreground font-extrabold text-xs rounded-xl hover:bg-primary/90 transition-all shadow-sm cursor-pointer"
+                          >
+                            + Build Custom Habit in Habit Architect
+                          </button>
+                        </div>
                       </motion.div>
-                    ))}
+                    ) : (
+                      [
+                        { title: "🔴 Critical Tasks", borderColor: "border-l-destructive", tasks: sortedCritical, emptyText: "No critical tasks 🎉" },
+                        { title: "🟠 High Priority", borderColor: "border-l-pps-orange", tasks: sortedHigh, emptyText: "No high priority tasks" },
+                        { title: "🟡 Medium Focus", borderColor: "border-l-pps-yellow", tasks: sortedMedium, emptyText: "No medium tasks" },
+                        { title: "🟢 Upcoming", borderColor: "border-l-pps-green", tasks: sortedUpcoming, emptyText: "No upcoming tasks" },
+                      ].map((section, i) => (
+                        <motion.div key={section.title} variants={fadeUp} custom={i + 7} initial="hidden" animate="visible">
+                          <TaskSection {...section} renderTask={renderTask} renderEmptyList={renderEmptyList} />
+                        </motion.div>
+                      ))
+                    )}
                   </motion.div>
                 ) : (
                   <motion.div

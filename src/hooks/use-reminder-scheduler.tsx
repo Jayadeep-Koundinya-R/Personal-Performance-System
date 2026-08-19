@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useReminders } from "@/hooks/use-reminders";
 import { useHabits } from "@/hooks/use-habits";
 import { useNotifications } from "@/hooks/use-notifications";
-import { scheduleNativeLocalNotification, initNativeNotificationListeners } from "@/lib/native-notifications";
+import { scheduleNativeLocalNotification, initNativeNotificationListeners, initNativeNotifications } from "@/lib/native-notifications";
 import { toast } from "sonner";
 
 /**
@@ -193,7 +193,8 @@ export function useReminderScheduler() {
       }
     };
 
-    // Initialize native notification tap listener on native mobile devices
+    // Initialize native notification channel, permissions & tap listener on native mobile devices
+    initNativeNotifications();
     initNativeNotificationListeners((extra) => {
       if (extra?.type === "alarm") {
         toast.info("Opened from native alarm notification");

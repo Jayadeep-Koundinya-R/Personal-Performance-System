@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { sendLoginNotification, sendFreeTrialNotification } from "@/lib/native-notifications";
 
 export interface User {
   email: string | null;
@@ -201,7 +202,11 @@ async function migrateGuestData(userId: string): Promise<void> {
     localStorage.removeItem("reminders_guest");
     localStorage.removeItem("pps_settings_guest");
     localStorage.removeItem("pps_guest");
+    localStorage.removeItem("pps_guest_name");
     localStorage.removeItem("pps_guest_created_at");
+    localStorage.removeItem("pps_onboarded_guest");
+    localStorage.removeItem("pps_ai_chat_guest");
+    localStorage.removeItem("pps_ai_chat_history");
     try { sessionStorage.removeItem("pps_guest"); } catch {}
     console.log("Guest data successfully migrated to database.");
   } catch (err) {
@@ -212,19 +217,42 @@ async function migrateGuestData(userId: string): Promise<void> {
 }
 
 export function useAuth(): AuthReturn {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const isGuestInitial = typeof window !== "undefined" && (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true");
+
+  const [user, setUser] = useState<User | null>(() => {
+    if (isGuestInitial) return { email: null, isGuest: true };
+    return null;
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    // If guest session exists, render immediately in 0ms!
+    if (isGuestInitial) return false;
+    return true;
+  });
   const navigate = useNavigate();
 
-  const isGuestPersistent = localStorage.getItem("pps_guest") === "true";
-  const isGuestSession = sessionStorage.getItem("pps_guest") === "true";
-  const hasGuestSession = isGuestPersistent || isGuestSession;
-
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    let resolved = false;
+
+    // Safety timeout: Never let placeholder/slow network stall app launch for more than 800ms
+    const safetyTimer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
+          setUser({ email: null, isGuest: true });
+        }
+        setLoading(false);
+      }
+    }, 800);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      resolved = true;
+      clearTimeout(safetyTimer);
       if (session?.user) {
         setUser(mapUser(session.user));
         migrateGuestData(session.user.id);
+        if (event === "SIGNED_IN") {
+          sendLoginNotification(session.user.email);
+        }
       } else if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
         setUser({ email: null, isGuest: true });
       } else {
@@ -233,19 +261,39 @@ export function useAuth(): AuthReturn {
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(mapUser(session.user));
-        migrateGuestData(session.user.id);
-      } else if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
-        setUser({ email: null, isGuest: true });
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(safetyTimer);
+          if (session?.user) {
+            setUser(mapUser(session.user));
+            migrateGuestData(session.user.id);
+          } else if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
+            setUser({ email: null, isGuest: true });
+          } else {
+            setUser(null);
+          }
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(safetyTimer);
+          if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
+            setUser({ email: null, isGuest: true });
+          } else {
+            setUser(null);
+          }
+          setLoading(false);
+        }
+      });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<string | null> => {
@@ -265,6 +313,7 @@ export function useAuth(): AuthReturn {
         }
         return error.message;
       }
+      sendLoginNotification(email);
       navigate("/dashboard");
       return null;
     } catch (err: any) {
@@ -289,6 +338,7 @@ export function useAuth(): AuthReturn {
         return "SUCCESS_CONFIRMATION_REQUIRED";
       }
 
+      sendLoginNotification(email);
       navigate("/dashboard");
       return null;
     } catch (err: any) {
@@ -310,6 +360,7 @@ export function useAuth(): AuthReturn {
     if (!localStorage.getItem("pps_guest_created_at")) {
       localStorage.setItem("pps_guest_created_at", new Date().toISOString());
     }
+    sendFreeTrialNotification(name || localStorage.getItem("pps_guest_name") || "Explorer");
     setUser(guestUser);
     navigate("/dashboard");
   }, [navigate]);
@@ -354,9 +405,8 @@ export function useAuth(): AuthReturn {
 
   const loginWithGoogle = useCallback(async (): Promise<string | null> => {
     try {
-      const origin = window.location.origin.replace(/\/+$/, "");
-      const basePath = (import.meta.env.BASE_URL || "").replace(/\/+$/, "");
-      const redirectUrl = `${origin}${basePath}/dashboard`;
+      // Use clean base URL to prevent 404 on GitHub Pages or invalid paths on Android
+      const redirectUrl = `${window.location.origin}${window.location.pathname}`;
 
       console.log("🌐 Initiating Google OAuth with redirect URL:", redirectUrl);
 

@@ -81,7 +81,24 @@ export function ReflectionsProvider({
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+
+    if (!isGuest && userId) {
+      const channel = supabase
+        .channel("reflections-changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "reflections", filter: `user_id=eq.${userId}` },
+          () => {
+            refresh();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [refresh, isGuest, userId]);
 
   const saveEntry = useCallback(async (text: string, mood: string) => {
     if (!text.trim()) return "Write something first.";

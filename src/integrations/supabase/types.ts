@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_conversations: {
+        Row: {
+          action_habits: Json | null
+          content: string
+          created_at: string
+          id: string
+          intent: string | null
+          model: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          action_habits?: Json | null
+          content: string
+          created_at?: string
+          id?: string
+          intent?: string | null
+          model?: string | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          action_habits?: Json | null
+          content?: string
+          created_at?: string
+          id?: string
+          intent?: string | null
+          model?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       achievements: {
         Row: {
           badge_key: string

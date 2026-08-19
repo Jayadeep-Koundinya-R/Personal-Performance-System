@@ -8,12 +8,14 @@ export interface Profile {
   displayName: string;
   username: string;
   avatarUrl: string | null;
+  avatarEmoji?: string;
   planTier: string;
   identityClass: string | null;
   referralCode: string | null;
   totalXp: number;
   level: number;
   longestStreak: number;
+  streak?: number;
   timezone: string | null;
 }
 
@@ -27,18 +29,21 @@ interface ProfileContextType {
 const ProfileContext = createContext<ProfileContextType | null>(null);
 
 function mapProfile(row: Record<string, unknown>): Profile {
+  const avatar = (row.avatar_url as string) || "🌟";
   return {
     id: row.id as string,
     userId: row.user_id as string,
     displayName: (row.display_name as string) || "User",
     username: (row.username as string) || "",
     avatarUrl: row.avatar_url as string | null,
+    avatarEmoji: (row.avatar_emoji as string) || (avatar.length <= 4 ? avatar : "🌟"),
     planTier: (row.plan_tier as string) || "free",
     identityClass: row.identity_class as string | null,
     referralCode: row.referral_code as string | null,
     totalXp: (row.total_xp as number) || 0,
     level: (row.level as number) || 1,
     longestStreak: (row.longest_streak as number) || 0,
+    streak: (row.longest_streak as number) || 0,
     timezone: (row.timezone as string) || "UTC",
   };
 }
@@ -57,12 +62,14 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
         displayName: guestName,
         username: "guest",
         avatarUrl: null,
+        avatarEmoji: "🌟",
         planTier: "free",
         identityClass: null,
         referralCode: null,
         totalXp: 0,
         level: 1,
         longestStreak: 0,
+        streak: 0,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       setLoading(false);
@@ -91,7 +98,24 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+
+    if (!isGuest && userId) {
+      const channel = supabase
+        .channel("profile-changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "profiles", filter: `user_id=eq.${userId}` },
+          () => {
+            refresh();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [refresh, isGuest, userId]);
 
   const updateProfile = useCallback(async (updates: { displayName?: string; username?: string; identityClass?: string; timezone?: string }) => {
     if (isGuest) {

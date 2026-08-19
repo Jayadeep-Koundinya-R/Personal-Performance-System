@@ -3,9 +3,11 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
+const isCapacitor = process.env.CAPACITOR_BUILD === "true";
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: process.env.CAPACITOR_BUILD === "true" ? "./" : "/Personal-Performance-System/",
+  base: isCapacitor ? "./" : "/Personal-Performance-System/",
   server: {
     host: "::",
     port: 8080,
@@ -16,6 +18,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      disable: isCapacitor,
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       manifest: {

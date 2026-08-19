@@ -106,6 +106,14 @@ const LoginPage = () => {
 
   const pwStrength = useMemo(() => getPasswordStrength(signupPassword), [signupPassword]);
 
+  // Check if 7-day guest trial has expired
+  const isGuestTrialExpired = (() => {
+    const createdAt = localStorage.getItem("pps_guest_created_at");
+    if (!createdAt) return false;
+    const elapsed = Date.now() - new Date(createdAt).getTime();
+    return elapsed >= 7 * 24 * 60 * 60 * 1000;
+  })();
+
   if (!loading && isLoggedIn) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -428,12 +436,18 @@ const LoginPage = () => {
                     <span>{submitting ? "Redirecting to Google…" : "Continue with Google"}</span>
                   </button>
                   
-                  {/* Frictionless 1-Click Demo Login */}
-                  <button onClick={handleDemoClick}
-                    className="w-full py-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 text-primary text-[13px] cursor-pointer hover:bg-primary/10 hover:border-primary transition-all font-semibold flex items-center justify-center gap-2 shadow-xs">
-                    <Zap className="w-4 h-4 text-primary animate-pulse" />
-                    <span>{localStorage.getItem("pps_guest_name") ? `Enter Demo as ${localStorage.getItem("pps_guest_name")} →` : "🚀 Try 7-Day Free Demo (No Account Needed)"}</span>
-                  </button>
+                  {/* Frictionless 1-Click Demo Login — hidden when trial expired */}
+                  {isGuestTrialExpired ? (
+                    <div className="w-full py-3 rounded-xl border border-dashed border-destructive/40 bg-destructive/5 text-destructive text-[12px] text-center font-medium px-4">
+                      ⏰ Your 7-day free trial has ended. Please create an account or sign in to continue.
+                    </div>
+                  ) : (
+                    <button onClick={handleDemoClick}
+                      className="w-full py-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 text-primary text-[13px] cursor-pointer hover:bg-primary/10 hover:border-primary transition-all font-semibold flex items-center justify-center gap-2 shadow-xs">
+                      <Zap className="w-4 h-4 text-primary animate-pulse" />
+                      <span>{localStorage.getItem("pps_guest_name") ? `Enter Demo as ${localStorage.getItem("pps_guest_name")} →` : "🚀 Try 7-Day Free Demo (No Account Needed)"}</span>
+                    </button>
+                  )}
                 </>
               )}
 
