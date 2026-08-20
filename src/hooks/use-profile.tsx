@@ -10,6 +10,7 @@ export interface Profile {
   avatarUrl: string | null;
   avatarEmoji?: string;
   planTier: string;
+  role: string;
   identityClass: string | null;
   referralCode: string | null;
   totalXp: number;
@@ -22,14 +23,14 @@ export interface Profile {
 interface ProfileContextType {
   profile: Profile | null;
   loading: boolean;
-  updateProfile: (updates: { displayName?: string; username?: string; identityClass?: string; timezone?: string }) => Promise<string | null>;
+  updateProfile: (updates: { displayName?: string; username?: string; identityClass?: string; timezone?: string; avatarEmoji?: string }) => Promise<string | null>;
   refresh: () => Promise<void>;
 }
 
 const ProfileContext = createContext<ProfileContextType | null>(null);
 
 function mapProfile(row: Record<string, unknown>): Profile {
-  const avatar = (row.avatar_url as string) || "🌟";
+  const avatar = (row.avatar_url as string) || (row.avatar_emoji as string) || "🌟";
   return {
     id: row.id as string,
     userId: row.user_id as string,
@@ -38,6 +39,7 @@ function mapProfile(row: Record<string, unknown>): Profile {
     avatarUrl: row.avatar_url as string | null,
     avatarEmoji: (row.avatar_emoji as string) || (avatar.length <= 4 ? avatar : "🌟"),
     planTier: (row.plan_tier as string) || "free",
+    role: (row.role as string) || "member",
     identityClass: row.identity_class as string | null,
     referralCode: row.referral_code as string | null,
     totalXp: (row.total_xp as number) || 0,
@@ -51,9 +53,10 @@ function mapProfile(row: Record<string, unknown>): Profile {
 export function ProfileProvider({ children, userId, isGuest }: { children: ReactNode; userId?: string; isGuest?: boolean }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const isGuestUser = isGuest || !userId || userId === "guest_local" || userId.startsWith("guest");
 
   const refresh = useCallback(async () => {
-    if (isGuest) {
+    if (isGuestUser) {
       // Build a synthetic guest profile from localStorage
       const guestName = localStorage.getItem("pps_guest_name") || "Guest";
       setProfile({
@@ -64,6 +67,7 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
         avatarUrl: null,
         avatarEmoji: "🌟",
         planTier: "free",
+        role: "member",
         identityClass: null,
         referralCode: null,
         totalXp: 0,
@@ -80,26 +84,30 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
       setLoading(false);
       return;
     }
-    const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle();
-    if (error) console.error("Profile load error:", error);
-    
-    if (data) {
-      setProfile(mapProfile(data));
-      // Auto-update timezone in database if missing or different from browser
-      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (browserTimezone && data.timezone !== browserTimezone) {
-        await supabase.from("profiles").update({ timezone: browserTimezone }).eq("user_id", userId);
+    try {
+      const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle();
+      if (error) console.error("Profile load error:", error);
+      
+      if (data) {
+        setProfile(mapProfile(data));
+        // Auto-update timezone in database if missing or different from browser
+        const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (browserTimezone && data.timezone !== browserTimezone) {
+          await supabase.from("profiles").update({ timezone: browserTimezone }).eq("user_id", userId);
+        }
+      } else {
+        setProfile(null);
       }
-    } else {
+    } catch {
       setProfile(null);
     }
     setLoading(false);
-  }, [userId, isGuest]);
+  }, [userId, isGuestUser]);
 
   useEffect(() => {
     refresh();
 
-    if (!isGuest && userId) {
+    if (!isGuestUser && userId) {
       const channel = supabase
         .channel("profile-changes")
         .on(
@@ -115,19 +123,25 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
         supabase.removeChannel(channel);
       };
     }
-  }, [refresh, isGuest, userId]);
+  }, [refresh, isGuestUser, userId]);
 
-  const updateProfile = useCallback(async (updates: { displayName?: string; username?: string; identityClass?: string; timezone?: string }) => {
-    if (isGuest) {
+  const updateProfile = useCallback(async (updates: { displayName?: string; username?: string; identityClass?: string; timezone?: string; avatarEmoji?: string }) => {
+    if (isGuestUser) {
       // Guest profile updates persist to localStorage
       if (updates.displayName !== undefined) {
         localStorage.setItem("pps_guest_name", updates.displayName.trim());
+      }
+      if (updates.avatarEmoji !== undefined) {
+        localStorage.setItem("pps_guest_avatar", updates.avatarEmoji);
       }
       if (profile) {
         setProfile({
           ...profile,
           ...(updates.displayName !== undefined ? { displayName: updates.displayName.trim() } : {}),
           ...(updates.identityClass !== undefined ? { identityClass: updates.identityClass } : {}),
+          ...(updates.avatarEmoji !== undefined ? { avatarEmoji: updates.avatarEmoji } : {}),
+          ...(updates.username !== undefined ? { username: updates.username.trim().toLowerCase() } : {}),
+          ...(updates.timezone !== undefined ? { timezone: updates.timezone } : {}),
         });
       }
       return null;
@@ -164,7 +178,7 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
     }
     await refresh();
     return null;
-  }, [userId, isGuest, profile, refresh]);
+  }, [userId, isGuestUser, profile, refresh]);
 
   return (
     <ProfileContext.Provider value={{ profile, loading, updateProfile, refresh }}>

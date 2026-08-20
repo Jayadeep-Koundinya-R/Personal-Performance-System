@@ -45,8 +45,9 @@ export function UserSettingsProvider({
   userEmail: string | null;
   isGuest?: boolean;
 }) {
-  const [settings, setSettings] = useState<UserSettings>(defaultSettings);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const isGuestUser = isGuest || !userId || userId === "guest_local" || userId.startsWith("guest");
 
   const load = useCallback(async () => {
     // Check localStorage as a reliable same-device fallback for onboarding
@@ -55,7 +56,7 @@ export function UserSettingsProvider({
       localOnboarded = localStorage.getItem(ONBOARD_LOCAL_KEY(userEmail)) === "true";
     } catch {}
 
-    if (isGuest || !userId) {
+    if (isGuestUser) {
       let guestSettings = defaultSettings;
       try {
         const stored = localStorage.getItem(`pps_settings_${userEmail || "guest"}`);
@@ -91,12 +92,12 @@ export function UserSettingsProvider({
       setSettings({ ...defaultSettings, onboardingCompleted: localOnboarded });
     }
     setLoading(false);
-  }, [userId, userEmail, isGuest]);
+  }, [userId, isGuestUser, userEmail]);
 
   useEffect(() => {
     load();
 
-    if (!isGuest && userId) {
+    if (!isGuestUser && userId) {
       const channel = supabase
         .channel("user-settings-changes")
         .on(
@@ -112,15 +113,17 @@ export function UserSettingsProvider({
         supabase.removeChannel(channel);
       };
     }
-  }, [load, isGuest, userId]);
+  }, [load, isGuestUser, userId]);
 
   const updateSettings = useCallback(async (updates: Partial<UserSettings>) => {
-    const previousSettings = { ...settings };
-    setSettings((prev) => ({ ...prev, ...updates }));
+    const previousSettings = settings;
+    setSettings((prev) => (prev ? { ...prev, ...updates } : null));
 
-    if (isGuest || !userId) {
+    if (isGuestUser) {
       try {
-        localStorage.setItem(`pps_settings_${userEmail || "guest"}`, JSON.stringify({ ...settings, ...updates }));
+        const current = settings || defaultSettings;
+        const updated = { ...current, ...updates };
+        localStorage.setItem(`pps_settings_${userEmail || "guest"}`, JSON.stringify(updated));
       } catch (e) {
         console.error("Failed to save guest settings:", e);
       }
@@ -143,7 +146,7 @@ export function UserSettingsProvider({
       setSettings(previousSettings);
       toast.error("Failed to sync settings with database. Reverting.");
     }
-  }, [userId, isGuest, settings, userEmail]);
+  }, [userId, isGuestUser, settings, userEmail]);
 
   const completeOnboarding = useCallback(async () => {
     // Always persist to localStorage as a reliable same-device fallback,

@@ -25,7 +25,7 @@ import RitualOverlay from "@/components/RitualOverlay";
 import { Navigate, Link } from "react-router-dom";
 import AiChatWidget from "@/components/ui/AiChatWidget";
 import VoiceControlModal from "@/components/ui/VoiceControlModal";
-import { Mic } from "lucide-react";
+import { Mic, ChevronDown, MoreHorizontal, Sparkles, X, Flame, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { HABIT_TEMPLATES } from "@/lib/habitTemplates";
@@ -38,6 +38,7 @@ import GuestTrialExpiredModal from "@/components/GuestTrialExpiredModal";
 import { useFocusTimer } from "@/hooks/use-focus-timer";
 import { ActiveCallProvider } from "@/context/ActiveCallContext";
 import { FloatingCallPiP } from "@/components/focus-rooms/FloatingCallPiP";
+import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
 
 import { lazy, Suspense } from "react";
 import DashboardSection from "@/components/sections/DashboardSection";
@@ -251,6 +252,8 @@ function DashboardInner({ user }: { user: User }) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRitual, setShowRitual] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileMoreSheet, setShowMobileMoreSheet] = useState(false);
 
   // 7-day guest trial expiry — auto-logout expired guest users
   useEffect(() => {
@@ -325,39 +328,49 @@ function DashboardInner({ user }: { user: User }) {
   };
 
   const handleSnoozeAlarm = async (alarm: any) => {
+    if (user.isGuest || user.id === "guest_local") {
+      toast.success("Snoozed alarm for 10 minutes.");
+      await markAsRead(alarm.id);
+      return;
+    }
+
     const match = alarm.message.match(/"([^"]+)"/);
     const habitName = match ? match[1] : null;
     const linkedHabit = habits.find((h) => h.name === habitName);
 
-    const { data: reminderData } = await supabase
-      .from("reminders")
-      .select("id")
-      .eq("habit_id", linkedHabit?.id || null)
-      .eq("user_id", user.id!)
-      .maybeSingle();
-
-    if (reminderData) {
-      const snoozeUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-      await supabase
+    try {
+      const { data: reminderData } = await supabase
         .from("reminders")
-        .update({ snoozed_until: snoozeUntil })
-        .eq("id", reminderData.id);
-      toast.success("Snoozed alarm for 10 minutes.");
-    } else {
-      const { data: genericReminders } = await supabase
-        .from("reminders")
-        .select("id, label")
-        .eq("user_id", user.id!);
+        .select("id")
+        .eq("habit_id", linkedHabit?.id || null)
+        .eq("user_id", user.id!)
+        .maybeSingle();
 
-      const matchedGeneric = genericReminders?.find((r) => alarm.message.includes(r.label));
-      if (matchedGeneric) {
+      if (reminderData) {
         const snoozeUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
         await supabase
           .from("reminders")
           .update({ snoozed_until: snoozeUntil })
-          .eq("id", matchedGeneric.id);
+          .eq("id", reminderData.id);
         toast.success("Snoozed alarm for 10 minutes.");
+      } else {
+        const { data: genericReminders } = await supabase
+          .from("reminders")
+          .select("id, label")
+          .eq("user_id", user.id!);
+
+        const matchedGeneric = genericReminders?.find((r) => alarm.message.includes(r.label));
+        if (matchedGeneric) {
+          const snoozeUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+          await supabase
+            .from("reminders")
+            .update({ snoozed_until: snoozeUntil })
+            .eq("id", matchedGeneric.id);
+          toast.success("Snoozed alarm for 10 minutes.");
+        }
       }
+    } catch {
+      toast.success("Snoozed alarm for 10 minutes.");
     }
     await markAsRead(alarm.id);
   };
@@ -514,17 +527,72 @@ function DashboardInner({ user }: { user: User }) {
       {/* Guest Trial Expired Overlay */}
       <GuestTrialExpiredModal />
 
-      {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between px-5 py-4 bg-card border-b border-border sticky top-0 z-[1002]" style={{ boxShadow: "var(--card-shadow)" }}>
-        <button
-          className="bg-transparent border-none text-foreground text-[28px] cursor-pointer p-0 px-2"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
-          {sidebarOpen ? "✕" : "☰"}
-        </button>
-        <div className="font-mono text-[22px] font-bold text-primary tracking-[1px]">PPS</div>
+      {/* Mobile Header with Interactive Quick-Switch Dropdown */}
+      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-card/95 backdrop-blur-xl border-b border-border/80 sticky top-0 z-[1002] shadow-xs">
         <div className="flex items-center gap-2">
-          <button onClick={toggleTheme} className="bg-transparent border-none text-foreground text-lg cursor-pointer p-1" title="Toggle theme">
+          <button
+            className="p-1.5 rounded-xl bg-surface border border-border text-foreground hover:bg-muted cursor-pointer transition-colors"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            title="Toggle Sidebar"
+          >
+            <span className="text-base leading-none">{sidebarOpen ? "✕" : "☰"}</span>
+          </button>
+
+          {/* 🎯 Interactive Native Module Dropdown Selector */}
+          <div className="relative">
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-surface border border-border text-xs font-black text-foreground shadow-2xs hover:border-primary/40 transition-all cursor-pointer"
+            >
+              <span>{NAV_ITEMS.find((n) => n.key === activeSection)?.icon}</span>
+              <span className="truncate max-w-[105px] font-mono">
+                {NAV_ITEMS.find((n) => n.key === activeSection)?.label}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${showMobileMenu ? "rotate-180" : ""}`} />
+            </button>
+
+            <AnimatePresence>
+              {showMobileMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowMobileMenu(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                    className="absolute left-0 top-full mt-2 w-56 bg-card border border-border/80 rounded-2xl shadow-2xl z-50 p-1.5 space-y-0.5 max-h-80 overflow-y-auto backdrop-blur-2xl"
+                  >
+                    <div className="text-[10px] font-mono font-bold uppercase text-muted-foreground px-2.5 py-1">
+                      Quick Jump Studio
+                    </div>
+                    {NAV_ITEMS.map((item) => (
+                      <button
+                        key={item.key}
+                        onClick={() => {
+                          setActiveSection(item.key);
+                          setShowMobileMenu(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                          activeSection === item.key
+                            ? "bg-primary text-primary-foreground font-black shadow-xs"
+                            : "text-muted-foreground hover:text-foreground hover:bg-surface"
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>{item.icon}</span>
+                          <span>{item.label}</span>
+                        </span>
+                        {activeSection === item.key && <span>✓</span>}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button onClick={toggleTheme} className="p-1.5 rounded-xl bg-surface border border-border text-foreground hover:bg-muted transition-colors cursor-pointer text-sm" title="Toggle theme">
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
           <div className="relative">
@@ -606,10 +674,9 @@ function DashboardInner({ user }: { user: User }) {
         )}
       </AnimatePresence>
 
-      <div className="flex h-screen overflow-hidden bg-3d-ambient relative selection:bg-primary selection:text-white">
-        {/* 3D Ambient Space Glow Orbs */}
-        <div className="glow-orb-primary -top-20 -left-20 opacity-30" />
-        <div className="glow-orb-cyan top-1/2 -right-20 opacity-25" />
+      <div className="flex h-screen overflow-hidden bg-background relative selection:bg-primary selection:text-white transition-colors duration-500">
+        {/* 🌌 Dynamic 3D Ambient Background Layer */}
+        <ThreeDBackground />
 
         {/* Sidebar */}
         <aside className={`
@@ -696,10 +763,10 @@ function DashboardInner({ user }: { user: User }) {
         </aside>
 
         {/* Main */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative z-10">
           <GuestTrialBanner />
           {/* Top bar — desktop only */}
-          <header className="hidden md:flex items-center justify-end px-8 py-3 border-b border-border bg-card gap-3" style={{ boxShadow: "var(--card-shadow)" }}>
+          <header className="hidden md:flex items-center justify-end px-8 py-3 border-b border-border bg-card/85 backdrop-blur-md gap-3" style={{ boxShadow: "var(--card-shadow)" }}>
             <button
               onClick={toggleTheme}
               className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm cursor-pointer hover:bg-primary/10 transition-colors flex items-center gap-2"
@@ -779,13 +846,155 @@ function DashboardInner({ user }: { user: User }) {
             </button>
           </header>
 
-          <main className="flex-1 px-8 py-7 overflow-y-auto">
+          <main className="flex-1 px-4 py-4 pb-24 md:px-8 md:py-7 md:pb-7 overflow-y-auto">
             <AnimatedSection sectionKey={activeSection}>
               {renderSection()}
             </AnimatedSection>
           </main>
         </div>
       </div>
+
+      {/* 📱 NATIVE-STYLE MOBILE BOTTOM APP DOCK (md:hidden) */}
+      <div className="fixed bottom-0 left-0 right-0 z-[1000] md:hidden bg-card/95 backdrop-blur-2xl border-t border-border/80 px-2 py-1.5 flex items-center justify-around shadow-2xl safe-area-bottom">
+        {/* Tab 1: Today */}
+        <button
+          onClick={() => setActiveSection("dashboard")}
+          className={`flex flex-col items-center justify-center p-1.5 rounded-xl text-[10.5px] font-mono font-bold transition-all cursor-pointer ${
+            activeSection === "dashboard" ? "text-primary font-black scale-105" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <span className="text-lg">⚡</span>
+          <span>Today</span>
+        </button>
+
+        {/* Tab 2: Focus Pomodoro */}
+        <button
+          onClick={() => setActiveSection("tracker")}
+          className={`flex flex-col items-center justify-center p-1.5 rounded-xl text-[10.5px] font-mono font-bold transition-all cursor-pointer ${
+            activeSection === "tracker" ? "text-primary font-black scale-105" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <span className="text-lg">🎯</span>
+          <span>Focus</span>
+        </button>
+
+        {/* Tab 3: Habit Architect */}
+        <button
+          onClick={() => setActiveSection("habits")}
+          className={`flex flex-col items-center justify-center p-1.5 rounded-xl text-[10.5px] font-mono font-bold transition-all cursor-pointer ${
+            activeSection === "habits" ? "text-primary font-black scale-105" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <span className="text-lg">⚙️</span>
+          <span>Habits</span>
+        </button>
+
+        {/* Tab 4: Analytics Stats */}
+        <button
+          onClick={() => setActiveSection("analytics")}
+          className={`flex flex-col items-center justify-center p-1.5 rounded-xl text-[10.5px] font-mono font-bold transition-all cursor-pointer ${
+            activeSection === "analytics" ? "text-primary font-black scale-105" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <span className="text-lg">📊</span>
+          <span>Stats</span>
+        </button>
+
+        {/* Tab 5: More Action Sheet Toggle */}
+        <button
+          onClick={() => setShowMobileMoreSheet(!showMobileMoreSheet)}
+          className={`flex flex-col items-center justify-center p-1.5 rounded-xl text-[10.5px] font-mono font-bold transition-all cursor-pointer ${
+            showMobileMoreSheet ? "text-primary font-black scale-105" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <MoreHorizontal className="w-5 h-5 mb-0.5" />
+          <span>More</span>
+        </button>
+      </div>
+
+      {/* 📱 MOBILE "MORE" ACTION BOTTOM SHEET */}
+      <AnimatePresence>
+        {showMobileMoreSheet && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[1001] md:hidden"
+              onClick={() => setShowMobileMoreSheet(false)}
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-[1002] md:hidden bg-card border-t border-border rounded-t-3xl p-5 pb-8 shadow-2xl max-h-[80vh] overflow-y-auto space-y-4"
+            >
+              {/* Drag Handle & Header */}
+              <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <h3 className="text-xs font-mono font-black uppercase text-foreground">PPS Power Studio</h3>
+                </div>
+                <button
+                  onClick={() => setShowMobileMoreSheet(false)}
+                  className="p-1 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Grid of Power Tools */}
+              <div className="grid grid-cols-3 gap-2.5">
+                {[
+                  { key: "calendar", icon: "📅", label: "Calendar" },
+                  { key: "streak", icon: "🔥", label: "Streak Engine" },
+                  { key: "achievements", icon: "🏅", label: "Achievements" },
+                  { key: "social", icon: "👥", label: "Study Rooms" },
+                  { key: "reflections", icon: "📝", label: "Reflections" },
+                  { key: "reports", icon: "📈", label: "Reports" },
+                  { key: "reminders", icon: "🔔", label: "Circadian" },
+                  { key: "settings", icon: "🛠️", label: "Settings" },
+                ].map((tool) => (
+                  <button
+                    key={tool.key}
+                    onClick={() => {
+                      setActiveSection(tool.key as any);
+                      setShowMobileMoreSheet(false);
+                    }}
+                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 shadow-2xs ${
+                      activeSection === tool.key
+                        ? "bg-primary text-primary-foreground border-primary font-black"
+                        : "bg-surface/80 border-border/80 text-foreground hover:bg-card"
+                    }`}
+                  >
+                    <span className="text-xl">{tool.icon}</span>
+                    <span className="text-[11px] font-bold truncate max-w-full">{tool.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Ecosystem Quick Links */}
+              <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2 text-xs font-bold">
+                <Link
+                  to="/marketplace"
+                  onClick={() => setShowMobileMoreSheet(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-center font-mono hover:bg-amber-500/25"
+                >
+                  🎓 Mentors Hub
+                </Link>
+                <Link
+                  to="/roadmap"
+                  onClick={() => setShowMobileMoreSheet(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-center font-mono hover:bg-cyan-500/25"
+                >
+                  🚀 Roadmap
+                </Link>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Close notif on click outside */}
       {notifOpen && (
@@ -795,13 +1004,13 @@ function DashboardInner({ user }: { user: User }) {
       <FloatingCallPiP />
       <AiChatWidget />
 
-      {/* Voice Commands FAB button */}
+      {/* Voice Commands FAB button (positioned above mobile dock on small screens) */}
       <button
         onClick={() => setShowVoiceModal(true)}
-        className="fixed bottom-6 left-6 z-[9998] w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent text-white flex items-center justify-center shadow-xl hover:scale-105 transition-all cursor-pointer border border-primary/40"
+        className="fixed bottom-20 md:bottom-6 left-5 md:left-6 z-[999] w-11 h-11 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-primary to-accent text-white flex items-center justify-center shadow-xl hover:scale-105 transition-all cursor-pointer border border-primary/40"
         title="Voice Commands Studio"
       >
-        <Mic className="w-5 h-5" />
+        <Mic className="w-4 h-4 md:w-5 md:h-5" />
       </button>
 
       <VoiceControlModal

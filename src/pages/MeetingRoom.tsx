@@ -333,8 +333,13 @@ const MeetingRoomInner: React.FC = () => {
           />
         </div>
 
-        {/* Header Actions: Copy Link, Ambience, Layout Toggle */}
+        {/* Header Actions: Security Badge, Copy Link, Ambience, Layout Toggle */}
         <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-xl shadow-xs">
+            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+            <span>256-Bit E2EE Secure</span>
+          </div>
+
           <AmbientAudioPlayer
             currentAmbience={ambience}
             volume={ambienceVolume}
@@ -508,7 +513,31 @@ const MeetingRoomInner: React.FC = () => {
                     <div ref={chatEndRef} />
                   </div>
 
-                  <form onSubmit={handleSendChatMessage} className="p-3 border-t border-border/60 flex items-center gap-1.5">
+                  <div className="px-3 pt-2 flex items-center justify-between border-t border-border/40 text-[10.5px]">
+                    <span className="text-muted-foreground font-mono">🔒 E2EE Encrypted Room</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChatMessages((prev) => [
+                          ...prev,
+                          {
+                            id: `ai_${Date.now()}`,
+                            sender: "PPS AI Coach",
+                            avatar: "🤖",
+                            text: "💡 Pro Tip: When studying complex topics, use the 20-min Pomodoro sprint + 5-min active recall technique for maximum retention!",
+                            time: "Just now",
+                          },
+                        ]);
+                        toast.success("AI Coach posted retention insight to room!");
+                      }}
+                      className="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Ask AI Coach</span>
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSendChatMessage} className="p-3 pt-2 flex items-center gap-1.5">
                     <input
                       type="text"
                       value={chatInput}

@@ -26,6 +26,7 @@ export interface ChatMessage {
   text: string;
   actionHabits?: { id: string; name: string }[];
   agentAction?: AgentActionPayload;
+  intent?: string;
   model?: string;
   created_at?: string;
   source?: "gemini" | "local";
@@ -36,7 +37,7 @@ function getChatCacheKey(userId?: string | null): string {
 }
 
 /**
- * Loads recent messages for continuous chat memory across sessions.
+ * Loads conversation history for the given user from local cache.
  * Returns up to 10 previous messages in chronological order.
  */
 export async function loadConversationHistory(userId?: string | null): Promise<ChatMessage[]> {
@@ -51,56 +52,40 @@ export async function loadConversationHistory(userId?: string | null): Promise<C
 
   const cacheKey = getChatCacheKey(userId);
 
-  // 1. If user is logged in, try loading persistent history from Supabase
-  if (userId) {
-    try {
-      const { data, error } = await supabase
-        .from("ai_conversations")
-        .select("id, role, content, action_habits, model, created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (!error && data && data.length > 0) {
-        // Reverse descending query to display in chronological order (oldest to newest)
-        const history: ChatMessage[] = data.reverse().map((row: any) => ({
-          id: row.id,
-          sender: row.role === "user" ? "user" : "ai",
-          text: row.content,
-          actionHabits: (row.action_habits as any) || undefined,
-          model: row.model || "local",
-          source: row.model?.includes("gemini") ? "gemini" : "local",
-          created_at: row.created_at,
-        }));
-        // Update user-specific local cache
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify(history));
-        } catch {}
-        return history;
-      }
-    } catch (err) {
-      console.warn("Could not load cloud chat history, checking user local cache:", err);
-    }
-  }
-
-  // 2. Fallback to user-scoped localStorage cache (for guest or offline sessions)
   try {
     const raw = localStorage.getItem(cacheKey);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.slice(-10);
+        return parsed;
       }
     }
   } catch (err) {
-    console.error("Error reading local chat cache:", err);
+    console.error("Failed to parse local chat cache:", err);
   }
 
   return [defaultGreeting];
 }
 
 /**
- * Persists a message to Supabase (for authenticated users) and user-scoped localStorage.
+ * Persists a new chat message to user-scoped local storage.
+ */
+export async function persistChatMessage(message: ChatMessage, userId?: string | null): Promise<void> {
+  const cacheKey = getChatCacheKey(userId);
+
+  try {
+    const history = await loadConversationHistory(userId);
+    const updated = [...history.filter((m) => m.id !== "greeting"), message];
+    // Keep maximum 20 messages in local storage
+    const trimmed = updated.slice(-20);
+    localStorage.setItem(cacheKey, JSON.stringify(trimmed));
+  } catch (err) {
+    console.error("Failed to update local chat cache:", err);
+  }
+}
+
+/**
+ * Convenience wrapper for saving conversation messages.
  */
 export async function saveConversationMessage(
   userId: string | null | undefined,
@@ -113,48 +98,22 @@ export async function saveConversationMessage(
     model?: string;
   }
 ): Promise<void> {
-  const cacheKey = getChatCacheKey(userId);
-
-  // 1. Update user-scoped localStorage cache
-  try {
-    const raw = localStorage.getItem(cacheKey);
-    const history: ChatMessage[] = raw ? JSON.parse(raw) : [];
-    const newMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: message.sender,
-      text: message.text,
-      actionHabits: message.actionHabits,
-      agentAction: message.agentAction,
-      model: message.model || "local",
-      source: message.model?.includes("gemini") ? "gemini" : "local",
-      created_at: new Date().toISOString(),
-    };
-    history.push(newMsg);
-    // Keep last 20 messages in local storage for this specific user/guest
-    localStorage.setItem(cacheKey, JSON.stringify(history.slice(-20)));
-  } catch (err) {
-    console.error("Failed to update local chat cache:", err);
-  }
-
-  // 2. Persist to Supabase if authenticated user
-  if (userId) {
-    try {
-      await supabase.from("ai_conversations").insert({
-        user_id: userId,
-        role: message.sender === "user" ? "user" : "assistant",
-        content: message.text,
-        action_habits: (message.actionHabits as any) || null,
-        intent: message.intent || null,
-        model: message.model || "local",
-      });
-    } catch (err) {
-      console.warn("Failed to persist message to Supabase ai_conversations:", err);
-    }
-  }
+  const fullMsg: ChatMessage = {
+    id: Date.now().toString(),
+    sender: message.sender,
+    text: message.text,
+    actionHabits: message.actionHabits,
+    agentAction: message.agentAction,
+    intent: message.intent,
+    model: message.model || "local",
+    source: message.model?.includes("gemini") ? "gemini" : "local",
+    created_at: new Date().toISOString(),
+  };
+  await persistChatMessage(fullMsg, userId);
 }
 
 /**
- * Clears the conversation history in Supabase and user-scoped local cache.
+ * Clears the conversation history in user-scoped local cache.
  */
 export async function clearConversationHistory(userId?: string | null): Promise<void> {
   const cacheKey = getChatCacheKey(userId);
@@ -162,14 +121,6 @@ export async function clearConversationHistory(userId?: string | null): Promise<
     localStorage.removeItem(cacheKey);
   } catch (err) {
     console.error("Failed to clear local chat cache:", err);
-  }
-
-  if (userId) {
-    try {
-      await supabase.from("ai_conversations").delete().eq("user_id", userId);
-    } catch (err) {
-      console.warn("Failed to clear cloud conversation history:", err);
-    }
   }
 }
 

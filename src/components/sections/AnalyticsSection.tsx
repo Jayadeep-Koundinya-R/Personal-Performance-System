@@ -185,7 +185,7 @@ const AnalyticsSection = () => {
               Deep Analytics
             </span>
           </h1>
-          <p className="text-xs text-slate-300 font-medium mt-0.5">
+          <p className="text-xs text-muted-foreground font-medium mt-0.5">
             Multi-range analysis, category effort distribution, energy correlation, and AI level velocity forecast
           </p>
         </div>
@@ -207,7 +207,7 @@ const AnalyticsSection = () => {
                 className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 cursor-pointer ${
                   isCurrent
                     ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-slate-300 hover:text-foreground hover:bg-muted/40"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 }`}
               >
                 {t.label}
@@ -233,7 +233,7 @@ const AnalyticsSection = () => {
 
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-300 font-mono font-bold">Start:</span>
+                <span className="text-xs text-muted-foreground font-mono font-bold">Start:</span>
                 <input
                   type="date"
                   value={customStartDate}
@@ -243,7 +243,7 @@ const AnalyticsSection = () => {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-300 font-mono font-bold">End:</span>
+                <span className="text-xs text-muted-foreground font-mono font-bold">End:</span>
                 <input
                   type="date"
                   value={customEndDate}
@@ -263,7 +263,7 @@ const AnalyticsSection = () => {
             📊
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-extrabold">Completion Rate</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-extrabold">Completion Rate</div>
             <div className="text-xl font-extrabold font-mono text-foreground">{rangeStats.completionRate}%</div>
             <div className="text-[10.5px] text-primary font-mono font-bold">{rangeStats.totalCompleted} done in {rangeDaysCount}d</div>
           </div>
@@ -274,7 +274,7 @@ const AnalyticsSection = () => {
             🔥
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-extrabold">Streak Momentum</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-extrabold">Streak Momentum</div>
             <div className="text-xl font-extrabold font-mono text-foreground">🔥 {bestStreak} Days</div>
             <div className="text-[10.5px] text-pps-orange font-mono font-bold">Best consecutive run</div>
           </div>
@@ -285,7 +285,7 @@ const AnalyticsSection = () => {
             ⚡
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-extrabold">Habit Velocity</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-extrabold">Habit Velocity</div>
             <div className="text-xl font-extrabold font-mono text-foreground">{rangeStats.dailyAvg} / Day</div>
             <div className="text-[10.5px] text-pps-green font-mono font-bold">{rangeStats.activeDays} active days</div>
           </div>
@@ -296,7 +296,7 @@ const AnalyticsSection = () => {
             🏆
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-extrabold">Total Focus XP</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-extrabold">Total Focus XP</div>
             <div className="text-xl font-extrabold font-mono text-foreground">{totalXP} XP</div>
             <div className="text-[10.5px] text-secondary font-mono font-bold">Level {currentLevel} • {levelProgressPct}% to Next</div>
           </div>
@@ -321,7 +321,7 @@ const AnalyticsSection = () => {
             <div className="text-sm font-extrabold text-foreground mt-0.5">
               At current pace (+{levelVelocityDays.dailyXPEstimate} XP/day), you'll reach <span className="text-primary font-mono">Level {currentLevel + 1}</span> in ~<span className="text-pps-green font-mono">{levelVelocityDays.daysNeeded} days</span>!
             </div>
-            <div className="text-[11.5px] text-slate-300 font-medium mt-0.5">
+            <div className="text-[11.5px] text-muted-foreground font-medium mt-0.5">
               Currently Level {currentLevel} • {levelProgressXP} / {xpForNext} XP in level tier
             </div>
           </div>
@@ -330,7 +330,7 @@ const AnalyticsSection = () => {
         {/* Mini Level Bar */}
         <div className="w-full sm:w-48 space-y-1.5 flex-shrink-0">
           <div className="flex justify-between text-[11px] font-mono font-bold">
-            <span className="text-slate-300">Lvl {currentLevel}</span>
+            <span className="text-muted-foreground">Lvl {currentLevel}</span>
             <span className="text-primary">{levelProgressPct}%</span>
           </div>
           <div className="h-2.5 bg-surface border border-border/80 rounded-full overflow-hidden">
@@ -351,12 +351,12 @@ const AnalyticsSection = () => {
             <h3 className="text-xs font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
               <span>📊 Category Effort Distribution</span>
             </h3>
-            <span className="text-[11px] font-mono font-bold text-slate-300">{timeRange.toUpperCase()} View</span>
+            <span className="text-[11px] font-mono font-bold text-muted-foreground">{timeRange.toUpperCase()} View</span>
           </div>
 
           <div className="space-y-3">
             {categoryDistribution.length === 0 ? (
-              <div className="text-center py-8 text-slate-300 text-xs font-medium">No category completions logged yet.</div>
+              <div className="text-center py-8 text-muted-foreground text-xs font-medium">No category completions logged yet.</div>
             ) : (
               categoryDistribution.map((c) => (
                 <div key={c.category} className="space-y-1">
@@ -392,7 +392,7 @@ const AnalyticsSection = () => {
                 <span className="text-xl">⚡</span>
                 <div>
                   <div className="text-xs font-extrabold text-foreground">High Energy Days</div>
-                  <div className="text-[11px] text-slate-300 font-medium">Logged on {energyCorrelation.moodMap.high.days} days</div>
+                  <div className="text-[11px] text-muted-foreground font-medium">Logged on {energyCorrelation.moodMap.high.days} days</div>
                 </div>
               </div>
               <div className="text-base font-extrabold font-mono text-pps-green">{energyCorrelation.highAvg} Habits/Day</div>
@@ -403,7 +403,7 @@ const AnalyticsSection = () => {
                 <span className="text-xl">😊</span>
                 <div>
                   <div className="text-xs font-extrabold text-foreground">Good Energy Days</div>
-                  <div className="text-[11px] text-slate-300 font-medium">Logged on {energyCorrelation.moodMap.good.days} days</div>
+                  <div className="text-[11px] text-muted-foreground font-medium">Logged on {energyCorrelation.moodMap.good.days} days</div>
                 </div>
               </div>
               <div className="text-base font-extrabold font-mono text-primary">{energyCorrelation.goodAvg} Habits/Day</div>
@@ -414,7 +414,7 @@ const AnalyticsSection = () => {
                 <span className="text-xl">😴</span>
                 <div>
                   <div className="text-xs font-extrabold text-foreground">Low Energy Days</div>
-                  <div className="text-[11px] text-slate-300 font-medium">Logged on {energyCorrelation.moodMap.low.days} days</div>
+                  <div className="text-[11px] text-muted-foreground font-medium">Logged on {energyCorrelation.moodMap.low.days} days</div>
                 </div>
               </div>
               <div className="text-base font-extrabold font-mono text-pps-orange">{energyCorrelation.lowAvg} Habits/Day</div>
@@ -430,11 +430,11 @@ const AnalyticsSection = () => {
             <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
               <span>🏆 Habit Power Rankings & Consistency Leaderboard</span>
             </h3>
-            <p className="text-[11.5px] text-slate-300 font-medium mt-0.5">
+            <p className="text-[11.5px] text-muted-foreground font-medium mt-0.5">
               Ranks habits by consistency % over the selected timeframe ({timeRange.toUpperCase()})
             </p>
           </div>
-          <span className="text-xs text-slate-300 font-mono font-bold bg-surface border border-border/80 px-2.5 py-1 rounded-xl">
+          <span className="text-xs text-muted-foreground font-mono font-bold bg-surface border border-border/80 px-2.5 py-1 rounded-xl">
             {habitRankings.length} Active Habits
           </span>
         </div>

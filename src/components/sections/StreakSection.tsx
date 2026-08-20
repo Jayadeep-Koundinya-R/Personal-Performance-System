@@ -90,7 +90,7 @@ const StreakSection = () => {
               Don't Break The Chain
             </span>
           </h1>
-          <p className="text-xs text-slate-300 font-medium mt-0.5">
+          <p className="text-xs text-muted-foreground font-medium mt-0.5">
             Flame progression, streak shield protection, at-risk alerts, and milestone rewards
           </p>
         </div>
@@ -132,15 +132,15 @@ const StreakSection = () => {
         <div className="grid grid-cols-3 gap-3 border-t border-border/60 pt-5 max-w-lg mx-auto">
           <div>
             <div className="text-xl font-extrabold font-mono text-foreground">{freezeCredits}</div>
-            <div className="text-[10.5px] font-mono text-slate-300 font-extrabold uppercase mt-0.5">Shield Inventory</div>
+            <div className="text-[10.5px] font-mono text-muted-foreground font-extrabold uppercase mt-0.5">Shield Inventory</div>
           </div>
           <div>
             <div className="text-xl font-extrabold font-mono text-pps-orange">{maxStreak}</div>
-            <div className="text-[10.5px] font-mono text-slate-300 font-extrabold uppercase mt-0.5">Best Streak</div>
+            <div className="text-[10.5px] font-mono text-muted-foreground font-extrabold uppercase mt-0.5">Best Streak</div>
           </div>
           <div>
             <div className="text-xl font-extrabold font-mono text-primary">{totalCompletions}</div>
-            <div className="text-[10.5px] font-mono text-slate-300 font-extrabold uppercase mt-0.5">Total Done</div>
+            <div className="text-[10.5px] font-mono text-muted-foreground font-extrabold uppercase mt-0.5">Total Done</div>
           </div>
         </div>
 
@@ -152,7 +152,7 @@ const StreakSection = () => {
           </div>
         )}
 
-        <p className="text-[11px] text-slate-300 font-mono font-medium">
+        <p className="text-[11px] text-muted-foreground font-mono font-medium">
           Free Tier: {limits?.streakFreezesPerMonth ?? 3} freeze/month • Pro Tier: 3 freezes/month
         </p>
       </motion.div>
@@ -202,11 +202,11 @@ const StreakSection = () => {
             <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
               <span>🏆 Milestone Trophy Wall</span>
             </h3>
-            <p className="text-[11.5px] text-slate-300 font-medium mt-0.5">
+            <p className="text-[11.5px] text-muted-foreground font-medium mt-0.5">
               Unlock milestone badges by holding unbroken streaks
             </p>
           </div>
-          <span className="text-xs text-slate-300 font-mono font-bold bg-surface border border-border/80 px-2.5 py-1 rounded-xl">
+          <span className="text-xs text-muted-foreground font-mono font-bold bg-surface border border-border/80 px-2.5 py-1 rounded-xl">
             XP Rewards
           </span>
         </div>
@@ -225,13 +225,13 @@ const StreakSection = () => {
               >
                 <div className="text-3xl">{m.icon}</div>
                 <div>
-                  <div className={`text-xs font-extrabold font-mono ${isUnlocked ? "text-foreground" : "text-slate-300"}`}>
+                  <div className={`text-xs font-extrabold font-mono ${isUnlocked ? "text-foreground" : "text-muted-foreground"}`}>
                     {m.title}
                   </div>
-                  <div className="text-[10px] text-slate-300 font-medium mt-0.5">{m.desc}</div>
+                  <div className="text-[10px] text-muted-foreground font-medium mt-0.5">{m.desc}</div>
                 </div>
                 <div className={`text-[10.5px] font-mono font-extrabold px-2 py-0.5 rounded-full inline-block ${
-                  isUnlocked ? "bg-pps-green/20 text-pps-green border border-pps-green/30" : "bg-muted text-slate-400"
+                  isUnlocked ? "bg-pps-green/20 text-pps-green border border-pps-green/30" : "bg-muted text-muted-foreground"
                 }`}>
                   {isUnlocked ? `+${m.xp} XP Unlocked ✓` : `${m.days}d Needed`}
                 </div>
@@ -247,14 +247,14 @@ const StreakSection = () => {
           <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
             🔥 Individual Habit Streak Health
           </h2>
-          <span className="text-xs text-slate-300 font-mono font-bold">
+          <span className="text-xs text-muted-foreground font-mono font-bold">
             {activeHabits.length} Habits Tracked
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {activeHabits.length === 0 ? (
-            <div className="col-span-3 text-center py-10 bg-card border border-border rounded-3xl text-slate-300 text-xs font-medium">
+            <div className="col-span-3 text-center py-10 bg-card border border-border rounded-3xl text-muted-foreground text-xs font-medium">
               No habits created yet. Go to Habit Manager to add your first habit!
             </div>
           ) : (
@@ -280,7 +280,7 @@ const StreakSection = () => {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h3 className="text-sm font-extrabold text-foreground">{h.name}</h3>
-                      <div className="text-[11px] text-slate-300 font-mono font-bold mt-0.5">
+                      <div className="text-[11px] text-muted-foreground font-mono font-bold mt-0.5">
                         {h.category || "General"} • {h.period}
                       </div>
                     </div>
@@ -293,12 +293,12 @@ const StreakSection = () => {
                   {/* Streak Count Number */}
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-extrabold font-mono text-pps-orange">{tier.icon} {streak}</span>
-                    <span className="text-xs text-slate-300 font-mono font-bold">Days Unbroken</span>
+                    <span className="text-xs text-muted-foreground font-mono font-bold">Days Unbroken</span>
                   </div>
 
                   {/* Tier Progress Bar */}
                   <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-mono font-bold text-slate-300">
+                    <div className="flex justify-between text-[10px] font-mono font-bold text-muted-foreground">
                       <span>Progress to {tier.nextGoal}d</span>
                       <span className="text-primary">{pctToNextTier}%</span>
                     </div>

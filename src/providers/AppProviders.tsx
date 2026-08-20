@@ -52,7 +52,7 @@ function LimitsBridge({ children, user }: { children: ReactNode; user: User }) {
             isGuest={user.isGuest}
             maxReminders={limits.maxReminders}
           >
-            <HabitsProvider userEmail={user.email} userId={user.id} maxHabits={limits.maxHabits}>
+            <HabitsProvider userEmail={user.email} userId={user.id} isGuest={user.isGuest} maxHabits={limits.maxHabits}>
               <NotificationBridge user={user}>{children}</NotificationBridge>
             </HabitsProvider>
           </RemindersProvider>

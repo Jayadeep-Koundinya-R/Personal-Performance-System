@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useClasses } from "../use-classes";
+import { ROADMAP_DATA } from "../../lib/roadmap-data";
 
 // Mock useAuth
 vi.mock("@/hooks/use-auth", () => ({
@@ -84,5 +85,33 @@ describe("PPS Masterclasses & Teacher Marketplace System", () => {
     expect(created?.title).toBe("Competitive Programming Graphs & Trees Masterclass");
     expect(created?.price).toBe(299);
     expect(created?.mentorName).toBe("Rohan Patel");
+  });
+
+  it("verifies the 4-quarter engineering roadmap data structure", () => {
+    expect(ROADMAP_DATA.length).toBe(4);
+    
+    const quarters = ROADMAP_DATA.map((r: any) => r.quarter);
+    expect(quarters).toEqual(["Q3 2026", "Q4 2026", "Q1 2027", "Q2 2027"]);
+
+    ROADMAP_DATA.forEach((item: any) => {
+      expect(item.title).toBeDefined();
+      expect(item.highlights.length).toBeGreaterThanOrEqual(4);
+      expect(item.techStack.length).toBeGreaterThanOrEqual(3);
+      expect(["in_progress", "next_up", "future_vision"]).toContain(item.status);
+    });
+  });
+
+  it("formats classroom attendance CSV accurately with timestamps", () => {
+    const students = [
+      { name: "Alex Vance", role: "Student", status: "Present", timestamp: "2026-08-20 10:00:00", completion: "100%" },
+      { name: "Elena Rostova", role: "Student", status: "Present", timestamp: "2026-08-20 10:02:15", completion: "95%" },
+    ];
+
+    const csvHeader = "Student Name,Role,Attendance Status,Join Timestamp,Completion Rate";
+    const csvRows = students.map((s) => `${s.name},${s.role},${s.status},${s.timestamp},${s.completion}`);
+    const fullCsv = [csvHeader, ...csvRows].join("\n");
+
+    expect(fullCsv).toContain("Alex Vance,Student,Present,2026-08-20 10:00:00,100%");
+    expect(fullCsv).toContain("Elena Rostova,Student,Present,2026-08-20 10:02:15,95%");
   });
 });

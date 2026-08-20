@@ -1,82 +1,101 @@
-/*
-  🏠 Premium Landing Page — Personal Performance System
-  
-  Sections:
-  1. Navbar with glassmorphic styling
-  2. Animated Hero with gradient text, stats, and app preview
-  3. Social Proof bar
-  4. Full 12-Feature Showcase
-  5. How It Works (3-Step Flow)
-  6. Live App Preview (mini-dashboard mockup)
-  7. Competitor Comparison Table
-  8. Testimonials
-  9. FAQ Accordion
-  10. Final CTA Banner
-  11. Rich Multi-Column Footer
-*/
-
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/hooks/use-theme";
+import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
+import { RoadmapSection } from "@/components/roadmap/RoadmapSection";
+import {
+  Sparkles,
+  Zap,
+  Flame,
+  Trophy,
+  Users,
+  Video,
+  PenTool,
+  Bot,
+  Calendar,
+  BarChart3,
+  Shield,
+  Clock,
+  ArrowRight,
+  CheckCircle2,
+  ChevronDown,
+  GraduationCap,
+  Building2,
+  ExternalLink,
+  Volume2,
+  Smartphone,
+  Layers,
+  Globe,
+  Radio,
+  Star,
+  BookOpen,
+  Percent,
+  TrendingUp,
+  Award,
+  CreditCard,
+} from "lucide-react";
 
-/* ── data ────────────────────────────────────────────── */
-
-const FEATURES = [
-  { icon: "⚡", title: "Command Dashboard", desc: "Real-time stat cards, priority task lists, and motivational quotes — your daily mission control." },
-  { icon: "🎯", title: "Focus Studio", desc: "Built-in Pomodoro timer with session tracking. Link habits, log deep-work, and never lose focus." },
-  { icon: "📅", title: "Performance Calendar", desc: "Month grid, weekly schedule, and agenda stream views — see perfect days highlighted with trophies." },
-  { icon: "📊", title: "Deep Analytics", desc: "Completion rate, streak momentum, habit velocity, category distribution, and energy correlation." },
-  { icon: "🔥", title: "Streak Engine", desc: "Unbroken chain counters, global rank tiers, emergency alerts, and streak shield protection." },
-  { icon: "🏅", title: "Achievements", desc: "Unlock milestone badges, claim bonus XP, and build your trophy wall as you level up." },
-  { icon: "👥", title: "Social Hub", desc: "Global leaderboard, accountability circles, co-op quests, and shareable win cards." },
-  { icon: "📚", title: "Focus Rooms & Study Squads", desc: "Permanent study groups, drop-in voice rooms, note sharing channels, and squad habit tracking." },
-  { icon: "📈", title: "Executive Reports", desc: "Generate PDF reports, download CSV data, and analyze week-over-week growth trends." },
-  { icon: "📝", title: "Reflections Journal", desc: "Daily guided prompts, mood & energy tracking, custom tags, and historical timeline search." },
-  { icon: "⚙️", title: "Habit Architect", desc: "Create, edit, archive habits with categories, priorities, time windows, colors, and alarm links." },
-  { icon: "🔔", title: "Alarm Studio", desc: "Circadian presets, habit-linked alarms, custom sounds, snooze controls, and push notifications." },
-  { icon: "🤖", title: "AI Performance Coach", desc: "Smart offline coach that analyzes your data, offers roasts, audits, and 1-click habit completion in chat." },
+/* ── 16 Features with Honest Status ─────────────────── */
+// status: "live" = fully working end-to-end
+//         "beta" = UI works locally, multi-user networking not yet built
+//         "placeholder" = UI mockup only, core logic not yet implemented
+const FEATURES: { icon: string; title: string; desc: string; status: "live" | "beta" | "placeholder" }[] = [
+  { icon: "🎥", title: "Focus Rooms & Video Calls", desc: "Drop-in study rooms with your own webcam preview, mic controls, and meeting UI. Multi-user peer-to-peer video coming in Stage 1.", status: "beta" },
+  { icon: "🎓", title: "Teacher & Mentor Marketplace", desc: "Browse and create classrooms with assigned habits. Live class ticket payments coming soon.", status: "beta" },
+  { icon: "🏫", title: "Institutional Campus License", desc: "Semester licensing calculator and inquiry form for colleges. Bulk CSV roster upload and backend coming soon.", status: "placeholder" },
+  { icon: "🎨", title: "Whiteboard & Drawing Canvas", desc: "Interactive HTML5 Canvas with pen, eraser, colors, and PNG export. Real-time multi-user sync coming in Stage 2.", status: "beta" },
+  { icon: "🎧", title: "Procedural 432Hz Soundscapes", desc: "0KB offline Web Audio generator with Lo-Fi 432Hz, Soft Rain, Coffee Shop, and Library acoustics.", status: "live" },
+  { icon: "🤖", title: "Dual-Engine AI Coach", desc: "Private coaching powered by Google Gemini cloud or 100% local Ollama LLMs with 1-click habit checkoffs in chat.", status: "live" },
+  { icon: "🏆", title: "Championship Podium Leaderboard", desc: "Local leaderboard with rank podiums and XP peer cheers. Cross-user live leaderboard coming in Stage 3.", status: "beta" },
+  { icon: "⚔️", title: "Co-Op Squad Habit Quests", desc: "Local quest templates and streak tracking. Multi-user quest sync coming in Stage 3.", status: "beta" },
+  { icon: "🗗", title: "Pop-Out Window & PiP", desc: "Open meetings in a dedicated browser window. Cross-window state sync being refined.", status: "beta" },
+  { icon: "🔥", title: "Streak Engine & Auto-Shields", desc: "Unbroken consistency chains with automated freeze credits, emergency alerts, and milestone celebrations.", status: "live" },
+  { icon: "🎯", title: "Focus Studio & Pomodoro Timer", desc: "25/5 Pomodoro timer with XP rewards and session logs. Per-device timer — multi-user sync coming soon.", status: "live" },
+  { icon: "📊", title: "Deep Performance Analytics", desc: "Completion rates, habit velocity, category heatmaps, energy correlations, and PDF executive reports.", status: "live" },
+  { icon: "📅", title: "Interactive Performance Calendar", desc: "Month grid, week schedule, and agenda view with perfect day trophies and time-window alarms.", status: "live" },
+  { icon: "📝", title: "Daily Guided Reflections Journal", desc: "Structured evening prompts, mood tracking, historical timeline search, and cognitive audit logs.", status: "live" },
+  { icon: "⚙️", title: "Habit Architect & Starter Packs", desc: "Categorized priority scheduling, time windows, and instant starter template packs for high performers.", status: "live" },
+  { icon: "🔔", title: "Circadian Alarm Studio", desc: "Smart habit-linked alarms with custom soundscapes, snooze limits, and Web Push notifications.", status: "live" },
 ];
 
-const HOW_IT_WORKS = [
-  { step: "01", icon: "🎯", title: "Create Your Habits", desc: "Add habits with categories, priorities, and schedules. Use starter packs or build from scratch." },
-  { step: "02", icon: "🔥", title: "Track & Build Streaks", desc: "Check off habits daily. Earn 10 XP per completion. Build unbroken chains and protect with shields." },
-  { step: "03", icon: "📊", title: "Level Up & Analyze", desc: "Watch your XP grow, unlock achievements, and use deep analytics to optimize your performance." },
+/* ── Upcoming Roadmap Features ──────────────────────── */
+const UPCOMING_FEATURES = [
+  { icon: "📱", title: "Native iOS & Android Apps", badge: "Q3 2026", desc: "Swift & Kotlin native mobile apps with Lock Screen widgets and Apple Watch complications." },
+  { icon: "🧠", title: "Biometric Sleep & HRV Sync", badge: "Q4 2026", desc: "Direct integration with Apple Health, Whoop, and Oura Ring to correlate energy with habit success." },
+  { icon: "🌐", title: "LMS Canvas & Moodle Connector", badge: "Q4 2026", desc: "Sync course assignments, deadlines, and grades automatically into your daily habit queues." },
+  { icon: "🌍", title: "Multi-Lingual Voice Coach", badge: "Q1 2027", desc: "Real-time AI voice conversation in Spanish, Hindi, French, German, Japanese, and Mandarin." },
 ];
 
-const COMPETITORS = [
-  { feature: "Habit CRUD & Scheduling", pps: true, habitica: true, streaks: true, notion: true },
-  { feature: "XP & Leveling System", pps: true, habitica: true, streaks: false, notion: false },
-  { feature: "Streak Shields & Freezes", pps: true, habitica: false, streaks: false, notion: false },
-  { feature: "AI Performance Coach", pps: true, habitica: false, streaks: false, notion: false },
-  { feature: "Built-in Pomodoro Timer", pps: true, habitica: false, streaks: false, notion: false },
-  { feature: "Deep Analytics & Forecasts", pps: true, habitica: false, streaks: false, notion: false },
-  { feature: "PDF & CSV Reports", pps: true, habitica: false, streaks: false, notion: false },
-  { feature: "Daily Reflections Journal", pps: true, habitica: false, streaks: false, notion: true },
-  { feature: "Drop-In Study Rooms & Notes Hub", pps: true, habitica: false, streaks: false, notion: false },
-  { feature: "Global Leaderboard", pps: true, habitica: true, streaks: false, notion: false },
-  { feature: "PWA / Installable", pps: true, habitica: false, streaks: false, notion: false },
-  { feature: "100% Free Tier", pps: true, habitica: true, streaks: false, notion: true },
+const COMPETITORS: { feature: string; pps: string; focusmate: boolean; habitica: boolean; notion: boolean }[] = [
+  { feature: "Drop-In Video Focus Rooms", pps: "🏗️ Beta", focusmate: false, habitica: false, notion: false },
+  { feature: "Teacher & Mentor Marketplace", pps: "🏗️ Beta", focusmate: false, habitica: false, notion: false },
+  { feature: "Whiteboard & PNG Export", pps: "🏗️ Beta", focusmate: false, habitica: false, notion: false },
+  { feature: "Procedural Offline Soundscapes (Lo-Fi / Rain)", pps: "✅ Live", focusmate: false, habitica: false, notion: false },
+  { feature: "AI Performance Coach (Gemini + Local Ollama)", pps: "✅ Live", focusmate: false, habitica: false, notion: false },
+  { feature: "Championship Podium & Co-Op Quests", pps: "🏗️ Beta", focusmate: false, habitica: true, notion: false },
+  { feature: "Institutional Campus Licensing", pps: "🏗️ Planned", focusmate: false, habitica: false, notion: false },
+  { feature: "Streak Shields & Auto-Freeze Engine", pps: "✅ Live", focusmate: false, habitica: false, notion: false },
+  { feature: "Deep Analytics & Executive PDF Reports", pps: "✅ Live", focusmate: false, habitica: false, notion: false },
+  { feature: "100% Free Lifetime Tier Included", pps: "✅ Live", focusmate: false, habitica: true, notion: true },
 ];
 
+// Note: These are illustrative/aspirational testimonials for the landing page.
+// They represent the target user personas, not verified customer quotes.
 const TESTIMONIALS = [
-  { name: "Sarah K.", role: "Product Designer", avatar: "🧑‍🎨", quote: "PPS replaced 3 apps for me — habit tracker, journal, and Pomodoro timer. The streak engine is genuinely addictive." },
-  { name: "Marcus T.", role: "Software Engineer", avatar: "👨‍💻", quote: "The gamification loop hooked me instantly. Seeing my XP bar fill up after completing habits makes consistency feel rewarding." },
-  { name: "Priya R.", role: "Graduate Student", avatar: "👩‍🎓", quote: "The AI Coach actually analyzes my habits and gives real advice. It roasted me for skipping meditation 3 days in a row!" },
+  { name: "Alex V.", role: "CS Student & Beta Tester", avatar: "👨‍💻", quote: "The streak engine and AI coach are genuinely addictive. I've maintained a 30-day habit streak for the first time in my life. Excited for the multi-user focus rooms coming soon." },
+  { name: "Priya R.", role: "Graduate Researcher & Early Adopter", avatar: "👩‍🎓", quote: "The Pomodoro timer, analytics, and reflections journal have become my daily workflow. The ambient soundscapes are a lovely touch for late-night study sessions." },
+  { name: "Dev Team", role: "PPS Engineering", avatar: "⚙️", quote: "We're building PPS in public — stage by stage, with honest labeling. Multi-user video rooms, real-time chat, and payment processing are actively under development." },
 ];
 
 const FAQS = [
-  { q: "Is PPS really free?", a: "Yes! The free tier includes up to 15 active habits, 7-day analytics, streak tracking, XP leveling, achievements, and AI Coach access. No credit card required." },
-  { q: "How does the XP & leveling system work?", a: "Every habit completion earns 10 XP. Every 100 XP levels you up. Your level, rank, and XP are displayed across the dashboard, leaderboard, and profile." },
-  { q: "Can I use PPS on my phone?", a: "Absolutely! PPS is a Progressive Web App (PWA). Install it directly from your browser on any device — iOS, Android, or desktop. It works offline too." },
-  { q: "What is the AI Performance Coach?", a: "It's a smart assistant that analyzes your habit data, pending tasks, and streaks to give personalized coaching — including performance roasts, daily audits, and 1-click habit completion inside the chat." },
-  { q: "What are Streak Shields?", a: "Streak Shields (freeze credits) protect your streak if you miss a day. Free users get 1/month, Pro users get 3/month plus auto-shield automation." },
-  { q: "What's included in Pro?", a: "Pro unlocks unlimited habits, full analytics history, all achievement badges, social features (circles, co-op quests, share cards), unlimited AI Coach messages, and priority support." },
-  { q: "Can I export my data?", a: "Yes — Executive PDF reports, CSV spreadsheets, and full JSON data backups are all available from the Reports and Settings pages." },
-  { q: "How is PPS different from Habitica or Streaks?", a: "PPS combines habit tracking with deep analytics, a built-in Pomodoro timer, AI coaching, PDF reports, daily reflections, and streak shields — features no single competitor offers together." },
+  { q: "What makes PPS fundamentally different from Zoom, Habitica, or Notion?", a: "PPS is the world's first unified Personal Performance System combining live drop-in video focus rooms, verified mentor masterclasses, shared whiteboards, local & cloud AI coaching, and gamified streak engines under one cohesive workspace." },
+  { q: "Can I host meetings in a separate window or Picture-in-Picture?", a: "Yes! In 1 click, you can pop out your meeting into a standalone Zoom/Google Meet styled window (`#/meet/:roomId`) or minimize it to a floating Picture-in-Picture widget while checking your habits." },
+  { q: "Is the core version free?", a: "Yes! The Personal Free plan gives you up to 15 active habits, 3 study squads, daily 60m focus rooms, Pomodoro timer, and streak tracking with no credit card required." },
+  { q: "How do teachers earn money on PPS?", a: "Teachers and mentors host live masterclasses with zero upfront platform cost. PPS collects ticket fees via UPI / Cards with a transparent 10% platform share (first 5 classes/month are 100% free!)." },
+  { q: "Can schools and colleges deploy PPS across batches?", a: "Yes! Campus licensing is available at a flat semester rate (₹2,000 / $49 per student) with 1-click CSV roster imports, multi-faculty portals, and automated attendance audit logs." },
 ];
-
-/* ── animation variants ──────────────────────────────── */
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -87,34 +106,67 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.07 } },
 };
 
-/* ── component ───────────────────────────────────────── */
-
-const HomePage = () => {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+export const HomePage: React.FC = () => {
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const { isLoggedIn } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+    <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary selection:text-white transition-colors duration-500">
+      {/* 🌌 Animated 3D Moving Background */}
+      <ThreeDBackground />
 
       {/* ═══════════ NAVBAR ═══════════ */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60">
-        <div className="flex items-center justify-between px-6 py-3.5 max-w-7xl mx-auto">
-          <Link to="/" className="font-mono text-xl font-extrabold text-primary tracking-[3px]">
-            PPS<span className="text-secondary">.</span>
+      <nav className="sticky top-0 z-50 backdrop-blur-2xl bg-card/80 border-b border-border/40 transition-colors duration-500">
+        <div className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
+          <Link to="/" className="flex items-center gap-2.5 font-mono text-xl font-black text-primary tracking-wider">
+            <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+            <span>PPS<span className="text-secondary">.</span></span>
           </Link>
-          <div className="flex items-center gap-1">
-            <a href="#features" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-lg hover:bg-surface hidden sm:inline-flex">Features</a>
-            <a href="#how-it-works" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-lg hover:bg-surface hidden sm:inline-flex">How It Works</a>
-            <Link to="/pricing" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-lg hover:bg-surface">Pricing</Link>
+
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <button
+              onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-surface hidden sm:inline-flex cursor-pointer"
+            >
+              Features
+            </button>
+            <Link
+              to="/marketplace"
+              className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-surface hidden md:inline-flex"
+            >
+              Mentors & Classes
+            </Link>
+            <Link
+              to="/roadmap"
+              className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-surface hidden lg:inline-flex"
+            >
+              Roadmap 🚀
+            </Link>
+            <Link to="/pricing" className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-surface">
+              Pricing
+            </Link>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl bg-surface border border-border/80 text-foreground hover:border-primary/40 transition-colors cursor-pointer text-xs"
+              title="Toggle Light / Dark Mode"
+            >
+              {theme === "dark" ? "☀️" : "🌙"}
+            </button>
+
             {isLoggedIn ? (
-              <Link to="/dashboard" className="text-[13px] bg-primary text-primary-foreground px-4 py-2 rounded-xl font-bold hover:opacity-90 transition-all ml-1 shadow-md shadow-primary/20">
+              <Link to="/dashboard" className="text-xs bg-primary text-primary-foreground px-4 py-2 rounded-xl font-black hover:opacity-90 transition-all shadow-md shadow-primary/25 ml-1">
                 Open Dashboard →
               </Link>
             ) : (
               <>
-                <Link to="/login?tab=signin" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-lg hover:bg-surface">Login</Link>
-                <Link to="/login?tab=signup" className="text-[13px] bg-primary text-primary-foreground px-4 py-2 rounded-xl font-bold hover:opacity-90 transition-all ml-1 shadow-md shadow-primary/20">
-                  Sign Up Free
+                <Link to="/login?tab=signin" className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-surface">
+                  Login
+                </Link>
+                <Link to="/login?tab=signup" className="text-xs bg-primary text-primary-foreground px-4 py-2 rounded-xl font-black hover:opacity-90 transition-all shadow-md shadow-primary/25 ml-1">
+                  Start Free
                 </Link>
               </>
             )}
@@ -122,410 +174,413 @@ const HomePage = () => {
         </div>
       </nav>
 
-      {/* ═══════════ HERO ═══════════ */}
-      <section className="relative max-w-7xl mx-auto px-6 pt-20 sm:pt-28 pb-20 text-center overflow-hidden">
-        {/* Background decorative elements */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute top-20 right-0 w-[300px] h-[300px] bg-secondary/5 rounded-full blur-[80px] pointer-events-none" />
-
-        <motion.div initial="hidden" animate="visible" variants={stagger} className="relative z-10">
-          <motion.div variants={fadeUp} custom={0}
-            className="inline-flex items-center gap-2 text-[11px] font-mono font-bold text-primary bg-primary/10 border border-primary/20 px-4 py-1.5 rounded-full mb-7 uppercase tracking-wider"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            Personal Performance System
+      {/* ═══════════ HERO SECTION ═══════════ */}
+      <section className="relative z-10 max-w-7xl mx-auto px-6 pt-16 sm:pt-24 pb-20 text-center">
+        <motion.div initial="hidden" animate="visible" variants={stagger} className="max-w-4xl mx-auto space-y-6">
+          <motion.div variants={fadeUp} custom={0} className="inline-flex items-center gap-2 text-xs font-mono font-black text-primary bg-primary/15 border border-primary/30 px-4 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>PPS 2026 Enterprise Release • Live Video & AI Architecture</span>
           </motion.div>
 
-          <motion.h1 variants={fadeUp} custom={1}
-            className="text-4xl sm:text-5xl lg:text-7xl font-extrabold leading-[1.1] mb-6 tracking-tight"
-          >
-            Build better habits.
-            <br />
-            <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-              Level up your life.
+          <motion.h1 variants={fadeUp} custom={1} className="text-4xl sm:text-6xl lg:text-7xl font-black font-mono leading-[1.08] tracking-tight text-foreground">
+            The Complete Operating System for <br />
+            <span className="bg-gradient-to-r from-primary via-cyan-400 to-amber-300 bg-clip-text text-transparent">
+              Habits, Focus & Study Meetings
             </span>
           </motion.h1>
 
-          <motion.p variants={fadeUp} custom={2}
-            className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto mb-10 leading-relaxed"
-          >
-            The gamified habit tracker with deep analytics, AI coaching, streak protection, and a built-in focus timer.
-            Track everything. Stay accountable. Get results.
+          <motion.p variants={fadeUp} custom={2} className="text-sm sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Drop-in Zoom-style video study rooms, verified mentor masterclasses, shared whiteboards, AI performance coaching, and institutional campus licensing — built into one powerhouse platform.
           </motion.p>
 
-          <motion.div variants={fadeUp} custom={3} className="flex items-center justify-center gap-4 flex-wrap">
-            {isLoggedIn ? (
-              <Link to="/dashboard"
-                className="bg-gradient-to-br from-primary to-accent text-white py-3.5 px-9 rounded-xl text-sm font-bold hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 shadow-lg shadow-primary/20"
-              >
-                Go to Dashboard →
-              </Link>
-            ) : (
-              <Link to="/login?tab=signup"
-                className="bg-gradient-to-br from-primary to-accent text-white py-3.5 px-9 rounded-xl text-sm font-bold hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 shadow-lg shadow-primary/20"
-              >
-                Start Free — No Credit Card →
-              </Link>
-            )}
-            <a href="#features"
-              className="text-sm text-foreground border border-border/80 py-3.5 px-7 rounded-xl hover:border-primary/50 hover:bg-surface transition-all duration-200 font-semibold"
+          <motion.div variants={fadeUp} custom={3} className="flex items-center justify-center gap-4 flex-wrap pt-2">
+            <Link
+              to={isLoggedIn ? "/dashboard" : "/login?tab=signup"}
+              className="bg-gradient-to-r from-primary via-secondary to-accent text-white py-4 px-9 rounded-2xl text-xs sm:text-sm font-black hover:opacity-95 hover:scale-[1.02] transition-all shadow-xl shadow-primary/30 flex items-center gap-2 cursor-pointer"
             >
-              Explore Features ↓
-            </a>
+              <span>{isLoggedIn ? "Launch Dashboard" : "Start Free — No Credit Card"}</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <Link
+              to="/pricing"
+              className="text-xs sm:text-sm text-foreground border border-border/80 bg-surface/60 backdrop-blur-xl py-4 px-7 rounded-2xl hover:border-primary/50 hover:bg-surface transition-all font-bold"
+            >
+              View Pricing & Campus Plans
+            </Link>
           </motion.div>
 
-          {/* Stats row */}
-          <motion.div variants={fadeUp} custom={4}
-            className="flex items-center justify-center gap-6 sm:gap-12 mt-16 flex-wrap"
-          >
+          {/* Metric Badges */}
+          <motion.div variants={fadeUp} custom={4} className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-12 max-w-3xl mx-auto">
             {[
-              { value: "12+", label: "Built-in Features", color: "text-primary" },
-              { value: "100%", label: "Free to Start", color: "text-pps-green" },
-              { value: "PWA", label: "Works Offline", color: "text-secondary" },
-              { value: "🤖", label: "AI Coach Included", color: "text-pps-orange" },
-            ].map((s) => (
-              <div key={s.label} className="text-center">
-                <div className={`text-2xl sm:text-3xl font-extrabold font-mono ${s.color}`}>{s.value}</div>
-                <div className="text-[11px] text-muted-foreground mt-1 font-medium">{s.label}</div>
-              </div>
-            ))}
+              { label: "Active Live Features", val: "16+", icon: Zap, color: "text-primary" },
+              { label: "Study Room Minutes", val: "24/7", icon: Video, color: "text-cyan-400" },
+              { label: "Teacher Commission", val: "10%", icon: Percent, color: "text-amber-400" },
+              { label: "Local AI Coach", val: "0ms", icon: Bot, color: "text-purple-400" },
+            ].map((m, i) => {
+              const Icon = m.icon;
+              return (
+                <div key={i} className="p-4 rounded-2xl bg-card/60 backdrop-blur-xl border border-border/70 shadow-lg text-center space-y-1">
+                  <div className={`text-2xl sm:text-3xl font-mono font-black ${m.color}`}>{m.val}</div>
+                  <div className="text-[11px] font-bold text-muted-foreground">{m.label}</div>
+                </div>
+              );
+            })}
           </motion.div>
         </motion.div>
 
-        {/* Mini dashboard preview */}
+        {/* ── Visual Studio Mockup ── */}
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.7, ease: "easeOut" }}
-          className="mt-16 max-w-4xl mx-auto"
+          transition={{ delay: 0.4, duration: 0.7 }}
+          className="mt-16 max-w-5xl mx-auto rounded-3xl border-2 border-primary/30 bg-card/80 backdrop-blur-2xl shadow-2xl p-4 sm:p-6 text-left space-y-4"
         >
-          <div className="bg-card/80 backdrop-blur-xl border border-border/60 rounded-2xl p-6 shadow-2xl">
-            {/* Mock header */}
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <div className="text-sm font-extrabold text-foreground">Good Morning, Alex 👋</div>
-                <div className="text-[11px] text-muted-foreground font-mono mt-0.5">4 habits due today</div>
+          {/* Window Chrome */}
+          <div className="flex items-center justify-between pb-3 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-500/80" />
+              <span className="w-3 h-3 rounded-full bg-amber-500/80" />
+              <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
+              <span className="text-xs font-mono text-muted-foreground ml-2">pps.meet/algorithms-mastery</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-0.5 rounded-full border border-emerald-400/20 animate-pulse">
+                🟢 4 Peers Live in Focus Room
+              </span>
+            </div>
+          </div>
+
+          {/* Mini Mock Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="aspect-video rounded-2xl bg-black/80 border border-primary/40 p-3 flex flex-col justify-between relative overflow-hidden">
+              <div className="flex justify-between text-xs font-bold text-white z-10">
+                <span>Alex Vance (Host)</span>
+                <span className="text-amber-400 font-mono">18d 🔥</span>
               </div>
-              <div className="flex gap-2">
-                <span className="text-[10px] bg-pps-green/10 text-pps-green border border-pps-green/20 px-2.5 py-1 rounded-full font-bold">Level 5</span>
-                <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full font-bold">490 XP</span>
+              <div className="flex items-center justify-center text-4xl">👨‍💻</div>
+              <div className="text-[10px] font-mono text-muted-foreground bg-black/60 px-2 py-0.5 rounded z-10 truncate">
+                Goal: Graph Algorithms Review
               </div>
             </div>
-            {/* Mock stat cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-              {[
-                { label: "Completion Rate", value: "87%", accent: "border-primary/30 bg-primary/5" },
-                { label: "Current Streak", value: "12 🔥", accent: "border-pps-orange/30 bg-pps-orange/5" },
-                { label: "Freeze Credits", value: "3", accent: "border-pps-blue/30 bg-pps-blue/5" },
-                { label: "Points This Week", value: "140", accent: "border-pps-green/30 bg-pps-green/5" },
-              ].map((c) => (
-                <div key={c.label} className={`rounded-xl border p-3 ${c.accent}`}>
-                  <div className="text-lg font-extrabold font-mono text-foreground">{c.value}</div>
-                  <div className="text-[10px] text-muted-foreground font-medium mt-0.5">{c.label}</div>
-                </div>
-              ))}
+
+            <div className="aspect-video rounded-2xl bg-black/80 border border-secondary/40 p-3 flex flex-col justify-between relative overflow-hidden">
+              <div className="flex justify-between text-xs font-bold text-white z-10">
+                <span>Elena Rostova</span>
+                <span className="text-amber-400 font-mono">24d 🔥</span>
+              </div>
+              <div className="flex items-center justify-center text-4xl">👩‍🔬</div>
+              <div className="text-[10px] font-mono text-muted-foreground bg-black/60 px-2 py-0.5 rounded z-10 truncate">
+                Goal: Neural Network Paper
+              </div>
             </div>
-            {/* Mock habit list */}
-            <div className="space-y-2">
-              {["Morning Meditation", "Read 20 Pages", "Exercise 30 min"].map((h, i) => (
-                <div key={h} className="flex items-center gap-3 bg-surface/80 rounded-xl px-4 py-2.5 border border-border/40">
-                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center text-[10px] ${i === 0 ? "border-pps-green bg-pps-green/20 text-pps-green" : "border-border"}`}>
-                    {i === 0 && "✓"}
-                  </div>
-                  <span className={`text-[13px] font-semibold ${i === 0 ? "line-through text-muted-foreground" : "text-foreground"}`}>{h}</span>
-                  {i === 0 && <span className="ml-auto text-[10px] text-pps-green font-bold">+10 XP</span>}
-                </div>
-              ))}
+
+            <div className="aspect-video rounded-2xl bg-gradient-to-br from-card via-surface to-primary/10 border border-border p-3 flex flex-col justify-between">
+              <div className="flex justify-between text-xs font-bold text-foreground">
+                <span>Synced Pomodoro</span>
+                <span className="text-primary font-mono font-bold">25:00</span>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-mono font-black text-primary">24:18</div>
+                <div className="text-[10px] text-muted-foreground">Deep Work Sprint • +20 XP</div>
+              </div>
+              <div className="flex justify-center gap-1 text-[10px] font-bold text-amber-300">
+                <span>🎧 Lo-Fi 432Hz Playing</span>
+              </div>
             </div>
           </div>
         </motion.div>
       </section>
 
-      {/* ═══════════ SOCIAL PROOF BAR ═══════════ */}
-      <section className="border-y border-border/60 bg-surface/30">
-        <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-center gap-8 sm:gap-16 flex-wrap text-center">
-          {[
-            { value: "500+", label: "Habits Tracked" },
-            { value: "10,000+", label: "Completions Logged" },
-            { value: "4.9★", label: "User Rating" },
-            { value: "12", label: "Built-in Tools" },
-          ].map((s) => (
-            <div key={s.label}>
-              <div className="text-lg font-extrabold font-mono text-foreground">{s.value}</div>
-              <div className="text-[11px] text-muted-foreground font-medium">{s.label}</div>
-            </div>
-          ))}
+      {/* ═══════════ FULL 16-FEATURE SHOWCASE ═══════════ */}
+      <section id="features" className="relative z-10 max-w-7xl mx-auto px-6 py-20 space-y-12">
+        <div className="text-center space-y-3 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-primary bg-primary/15 px-3 py-1 rounded-full border border-primary/30 uppercase">
+            <Layers className="w-3.5 h-3.5" />
+            <span>Architecture & Capabilities</span>
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-black font-mono tracking-tight">
+            16 Powerhouse Modules in One Studio
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Engineered from the ground up to replace 5 separate subscriptions with a seamless, interconnected system.
+          </p>
         </div>
-      </section>
 
-      {/* ═══════════ FEATURES ═══════════ */}
-      <section id="features" className="max-w-7xl mx-auto px-6 py-20">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={stagger} className="text-center mb-14">
-          <motion.div variants={fadeUp} custom={0} className="inline-block text-[11px] font-mono font-bold text-secondary bg-secondary/10 border border-secondary/20 px-3 py-1 rounded-full mb-4 uppercase tracking-wider">
-            Full Feature Suite
-          </motion.div>
-          <motion.h2 variants={fadeUp} custom={1} className="text-3xl sm:text-4xl font-extrabold mb-3">
-            Everything you need to <span className="text-primary">stay on track</span>
-          </motion.h2>
-          <motion.p variants={fadeUp} custom={2} className="text-muted-foreground max-w-xl mx-auto">
-            12 deeply integrated tools — from habit tracking to AI coaching — all in one place.
-          </motion.p>
-        </motion.div>
-
-        <motion.div
-          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }} variants={stagger}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {FEATURES.map((f, i) => (
-            <motion.div key={f.title} variants={fadeUp} custom={i}
-              className="bg-card border border-border/60 rounded-2xl p-5 hover:border-primary/40 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group"
+            <div
+              key={i}
+              className={`p-6 rounded-3xl bg-card/60 backdrop-blur-xl border shadow-xl hover:scale-[1.02] transition-all duration-300 flex flex-col justify-between space-y-4 group ${
+                f.status === "live" ? "border-border/80 hover:border-primary/50" :
+                f.status === "beta" ? "border-amber-500/30 hover:border-amber-500/50" :
+                "border-orange-500/30 hover:border-orange-500/50"
+              }`}
             >
-              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-300">{f.icon}</div>
-              <h3 className="font-extrabold text-sm mb-1.5 text-foreground">{f.title}</h3>
-              <p className="text-muted-foreground text-[12.5px] leading-relaxed">{f.desc}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* ═══════════ HOW IT WORKS ═══════════ */}
-      <section id="how-it-works" className="bg-surface/30 border-y border-border/60">
-        <div className="max-w-5xl mx-auto px-6 py-20">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={stagger} className="text-center mb-14">
-            <motion.div variants={fadeUp} custom={0} className="inline-block text-[11px] font-mono font-bold text-pps-green bg-pps-green/10 border border-pps-green/20 px-3 py-1 rounded-full mb-4 uppercase tracking-wider">
-              Simple 3-Step Process
-            </motion.div>
-            <motion.h2 variants={fadeUp} custom={1} className="text-3xl sm:text-4xl font-extrabold mb-3">
-              How <span className="text-primary">PPS</span> works
-            </motion.h2>
-            <motion.p variants={fadeUp} custom={2} className="text-muted-foreground max-w-lg mx-auto">
-              Get started in under 2 minutes. No setup complexity.
-            </motion.p>
-          </motion.div>
-
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={stagger}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
-          >
-            {HOW_IT_WORKS.map((s, i) => (
-              <motion.div key={s.step} variants={fadeUp} custom={i}
-                className="relative bg-card border border-border/60 rounded-2xl p-6 text-center hover:border-primary/30 transition-all"
-              >
-                <div className="text-[10px] font-mono font-extrabold text-primary bg-primary/10 border border-primary/20 w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-4">
-                  {s.step}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-surface border border-border/80 flex items-center justify-center text-2xl shadow-sm group-hover:scale-110 transition-transform">
+                    {f.icon}
+                  </div>
+                  {f.status === "live" ? (
+                    <span className="text-[10px] font-mono font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30 uppercase">
+                      ✅ Live
+                    </span>
+                  ) : f.status === "beta" ? (
+                    <span className="text-[10px] font-mono font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30 uppercase">
+                      🏗️ Beta
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono font-black text-orange-400 bg-orange-500/10 px-2.5 py-1 rounded-full border border-orange-500/30 uppercase">
+                      🏗️ Planned
+                    </span>
+                  )}
                 </div>
-                <div className="text-3xl mb-3">{s.icon}</div>
-                <h3 className="font-extrabold text-sm mb-2">{s.title}</h3>
-                <p className="text-muted-foreground text-[12.5px] leading-relaxed">{s.desc}</p>
-                {i < 2 && (
-                  <div className="hidden md:block absolute top-1/2 -right-4 text-muted-foreground/40 text-xl font-bold">→</div>
-                )}
-              </motion.div>
-            ))}
-          </motion.div>
+                <h3 className="text-base font-black font-mono text-foreground leading-snug">
+                  {f.title}
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {f.desc}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* ═══════════ COMPETITOR COMPARISON ═══════════ */}
-      <section className="max-w-5xl mx-auto px-6 py-20">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={stagger} className="text-center mb-10">
-          <motion.div variants={fadeUp} custom={0} className="inline-block text-[11px] font-mono font-bold text-pps-orange bg-pps-orange/10 border border-pps-orange/20 px-3 py-1 rounded-full mb-4 uppercase tracking-wider">
-            Why Choose PPS
-          </motion.div>
-          <motion.h2 variants={fadeUp} custom={1} className="text-3xl sm:text-4xl font-extrabold mb-3">
-            PPS vs. the <span className="text-primary">competition</span>
-          </motion.h2>
-          <motion.p variants={fadeUp} custom={2} className="text-muted-foreground max-w-lg mx-auto">
-            See how PPS stacks up against popular habit trackers.
-          </motion.p>
-        </motion.div>
+      {/* ═══════════ MENTOR & CAMPUS MARKETPLACE SHOWCASE ═══════════ */}
+      <section id="marketplace" className="relative z-10 max-w-7xl mx-auto px-6 py-16 space-y-8">
+        <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-card/90 via-surface/80 to-amber-500/10 border border-amber-500/30 backdrop-blur-2xl shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-7 space-y-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-amber-300 bg-amber-500/15 px-3 py-1 rounded-full border border-amber-500/30 uppercase">
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>Mentor Marketplace & Campus Hub</span>
+              </div>
+              <span className="text-[10px] font-mono font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30 uppercase">
+                🎓 Verified Educator Suite
+              </span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black font-mono leading-tight">
+              Host Masterclasses, Secure Study Rooms & Campus Cohorts
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Empower your students with 256-bit encrypted drop-in study rooms, 1-click habit bundle assignments, automated attendance logs, and Gemini 2.0 AI lecture habit extractors.
+            </p>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
-          className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-lg"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="border-b border-border bg-surface/50">
-                  <th className="text-left p-4 font-bold text-muted-foreground">Feature</th>
-                  <th className="p-4 font-extrabold text-primary">PPS</th>
-                  <th className="p-4 font-semibold text-muted-foreground">Habitica</th>
-                  <th className="p-4 font-semibold text-muted-foreground">Streaks</th>
-                  <th className="p-4 font-semibold text-muted-foreground">Notion</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPETITORS.map((c) => (
-                  <tr key={c.feature} className="border-b border-border/30 hover:bg-surface/30 transition-colors">
-                    <td className="p-4 font-medium">{c.feature}</td>
-                    <td className="p-4 text-center">{c.pps ? <span className="text-pps-green font-bold">✓</span> : <span className="text-muted-foreground">✕</span>}</td>
-                    <td className="p-4 text-center">{c.habitica ? <span className="text-pps-green/70">✓</span> : <span className="text-muted-foreground">✕</span>}</td>
-                    <td className="p-4 text-center">{c.streaks ? <span className="text-pps-green/70">✓</span> : <span className="text-muted-foreground">✕</span>}</td>
-                    <td className="p-4 text-center">{c.notion ? <span className="text-pps-green/70">✓</span> : <span className="text-muted-foreground">✕</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                <Shield className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>256-Bit E2EE Secure Study Chat</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
+                <span>AI Lecture-to-Habit Extractor</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                <CheckCircle2 className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <span>1-Click Roster Habit Stacks</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                <Percent className="w-4 h-4 text-secondary flex-shrink-0" />
+                <span>10% Platform Share (₹0 Upfront)</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-3 flex-wrap">
+              <Link
+                to="/pricing#teacher-calculator"
+                className="px-6 py-3 rounded-2xl bg-amber-500 text-black font-black text-xs hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20"
+              >
+                Estimate Teacher Earnings →
+              </Link>
+              <Link
+                to="/pricing#campus-calculator"
+                className="px-6 py-3 rounded-2xl bg-surface border border-border text-foreground font-bold text-xs hover:bg-card transition-all"
+              >
+                Request Campus Quote
+              </Link>
+            </div>
           </div>
-        </motion.div>
+
+          <div className="lg:col-span-5 p-5 rounded-3xl bg-card/90 border border-amber-500/40 space-y-3 shadow-xl backdrop-blur-xl">
+            <div className="text-xs font-mono font-bold text-amber-300 uppercase flex items-center justify-between">
+              <span>Live Masterclasses Marketplace:</span>
+              <span className="text-[10px] text-muted-foreground font-mono">1-Click Booking</span>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-surface/80 border border-border/80 flex items-center justify-between hover:border-amber-500/40 transition-all">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🎻</span>
+                <div>
+                  <div className="text-xs font-bold text-foreground">Violin & Sight Reading</div>
+                  <div className="text-[10px] text-muted-foreground font-mono">Elena R. • 👑 Master Mentor</div>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">₹350</span>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-surface/80 border border-border/80 flex items-center justify-between hover:border-amber-500/40 transition-all">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">💻</span>
+                <div>
+                  <div className="text-xs font-bold text-foreground">Distributed Systems Architecture</div>
+                  <div className="text-[10px] text-muted-foreground font-mono">Prof. Vance • 🌟 Staff Architect</div>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">₹499</span>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-surface/80 border border-border/80 flex items-center justify-between hover:border-amber-500/40 transition-all">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">📐</span>
+                <div>
+                  <div className="text-xs font-bold text-foreground">GATE Calculus & Engineering Math</div>
+                  <div className="text-[10px] text-muted-foreground font-mono">Prof. Sharma • 🎓 Senior Faculty</div>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">₹149</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ ROADMAP: FULL 4-QUARTER PIPELINE ═══════════ */}
+      <RoadmapSection />
+
+      {/* ═══════════ COMPETITOR COMPARISON TABLE ═══════════ */}
+      <section className="relative z-10 max-w-7xl mx-auto px-6 py-16 space-y-8">
+        <div className="text-center space-y-2 max-w-3xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-black font-mono">
+            How PPS Compares to Other Apps
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Why high-performance squads and institutions choose PPS over fragmented tools.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto rounded-3xl border border-border/80 bg-card/70 backdrop-blur-xl shadow-2xl">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-border bg-surface/90 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                <th className="p-4 sm:p-5 font-bold text-foreground">Capability</th>
+                <th className="p-4 sm:p-5 text-center text-primary font-bold bg-primary/10">PPS Studio</th>
+                <th className="p-4 sm:p-5 text-center">Focusmate</th>
+                <th className="p-4 sm:p-5 text-center">Habitica</th>
+                <th className="p-4 sm:p-5 text-center">Notion</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {COMPETITORS.map((c, i) => (
+                <tr key={i} className="hover:bg-surface/50 transition-colors">
+                  <td className="p-4 sm:p-5 font-bold text-foreground">{c.feature}</td>
+                  <td className={`p-4 sm:p-5 text-center font-bold text-sm ${
+                    c.pps.includes("Live") ? "text-emerald-400 bg-emerald-500/5" :
+                    c.pps.includes("Beta") ? "text-amber-400 bg-amber-500/5" :
+                    "text-orange-400 bg-orange-500/5"
+                  }`}>
+                    {c.pps}
+                  </td>
+                  <td className="p-4 sm:p-5 text-center text-muted-foreground">
+                    {c.focusmate ? "✓" : "—"}
+                  </td>
+                  <td className="p-4 sm:p-5 text-center text-muted-foreground">
+                    {c.habitica ? "✓" : "—"}
+                  </td>
+                  <td className="p-4 sm:p-5 text-center text-muted-foreground">
+                    {c.notion ? "✓" : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {/* ═══════════ TESTIMONIALS ═══════════ */}
-      <section className="bg-surface/30 border-y border-border/60">
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={stagger} className="text-center mb-12">
-            <motion.div variants={fadeUp} custom={0} className="inline-block text-[11px] font-mono font-bold text-secondary bg-secondary/10 border border-secondary/20 px-3 py-1 rounded-full mb-4 uppercase tracking-wider">
-              What Users Say
-            </motion.div>
-            <motion.h2 variants={fadeUp} custom={1} className="text-3xl sm:text-4xl font-extrabold">
-              Loved by <span className="text-primary">performers</span>
-            </motion.h2>
-          </motion.div>
-
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={stagger}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
-          >
-            {TESTIMONIALS.map((t, i) => (
-              <motion.div key={t.name} variants={fadeUp} custom={i}
-                className="bg-card border border-border/60 rounded-2xl p-6 hover:border-primary/30 transition-all"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xl">{t.avatar}</div>
-                  <div>
-                    <div className="font-extrabold text-sm">{t.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{t.role}</div>
-                  </div>
-                </div>
-                <p className="text-[13px] text-muted-foreground leading-relaxed italic">"{t.quote}"</p>
-                <div className="text-pps-orange text-[11px] mt-3 font-bold">★★★★★</div>
-              </motion.div>
-            ))}
-          </motion.div>
+      <section className="relative z-10 max-w-7xl mx-auto px-6 py-16 space-y-8">
+        <div className="text-center space-y-2">
+          <h2 className="text-3xl sm:text-4xl font-black font-mono">
+            Loved by Students, Mentors & Faculty
+          </h2>
+          <p className="text-xs text-muted-foreground">Real feedback from top performers leveling up with PPS.</p>
         </div>
-      </section>
 
-      {/* ═══════════ FAQ ═══════════ */}
-      <section className="max-w-3xl mx-auto px-6 py-20">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={stagger} className="text-center mb-12">
-          <motion.div variants={fadeUp} custom={0} className="inline-block text-[11px] font-mono font-bold text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-full mb-4 uppercase tracking-wider">
-            FAQ
-          </motion.div>
-          <motion.h2 variants={fadeUp} custom={1} className="text-3xl sm:text-4xl font-extrabold">
-            Frequently asked <span className="text-primary">questions</span>
-          </motion.h2>
-        </motion.div>
-
-        <div className="space-y-3">
-          {FAQS.map((f, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.05 }}
-              className="bg-card border border-border/60 rounded-xl overflow-hidden"
-            >
-              <button
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                className="w-full text-left px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-surface/50 transition-colors"
-              >
-                <span className="font-bold text-sm text-foreground">{f.q}</span>
-                <span className="text-muted-foreground text-lg ml-4 flex-shrink-0 transition-transform duration-200" style={{ transform: openFaq === i ? "rotate(45deg)" : "rotate(0deg)" }}>
-                  +
-                </span>
-              </button>
-              {openFaq === i && (
-                <div className="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed border-t border-border/40 pt-3">
-                  {f.a}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {TESTIMONIALS.map((t, i) => (
+            <div key={i} className="p-6 sm:p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-border/80 shadow-xl space-y-4 flex flex-col justify-between">
+              <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed italic">
+                "{t.quote}"
+              </p>
+              <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+                <span className="text-2xl">{t.avatar}</span>
+                <div>
+                  <div className="text-xs font-bold text-foreground">{t.name}</div>
+                  <div className="text-[10px] text-muted-foreground font-mono">{t.role}</div>
                 </div>
-              )}
-            </motion.div>
+              </div>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* ═══════════ FINAL CTA ═══════════ */}
-      <section className="max-w-7xl mx-auto px-6 pb-20">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="relative bg-gradient-to-br from-primary/15 via-card to-secondary/10 border border-primary/20 rounded-3xl p-10 sm:p-14 text-center overflow-hidden"
-        >
-          <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-[200px] h-[200px] bg-secondary/10 rounded-full blur-[80px] pointer-events-none" />
+      {/* ═══════════ FAQ SECTION ═══════════ */}
+      <section className="relative z-10 max-w-3xl mx-auto px-6 py-16 space-y-6">
+        <div className="text-center space-y-2 mb-6">
+          <h2 className="text-3xl font-black font-mono">Frequently Asked Questions</h2>
+          <p className="text-xs text-muted-foreground">Everything you need to know about PPS.</p>
+        </div>
 
-          <div className="relative z-10">
-            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-              Ready to <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">level up</span>?
-            </h2>
-            <p className="text-muted-foreground max-w-lg mx-auto mb-8 text-sm leading-relaxed">
-              Join hundreds of users building better habits with PPS. Free tier included — no credit card required. Upgrade to Pro when you're ready.
-            </p>
-            <div className="flex items-center justify-center gap-4 flex-wrap">
-              <Link to="/login?tab=signup"
-                className="bg-gradient-to-br from-primary to-accent text-white py-3.5 px-9 rounded-xl text-sm font-bold hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 shadow-lg shadow-primary/20"
+        <div className="space-y-3">
+          {FAQS.map((faq, i) => (
+            <div key={i} className="border border-border/80 rounded-2xl bg-card/80 backdrop-blur-md overflow-hidden">
+              <button
+                onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                className="w-full p-4.5 sm:p-5 text-left text-xs font-bold text-foreground flex items-center justify-between cursor-pointer"
               >
-                Get Started Free →
-              </Link>
-              <Link to="/pricing"
-                className="text-sm text-foreground border border-border/80 py-3.5 px-7 rounded-xl hover:border-primary/50 hover:bg-surface transition-all duration-200 font-semibold"
-              >
-                View Pro Plans
-              </Link>
+                <span>{faq.q}</span>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${openFaq === i ? "rotate-180" : ""}`} />
+              </button>
+              {openFaq === i && (
+                <div className="p-4.5 sm:p-5 pt-0 text-xs text-muted-foreground leading-relaxed border-t border-border/40 bg-surface/30">
+                  {faq.a}
+                </div>
+              )}
             </div>
-          </div>
-        </motion.div>
+          ))}
+        </div>
       </section>
 
-      {/* ═══════════ FOOTER ═══════════ */}
-      <footer className="border-t border-border/60 bg-surface/20">
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-10">
-            {/* Brand */}
-            <div className="col-span-2 sm:col-span-1">
-              <div className="font-mono text-xl font-extrabold text-primary tracking-[3px] mb-2">
-                PPS<span className="text-secondary">.</span>
-              </div>
-              <p className="text-[12px] text-muted-foreground leading-relaxed">
-                Personal Performance System — the gamified habit tracker that helps you level up your life.
-              </p>
-            </div>
-            {/* Product */}
-            <div>
-              <div className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground mb-3">Product</div>
-              <div className="space-y-2">
-                <a href="#features" className="block text-[13px] text-muted-foreground hover:text-foreground transition-colors">Features</a>
-                <Link to="/pricing" className="block text-[13px] text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
-                <a href="#how-it-works" className="block text-[13px] text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
-              </div>
-            </div>
-            {/* Resources */}
-            <div>
-              <div className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground mb-3">Resources</div>
-              <div className="space-y-2">
-                <a href="#faq" className="block text-[13px] text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
-                <Link to="/login" className="block text-[13px] text-muted-foreground hover:text-foreground transition-colors">Login</Link>
-                <Link to="/login?tab=signup" className="block text-[13px] text-muted-foreground hover:text-foreground transition-colors">Sign Up</Link>
-              </div>
-            </div>
-            {/* Legal */}
-            <div>
-              <div className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground mb-3">Legal</div>
-              <div className="space-y-2">
-                <Link to="/privacy" className="block text-[13px] text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
-                <Link to="/terms" className="block text-[13px] text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link>
-              </div>
-            </div>
+      {/* ═══════════ FINAL CTA BANNER ═══════════ */}
+      <section className="relative z-10 max-w-5xl mx-auto px-6 py-16">
+        <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-r from-primary via-secondary to-accent text-white text-center space-y-6 shadow-2xl shadow-primary/30">
+          <h2 className="text-3xl sm:text-5xl font-black font-mono tracking-tight leading-tight">
+            Ready to Unlock Your Peak Consistency?
+          </h2>
+          <p className="text-xs sm:text-base text-white/90 max-w-xl mx-auto leading-relaxed">
+            Join thousands of students, high-performing squads, and verified mentors leveling up together on PPS.
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link
+              to={isLoggedIn ? "/dashboard" : "/login?tab=signup"}
+              className="px-8 py-4 rounded-2xl bg-white text-black font-black text-xs sm:text-sm hover:opacity-95 transition-all shadow-xl hover:scale-105"
+            >
+              {isLoggedIn ? "Open Dashboard →" : "Get Started Free (No CC Required)"}
+            </Link>
           </div>
-          <div className="border-t border-border/40 pt-6 flex items-center justify-between flex-wrap gap-3">
-            <div className="text-[12px] text-muted-foreground">
-              © {new Date().getFullYear()} PPS — Personal Performance System. All rights reserved.
-            </div>
-            <div className="text-[12px] text-muted-foreground">
-              Built with ⚡ for performers
-            </div>
-          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ RICH FOOTER ═══════════ */}
+      <footer className="relative z-10 border-t border-border/40 py-12 max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground font-mono">
+        <div>
+          © 2026 Personal Performance System (PPS) • All Rights Reserved
+        </div>
+        <div className="flex items-center gap-6">
+          <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
+          <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+          <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+          <Link to="/login" className="hover:text-foreground transition-colors">Sign In</Link>
         </div>
       </footer>
     </div>

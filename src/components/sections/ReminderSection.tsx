@@ -153,7 +153,7 @@ const ReminderSection = () => {
               Smart Alerts
             </span>
           </h1>
-          <p className="text-xs text-slate-300 font-medium mt-0.5">
+          <p className="text-xs text-muted-foreground font-medium mt-0.5">
             Configure habit-linked alarms, circadian schedule presets, audio sound previews, and quick snoozes
           </p>
         </div>
@@ -199,7 +199,7 @@ const ReminderSection = () => {
               <div>
                 <div className="text-xs font-extrabold text-foreground">{p.label}</div>
                 <div className="text-[11px] font-mono font-extrabold text-primary mt-0.5">{formatTime(p.time)}</div>
-                <div className="text-[10.5px] text-slate-300 font-medium mt-1">{p.desc}</div>
+                <div className="text-[10.5px] text-muted-foreground font-medium mt-1">{p.desc}</div>
               </div>
 
               <button
@@ -304,7 +304,7 @@ const ReminderSection = () => {
               <button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
-                className="text-xs font-bold text-slate-300 px-4 py-2 rounded-xl hover:bg-surface transition-all cursor-pointer"
+                className="text-xs font-bold text-muted-foreground hover:text-foreground px-4 py-2 rounded-xl hover:bg-surface transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -326,7 +326,7 @@ const ReminderSection = () => {
           <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
             🔔 Active Alarms & Reminders Schedule
           </h2>
-          <span className="text-xs text-slate-300 font-mono font-bold">
+          <span className="text-xs text-muted-foreground font-mono font-bold">
             {reminders.length} Active Alarms
           </span>
         </div>
@@ -372,7 +372,7 @@ const ReminderSection = () => {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs font-mono font-extrabold text-slate-300 mt-0.5">
+                      <div className="flex items-center gap-2 text-xs font-mono font-extrabold text-muted-foreground mt-0.5">
                         <span className="text-primary font-extrabold">{formatTime(r.time)}</span>
                         <span>•</span>
                         <span>{r.repeat}</span>
@@ -389,7 +389,7 @@ const ReminderSection = () => {
                     {/* Snooze Buttons */}
                     <button
                       onClick={() => snoozeReminder(r.label, 15)}
-                      className="text-[10.5px] font-mono font-extrabold bg-surface border border-border/80 text-slate-200 hover:text-foreground px-2.5 py-1 rounded-xl transition-all cursor-pointer"
+                      className="text-[10.5px] font-mono font-extrabold bg-surface border border-border/80 text-foreground hover:border-primary/40 px-2.5 py-1 rounded-xl transition-all cursor-pointer"
                       title="Snooze for 15 mins"
                     >
                       💤 +15m
@@ -397,7 +397,7 @@ const ReminderSection = () => {
 
                     <button
                       onClick={() => snoozeReminder(r.label, 60)}
-                      className="text-[10.5px] font-mono font-extrabold bg-surface border border-border/80 text-slate-200 hover:text-foreground px-2.5 py-1 rounded-xl transition-all cursor-pointer"
+                      className="text-[10.5px] font-mono font-extrabold bg-surface border border-border/80 text-foreground hover:border-primary/40 px-2.5 py-1 rounded-xl transition-all cursor-pointer"
                       title="Snooze for 1 hour"
                     >
                       💤 +1h
@@ -409,7 +409,7 @@ const ReminderSection = () => {
                       className={`text-xs font-mono font-extrabold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
                         r.enabled
                           ? "bg-pps-green/15 text-pps-green border-pps-green/30"
-                          : "bg-surface text-slate-400 border-border/80"
+                          : "bg-surface text-muted-foreground border-border/80"
                       }`}
                     >
                       {r.enabled ? "Active ✓" : "Off"}

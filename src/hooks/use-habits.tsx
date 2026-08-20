@@ -93,20 +93,22 @@ export function HabitsProvider({
   userEmail,
   userId,
   maxHabits = Infinity,
+  isGuest: isGuestProp = false,
 }: {
   children: ReactNode;
   userEmail: string | null;
   userId?: string;
   maxHabits?: number;
+  isGuest?: boolean;
 }) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoChecked, setAutoChecked] = useState(false);
   const { settings, loading: settingsLoading } = useUserSettings();
-  const isGuest = !userId;
+  const isGuest = isGuestProp || !userId || userId === "guest_local" || userId.startsWith("guest");
 
   const fetchHabits = useCallback(async () => {
-    if (isGuest || !userId) return;
+    if (isGuest || !userId || userId === "guest_local" || userId.startsWith("guest")) return;
     setLoading(true);
     const { data: habitsData, error } = await supabase
       .from("habits")
@@ -282,7 +284,7 @@ export function HabitsProvider({
       return null;
     }
 
-    const { error } = await supabase.from("habits").insert({
+    const payload: any = {
       user_id: userId!,
       name,
       category: category || "Uncategorized",
@@ -297,7 +299,26 @@ export function HabitsProvider({
       archived: false,
       start_alarm: startAlarm || false,
       end_alarm: endAlarm || false
-    });
+    };
+
+    let { error } = await supabase.from("habits").insert(payload);
+
+    // Defensive fallback: If PostgREST schema cache is missing optional columns, retry with baseline fields
+    if (error && (error.message.includes("column") || error.message.includes("schema cache") || error.code === "PGRST204")) {
+      console.warn("Retrying habit insertion with baseline schema fields...", error.message);
+      const fallbackPayload: any = {
+        user_id: userId!,
+        name,
+        category: category || "Uncategorized",
+        priority: priority || "Medium",
+        period: period || "Daily",
+        due_date: dueDate,
+        streak: 0,
+      };
+      const fallbackRes = await supabase.from("habits").insert(fallbackPayload);
+      error = fallbackRes.error;
+    }
+
     if (error) {
       console.error("Failed to add habit:", error);
       return error.message;

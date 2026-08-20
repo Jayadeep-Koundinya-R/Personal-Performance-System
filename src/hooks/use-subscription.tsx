@@ -20,33 +20,39 @@ export function SubscriptionProvider({ children, userId, isGuest }: { children: 
   const [loading, setLoading] = useState(true);
   const [currentPeriodEnd, setCurrentPeriodEnd] = useState<string | null>(null);
 
+  const isGuestUser = isGuest || !userId || userId === "guest_local" || userId.startsWith("guest");
+
   const refresh = useCallback(async () => {
-    if (!userId || isGuest) {
+    if (isGuestUser || !userId) {
       setPlan("free");
       setLoading(false);
       return;
     }
 
-    const { data: sub } = await supabase
-      .from("subscriptions")
-      .select("plan, status, current_period_end")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (sub && sub.status === "active" && sub.plan === "pro") {
-      setPlan("pro");
-      setCurrentPeriodEnd(sub.current_period_end);
-    } else {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("plan_tier")
+    try {
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("plan, status, current_period_end")
         .eq("user_id", userId)
         .maybeSingle();
-      setPlan(profile?.plan_tier === "pro" ? "pro" : "free");
-      setCurrentPeriodEnd(null);
+
+      if (sub && sub.status === "active" && sub.plan === "pro") {
+        setPlan("pro");
+        setCurrentPeriodEnd(sub.current_period_end);
+      } else {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("plan_tier")
+          .eq("user_id", userId)
+          .maybeSingle();
+        setPlan(profile?.plan_tier === "pro" ? "pro" : "free");
+        setCurrentPeriodEnd(null);
+      }
+    } catch {
+      setPlan("free");
     }
     setLoading(false);
-  }, [userId, isGuest]);
+  }, [userId, isGuestUser]);
 
   useEffect(() => {
     refresh();

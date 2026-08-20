@@ -43,9 +43,10 @@ export function NotificationProvider({
   habits?: Habit[];
 }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const isGuestUser = isGuest || !userId || userId === "guest_local" || userId.startsWith("guest");
 
   const loadFromDb = useCallback(async () => {
-    if (!userId || isGuest) {
+    if (isGuestUser || !userId) {
       try {
         setNotifications(JSON.parse(localStorage.getItem(GUEST_KEY(userEmail)) || "[]"));
       } catch {
@@ -53,87 +54,102 @@ export function NotificationProvider({
       }
       return;
     }
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(20);
+    try {
+      const { data } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(20);
 
-    setNotifications(
-      (data || []).map((n) => ({
-        id: n.id,
-        type: n.type as Notification["type"],
-        title: n.title,
-        message: n.message,
-        icon: n.icon,
-        time: formatTime(n.created_at),
-        read: n.read,
-      }))
-    );
-  }, [userId, userEmail, isGuest]);
+      setNotifications(
+        (data || []).map((n) => ({
+          id: n.id,
+          type: n.type as Notification["type"],
+          title: n.title,
+          message: n.message,
+          icon: n.icon,
+          time: formatTime(n.created_at),
+          read: n.read,
+        }))
+      );
+    } catch {
+      try {
+        setNotifications(JSON.parse(localStorage.getItem(GUEST_KEY(userEmail)) || "[]"));
+      } catch {
+        setNotifications([]);
+      }
+    }
+  }, [userId, userEmail, isGuestUser]);
 
   useEffect(() => {
     loadFromDb();
   }, [loadFromDb]);
 
   useEffect(() => {
-    if (isGuest || !userId) {
+    if (isGuestUser || !userId) {
       localStorage.setItem(GUEST_KEY(userEmail), JSON.stringify(notifications));
     }
-  }, [notifications, userId, userEmail, isGuest]);
+  }, [notifications, userId, userEmail, isGuestUser]);
 
   useEffect(() => {
     const lastCheck = localStorage.getItem(`pps_notif_check_${userEmail || "guest"}`);
     const todayStr = new Date().toISOString().split("T")[0];
     if (lastCheck === todayStr || habits.length === 0) return;
 
-    const maxStreak = habits.reduce((max, h) => Math.max(max, h.streak || 0), 0);
-    const totalXP = habits.reduce((s, h) => s + h.completedDates.length * 10, 0);
-    const level = Math.floor(totalXP / 100) + 1;
-
-    const newNotifs: Omit<Notification, "id" | "time" | "read">[] = [];
-    if (maxStreak === 7) newNotifs.push({ type: "streak", title: "7-Day Streak! 🔥", message: "You've been consistent for a whole week!", icon: "🔥" });
-    if (maxStreak === 30) newNotifs.push({ type: "streak", title: "30-Day Streak! 🏆", message: "Incredible! A full month of consistency!", icon: "🏆" });
-    if (level > 1) newNotifs.push({ type: "levelup", title: `Level ${level} Reached!`, message: `You've earned ${totalXP} XP total`, icon: "⬆️" });
-
-    newNotifs.forEach((n) => addNotificationInternal(n));
-    localStorage.setItem(`pps_notif_check_${userEmail || "guest"}`, todayStr);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [habits]);
-
-  const persistNotification = async (notif: Notification) => {
-    if (!userId || isGuest) return;
-    await supabase.from("notifications").insert({
-      user_id: userId,
-      type: notif.type,
-      title: notif.title,
-      message: notif.message,
-      icon: notif.icon,
-      read: false,
+    const dueToday = habits.filter((h) => {
+      if (h.completedDates.includes(todayStr)) return false;
+      if (h.period === "Daily" || h.period === "Today") return true;
+      if (h.dueDate) {
+        return h.dueDate.split("T")[0] <= todayStr;
+      }
+      return false;
     });
-  };
 
-  const addNotificationInternal = (n: Omit<Notification, "id" | "time" | "read">) => {
-    const notif: Notification = {
-      ...n,
-      id: `${Date.now()}-${Math.random()}`,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      read: false,
-    };
-    setNotifications((prev) => [notif, ...prev].slice(0, 20));
-    persistNotification(notif);
-  };
+    if (dueToday.length > 0) {
+      addNotification({
+        type: "habit_due",
+        title: "Habits waiting today!",
+        message: `You have ${dueToday.length} habit${dueToday.length > 1 ? "s" : ""} to complete today.`,
+        icon: "📋",
+      });
+      localStorage.setItem(`pps_notif_check_${userEmail || "guest"}`, todayStr);
+    }
+  }, [habits, userEmail]);
 
-  const addNotification = useCallback((n: Omit<Notification, "id" | "time" | "read">) => {
-    addNotificationInternal(n);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const addNotification = useCallback(
+    async (n: Omit<Notification, "id" | "time" | "read">) => {
+      const newNotif: Notification = {
+        ...n,
+        id: String(Date.now()),
+        time: "Just now",
+        read: false,
+      };
+
+      setNotifications((prev) => [newNotif, ...prev]);
+
+      if (isGuestUser || !userId) {
+        return;
+      }
+
+      try {
+        await supabase.from("notifications").insert({
+          user_id: userId,
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          icon: n.icon,
+          read: false,
+        });
+      } catch {}
+    },
+    [userId, isGuestUser]
+  );
 
   const markAsRead = useCallback(async (id: string) => {
     const previous = [...notifications];
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-    if (userId && !isGuest) {
+    if (!isGuestUser && userId) {
       try {
         const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
         if (error) throw error;
@@ -143,12 +159,12 @@ export function NotificationProvider({
         toast.error("Failed to update notification. Reverting.");
       }
     }
-  }, [userId, isGuest, notifications]);
+  }, [userId, isGuestUser, notifications]);
 
   const markAllRead = useCallback(async () => {
     const previous = [...notifications];
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    if (userId && !isGuest) {
+    if (!isGuestUser && userId) {
       try {
         const { error } = await supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false);
         if (error) throw error;
@@ -158,12 +174,12 @@ export function NotificationProvider({
         toast.error("Failed to update notifications. Reverting.");
       }
     }
-  }, [userId, isGuest, notifications]);
+  }, [userId, isGuestUser, notifications]);
 
   const clearAll = useCallback(async () => {
     const previous = [...notifications];
     setNotifications([]);
-    if (userId && !isGuest) {
+    if (!isGuestUser && userId) {
       try {
         const { error } = await supabase.from("notifications").delete().eq("user_id", userId);
         if (error) throw error;
@@ -173,7 +189,7 @@ export function NotificationProvider({
         toast.error("Failed to clear notifications. Reverting.");
       }
     }
-  }, [userId, isGuest, notifications]);
+  }, [userId, isGuestUser, notifications]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

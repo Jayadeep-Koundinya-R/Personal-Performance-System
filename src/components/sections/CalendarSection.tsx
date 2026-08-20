@@ -132,7 +132,7 @@ const CalendarSection = () => {
 
   // Heatmap color generator
   const getCellHeatStyle = (completions: number, dueCount: number) => {
-    if (completions === 0) return "bg-surface/60 border-border/60 text-slate-300";
+    if (completions === 0) return "bg-surface/60 border-border/60 text-muted-foreground";
     if (dueCount > 0 && completions >= dueCount) {
       return "bg-primary text-primary-foreground font-bold border-primary/60 shadow-sm shadow-primary/20";
     }
@@ -203,7 +203,7 @@ const CalendarSection = () => {
               Circadian Schedule & History
             </span>
           </h1>
-          <p className="text-xs text-slate-300 mt-0.5 font-medium">
+          <p className="text-xs text-muted-foreground mt-0.5 font-medium">
             Align habits with your biological peak energy windows, track heatmaps, and retroactively check off habits
           </p>
         </div>
@@ -224,7 +224,7 @@ const CalendarSection = () => {
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
                   isCurrent
                     ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-slate-300 hover:text-foreground hover:bg-muted/40"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -281,7 +281,7 @@ const CalendarSection = () => {
                   className={`text-[11px] px-2.5 py-1 rounded-lg border font-bold transition-all cursor-pointer whitespace-nowrap ${
                     selectedCategory === cat && !selectedHabitId
                       ? "bg-secondary text-secondary-foreground border-secondary shadow-xs"
-                      : "bg-surface border-border/80 text-slate-300 hover:text-foreground"
+                      : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {cat}
@@ -312,7 +312,7 @@ const CalendarSection = () => {
             📊
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-bold">Total Completions</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-bold">Total Completions</div>
             <div className="text-base font-extrabold font-mono text-foreground">{monthlyStats.totalCompletions}</div>
           </div>
         </div>
@@ -322,7 +322,7 @@ const CalendarSection = () => {
             🏆
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-bold">Perfect Days</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-bold">Perfect Days</div>
             <div className="text-base font-extrabold font-mono text-foreground">{monthlyStats.perfectDays} Days</div>
           </div>
         </div>
@@ -332,7 +332,7 @@ const CalendarSection = () => {
             ⚡
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-bold">Consistency Rate</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-bold">Consistency Rate</div>
             <div className="text-base font-extrabold font-mono text-foreground">{monthlyStats.consistencyRate}%</div>
           </div>
         </div>
@@ -342,7 +342,7 @@ const CalendarSection = () => {
             🔥
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-bold">Active Days</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-bold">Active Days</div>
             <div className="text-base font-extrabold font-mono text-foreground">{monthlyStats.activeDays} / {monthlyStats.totalMonthDays}</div>
           </div>
         </div>
@@ -358,7 +358,7 @@ const CalendarSection = () => {
           {/* Days of Week Header */}
           <div className="grid grid-cols-7 gap-2">
             {DAYS_OF_WEEK.map((day) => (
-              <div key={day} className="text-center text-xs font-extrabold text-slate-300 uppercase tracking-wider py-1 font-mono">
+              <div key={day} className="text-center text-xs font-extrabold text-muted-foreground uppercase tracking-wider py-1 font-mono">
                 {day}
               </div>
             ))}
@@ -410,7 +410,7 @@ const CalendarSection = () => {
           </div>
 
           {/* Legend Bar */}
-          <div className="flex items-center justify-center gap-4 pt-4 border-t border-border/40 text-xs text-slate-300 flex-wrap font-mono font-semibold">
+          <div className="flex items-center justify-center gap-4 pt-4 border-t border-border/40 text-xs text-muted-foreground flex-wrap font-mono font-semibold">
             <div className="flex items-center gap-1.5">
               <div className="w-3.5 h-3.5 bg-surface/50 border border-border/40 rounded-md" />
               <span>No Activity</span>
@@ -453,7 +453,7 @@ const CalendarSection = () => {
                   Align habits with biological energy peaks: 🌅 Morning (Focus) • ☀️ Afternoon (Execution) • 🌙 Evening (Wind-down)
                 </p>
               </div>
-              <span className="text-xs text-slate-300 font-mono font-bold bg-surface border border-border/80 px-2.5 py-1 rounded-xl">
+              <span className="text-xs text-muted-foreground font-mono font-bold bg-surface border border-border/80 px-2.5 py-1 rounded-xl">
                 7-Day Circadian Map
               </span>
             </div>
@@ -478,9 +478,9 @@ const CalendarSection = () => {
                     <div className="flex items-center justify-between pb-2 border-b border-border/40">
                       <div>
                         <div className="text-xs font-extrabold text-foreground font-mono">{w.dayName}</div>
-                        <div className="text-[11px] text-slate-300 font-mono font-bold">{w.dateStr}</div>
+                        <div className="text-[11px] text-muted-foreground font-mono font-bold">{w.dateStr}</div>
                       </div>
-                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${doneCount > 0 ? "bg-pps-green/20 text-pps-green border border-pps-green/30" : "bg-muted text-slate-300"}`}>
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${doneCount > 0 ? "bg-pps-green/20 text-pps-green border border-pps-green/30" : "bg-muted text-muted-foreground"}`}>
                         {doneCount}/{dayHabits.length}
                       </span>
                     </div>
@@ -496,7 +496,7 @@ const CalendarSection = () => {
                           <span className={`text-[9.5px] font-mono font-extrabold uppercase ${block.color}`}>
                             {block.title}
                           </span>
-                          <span className="text-[8.5px] font-mono text-slate-400 font-semibold">{block.time}</span>
+                          <span className="text-[8.5px] font-mono text-muted-foreground font-semibold">{block.time}</span>
                         </div>
 
                         <div className="space-y-1">
@@ -583,7 +583,7 @@ const CalendarSection = () => {
                           {d.completions >= d.dueCount && <span className="text-xs" title="Perfect Day">🏆</span>}
                         </div>
                         {note && (
-                          <div className="text-[11px] text-slate-300 italic truncate mt-0.5 font-medium">
+                          <div className="text-[11px] text-muted-foreground italic truncate mt-0.5 font-medium">
                             💬 "{note}"
                           </div>
                         )}
@@ -629,13 +629,13 @@ const CalendarSection = () => {
                       </span>
                     )}
                   </h3>
-                  <p className="text-xs text-slate-300 mt-0.5 font-medium">
+                  <p className="text-xs text-muted-foreground mt-0.5 font-medium">
                     Click checkmark to retroactively complete or undo habits for this date
                   </p>
                 </div>
                 <button
                   onClick={() => setSelectedDayStr(null)}
-                  className="text-slate-300 hover:text-foreground text-sm font-bold p-1 cursor-pointer"
+                  className="text-muted-foreground hover:text-foreground text-sm font-bold p-1 cursor-pointer"
                 >
                   ✕
                 </button>
@@ -643,7 +643,7 @@ const CalendarSection = () => {
 
               {/* Day Note Display if any */}
               {getDayNote(selectedDayStr) && (
-                <div className="bg-surface/80 border border-amber-500/30 p-3 rounded-xl text-xs text-slate-200 italic flex items-center gap-2 font-medium">
+                <div className="bg-surface/80 border border-amber-500/30 p-3 rounded-xl text-xs text-muted-foreground italic flex items-center gap-2 font-medium">
                   <span>💬 Note:</span>
                   <span>"{getDayNote(selectedDayStr)}"</span>
                 </div>
@@ -661,11 +661,11 @@ const CalendarSection = () => {
                         className={`flex items-center justify-between p-3 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                           isDone
                             ? "bg-primary/15 border-primary/30 text-foreground"
-                            : "bg-surface/60 border-border/60 text-slate-300 hover:border-primary/40"
+                            : "bg-surface/60 border-border/60 text-muted-foreground hover:border-primary/40"
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
-                          <div className={`w-5 h-5 rounded-md border flex items-center justify-center text-xs font-bold ${isDone ? "bg-primary border-primary text-white" : "border-slate-400"}`}>
+                          <div className={`w-5 h-5 rounded-md border flex items-center justify-center text-xs font-bold ${isDone ? "bg-primary border-primary text-white" : "border-border"}`}>
                             {isDone && "✓"}
                           </div>
                           <span className={isDone ? "line-through opacity-80" : ""}>{habit.name}</span>
@@ -684,7 +684,7 @@ const CalendarSection = () => {
                             <Zap className="w-3.5 h-3.5" />
                           </button>
 
-                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${isDone ? "bg-pps-green/20 text-pps-green font-bold border border-pps-green/30" : "bg-muted text-slate-300"}`}>
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${isDone ? "bg-pps-green/20 text-pps-green font-bold border border-pps-green/30" : "bg-muted text-muted-foreground"}`}>
                             {isDone ? "+10 XP ✓" : "Pending"}
                           </span>
                         </div>
@@ -692,7 +692,7 @@ const CalendarSection = () => {
                     );
                   })
                 ) : (
-                  <div className="text-center py-6 text-slate-300 text-xs font-medium">No habits logged for this date.</div>
+                  <div className="text-center py-6 text-muted-foreground text-xs font-medium">No habits logged for this date.</div>
                 )}
               </div>
 

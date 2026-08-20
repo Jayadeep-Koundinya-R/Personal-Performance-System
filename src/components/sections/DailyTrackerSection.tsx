@@ -636,7 +636,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
               <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
                 📋 Today's Habit Execution
               </h2>
-              <p className="text-xs text-slate-300 font-medium mt-0.5">
+              <p className="text-xs text-muted-foreground font-medium mt-0.5">
                 Check off habits or click ⚡ Focus to launch them into the Pomodoro room
               </p>
             </div>
@@ -678,7 +678,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
               >
                 <div className="flex items-center justify-between pb-2 border-b border-border/40">
                   <h3 className="text-xs font-extrabold text-sky-300 uppercase tracking-wider font-mono">{cat}</h3>
-                  <span className="text-xs font-mono font-extrabold text-slate-200">{catDone}/{catHabits.length} completed</span>
+                  <span className="text-xs font-mono font-extrabold text-muted-foreground">{catDone}/{catHabits.length} completed</span>
                 </div>
 
                 <AnimatePresence>
@@ -730,7 +730,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                                 )}
                               </AnimatePresence>
                             </button>
-                            <span className={`truncate ${done ? "line-through text-slate-300 font-bold opacity-85" : "text-foreground font-extrabold"}`}>
+                            <span className={`truncate ${done ? "line-through text-muted-foreground font-bold opacity-85" : "text-foreground font-extrabold"}`}>
                               {habit.name}
                             </span>
                           </div>

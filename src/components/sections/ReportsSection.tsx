@@ -184,7 +184,7 @@ const ReportsSection = () => {
               PDF Studio & Analytics
             </span>
           </h1>
-          <p className="text-xs text-slate-300 font-medium mt-0.5">
+          <p className="text-xs text-muted-foreground font-medium mt-0.5">
             Generate executive PDF reports, CSV data exports, period growth comparisons, and habit performance matrices
           </p>
         </div>
@@ -230,7 +230,7 @@ const ReportsSection = () => {
           <button
             onClick={() => setPeriod("week")}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-              period === "week" ? "bg-primary text-primary-foreground shadow-xs" : "text-slate-300 hover:text-foreground"
+              period === "week" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Weekly (7 Days)
@@ -238,7 +238,7 @@ const ReportsSection = () => {
           <button
             onClick={() => setPeriod("month")}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-              period === "month" ? "bg-primary text-primary-foreground shadow-xs" : "text-slate-300 hover:text-foreground"
+              period === "month" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Monthly (30 Days)
@@ -253,7 +253,7 @@ const ReportsSection = () => {
             📊
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-extrabold">Total Completions</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-extrabold">Total Completions</div>
             <div className="text-xl font-extrabold font-mono text-foreground">{report.currentCompleted}</div>
             <div className="text-[10.5px] text-primary font-mono font-bold">in {report.daysBack} days</div>
           </div>
@@ -264,7 +264,7 @@ const ReportsSection = () => {
             ⚡
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-extrabold">Consistency Rate</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-extrabold">Consistency Rate</div>
             <div className="text-xl font-extrabold font-mono text-foreground">{report.completionRate}%</div>
             <div className="text-[10.5px] text-pps-green font-mono font-bold">Target consistency</div>
           </div>
@@ -275,7 +275,7 @@ const ReportsSection = () => {
             📈
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-extrabold">Period Growth</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-extrabold">Period Growth</div>
             <div className="text-xl font-extrabold font-mono text-foreground">
               {report.growthPct >= 0 ? `+${report.growthPct}%` : `${report.growthPct}%`}
             </div>
@@ -288,7 +288,7 @@ const ReportsSection = () => {
             ⭐
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-300 font-extrabold">Peak Productive Day</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-extrabold">Peak Productive Day</div>
             <div className="text-xl font-extrabold font-mono text-foreground">{report.bestDay}</div>
             <div className="text-[10.5px] text-secondary font-mono font-bold">Highest output day</div>
           </div>
@@ -302,11 +302,11 @@ const ReportsSection = () => {
             <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
               <span>📋 Habit Performance Matrix Table</span>
             </h3>
-            <p className="text-[11.5px] text-slate-300 font-medium mt-0.5">
+            <p className="text-[11.5px] text-muted-foreground font-medium mt-0.5">
               Habit-by-habit consistency ratings for the {period.toUpperCase()}LY analysis window
             </p>
           </div>
-          <span className="text-xs text-slate-300 font-mono font-bold bg-surface border border-border/80 px-2.5 py-1 rounded-xl">
+          <span className="text-xs text-muted-foreground font-mono font-bold bg-surface border border-border/80 px-2.5 py-1 rounded-xl">
             {report.habitMatrix.length} Habits Evaluated
           </span>
         </div>
@@ -358,7 +358,7 @@ const ReportsSection = () => {
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-extrabold text-foreground truncate">{habit.name}</div>
-                      <div className="text-[11px] text-slate-300 font-medium truncate">
+                      <div className="text-[11px] text-muted-foreground font-medium truncate">
                         Category: {habit.category || "General"} • Priority: {habit.priority}
                       </div>
                     </div>
@@ -367,7 +367,7 @@ const ReportsSection = () => {
                   <div className="flex items-center gap-3 self-end sm:self-center flex-shrink-0">
                     <div className="text-right">
                       <div className="text-xs font-mono font-extrabold text-foreground">{done} / {report.daysBack} Days</div>
-                      <div className="text-[10px] text-slate-300 font-mono">{rate}% consistency</div>
+                      <div className="text-[10px] text-muted-foreground font-mono">{rate}% consistency</div>
                     </div>
                     {statusBadge}
                   </div>

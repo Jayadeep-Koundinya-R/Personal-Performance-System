@@ -376,7 +376,7 @@ export default function SocialSection() {
                 </div>
                 <div>
                   <div className="text-sm font-black text-foreground">{leaderboardData[1].name}</div>
-                  <div className="text-xs font-mono font-bold text-slate-300 mt-0.5">{leaderboardData[1].xp.toLocaleString()} XP</div>
+                  <div className="text-xs font-mono font-bold text-muted-foreground mt-0.5">{leaderboardData[1].xp.toLocaleString()} XP</div>
                 </div>
                 <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
                   <span className="flex items-center gap-0.5 text-amber-400 font-bold"><Flame className="w-3 h-3 fill-amber-400" /> {leaderboardData[1].streak}d</span>

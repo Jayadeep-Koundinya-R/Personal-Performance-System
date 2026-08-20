@@ -216,36 +216,36 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
           {/* Decorative background elements */}
           <div className="absolute -inset-4 bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-blue-500/10 rounded-3xl blur-xl opacity-60 animate-pulse" />
           
-          <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-slate-700/50 shadow-2xl overflow-hidden">
+          <div className="relative bg-card rounded-2xl border border-border shadow-2xl overflow-hidden text-foreground">
             {/* Header */}
-            <div className="flex items-center justify-between px-8 py-6 border-b border-slate-700/50 bg-gradient-to-r from-slate-900/50 to-slate-800/50">
+            <div className="flex items-center justify-between px-8 py-6 border-b border-border bg-surface/50">
               <div>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-purple-400 bg-clip-text text-transparent">
+                <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-amber-400 to-purple-400 bg-clip-text text-transparent font-mono">
                   Good Morning, Performer! 🌅
                 </h2>
-                <p className="text-slate-400 mt-1">
+                <p className="text-muted-foreground text-xs sm:text-sm mt-1">
                   Let's set the tone for an incredible day ahead
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-full hover:bg-slate-700/50 transition-colors text-slate-400 hover:text-white"
+                className="p-2 rounded-full hover:bg-surface transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-8 space-y-8">
+            <div className="p-6 sm:p-8 space-y-6">
               {/* Mood & Energy Section */}
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Mood Selector */}
-                  <div className="space-y-3">
-                    <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                  <div className="space-y-2.5">
+                    <label className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-2">
                       <Heart className="w-4 h-4 text-pink-500" />
                       How's your mood?
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2.5">
                       {moodOptions.map((option) => {
                         const Icon = option.icon;
                         const isSelected = mood === option.value;
@@ -254,10 +254,10 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
                             key={option.value}
                             onClick={() => handleMoodSelect(option.value)}
                             className={`
-                              relative flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-300
+                              relative flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 cursor-pointer
                               ${isSelected 
-                                ? "bg-gradient-to-br from-pink-500/20 to-purple-600/20 border-2 border-pink-500 shadow-lg shadow-pink-500/20" 
-                                : "bg-slate-800/50 border border-slate-700 hover:border-slate-600 hover:bg-slate-800"
+                                ? "bg-pink-500/15 border-2 border-pink-500 shadow-md shadow-pink-500/20 text-foreground font-bold" 
+                                : "bg-surface/70 border border-border hover:border-primary/30 hover:bg-surface text-muted-foreground hover:text-foreground"
                               }
                             `}
                           >
@@ -266,8 +266,8 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
                                 <CheckCircle2 className="w-4 h-4 text-pink-500" />
                               </div>
                             )}
-                            <Icon className={`w-8 h-8 mb-2 ${isSelected ? option.color : "text-slate-400"}`} />
-                            <span className={`text-sm font-medium ${isSelected ? "text-white" : "text-slate-400"}`}>
+                            <Icon className={`w-7 h-7 mb-1.5 ${isSelected ? option.color : "text-muted-foreground"}`} />
+                            <span className="text-xs font-semibold">
                               {option.label}
                             </span>
                           </button>
@@ -277,12 +277,12 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
                   </div>
 
                   {/* Energy Selector */}
-                  <div className="space-y-3">
-                    <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                  <div className="space-y-2.5">
+                    <label className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-2">
                       <Zap className="w-4 h-4 text-yellow-500" />
                       Energy level?
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2.5">
                       {energyOptions.map((option) => {
                         const Icon = option.icon;
                         const isSelected = energy === option.value;
@@ -291,10 +291,10 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
                             key={option.value}
                             onClick={() => handleEnergySelect(option.value)}
                             className={`
-                              relative flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-300
+                              relative flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 cursor-pointer
                               ${isSelected 
-                                ? "bg-gradient-to-br from-yellow-500/20 to-orange-600/20 border-2 border-yellow-500 shadow-lg shadow-yellow-500/20" 
-                                : "bg-slate-800/50 border border-slate-700 hover:border-slate-600 hover:bg-slate-800"
+                                ? "bg-yellow-500/15 border-2 border-yellow-500 shadow-md shadow-yellow-500/20 text-foreground font-bold" 
+                                : "bg-surface/70 border border-border hover:border-primary/30 hover:bg-surface text-muted-foreground hover:text-foreground"
                               }
                             `}
                           >
@@ -303,8 +303,8 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
                                 <CheckCircle2 className="w-4 h-4 text-yellow-500" />
                               </div>
                             )}
-                            <Icon className={`w-8 h-8 mb-2 ${isSelected ? option.color : "text-slate-400"}`} />
-                            <span className={`text-sm font-medium ${isSelected ? "text-white" : "text-slate-400"}`}>
+                            <Icon className={`w-7 h-7 mb-1.5 ${isSelected ? option.color : "text-muted-foreground"}`} />
+                            <span className="text-xs font-semibold">
                               {option.label}
                             </span>
                           </button>
@@ -316,8 +316,8 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
               </div>
 
               {/* Priority Input */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+              <div className="space-y-2.5">
+                <label className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-blue-500" />
                   What's your #1 deep-work priority block for today?
                 </label>
@@ -325,31 +325,31 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
                   value={priority}
                   onChange={handlePriorityChange}
                   placeholder="e.g., Complete Q3 financial report analysis..."
-                  className="w-full h-24 px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-all resize-none"
+                  className="w-full h-20 px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none text-xs sm:text-sm"
                   maxLength={200}
                 />
-                <p className="text-xs text-slate-500 text-right">
+                <p className="text-[11px] text-muted-foreground text-right">
                   {priority.length}/200 characters
                 </p>
               </div>
 
               {/* Discipline Score Preview */}
-              <div className="bg-gradient-to-r from-amber-900/20 to-purple-900/20 rounded-xl p-4 border border-amber-500/20">
+              <div className="bg-surface/60 rounded-xl p-3.5 sm:p-4 border border-border/80">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono font-bold mb-1">
                       Potential Discipline Score
                     </p>
-                    <p className="text-lg font-semibold text-slate-300">
-                      Base: {DISCIPLINE_SCORE_WEIGHTS[mood]} + {energy === "great" || energy === "exceptional" ? "20" : "10"} + {priority.trim().length > 10 ? "30" : "20"} = <span className="text-amber-400">{calculateDisciplineScore()}</span>
+                    <p className="text-sm sm:text-base font-semibold text-foreground">
+                      Base: {DISCIPLINE_SCORE_WEIGHTS[mood]} + {energy === "great" || energy === "exceptional" ? "20" : "10"} + {priority.trim().length > 10 ? "30" : "20"} = <span className="text-amber-400 font-bold">{calculateDisciplineScore()}</span>
                     </p>
                   </div>
-                  <div className="h-10 w-px bg-slate-700 mx-4" />
+                  <div className="h-10 w-px bg-border mx-4" />
                   <div className="text-right">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono font-bold mb-1">
                       Time to complete
                     </p>
-                    <p className="text-lg font-semibold text-green-400 flex items-center justify-end gap-1">
+                    <p className="text-sm sm:text-base font-semibold text-pps-green flex items-center justify-end gap-1 font-mono">
                       <Zap className="w-4 h-4" />
                       5 min
                     </p>
@@ -362,10 +362,10 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
                 onClick={handleSave}
                 disabled={isSaving || !priority.trim()}
                 className={`
-                  w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all duration-300
+                  w-full py-3.5 rounded-xl font-bold text-sm sm:text-base shadow-lg transition-all duration-300 cursor-pointer
                   ${isSaving || !priority.trim()
-                    ? "bg-slate-700 cursor-not-allowed text-slate-400" 
-                    : "bg-gradient-to-r from-amber-600 via-purple-600 to-blue-600 hover:shadow-2xl hover:shadow-purple-500/30 active:scale-[0.98]"
+                    ? "bg-muted cursor-not-allowed text-muted-foreground" 
+                    : "bg-gradient-to-r from-amber-500 via-purple-600 to-primary text-white hover:shadow-xl hover:opacity-95 active:scale-[0.98]"
                   }
                 `}
               >
@@ -374,13 +374,13 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                      className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
                     />
                     <span>Saving your progress...</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">
-                    <Sparkles className="w-5 h-5" />
+                    <Sparkles className="w-4 h-4" />
                     <span>Complete Morning Ritual</span>
                   </div>
                 )}
@@ -388,8 +388,8 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
             </div>
 
             {/* Footer */}
-            <div className="px-8 py-4 bg-slate-900/50 border-t border-slate-700/50 text-center">
-              <p className="text-xs text-slate-500">
+            <div className="px-8 py-3.5 bg-surface/50 border-t border-border text-center">
+              <p className="text-[11px] text-muted-foreground">
                 Daily ritual completed! You'll be rewarded with XP and discipline points.
               </p>
             </div>

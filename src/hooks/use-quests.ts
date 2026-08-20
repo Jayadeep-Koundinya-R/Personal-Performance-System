@@ -48,15 +48,32 @@ export function useQuests(userId?: string, isGuest?: boolean) {
     }
   }, [habits, isHabitDueToday, todayStr, getMaxStreak, calculateWeeklyPoints]);
 
+  const isGuestUser = isGuest || !userId || userId === "guest_local" || userId.startsWith("guest");
+
+  const defaultQuestDefs = [
+    { id: "q1", quest_key: "morning_momentum", title: "Morning Momentum", description: "Complete at least 3 habits today", target: 3, quest_type: "daily", xp_reward: 50 },
+    { id: "q2", quest_key: "perfect_streak", title: "Consistency Champion", description: "Reach a 5-day active habit streak", target: 5, quest_type: "streak", xp_reward: 100 },
+    { id: "q3", quest_key: "xp_hunter", title: "XP Challenger", description: "Earn 150 XP this week from completions", target: 150, quest_type: "weekly", xp_reward: 150 },
+  ];
+
   const refresh = useCallback(async () => {
-    const { data: questDefs } = await supabase.from("quests").select("*").eq("active", true);
-    if (!questDefs?.length) {
-      setQuests([]);
-      setLoading(false);
-      return;
+    let questDefs: any[] = [];
+    if (!isGuestUser && userId) {
+      try {
+        const { data } = await supabase.from("quests").select("*").eq("active", true);
+        if (data && data.length > 0) {
+          questDefs = data;
+        } else {
+          questDefs = defaultQuestDefs;
+        }
+      } catch {
+        questDefs = defaultQuestDefs;
+      }
+    } else {
+      questDefs = defaultQuestDefs;
     }
 
-    if (!userId || isGuest) {
+    if (isGuestUser || !userId) {
       setQuests(
         questDefs.map((q) => ({
           id: q.id,
@@ -74,56 +91,72 @@ export function useQuests(userId?: string, isGuest?: boolean) {
       return;
     }
 
-    const { data: userQuests } = await supabase
-      .from("user_quests")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("week_start", weekStart);
+    try {
+      const { data: userQuests } = await supabase
+        .from("user_quests")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("week_start", weekStart);
 
-    const mapped: Quest[] = questDefs.map((q) => {
-      const existing = userQuests?.find((uq) => uq.quest_id === q.id);
-      const progress = computeProgress(q.quest_key, q.target);
-      return {
-        id: q.id,
-        questKey: q.quest_key,
-        title: q.title,
-        description: q.description,
-        target: q.target,
-        questType: q.quest_type,
-        xpReward: q.xp_reward,
-        progress: existing?.progress ?? progress,
-        completed: !!existing?.completed_at || progress >= q.target,
-      };
-    });
+      const mapped: Quest[] = questDefs.map((q) => {
+        const existing = userQuests?.find((uq) => uq.quest_id === q.id);
+        const progress = computeProgress(q.quest_key, q.target);
+        return {
+          id: q.id,
+          questKey: q.quest_key,
+          title: q.title,
+          description: q.description,
+          target: q.target,
+          questType: q.quest_type,
+          xpReward: q.xp_reward,
+          progress: existing?.progress ?? progress,
+          completed: !!existing?.completed_at || progress >= q.target,
+        };
+      });
 
-    setQuests(mapped);
-    setLoading(false);
+      setQuests(mapped);
 
-    for (const q of mapped) {
-      if (q.progress >= q.target && !q.completed) {
-        await supabase.from("user_quests").upsert(
-          {
-            user_id: userId,
-            quest_id: q.id,
-            progress: q.progress,
-            week_start: weekStart,
-            completed_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id,quest_id,week_start" }
-        );
-      } else if (!q.completed) {
-        await supabase.from("user_quests").upsert(
-          {
-            user_id: userId,
-            quest_id: q.id,
-            progress: q.progress,
-            week_start: weekStart,
-          },
-          { onConflict: "user_id,quest_id,week_start" }
-        );
+      for (const q of mapped) {
+        if (q.progress >= q.target && !q.completed) {
+          await supabase.from("user_quests").upsert(
+            {
+              user_id: userId,
+              quest_id: q.id,
+              progress: q.progress,
+              week_start: weekStart,
+              completed_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,quest_id,week_start" }
+          );
+        } else if (!q.completed) {
+          await supabase.from("user_quests").upsert(
+            {
+              user_id: userId,
+              quest_id: q.id,
+              progress: q.progress,
+              week_start: weekStart,
+            },
+            { onConflict: "user_id,quest_id,week_start" }
+          );
+        }
       }
+    } catch {
+      setQuests(
+        questDefs.map((q) => ({
+          id: q.id,
+          questKey: q.quest_key,
+          title: q.title,
+          description: q.description,
+          target: q.target,
+          questType: q.quest_type,
+          xpReward: q.xp_reward,
+          progress: computeProgress(q.quest_key, q.target),
+          completed: computeProgress(q.quest_key, q.target) >= q.target,
+        }))
+      );
     }
-  }, [userId, isGuest, weekStart, computeProgress]);
+    setLoading(false);
+  }, [userId, isGuestUser, weekStart, computeProgress]);
 
   useEffect(() => {
     refresh();

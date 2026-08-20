@@ -61,9 +61,10 @@ export function RemindersProvider({
 }) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
+  const isGuestUser = isGuest || !userId || userId === "guest_local" || userId.startsWith("guest");
 
   const refresh = useCallback(async () => {
-    if (isGuest || !userId) {
+    if (isGuestUser) {
       try {
         const raw = JSON.parse(localStorage.getItem(GUEST_KEY(userEmail)) || "[]");
         setReminders(
@@ -85,25 +86,28 @@ export function RemindersProvider({
       return;
     }
 
-    const { data, error } = await supabase
-      .from("reminders")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("reminders")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Reminders load error:", error);
+      if (error) {
+        setReminders([]);
+      } else {
+        setReminders((data || []).map(mapReminder));
+      }
+    } catch {
       setReminders([]);
-    } else {
-      setReminders((data || []).map(mapReminder));
     }
     setLoading(false);
-  }, [userId, userEmail, isGuest]);
+  }, [userId, userEmail, isGuestUser]);
 
   useEffect(() => {
     refresh();
 
-    if (!isGuest && userId) {
+    if (!isGuestUser && userId) {
       const channel = supabase
         .channel("reminders-changes")
         .on(
@@ -119,7 +123,7 @@ export function RemindersProvider({
         supabase.removeChannel(channel);
       };
     }
-  }, [refresh, isGuest, userId]);
+  }, [refresh, isGuestUser, userId]);
 
   const addReminder = useCallback(async (
     label: string,
@@ -133,7 +137,7 @@ export function RemindersProvider({
     if (!time) return "Pick a time.";
     if (reminders.length >= maxReminders) return `Free plan allows ${maxReminders} reminder. Upgrade to Pro for unlimited.`;
 
-    if (isGuest || !userId) {
+    if (isGuestUser) {
       const list = [...reminders, {
         id: String(Date.now()),
         label: label.trim(),
@@ -149,20 +153,24 @@ export function RemindersProvider({
       return null;
     }
 
-    const { error } = await supabase.from("reminders").insert({
-      user_id: userId,
-      label: label.trim(),
-      reminder_time: time,
-      repeat_pattern: repeat,
-      enabled: true,
-      habit_id: habitId,
-      channel,
-      delivery_type: deliveryType,
-    });
-    if (error) return error.message;
-    await refresh();
-    return null;
-  }, [reminders, maxReminders, userId, userEmail, isGuest, refresh]);
+    try {
+      const { error } = await supabase.from("reminders").insert({
+        user_id: userId,
+        label: label.trim(),
+        reminder_time: time,
+        repeat_pattern: repeat,
+        enabled: true,
+        habit_id: habitId,
+        channel,
+        delivery_type: deliveryType,
+      });
+      if (error) return error.message;
+      await refresh();
+      return null;
+    } catch (e: any) {
+      return e?.message || "Failed to add reminder";
+    }
+  }, [reminders, maxReminders, userId, userEmail, isGuestUser, refresh]);
 
   const toggleReminder = useCallback(async (id: string) => {
     const item = reminders.find((r) => r.id === id);
@@ -173,7 +181,7 @@ export function RemindersProvider({
 
     setReminders(updatedList);
 
-    if (isGuest || !userId) {
+    if (isGuestUser) {
       localStorage.setItem(GUEST_KEY(userEmail), JSON.stringify(updatedList.map((r) => ({ ...r, id: Number(r.id) || Date.now() }))));
       return;
     }
@@ -187,7 +195,7 @@ export function RemindersProvider({
       setReminders(previousReminders);
       toast.error("Failed to toggle reminder. Reverting.");
     }
-  }, [reminders, userId, userEmail, isGuest, refresh]);
+  }, [reminders, userId, userEmail, isGuestUser, refresh]);
 
   const removeReminder = useCallback(async (id: string) => {
     const previousReminders = [...reminders];
@@ -195,7 +203,7 @@ export function RemindersProvider({
 
     setReminders(updatedList);
 
-    if (isGuest || !userId) {
+    if (isGuestUser) {
       localStorage.setItem(GUEST_KEY(userEmail), JSON.stringify(updatedList.map((r) => ({ ...r, id: Number(r.id) || Date.now() }))));
       return;
     }
@@ -209,7 +217,7 @@ export function RemindersProvider({
       setReminders(previousReminders);
       toast.error("Failed to delete reminder. Reverting.");
     }
-  }, [reminders, userId, userEmail, isGuest, refresh]);
+  }, [reminders, userId, userEmail, isGuestUser, refresh]);
 
   return (
     <RemindersContext.Provider value={{ reminders, loading, addReminder, toggleReminder, removeReminder, refresh }}>

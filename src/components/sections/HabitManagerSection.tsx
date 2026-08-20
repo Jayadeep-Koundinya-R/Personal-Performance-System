@@ -229,7 +229,7 @@ const HabitManagerSection = () => {
               Atomic Stacking & Routines
             </span>
           </h1>
-          <p className="text-xs text-slate-300 font-medium mt-0.5">
+          <p className="text-xs text-muted-foreground font-medium mt-0.5">
             Build atomic habit stacks (Trigger ➔ Action), install routine bundles, and configure smart alarms
           </p>
         </div>
@@ -291,7 +291,7 @@ const HabitManagerSection = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-sky-300 font-mono flex items-center gap-1">
                   <span>2. Atomic Trigger ("After I...")</span>
-                  <span className="text-[10px] text-slate-300 font-normal">(Optional Habit Stacking)</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">(Optional Habit Stacking)</span>
                 </label>
                 <input
                   type="text"
@@ -368,7 +368,7 @@ const HabitManagerSection = () => {
               <button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
-                className="text-xs font-bold text-slate-300 px-4 py-2 rounded-xl hover:bg-surface transition-all cursor-pointer"
+                className="text-xs font-bold text-muted-foreground hover:text-foreground px-4 py-2 rounded-xl hover:bg-surface transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -392,7 +392,7 @@ const HabitManagerSection = () => {
             <button
               onClick={() => setViewMode("active")}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                viewMode === "active" ? "bg-primary text-primary-foreground shadow-xs" : "text-slate-300 hover:text-foreground"
+                viewMode === "active" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Active Habits ({habits.filter((h) => !h.archived).length})
@@ -400,7 +400,7 @@ const HabitManagerSection = () => {
             <button
               onClick={() => setViewMode("archived")}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                viewMode === "archived" ? "bg-primary text-primary-foreground shadow-xs" : "text-slate-300 hover:text-foreground"
+                viewMode === "archived" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Archived ({habits.filter((h) => h.archived).length})
@@ -409,7 +409,7 @@ const HabitManagerSection = () => {
 
           {/* Search Box */}
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search habits..."
@@ -429,7 +429,7 @@ const HabitManagerSection = () => {
               className={`text-[11px] px-3 py-1 rounded-lg border font-bold transition-all cursor-pointer whitespace-nowrap ${
                 selectedCategoryTab === cat
                   ? "bg-secondary text-secondary-foreground border-secondary shadow-xs"
-                  : "bg-surface border-border/80 text-slate-300 hover:text-foreground"
+                  : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
               }`}
             >
               {cat}
@@ -477,7 +477,7 @@ const HabitManagerSection = () => {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-slate-300 font-mono font-bold flex-wrap">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono font-bold flex-wrap">
                     <span className="bg-surface border border-border/80 px-2 py-0.5 rounded-lg">
                       📁 {h.category || "General"}
                     </span>
@@ -496,7 +496,7 @@ const HabitManagerSection = () => {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => openEdit(h)}
-                      className="p-1.5 bg-surface border border-border/80 text-slate-300 hover:text-foreground rounded-lg transition-all cursor-pointer"
+                      className="p-1.5 bg-surface border border-border/80 text-muted-foreground hover:text-foreground rounded-lg transition-all cursor-pointer"
                       title="Edit Habit"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -504,7 +504,7 @@ const HabitManagerSection = () => {
 
                     <button
                       onClick={() => toggleArchive(h)}
-                      className="p-1.5 bg-surface border border-border/80 text-slate-300 hover:text-foreground rounded-lg transition-all cursor-pointer"
+                      className="p-1.5 bg-surface border border-border/80 text-muted-foreground hover:text-foreground rounded-lg transition-all cursor-pointer"
                       title={h.archived ? "Restore Habit" : "Archive Habit"}
                     >
                       <Archive className="w-3.5 h-3.5" />
@@ -550,13 +550,13 @@ const HabitManagerSection = () => {
                   <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2 font-mono">
                     <span>🚀 Curated Routine Starter Bundles</span>
                   </h3>
-                  <p className="text-xs text-slate-300 mt-0.5 font-medium">
+                  <p className="text-xs text-muted-foreground mt-0.5 font-medium">
                     1-click install high-performance habit stacks created by productivity scientists
                   </p>
                 </div>
                 <button
                   onClick={() => setShowBundles(false)}
-                  className="text-slate-300 hover:text-foreground text-sm font-bold p-1 cursor-pointer"
+                  className="text-muted-foreground hover:text-foreground text-sm font-bold p-1 cursor-pointer"
                 >
                   ✕
                 </button>
@@ -572,7 +572,7 @@ const HabitManagerSection = () => {
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-300 font-medium">{b.desc}</p>
+                    <p className="text-xs text-muted-foreground font-medium">{b.desc}</p>
 
                     <div className="space-y-1">
                       {b.habits.map((h) => (
@@ -615,7 +615,7 @@ const HabitManagerSection = () => {
             >
               <div className="flex items-center justify-between pb-3 border-b border-border/40">
                 <h3 className="text-base font-extrabold text-foreground font-mono">✏️ Edit Habit Architecture</h3>
-                <button onClick={() => setEditHabit(null)} className="text-slate-300 hover:text-foreground text-sm font-bold">
+                <button onClick={() => setEditHabit(null)} className="text-muted-foreground hover:text-foreground text-sm font-bold">
                   ✕
                 </button>
               </div>
@@ -675,7 +675,7 @@ const HabitManagerSection = () => {
               <div className="pt-2 flex justify-end gap-2 border-t border-border/40">
                 <button
                   onClick={() => setEditHabit(null)}
-                  className="text-xs font-bold text-slate-300 px-4 py-2 rounded-xl hover:bg-surface"
+                  className="text-xs font-bold text-muted-foreground hover:text-foreground px-4 py-2 rounded-xl hover:bg-surface"
                 >
                   Cancel
                 </button>

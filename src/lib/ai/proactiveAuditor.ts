@@ -101,7 +101,7 @@ export function auditHabitPerformance(
 }
 
 /**
- * Saves proactive recommendations to the database (if signed in) or localStorage cache.
+ * Saves proactive recommendations to localStorage cache.
  */
 export async function syncProactiveAuditRecommendations(
   userId: string | null | undefined,
@@ -111,28 +111,4 @@ export async function syncProactiveAuditRecommendations(
   try {
     localStorage.setItem(cacheKey, JSON.stringify(recommendations));
   } catch {}
-
-  if (userId && recommendations.length > 0) {
-    try {
-      // Clear old pending suggestions
-      await supabase
-        .from("ai_suggestions")
-        .delete()
-        .eq("user_id", userId)
-        .eq("status", "pending");
-
-      // Insert fresh suggestions
-      const inserts = recommendations.map((rec) => ({
-        user_id: userId,
-        type: rec.type,
-        habit_id: rec.habitId,
-        reason: rec.recommendation,
-        status: "pending",
-      }));
-
-      await supabase.from("ai_suggestions").insert(inserts);
-    } catch (err) {
-      console.warn("Could not sync proactive suggestions to Supabase:", err);
-    }
-  }
 }

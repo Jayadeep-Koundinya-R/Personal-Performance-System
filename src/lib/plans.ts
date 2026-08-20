@@ -142,8 +142,9 @@ export function detectUserRegion(): CurrencyRegion {
   return "GLOBAL";
 }
 
-export function getPlanLimits(tier: PlanTier) {
-  return PLAN_LIMITS[tier] || PLAN_LIMITS.free;
+export function getPlanLimits<T extends PlanTier = "free">(tier?: T): (typeof PLAN_LIMITS)[T] {
+  const target = tier && PLAN_LIMITS[tier] ? tier : "free";
+  return PLAN_LIMITS[target as T] as (typeof PLAN_LIMITS)[T];
 }
 
 export function isPro(tier: PlanTier) {

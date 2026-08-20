@@ -16,6 +16,8 @@ import PrivacyPage from "./pages/Privacy";
 import TermsPage from "./pages/Terms";
 import FocusCallWindow from "./pages/FocusCallWindow";
 import MeetingRoom from "./pages/MeetingRoom";
+import MarketplacePage from "./pages/Marketplace";
+import RoadmapPage from "./pages/Roadmap";
 import NotFound from "./pages/NotFound";
 import PwaUpdatePrompt from "@/components/ui/PwaUpdatePrompt";
 import { initNativeNotifications, sendWelcomeNotification } from "@/lib/native-notifications";
@@ -48,6 +50,9 @@ const App = () => {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/marketplace" element={<MarketplacePage />} />
+                <Route path="/classes" element={<MarketplacePage />} />
+                <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />

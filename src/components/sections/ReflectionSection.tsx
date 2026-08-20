@@ -118,7 +118,7 @@ const ReflectionSection = () => {
               Mindset & Growth
             </span>
           </h1>
-          <p className="text-xs text-slate-300 font-medium mt-0.5">
+          <p className="text-xs text-muted-foreground font-medium mt-0.5">
             Write daily intentions, track emotional energy ratings, insert guided prompts, and build your growth journal
           </p>
         </div>
@@ -157,7 +157,7 @@ const ReflectionSection = () => {
           <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
             <span>✏️ Today's Mindset Entry</span>
           </h3>
-          <span className="text-xs font-mono font-bold text-slate-300">Write, Reflect, Grow</span>
+          <span className="text-xs font-mono font-bold text-muted-foreground">Write, Reflect, Grow</span>
         </div>
 
         {/* Text Area */}
@@ -218,7 +218,7 @@ const ReflectionSection = () => {
                   className={`text-[11px] font-mono px-2 py-1 rounded-lg border font-bold transition-all cursor-pointer ${
                     selectedTag === tag
                       ? "bg-secondary text-secondary-foreground border-secondary shadow-xs"
-                      : "bg-surface border-border/80 text-slate-300 hover:text-foreground"
+                      : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {tag}
@@ -248,7 +248,7 @@ const ReflectionSection = () => {
           </h2>
 
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search reflections..."
@@ -284,7 +284,7 @@ const ReflectionSection = () => {
                   className="bg-card border border-border p-5 rounded-3xl shadow-xl space-y-3 relative overflow-hidden transition-all"
                 >
                   <div className="flex items-center justify-between pb-2 border-b border-border/40">
-                    <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-300">
+                    <div className="flex items-center gap-2 font-mono text-xs font-bold text-muted-foreground">
                       <span>{dstr}</span>
                       <span className={`px-2.5 py-0.5 rounded-full border text-[10px] ${moodObj.color} bg-surface border-border/80`}>
                         {moodObj.emoji} {moodObj.label}
@@ -294,7 +294,7 @@ const ReflectionSection = () => {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => copyEntry(entry.text)}
-                        className="p-1.5 bg-surface border border-border/80 text-slate-300 hover:text-foreground rounded-lg transition-all cursor-pointer"
+                        className="p-1.5 bg-surface border border-border/80 text-muted-foreground hover:text-foreground rounded-lg transition-all cursor-pointer"
                         title="Copy to Clipboard"
                       >
                         <Copy className="w-3.5 h-3.5" />
@@ -324,7 +324,7 @@ const ReflectionSection = () => {
       </div>
 
       {!isPro && (
-        <p className="text-[11px] text-slate-300 font-mono font-medium mt-4">
+        <p className="text-[11px] text-muted-foreground font-mono font-medium mt-4">
           Free plan retains 7 days of reflection history. <Link to="/pricing" className="text-primary font-bold hover:underline">Upgrade to Pro</Link> for unlimited history.
         </p>
       )}

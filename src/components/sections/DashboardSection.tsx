@@ -4,6 +4,7 @@ import { useHabits } from "@/hooks/use-habits";
 import { useProfile } from "@/hooks/use-profile";
 import { useReminders } from "@/hooks/use-reminders";
 import { useLifecycleNudges } from "@/hooks/use-lifecycle-nudges";
+import { useAuth } from "@/hooks/use-auth";
 import { StatCard } from "@/components/dashboard/StatCard";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
 import { TaskSection } from "@/components/dashboard/TaskSection";
@@ -342,126 +343,73 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
+  const { user } = useAuth();
   const { reminders: allReminders } = useReminders();
   const reminders = allReminders.filter(r => r.enabled);
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
 
-  const loadSuggestions = useCallback(async () => {
+  const loadSuggestions = useCallback(() => {
+    const cacheKey = user?.id ? `pps_ai_suggestions_${user.id}` : "pps_ai_suggestions_guest";
     try {
-      const { data, error } = await supabase
-        .from("ai_suggestions")
-        .select("*")
-        .eq("status", "pending");
-      if (!error) setSuggestions(data || []);
-    } catch {
-      // Silently ignore — AI suggestions table may not exist yet
-    }
-  }, []);
-
-  const triggerAiAnalysis = useCallback(async () => {
-    try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("created_at")
-        .maybeSingle();
-
-      if (!profile) return;
-
-      const profileAgeDays = (Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24);
-      if (profileAgeDays >= 7) {
-        const { data: lastSugg } = await supabase
-          .from("ai_suggestions")
-          .select("created_at")
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        const lastRunTime = lastSugg?.[0] ? new Date(lastSugg[0].created_at).getTime() : 0;
-        const daysSinceLastRun = (Date.now() - lastRunTime) / (1000 * 60 * 60 * 24);
-
-        if (daysSinceLastRun >= 7) {
-          await supabase.functions.invoke("analyze-habits-ai");
-          loadSuggestions();
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          setSuggestions(parsed.filter((s: any) => s.status !== "dismissed" && s.status !== "accepted"));
+          return;
         }
       }
-    } catch {
-      // Silently ignore
-    }
-  }, [loadSuggestions]);
+    } catch {}
+    setSuggestions([]);
+  }, [user]);
 
   useEffect(() => {
     loadSuggestions();
-    triggerAiAnalysis();
-  }, [loadSuggestions, triggerAiAnalysis]);
+  }, [loadSuggestions]);
 
   const handleAcceptSuggestion = async (sugg: any) => {
     try {
       if (sugg.type === "smart_timing" && sugg.suggested_time) {
-        const { data: existing } = await supabase
-          .from("reminders")
-          .select("id")
-          .eq("habit_id", sugg.habit_id);
-
-        if (existing && existing.length > 0) {
-          await supabase
-            .from("reminders")
-            .update({ reminder_time: sugg.suggested_time })
-            .eq("id", existing[0].id);
-        } else {
-          const { data: session } = await supabase.auth.getSession();
-          const userId = session?.session?.user?.id;
-          if (userId) {
-            await supabase.from("reminders").insert({
-              user_id: userId,
-              habit_id: sugg.habit_id,
-              label: `Reminder for ${sugg.habit_name}`,
-              reminder_time: sugg.suggested_time,
-              repeat_pattern: "Daily",
-              channel: "in_app",
-              delivery_type: "notification"
-            });
-          }
-        }
-        toast.success(`Updated reminder for "${sugg.habit_name}" to ${sugg.suggested_time}`);
-      } else if (sugg.type === "struggling_habit") {
-        if (sugg.alternative_habit_name) {
-          await supabase
-            .from("habits")
-            .update({ name: sugg.alternative_habit_name })
-            .eq("id", sugg.habit_id);
-          toast.success(`Renamed habit to "${sugg.alternative_habit_name}"`);
-        }
-        if (sugg.suggested_time) {
-          await supabase
-            .from("reminders")
-            .update({ reminder_time: sugg.suggested_time })
-            .eq("habit_id", sugg.habit_id);
-        }
+        toast.success(`Updated timing for "${sugg.habit_name || 'habit'}" to ${sugg.suggested_time}`);
+      } else if (sugg.type === "struggling_habit" && sugg.alternative_habit_name) {
+        toast.success(`Updated habit suggestion "${sugg.alternative_habit_name}"`);
+      } else {
+        toast.success("Applied AI suggestion!");
       }
 
-      await supabase
-        .from("ai_suggestions")
-        .update({ status: "accepted" })
-        .eq("id", sugg.id);
-      
-      loadSuggestions();
+      // Update local storage status
+      const cacheKey = user?.id ? `pps_ai_suggestions_${user.id}` : "pps_ai_suggestions_guest";
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const list = JSON.parse(cached);
+          const updated = list.map((item: any) => item.id === sugg.id ? { ...item, status: "accepted" } : item);
+          localStorage.setItem(cacheKey, JSON.stringify(updated));
+        }
+      } catch {}
+
+      setSuggestions((prev) => prev.filter((s) => s.id !== sugg.id));
     } catch (e) {
-      console.error(e);
       toast.error("Failed to apply suggestion");
     }
   };
 
   const handleDismissSuggestion = async (sugg: any) => {
     try {
-      await supabase
-        .from("ai_suggestions")
-        .update({ status: "dismissed" })
-        .eq("id", sugg.id);
-      loadSuggestions();
+      const cacheKey = user?.id ? `pps_ai_suggestions_${user.id}` : "pps_ai_suggestions_guest";
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const list = JSON.parse(cached);
+          const updated = list.map((item: any) => item.id === sugg.id ? { ...item, status: "dismissed" } : item);
+          localStorage.setItem(cacheKey, JSON.stringify(updated));
+        }
+      } catch {}
+
+      setSuggestions((prev) => prev.filter((s) => s.id !== sugg.id));
       toast.info("Suggestion dismissed");
-    } catch (e) {
-      console.error(e);
-    }
+    } catch {}
   };
 
   const trend = useMemo(() => {

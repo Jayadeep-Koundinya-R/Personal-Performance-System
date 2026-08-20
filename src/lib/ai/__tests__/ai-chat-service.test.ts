@@ -171,13 +171,12 @@ describe("Phase 2 AI Coaching & Conversation Memory Service", () => {
       expect(userHistory[0].text).not.toContain("Guest trial question");
     });
 
-    it("clears conversation history in localStorage and cloud", async () => {
+    it("clears conversation history in localStorage", async () => {
       localStorage.setItem("pps_ai_chat_user-123", JSON.stringify([{ id: "1", text: "test" }]));
 
       await clearConversationHistory("user-123");
 
       expect(localStorage.getItem("pps_ai_chat_user-123")).toBeNull();
-      expect(supabase.from).toHaveBeenCalledWith("ai_conversations");
     });
   });
 });
