@@ -25,7 +25,7 @@ import RitualOverlay from "@/components/RitualOverlay";
 import { Navigate, Link } from "react-router-dom";
 import AiChatWidget from "@/components/ui/AiChatWidget";
 import VoiceControlModal from "@/components/ui/VoiceControlModal";
-import { Mic, ChevronDown, MoreHorizontal, Sparkles, X, Flame, Layers } from "lucide-react";
+import { Mic, ChevronDown, MoreHorizontal, Sparkles, X, Flame, Layers, Bell, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { HABIT_TEMPLATES } from "@/lib/habitTemplates";
@@ -240,7 +240,7 @@ function DashboardInner({ user }: { user: User }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const { calculateLevel, calculateTotalXP, habits, getTodayStr, isHabitDueToday, addHabit, toggleCompletion } = useHabits();
   const { theme, toggleTheme } = useTheme();
-  const { notifications, unreadCount, markAsRead, markAllRead, clearAll } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllRead, clearAll, dismissNotification } = useNotifications();
   const { profile } = useProfile();
   const { settings, loading: settingsLoading, completeOnboarding } = useUserSettings();
   const { isPro, refresh: refreshSub } = useSubscription();
@@ -596,10 +596,21 @@ function DashboardInner({ user }: { user: User }) {
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
           <div className="relative">
-            <button onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) markAllRead(); }} className="bg-transparent border-none text-foreground text-lg cursor-pointer p-1 relative" title="Notifications">
-              🔔
+            <button
+              onClick={() => {
+                setNotifOpen(!notifOpen);
+                if (!notifOpen) markAllRead();
+              }}
+              className={`p-2 rounded-xl border transition-all cursor-pointer relative flex items-center justify-center ${
+                notifOpen
+                  ? "bg-primary/20 border-primary text-primary shadow-sm"
+                  : "bg-surface border-border/80 text-foreground hover:bg-surface/80 hover:border-primary/40"
+              }`}
+              title="Notifications"
+            >
+              <Bell className="w-4 h-4" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-mono font-black rounded-full flex items-center justify-center shadow-md animate-pulse">
                   {unreadCount}
                 </span>
               )}
@@ -609,41 +620,70 @@ function DashboardInner({ user }: { user: User }) {
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
                   <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-card/98 dark:bg-[#0f1222]/98 backdrop-blur-2xl border border-border/90 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/10 dark:ring-white/10"
-                    style={{ boxShadow: "var(--card-shadow-hover)" }}
+                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/10 dark:ring-white/10"
                   >
-                    <div className="px-4 py-3 border-b border-border/70 bg-surface/80 flex items-center justify-between">
-                      <span className="font-bold text-[13px] font-mono">🔔 Notifications</span>
+                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#111625] flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-xs font-mono uppercase tracking-wider text-foreground">
+                          🔔 Notifications
+                        </span>
+                        {unreadCount > 0 && (
+                          <span className="text-[10px] font-mono font-black bg-primary/15 text-primary px-1.5 py-0.2 rounded-full">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </div>
                       {notifications.length > 0 && (
-                        <button onClick={clearAll} className="text-[11px] text-destructive hover:underline font-bold cursor-pointer">Clear all</button>
+                        <button
+                          onClick={clearAll}
+                          className="text-[11px] font-bold text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                        >
+                          Clear all
+                        </button>
                       )}
                     </div>
                     {notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-muted-foreground text-[13px]">
-                        <div className="text-2xl mb-2">🔕</div>
-                        No notifications yet
+                      <div className="px-4 py-8 text-center text-muted-foreground bg-white dark:bg-[#0b0f19]">
+                        <div className="text-2xl mb-1.5">✨</div>
+                        <div className="text-xs font-bold text-foreground">All caught up!</div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">No active alerts</p>
                       </div>
                     ) : (
-                      <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
+                      <div className="max-h-72 overflow-y-auto p-2 space-y-1.5 bg-white dark:bg-[#0b0f19]">
                         {notifications.slice(0, 10).map((n, i) => (
                           <motion.div
                             key={n.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.03 }}
-                            className={`px-4 py-3 hover:bg-surface/70 transition-colors ${!n.read ? "bg-primary/10" : ""}`}
+                            initial={{ opacity: 0, y: 3 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.02 }}
+                            onClick={() => markAsRead(n.id)}
+                            className={`p-2.5 rounded-xl border transition-all cursor-pointer relative group ${
+                              !n.read
+                                ? "bg-primary/5 dark:bg-[#151c2e] border-primary/40 shadow-xs"
+                                : "bg-slate-50 dark:bg-[#111625] border-slate-200/80 dark:border-slate-800/80"
+                            }`}
                           >
                             <div className="flex items-start gap-2.5">
-                              <span className="text-lg mt-0.5 flex-shrink-0">{n.icon}</span>
-                              <div className="min-w-0">
-                                <div className="text-[12.5px] font-bold text-foreground truncate">{n.title}</div>
-                                <div className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</div>
-                                <div className="text-[9.5px] text-muted-foreground/80 mt-1 font-mono">{n.time}</div>
+                              <span className="text-base mt-0.5 flex-shrink-0">{n.icon || "🔔"}</span>
+                              <div className="min-w-0 flex-1 pr-3">
+                                <div className="text-[11.5px] font-bold text-foreground truncate">{n.title}</div>
+                                <div className="text-[10.5px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</div>
+                                <div className="text-[9px] text-muted-foreground/70 mt-1 font-mono">{n.time}</div>
                               </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  dismissNotification(n.id);
+                                }}
+                                title="Dismiss notification"
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-surface transition-all cursor-pointer absolute top-1.5 right-1.5"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
                             </div>
                           </motion.div>
                         ))}
@@ -780,13 +820,20 @@ function DashboardInner({ user }: { user: User }) {
             </button>
             <div className="relative">
               <button
-                onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) markAllRead(); }}
-                className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm cursor-pointer hover:bg-primary/10 transition-colors relative"
+                onClick={() => {
+                  setNotifOpen(!notifOpen);
+                  if (!notifOpen) markAllRead();
+                }}
+                className={`bg-surface border rounded-xl px-3 py-1.5 text-sm cursor-pointer transition-all flex items-center gap-1.5 relative ${
+                  notifOpen
+                    ? "border-primary bg-primary/15 text-primary shadow-sm"
+                    : "border-border hover:bg-primary/10 hover:border-primary/40 text-foreground"
+                }`}
                 title="Notifications"
               >
-                🔔
+                <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-mono font-black rounded-full flex items-center justify-center shadow-md animate-pulse">
                     {unreadCount}
                   </span>
                 )}
@@ -797,41 +844,85 @@ function DashboardInner({ user }: { user: User }) {
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
                     <motion.div
-                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card/98 dark:bg-[#0f1222]/98 backdrop-blur-2xl border border-border/90 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/10 dark:ring-white/10"
-                      style={{ boxShadow: "var(--card-shadow-hover)" }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/10 dark:ring-white/10"
                     >
-                      <div className="px-4 py-3 border-b border-border/70 bg-surface/80 flex items-center justify-between">
-                        <span className="font-bold text-[13px] font-mono">🔔 Notifications</span>
+                      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#111625] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-xs font-mono uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                            <Bell className="w-3.5 h-3.5 text-primary" />
+                            <span>Notifications</span>
+                          </span>
+                          {unreadCount > 0 ? (
+                            <span className="text-[10px] font-mono font-black bg-primary/15 text-primary px-2 py-0.5 rounded-full border border-primary/30">
+                              {unreadCount} New
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono font-medium text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">
+                              All read
+                            </span>
+                          )}
+                        </div>
                         {notifications.length > 0 && (
-                          <button onClick={clearAll} className="text-[11px] text-destructive hover:underline font-bold cursor-pointer">Clear all</button>
+                          <button
+                            onClick={clearAll}
+                            className="text-[11px] font-bold text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Clear all</span>
+                          </button>
                         )}
                       </div>
                       {notifications.length === 0 ? (
-                        <div className="px-4 py-8 text-center text-muted-foreground text-[13px]">
-                          <div className="text-2xl mb-2">🔕</div>
-                          No notifications yet
+                        <div className="px-6 py-10 text-center text-muted-foreground bg-white dark:bg-[#0b0f19]">
+                          <div className="w-12 h-12 mx-auto mb-2 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl">
+                            ✨
+                          </div>
+                          <div className="text-xs font-bold text-foreground">All caught up!</div>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            No new notifications or habit reminders.
+                          </p>
                         </div>
                       ) : (
-                        <div className="max-h-80 overflow-y-auto divide-y divide-border/40">
-                          {notifications.slice(0, 10).map((n, i) => (
+                        <div className="max-h-80 overflow-y-auto p-2.5 space-y-1.5 bg-white dark:bg-[#0b0f19]">
+                          {notifications.slice(0, 15).map((n, i) => (
                             <motion.div
                               key={n.id}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: i * 0.03 }}
-                              className={`px-4 py-3 hover:bg-surface/70 transition-colors ${!n.read ? "bg-primary/10" : ""}`}
+                              initial={{ opacity: 0, y: 3 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.02 }}
+                              onClick={() => markAsRead(n.id)}
+                              className={`p-3 rounded-xl border transition-all cursor-pointer relative group ${
+                                !n.read
+                                  ? "bg-primary/5 dark:bg-[#151c2e] border-primary/40 shadow-xs"
+                                  : "bg-slate-50 dark:bg-[#111625] border-slate-200/80 dark:border-slate-800/80 hover:border-border"
+                              }`}
                             >
                               <div className="flex items-start gap-2.5">
-                                <span className="text-lg mt-0.5 flex-shrink-0">{n.icon}</span>
-                                <div className="min-w-0">
-                                  <div className="text-[12.5px] font-bold text-foreground truncate">{n.title}</div>
-                                  <div className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</div>
-                                  <div className="text-[9.5px] text-muted-foreground/80 mt-1 font-mono">{n.time}</div>
+                                <span className="text-base mt-0.5 flex-shrink-0">{n.icon || "🔔"}</span>
+                                <div className="min-w-0 flex-1 pr-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="text-xs font-bold text-foreground truncate">{n.title}</div>
+                                    {!n.read && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">{n.message}</div>
+                                  <div className="text-[9.5px] text-muted-foreground/70 mt-1 font-mono">{n.time}</div>
                                 </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    dismissNotification(n.id);
+                                  }}
+                                  title="Dismiss notification"
+                                  className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-surface transition-all cursor-pointer absolute top-2 right-2"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
                               </div>
                             </motion.div>
                           ))}

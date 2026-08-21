@@ -20,13 +20,29 @@ interface NotificationContextType {
   markAsRead: (id: string) => void;
   markAllRead: () => void;
   clearAll: () => void;
+  dismissNotification: (id: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
 const GUEST_KEY = (email: string | null) => `pps_notifications_${email || "guest"}`;
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  try {
+    return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "Just now";
+  }
+}
+
+// Deduplicate notifications helper
+function deduplicateNotifs(items: Notification[]): Notification[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.title.trim()}_${item.message.trim()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function NotificationProvider({
@@ -48,7 +64,8 @@ export function NotificationProvider({
   const loadFromDb = useCallback(async () => {
     if (isGuestUser || !userId) {
       try {
-        setNotifications(JSON.parse(localStorage.getItem(GUEST_KEY(userEmail)) || "[]"));
+        const raw = JSON.parse(localStorage.getItem(GUEST_KEY(userEmail)) || "[]");
+        setNotifications(deduplicateNotifs(raw));
       } catch {
         setNotifications([]);
       }
@@ -62,20 +79,21 @@ export function NotificationProvider({
         .order("created_at", { ascending: false })
         .limit(20);
 
-      setNotifications(
-        (data || []).map((n) => ({
-          id: n.id,
-          type: n.type as Notification["type"],
-          title: n.title,
-          message: n.message,
-          icon: n.icon,
-          time: formatTime(n.created_at),
-          read: n.read,
-        }))
-      );
+      const mapped: Notification[] = (data || []).map((n) => ({
+        id: n.id,
+        type: n.type as Notification["type"],
+        title: n.title,
+        message: n.message,
+        icon: n.icon || "🔔",
+        time: formatTime(n.created_at),
+        read: Boolean(n.read),
+      }));
+
+      setNotifications(deduplicateNotifs(mapped));
     } catch {
       try {
-        setNotifications(JSON.parse(localStorage.getItem(GUEST_KEY(userEmail)) || "[]"));
+        const raw = JSON.parse(localStorage.getItem(GUEST_KEY(userEmail)) || "[]");
+        setNotifications(deduplicateNotifs(raw));
       } catch {
         setNotifications([]);
       }
@@ -88,17 +106,21 @@ export function NotificationProvider({
 
   useEffect(() => {
     if (isGuestUser || !userId) {
-      localStorage.setItem(GUEST_KEY(userEmail), JSON.stringify(notifications));
+      try {
+        localStorage.setItem(GUEST_KEY(userEmail), JSON.stringify(notifications));
+      } catch {}
     }
   }, [notifications, userId, userEmail, isGuestUser]);
 
+  // Check habits due today — with strict deduplication
   useEffect(() => {
-    const lastCheck = localStorage.getItem(`pps_notif_check_${userEmail || "guest"}`);
     const todayStr = new Date().toISOString().split("T")[0];
+    const lastCheckKey = `pps_notif_check_${userEmail || "guest"}`;
+    const lastCheck = localStorage.getItem(lastCheckKey);
     if (lastCheck === todayStr || habits.length === 0) return;
 
     const dueToday = habits.filter((h) => {
-      if (h.completedDates.includes(todayStr)) return false;
+      if (h.completedDates?.includes(todayStr)) return false;
       if (h.period === "Daily" || h.period === "Today") return true;
       if (h.dueDate) {
         return h.dueDate.split("T")[0] <= todayStr;
@@ -107,18 +129,32 @@ export function NotificationProvider({
     });
 
     if (dueToday.length > 0) {
-      addNotification({
-        type: "reminder",
-        title: "Habits waiting today!",
-        message: `You have ${dueToday.length} habit${dueToday.length > 1 ? "s" : ""} to complete today.`,
-        icon: "📋",
-      });
-      localStorage.setItem(`pps_notif_check_${userEmail || "guest"}`, todayStr);
+      const hasExistingReminder = notifications.some(
+        (n) => n.title === "Habits waiting today!" && !n.read
+      );
+
+      if (!hasExistingReminder) {
+        addNotification({
+          type: "reminder",
+          title: "Habits waiting today!",
+          message: `You have ${dueToday.length} habit${dueToday.length > 1 ? "s" : ""} to complete today.`,
+          icon: "📋",
+        });
+      }
+      try {
+        localStorage.setItem(lastCheckKey, todayStr);
+      } catch {}
     }
-  }, [habits, userEmail]);
+  }, [habits, userEmail, notifications]);
 
   const addNotification = useCallback(
     async (n: Omit<Notification, "id" | "time" | "read">) => {
+      // Check for exact duplicate in current state
+      const isDuplicate = notifications.some(
+        (existing) => existing.title === n.title && existing.message === n.message
+      );
+      if (isDuplicate) return;
+
       const newNotif: Notification = {
         ...n,
         id: String(Date.now()),
@@ -126,7 +162,7 @@ export function NotificationProvider({
         read: false,
       };
 
-      setNotifications((prev) => [newNotif, ...prev]);
+      setNotifications((prev) => deduplicateNotifs([newNotif, ...prev]));
 
       if (isGuestUser || !userId) {
         return;
@@ -141,60 +177,75 @@ export function NotificationProvider({
           icon: n.icon,
           read: false,
         });
-      } catch { }
+      } catch {}
+    },
+    [userId, isGuestUser, notifications]
+  );
+
+  const markAsRead = useCallback(
+    async (id: string) => {
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      if (!isGuestUser && userId) {
+        try {
+          await supabase.from("notifications").update({ read: true }).eq("id", id);
+        } catch (err) {
+          console.error("Failed to mark notification as read:", err);
+        }
+      }
     },
     [userId, isGuestUser]
   );
 
-  const markAsRead = useCallback(async (id: string) => {
-    const previous = [...notifications];
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-    if (!isGuestUser && userId) {
-      try {
-        const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
-        if (error) throw error;
-      } catch (err) {
-        console.error("Failed to mark notification as read:", err);
-        setNotifications(previous);
-        toast.error("Failed to update notification. Reverting.");
-      }
-    }
-  }, [userId, isGuestUser, notifications]);
-
   const markAllRead = useCallback(async () => {
-    const previous = [...notifications];
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     if (!isGuestUser && userId) {
       try {
-        const { error } = await supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false);
-        if (error) throw error;
+        await supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false);
       } catch (err) {
         console.error("Failed to mark all read:", err);
-        setNotifications(previous);
-        toast.error("Failed to update notifications. Reverting.");
       }
     }
-  }, [userId, isGuestUser, notifications]);
+  }, [userId, isGuestUser]);
+
+  const dismissNotification = useCallback(
+    async (id: string) => {
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      if (!isGuestUser && userId) {
+        try {
+          await supabase.from("notifications").delete().eq("id", id);
+        } catch (err) {
+          console.error("Failed to dismiss notification:", err);
+        }
+      }
+    },
+    [userId, isGuestUser]
+  );
 
   const clearAll = useCallback(async () => {
-    const previous = [...notifications];
     setNotifications([]);
     if (!isGuestUser && userId) {
       try {
-        const { error } = await supabase.from("notifications").delete().eq("user_id", userId);
-        if (error) throw error;
+        await supabase.from("notifications").delete().eq("user_id", userId);
       } catch (err) {
         console.error("Failed to clear notifications:", err);
-        setNotifications(previous);
-        toast.error("Failed to clear notifications. Reverting.");
       }
     }
-  }, [userId, isGuestUser, notifications]);
+  }, [userId, isGuestUser]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, addNotification, markAsRead, markAllRead, clearAll }}>
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        unreadCount,
+        addNotification,
+        markAsRead,
+        markAllRead,
+        clearAll,
+        dismissNotification,
+      }}
+    >
       {children}
     </NotificationContext.Provider>
   );
