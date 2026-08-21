@@ -240,157 +240,132 @@ ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS link_url TEXT;
 ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS pinned BOOLEAN DEFAULT false;
 ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
 
--- 5.3 Enable Row Level Security (RLS)
+-- 5.3 SECURITY DEFINER Helper (Prevents RLS Infinite Recursion)
+
+CREATE OR REPLACE FUNCTION public.is_group_member(_user_id UUID, _group_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.group_members
+    WHERE user_id = _user_id AND group_id = _group_id AND status = 'active'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_group_admin(_user_id UUID, _group_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.group_members
+    WHERE user_id = _user_id AND group_id = _group_id AND role IN ('admin', 'teacher') AND status = 'active'
+  );
+$$;
+
+-- 5.4 Enable Row Level Security (RLS)
 
 ALTER TABLE public.study_groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.group_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.group_channels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.channel_messages ENABLE ROW LEVEL SECURITY;
 
--- 5.4 RLS Policies (Safe to execute now because all 4 tables exist)
+-- Drop old policies to cleanly upgrade
+DROP POLICY IF EXISTS "Public and member read study groups" ON public.study_groups;
+DROP POLICY IF EXISTS "Authenticated create study groups" ON public.study_groups;
+DROP POLICY IF EXISTS "Admins update study groups" ON public.study_groups;
+DROP POLICY IF EXISTS "Members view group members" ON public.group_members;
+DROP POLICY IF EXISTS "Authenticated join groups" ON public.group_members;
+DROP POLICY IF EXISTS "Update own membership or admin update" ON public.group_members;
+DROP POLICY IF EXISTS "Members view channels" ON public.group_channels;
+DROP POLICY IF EXISTS "Members create channels" ON public.group_channels;
+DROP POLICY IF EXISTS "Members view messages" ON public.channel_messages;
+DROP POLICY IF EXISTS "Members insert messages" ON public.channel_messages;
+DROP POLICY IF EXISTS "Senders or admins update messages" ON public.channel_messages;
+
+-- 5.5 Create Non-Recursive RLS Policies
 
 -- Study Groups Policies
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'study_groups' AND policyname = 'Public and member read study groups'
-  ) THEN
-    CREATE POLICY "Public and member read study groups" ON public.study_groups
-      FOR SELECT
-      USING (
-        privacy = 'public' OR
-        created_by = auth.uid() OR
-        id IN (SELECT group_id FROM public.group_members WHERE user_id = auth.uid() AND status = 'active')
-      );
-  END IF;
-END $$;
+CREATE POLICY "Public and member read study groups" ON public.study_groups
+  FOR SELECT
+  USING (
+    privacy = 'public' OR
+    created_by = auth.uid() OR
+    public.is_group_member(auth.uid(), id)
+  );
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'study_groups' AND policyname = 'Authenticated create study groups'
-  ) THEN
-    CREATE POLICY "Authenticated create study groups" ON public.study_groups
-      FOR INSERT
-      WITH CHECK (auth.role() = 'authenticated');
-  END IF;
-END $$;
+CREATE POLICY "Authenticated create study groups" ON public.study_groups
+  FOR INSERT
+  WITH CHECK (auth.role() = 'authenticated');
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'study_groups' AND policyname = 'Admins update study groups'
-  ) THEN
-    CREATE POLICY "Admins update study groups" ON public.study_groups
-      FOR UPDATE
-      USING (
-        created_by = auth.uid() OR
-        id IN (SELECT group_id FROM public.group_members WHERE user_id = auth.uid() AND role IN ('admin', 'teacher') AND status = 'active')
-      );
-  END IF;
-END $$;
+CREATE POLICY "Admins update study groups" ON public.study_groups
+  FOR UPDATE
+  USING (
+    created_by = auth.uid() OR
+    public.is_group_admin(auth.uid(), id)
+  );
 
 -- Group Members Policies
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'group_members' AND policyname = 'Members view group members'
-  ) THEN
-    CREATE POLICY "Members view group members" ON public.group_members
-      FOR SELECT
-      USING (
-        user_id = auth.uid() OR
-        group_id IN (SELECT group_id FROM public.group_members WHERE user_id = auth.uid() AND status = 'active') OR
-        group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public')
-      );
-  END IF;
-END $$;
+CREATE POLICY "Members view group members" ON public.group_members
+  FOR SELECT
+  USING (
+    user_id = auth.uid() OR
+    public.is_group_member(auth.uid(), group_id) OR
+    group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public')
+  );
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'group_members' AND policyname = 'Authenticated join groups'
-  ) THEN
-    CREATE POLICY "Authenticated join groups" ON public.group_members
-      FOR INSERT
-      WITH CHECK (auth.role() = 'authenticated');
-  END IF;
-END $$;
+CREATE POLICY "Authenticated join groups" ON public.group_members
+  FOR INSERT
+  WITH CHECK (auth.role() = 'authenticated');
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'group_members' AND policyname = 'Update own membership or admin update'
-  ) THEN
-    CREATE POLICY "Update own membership or admin update" ON public.group_members
-      FOR UPDATE
-      USING (
-        user_id = auth.uid() OR
-        group_id IN (SELECT group_id FROM public.group_members WHERE user_id = auth.uid() AND role IN ('admin', 'teacher') AND status = 'active')
-      );
-  END IF;
-END $$;
+CREATE POLICY "Update own membership or admin update" ON public.group_members
+  FOR UPDATE
+  USING (
+    user_id = auth.uid() OR
+    public.is_group_admin(auth.uid(), group_id)
+  );
 
 -- Group Channels Policies
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'group_channels' AND policyname = 'Members view channels'
-  ) THEN
-    CREATE POLICY "Members view channels" ON public.group_channels
-      FOR SELECT
-      USING (
-        group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public') OR
-        group_id IN (SELECT group_id FROM public.group_members WHERE user_id = auth.uid() AND status = 'active')
-      );
-  END IF;
-END $$;
+CREATE POLICY "Members view channels" ON public.group_channels
+  FOR SELECT
+  USING (
+    public.is_group_member(auth.uid(), group_id) OR
+    group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public' OR created_by = auth.uid())
+  );
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'group_channels' AND policyname = 'Members create channels'
-  ) THEN
-    CREATE POLICY "Members create channels" ON public.group_channels
-      FOR INSERT
-      WITH CHECK (
-        group_id IN (SELECT id FROM public.study_groups WHERE created_by = auth.uid()) OR
-        group_id IN (SELECT group_id FROM public.group_members WHERE user_id = auth.uid() AND role IN ('admin', 'teacher') AND status = 'active')
-      );
-  END IF;
-END $$;
+CREATE POLICY "Members create channels" ON public.group_channels
+  FOR INSERT
+  WITH CHECK (
+    group_id IN (SELECT id FROM public.study_groups WHERE created_by = auth.uid()) OR
+    public.is_group_admin(auth.uid(), group_id)
+  );
 
 -- Channel Messages Policies
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'channel_messages' AND policyname = 'Members view messages'
-  ) THEN
-    CREATE POLICY "Members view messages" ON public.channel_messages
-      FOR SELECT
-      USING (
-        group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public') OR
-        group_id IN (SELECT group_id FROM public.group_members WHERE user_id = auth.uid() AND status = 'active')
-      );
-  END IF;
-END $$;
+CREATE POLICY "Members view messages" ON public.channel_messages
+  FOR SELECT
+  USING (
+    public.is_group_member(auth.uid(), group_id) OR
+    group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public' OR created_by = auth.uid())
+  );
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'channel_messages' AND policyname = 'Members insert messages'
-  ) THEN
-    CREATE POLICY "Members insert messages" ON public.channel_messages
-      FOR INSERT
-      WITH CHECK (
-        group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public') OR
-        group_id IN (SELECT group_id FROM public.group_members WHERE user_id = auth.uid() AND status = 'active')
-      );
-  END IF;
-END $$;
+CREATE POLICY "Members insert messages" ON public.channel_messages
+  FOR INSERT
+  WITH CHECK (
+    public.is_group_member(auth.uid(), group_id) OR
+    group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public' OR created_by = auth.uid())
+  );
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'channel_messages' AND policyname = 'Senders or admins update messages'
-  ) THEN
-    CREATE POLICY "Senders or admins update messages" ON public.channel_messages
-      FOR UPDATE
-      USING (
-        sender_id = auth.uid() OR
-        group_id IN (SELECT group_id FROM public.group_members WHERE user_id = auth.uid() AND role IN ('admin', 'teacher') AND status = 'active')
-      );
-  END IF;
-END $$;
+CREATE POLICY "Senders or admins update messages" ON public.channel_messages
+  FOR UPDATE
+  USING (
+    sender_id = auth.uid() OR
+    public.is_group_admin(auth.uid(), group_id)
+  );
 
 -- 5.5 Realtime Publications
 DO $$ BEGIN

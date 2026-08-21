@@ -45,7 +45,7 @@ const CalendarSection = () => {
   const { habits, toggleCompletion, getTodayStr } = useHabits();
   const timer = useFocusTimer();
   const todayStr = getTodayStr();
-  
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
@@ -75,14 +75,14 @@ const CalendarSection = () => {
   const calendarData = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    
+
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const startDay = firstDay.getDay();
     const totalDays = lastDay.getDate();
 
     const days = [];
-    
+
     // Empty padding cells before 1st of month
     for (let i = 0; i < startDay; i++) {
       days.push({ dateStr: null, completions: 0, dueCount: 0, isToday: false });
@@ -91,7 +91,7 @@ const CalendarSection = () => {
     // Days of month
     for (let day = 1; day <= totalDays; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      
+
       let completions = 0;
       let dueCount = 0;
 
@@ -102,7 +102,7 @@ const CalendarSection = () => {
           dueCount++;
         }
       });
-      
+
       days.push({
         dateStr,
         dayNum: day,
@@ -152,16 +152,9 @@ const CalendarSection = () => {
   };
 
   // Retroactive toggle habit completion
-  const handleRetroactiveToggle = async (habitId: string, dateStr: string) => {
-    const habit = habits.find((h) => h.id === habitId);
-    if (!habit) return;
-    const wasCompleted = habit.completedDates.includes(dateStr);
-    await toggleCompletion(habitId, dateStr);
-    if (!wasCompleted) {
-      toast.success(`Completed "${habit.name}" for ${dateStr}! (+10 XP)`);
-    } else {
-      toast.info(`Marked "${habit.name}" as pending for ${dateStr}.`);
-    }
+  const handleRetroactiveToggle = (habitId: string, dateStr: string) => {
+    toggleCompletion(habitId, dateStr);
+    toast.success(`Updated habit completion for ${dateStr}!`);
   };
 
   const selectedDayHabits = useMemo(() => {
@@ -228,11 +221,10 @@ const CalendarSection = () => {
               <button
                 key={v.key}
                 onClick={() => setViewMode(v.key)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                  isCurrent
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                }`}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${isCurrent
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                  }`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 <span>{v.label}</span>
@@ -285,11 +277,10 @@ const CalendarSection = () => {
                     setSelectedCategory(cat);
                     setSelectedHabitId(null);
                   }}
-                  className={`text-[11px] px-2.5 py-1 rounded-lg border font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    selectedCategory === cat && !selectedHabitId
-                      ? "bg-secondary text-secondary-foreground border-secondary shadow-xs"
-                      : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`text-[11px] px-2.5 py-1 rounded-lg border font-bold transition-all cursor-pointer whitespace-nowrap ${selectedCategory === cat && !selectedHabitId
+                    ? "bg-secondary text-secondary-foreground border-secondary shadow-xs"
+                    : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
+                    }`}
                 >
                   {cat}
                 </button>
@@ -477,9 +468,8 @@ const CalendarSection = () => {
                 return (
                   <div
                     key={w.dateStr}
-                    className={`bg-surface/60 border rounded-2xl p-3 space-y-3 transition-all ${
-                      w.isToday ? "border-secondary ring-1 ring-secondary" : "border-border/80"
-                    }`}
+                    className={`bg-surface/60 border rounded-2xl p-3 space-y-3 transition-all ${w.isToday ? "border-secondary ring-1 ring-secondary" : "border-border/80"
+                      }`}
                   >
                     {/* Day Header */}
                     <div className="flex items-center justify-between pb-2 border-b border-border/40">
@@ -513,18 +503,16 @@ const CalendarSection = () => {
                               return (
                                 <div
                                   key={h.id}
-                                  className={`text-[11px] p-2 rounded-xl border flex items-center justify-between font-bold transition-all shadow-xs ${
-                                    isDone
-                                      ? "bg-pps-green/10 border-pps-green/30 text-pps-green opacity-90"
-                                      : "bg-card border-border/80 text-foreground hover:border-primary/40"
-                                  }`}
+                                  className={`text-[11px] p-2 rounded-xl border flex items-center justify-between font-bold transition-all shadow-xs ${isDone
+                                    ? "bg-pps-green/10 border-pps-green/30 text-pps-green opacity-90"
+                                    : "bg-card border-border/80 text-foreground hover:border-primary/40"
+                                    }`}
                                 >
                                   <div className="flex items-center gap-1.5 min-w-0">
                                     <button
                                       onClick={() => handleRetroactiveToggle(h.id, w.dateStr)}
-                                      className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer text-[10px] font-bold ${
-                                        isDone ? "bg-pps-green border-pps-green text-white" : "border-slate-400 hover:border-primary"
-                                      }`}
+                                      className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer text-[10px] font-bold ${isDone ? "bg-pps-green border-pps-green text-white" : "border-slate-400 hover:border-primary"
+                                        }`}
                                       title="Toggle completion for this date"
                                     >
                                       {isDone && "✓"}
@@ -665,11 +653,10 @@ const CalendarSection = () => {
                       <div
                         key={habit.id}
                         onClick={() => handleRetroactiveToggle(habit.id, selectedDayStr)}
-                        className={`flex items-center justify-between p-3 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                          isDone
-                            ? "bg-primary/15 border-primary/30 text-foreground"
-                            : "bg-surface/60 border-border/60 text-muted-foreground hover:border-primary/40"
-                        }`}
+                        className={`flex items-center justify-between p-3 rounded-xl border text-xs font-bold cursor-pointer transition-all ${isDone
+                          ? "bg-primary/15 border-primary/30 text-foreground"
+                          : "bg-surface/60 border-border/60 text-muted-foreground hover:border-primary/40"
+                          }`}
                       >
                         <div className="flex items-center gap-2.5">
                           <div className={`w-5 h-5 rounded-md border flex items-center justify-center text-xs font-bold ${isDone ? "bg-primary border-primary text-white" : "border-border"}`}>
