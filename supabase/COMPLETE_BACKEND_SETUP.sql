@@ -437,7 +437,69 @@ EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ============================================================================
--- 6. PERFORMANCE INDEXES
+-- 7. FOCUS ROOMS STAGE 2: Synced Group Focus Sessions & Presence
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.group_focus_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE NOT NULL,
+  is_running BOOLEAN NOT NULL DEFAULT false,
+  started_at TIMESTAMPTZ,
+  target_end_at TIMESTAMPTZ,
+  total_sec INT NOT NULL DEFAULT 1500,
+  paused_remaining_sec INT,
+  mode TEXT NOT NULL DEFAULT 'work' CHECK (mode IN ('work', 'break')),
+  task_name TEXT DEFAULT 'Group Focus Sprint',
+  started_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  started_by_name TEXT DEFAULT 'Squad Member',
+  last_updated TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT unique_group_focus_session UNIQUE(group_id)
+);
+
+ALTER TABLE public.group_focus_sessions ADD COLUMN IF NOT EXISTS is_running BOOLEAN DEFAULT false;
+ALTER TABLE public.group_focus_sessions ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ;
+ALTER TABLE public.group_focus_sessions ADD COLUMN IF NOT EXISTS target_end_at TIMESTAMPTZ;
+ALTER TABLE public.group_focus_sessions ADD COLUMN IF NOT EXISTS total_sec INT DEFAULT 1500;
+ALTER TABLE public.group_focus_sessions ADD COLUMN IF NOT EXISTS paused_remaining_sec INT;
+ALTER TABLE public.group_focus_sessions ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'work';
+ALTER TABLE public.group_focus_sessions ADD COLUMN IF NOT EXISTS task_name TEXT DEFAULT 'Group Focus Sprint';
+ALTER TABLE public.group_focus_sessions ADD COLUMN IF NOT EXISTS started_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.group_focus_sessions ADD COLUMN IF NOT EXISTS started_by_name TEXT DEFAULT 'Squad Member';
+ALTER TABLE public.group_focus_sessions ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ DEFAULT now();
+
+ALTER TABLE public.group_focus_sessions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Members read group focus sessions" ON public.group_focus_sessions;
+CREATE POLICY "Members read group focus sessions" ON public.group_focus_sessions
+  FOR SELECT
+  USING (
+    public.is_group_member(auth.uid(), group_id) OR
+    group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public' OR created_by = auth.uid())
+  );
+
+DROP POLICY IF EXISTS "Members insert group focus sessions" ON public.group_focus_sessions;
+CREATE POLICY "Members insert group focus sessions" ON public.group_focus_sessions
+  FOR INSERT
+  WITH CHECK (
+    public.is_group_member(auth.uid(), group_id) OR
+    group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public' OR created_by = auth.uid())
+  );
+
+DROP POLICY IF EXISTS "Members update group focus sessions" ON public.group_focus_sessions;
+CREATE POLICY "Members update group focus sessions" ON public.group_focus_sessions
+  FOR UPDATE
+  USING (
+    public.is_group_member(auth.uid(), group_id) OR
+    group_id IN (SELECT id FROM public.study_groups WHERE privacy = 'public' OR created_by = auth.uid())
+  );
+
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.group_focus_sessions;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+-- ============================================================================
+-- 8. PERFORMANCE INDEXES
 -- ============================================================================
 CREATE INDEX IF NOT EXISTS idx_reflections_user_date ON public.reflections(user_id, reflection_date DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_conversations_user_created ON public.ai_conversations(user_id, created_at ASC);
@@ -448,4 +510,6 @@ CREATE INDEX IF NOT EXISTS idx_group_members_user ON public.group_members(user_i
 CREATE INDEX IF NOT EXISTS idx_group_channels_group ON public.group_channels(group_id);
 CREATE INDEX IF NOT EXISTS idx_channel_messages_channel ON public.channel_messages(channel_id);
 CREATE INDEX IF NOT EXISTS idx_channel_messages_created ON public.channel_messages(created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_group_focus_sessions_group ON public.group_focus_sessions(group_id);
+
 

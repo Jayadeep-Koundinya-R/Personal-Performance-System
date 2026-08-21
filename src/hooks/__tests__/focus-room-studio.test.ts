@@ -40,7 +40,8 @@ describe("PPS Focus Room Studio & Synced Pomodoro System", () => {
     });
 
     expect(result.current.isInRoom).toBe(true);
-    expect(result.current.participants.length).toBeGreaterThanOrEqual(2);
+    // Real presence: only the actual user is present when joining solo (no fake participants)
+    expect(result.current.participants.length).toBe(1);
     expect(result.current.participants[0].name).toContain("Jordan Lee (You)");
 
     act(() => {

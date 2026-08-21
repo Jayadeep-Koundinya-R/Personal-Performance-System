@@ -301,6 +301,19 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
               </div>
             );
           })}
+
+          {/* Waiting for peers solo card */}
+          {participants.length === 1 && (
+            <div className="rounded-3xl border border-dashed border-border/80 bg-surface/30 p-5 flex flex-col items-center justify-center text-center aspect-video sm:aspect-auto sm:min-h-[190px] shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-2xl flex items-center justify-center mb-2 animate-bounce">
+                👥
+              </div>
+              <div className="text-xs font-bold text-foreground">Waiting for Squad Peers...</div>
+              <p className="text-[10px] text-muted-foreground mt-1 max-w-[200px]">
+                You're the first in this focus room! When other members join, their live video & avatars will appear here automatically.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

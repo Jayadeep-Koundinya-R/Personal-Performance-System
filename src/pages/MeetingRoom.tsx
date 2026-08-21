@@ -252,15 +252,12 @@ const MeetingRoomInner: React.FC = () => {
             {/* Who is already in the call */}
             <div className="p-4 rounded-2xl bg-surface/60 border border-border/70 space-y-2">
               <div className="text-[11px] font-mono font-bold text-muted-foreground uppercase">
-                Active in this room (2 peers):
+                Focus Room Status:
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex items-center -space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-card border-2 border-primary flex items-center justify-center text-sm">👨‍💻</div>
-                  <div className="w-8 h-8 rounded-full bg-card border-2 border-secondary flex items-center justify-center text-sm">👩‍🔬</div>
-                </div>
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-xs font-semibold text-foreground">
-                  Alex Vance & Elena Rostova are studying live
+                  Live presence active — squad peers sync automatically on join
                 </span>
               </div>
             </div>
