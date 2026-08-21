@@ -198,7 +198,7 @@ export const GroupView: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-160px)] min-h-[520px] max-h-[850px]">
+    <div className="flex flex-col h-[calc(100vh-120px)] min-h-[600px]">
       {/* ─── Top Mode Switcher ─── */}
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/40 flex-wrap gap-2 flex-shrink-0">
         <div className="flex items-center gap-1.5 p-1 bg-surface border border-border/80 rounded-2xl shadow-xs">
@@ -278,40 +278,32 @@ export const GroupView: React.FC = () => {
             </button>
           </div>
 
-          {/* Active Group Info */}
+          {/* Group Info Header */}
           <div className="p-3 border-b border-border/40 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{activeGroup.avatarEmoji}</span>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-black text-foreground truncate leading-tight">
-                  {activeGroup.name}
-                </h3>
-                <p className="text-[10px] text-muted-foreground truncate font-medium">
-                  {activeGroup.studyTopic}
-                </p>
-              </div>
+            <div className="flex items-center justify-between">
+              <h2 className="font-mono text-xs font-black text-foreground truncate max-w-[150px]">
+                {activeGroup.name}
+              </h2>
             </div>
-            {/* Compact Stats Row */}
-            <div className="flex items-center gap-3 mt-2">
-              <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-                <Users className="w-3 h-3" />
+            <p className="text-[10px] text-muted-foreground truncate">{activeGroup.studyTopic}</p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                <Users className="w-2.5 h-2.5" />
                 <span>{members.length}</span>
               </span>
-              {activeStudyingCount > 0 && (
-                <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{activeStudyingCount} studying</span>
-                </span>
-              )}
-              <span className="text-[10px] font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{activeStudyingCount} studying</span>
+              </span>
+              <span className="ml-auto text-[9px] font-mono font-extrabold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
                 {activeGroup.inviteCode}
               </span>
             </div>
           </div>
 
           {/* Channels List */}
-          <div className="flex-1 flex flex-col min-h-0 p-2">
-            <div className="flex items-center justify-between mb-2">
+          <div className="flex-1 flex flex-col p-2 overflow-hidden min-h-0">
+            <div className="flex items-center justify-between px-1 mb-1 flex-shrink-0">
               <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-muted-foreground">
                 Channels
               </span>
@@ -370,123 +362,121 @@ export const GroupView: React.FC = () => {
               })}
             </div>
 
-            {/* Join Group by Code (bottom of sidebar) */}
-            <div className="pt-2 mt-2 border-t border-border/40 flex-shrink-0">
+            {/* Quick Join via Code */}
+            <div className="pt-2 mt-auto border-t border-border/40 flex-shrink-0">
               <JoinCodeInput onJoinGroup={joinGroup} />
             </div>
           </div>
         </div>
 
-        {/* ── Center: Channel Header + Chat ── */}
+        {/* ── Center: Channel Header + Chat / Focus Studio ── */}
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
-          {/* Channel Header Bar */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-card/60 flex-shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <button
-                onClick={() => setShowSidebar(!showSidebar)}
-                className="hidden lg:flex p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
-                title={showSidebar ? "Hide sidebar" : "Show sidebar"}
-              >
-                {showSidebar ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-              </button>
-              {/* Breadcrumb */}
-              <div className="flex items-center gap-1.5 text-xs min-w-0">
-                <span className="text-muted-foreground font-semibold truncate max-w-[100px]">
-                  {activeGroup.avatarEmoji} {activeGroup.name}
-                </span>
-                <ChevronRight className="w-3 h-3 text-muted-foreground/50 flex-shrink-0" />
-                <span className="font-bold text-foreground flex items-center gap-1 truncate">
-                  {activeChannel?.type === "resources" ? (
-                    <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
-                  ) : (
-                    <Hash className="w-3.5 h-3.5 flex-shrink-0" />
-                  )}
-                  {activeChannel?.name || "Select channel"}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {/* Focus Room Button */}
-              <button
-                onClick={handleToggleFocusRoom}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-extrabold rounded-xl transition-all cursor-pointer ${
-                  isStudyingInRoom
-                    ? "bg-emerald-500 text-black border border-emerald-400 shadow-emerald-500/20 shadow-md"
-                    : "bg-gradient-to-r from-emerald-500/90 to-primary text-white hover:opacity-95 shadow-sm"
-                }`}
-              >
-                <span>{isStudyingInRoom ? "🎙️" : "📞"}</span>
-                <span className="hidden sm:inline">{isStudyingInRoom ? "Connected" : "Focus Room"}</span>
-              </button>
-
-              {/* Members Toggle */}
-              <button
-                onClick={() => setShowMembersPanel(!showMembersPanel)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold rounded-xl transition-all cursor-pointer border ${
-                  showMembersPanel
-                    ? "bg-primary/15 text-primary border-primary/30"
-                    : "bg-surface/60 text-muted-foreground border-border/50 hover:text-foreground hover:border-primary/30"
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>{members.length}</span>
-                {activeStudyingCount > 0 && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                )}
-              </button>
-
-              {/* Overflow Menu */}
-              <div className="relative">
+          {/* Channel Header Bar (hidden when already connected inside Studio to avoid redundant double headers) */}
+          {!isStudyingInRoom && (
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-card/60 flex-shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <button
-                  onClick={() => setShowOverflowMenu(!showOverflowMenu)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+                  onClick={() => setShowSidebar(!showSidebar)}
+                  className="hidden lg:flex p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+                  title={showSidebar ? "Hide sidebar" : "Show sidebar"}
                 >
-                  <MoreVertical className="w-4 h-4" />
+                  {showSidebar ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+                </button>
+                {/* Breadcrumb */}
+                <div className="flex items-center gap-1.5 text-xs min-w-0">
+                  <span className="text-muted-foreground font-semibold truncate max-w-[100px]">
+                    {activeGroup.avatarEmoji} {activeGroup.name}
+                  </span>
+                  <ChevronRight className="w-3 h-3 text-muted-foreground/50 flex-shrink-0" />
+                  <span className="font-bold text-foreground flex items-center gap-1 truncate">
+                    {activeChannel?.type === "resources" ? (
+                      <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
+                    ) : (
+                      <Hash className="w-3.5 h-3.5 flex-shrink-0" />
+                    )}
+                    {activeChannel?.name || "Select channel"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {/* Focus Room Button */}
+                <button
+                  onClick={handleToggleFocusRoom}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-extrabold rounded-xl transition-all cursor-pointer bg-gradient-to-r from-emerald-500/90 to-primary text-white hover:opacity-95 shadow-sm"
+                >
+                  <span>📞</span>
+                  <span className="hidden sm:inline">Focus Room</span>
                 </button>
 
-                {showOverflowMenu && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowOverflowMenu(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-1 w-52 bg-card border border-border/80 rounded-2xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                      <button
-                        onClick={handleCopyInviteCode}
-                        className="w-full text-left px-4 py-2 text-xs font-bold text-foreground hover:bg-surface flex items-center gap-2.5 cursor-pointer"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>Copy Invite Code</span>
-                        <span className="ml-auto text-[10px] font-mono text-primary font-extrabold">{activeGroup.inviteCode}</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsAddHabitModalOpen(true);
-                          setShowOverflowMenu(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-xs font-bold text-foreground hover:bg-surface flex items-center gap-2.5 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>Add Study Habit</span>
-                      </button>
-                      <div className="my-1 border-t border-border/40" />
-                      <button
-                        onClick={() => {
-                          setShowLeaveConfirm(true);
-                          setShowOverflowMenu(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2.5 cursor-pointer"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Leave Group</span>
-                      </button>
-                    </div>
-                  </>
-                )}
+                {/* Members Toggle */}
+                <button
+                  onClick={() => setShowMembersPanel(!showMembersPanel)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold rounded-xl transition-all cursor-pointer border ${
+                    showMembersPanel
+                      ? "bg-primary/15 text-primary border-primary/30"
+                      : "bg-surface/60 text-muted-foreground border-border/50 hover:text-foreground hover:border-primary/30"
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>{members.length}</span>
+                  {activeStudyingCount > 0 && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  )}
+                </button>
+
+                {/* Overflow Menu */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowOverflowMenu(!showOverflowMenu)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+
+                  {showOverflowMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setShowOverflowMenu(false)}
+                      />
+                      <div className="absolute right-0 top-full mt-1 w-52 bg-card border border-border/80 rounded-2xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                        <button
+                          onClick={handleCopyInviteCode}
+                          className="w-full text-left px-4 py-2 text-xs font-bold text-foreground hover:bg-surface flex items-center gap-2.5 cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span>Copy Invite Code</span>
+                          <span className="ml-auto text-[10px] font-mono text-primary font-extrabold">{activeGroup.inviteCode}</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsAddHabitModalOpen(true);
+                            setShowOverflowMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-xs font-bold text-foreground hover:bg-surface flex items-center gap-2.5 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span>Add Study Habit</span>
+                        </button>
+                        <div className="my-1 border-t border-border/40" />
+                        <button
+                          onClick={() => {
+                            setShowLeaveConfirm(true);
+                            setShowOverflowMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2.5 cursor-pointer"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          <span>Leave Group</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Chat Area */}
           <div className="flex-1 min-h-0">

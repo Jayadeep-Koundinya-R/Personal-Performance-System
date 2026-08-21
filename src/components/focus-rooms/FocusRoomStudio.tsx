@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { useFocusRoom, FocusParticipant } from "@/hooks/use-focus-room";
+import { useFocusRoom } from "@/hooks/use-focus-room";
 import { PomodoroSyncOverlay } from "./PomodoroSyncOverlay";
 import { AmbientAudioPlayer } from "./AmbientAudioPlayer";
 import { FocusRoomWhiteboard } from "./FocusRoomWhiteboard";
@@ -23,7 +23,6 @@ import {
   ExternalLink,
   Users,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 interface FocusRoomStudioProps {
@@ -38,7 +37,6 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
   onClose,
 }) => {
   const {
-    isInRoom,
     joinRoom,
     leaveRoom,
     participants,
@@ -74,7 +72,7 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
   const [taskInput, setTaskInput] = useState(currentTask);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
 
-  // Automatically join the focus room when component mounts
+  // Auto-join room on mount and clean up on unmount
   useEffect(() => {
     joinRoom();
     return () => {
@@ -109,98 +107,111 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-card/95 via-background to-card/95 rounded-3xl border border-border/80 p-3.5 sm:p-4 shadow-2xl space-y-3.5 overflow-hidden">
-      {/* Top Header Bar */}
-      <div className="flex items-center justify-between flex-wrap gap-2.5 pb-2.5 border-b border-border/50">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-bold text-lg shadow-xs">
-            🎯
-          </div>
-          <div>
+    <div className="flex flex-col h-full bg-card/60 backdrop-blur-xl p-3 sm:p-4 gap-3 overflow-hidden">
+      {/* ── 1. Top Ribbon: Pomodoro Sync + Ambience Controls + Studio Quick Actions ── */}
+      <div className="flex-shrink-0 flex flex-col gap-2.5">
+        {/* Top Header Strip */}
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-1">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-bold text-sm shadow-xs">
+              🎯
+            </div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-black text-foreground font-mono">
+              <h2 className="text-xs font-black text-foreground font-mono truncate max-w-[150px] sm:max-w-[220px]">
                 {groupName} Focus Studio
               </h2>
               <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{participants.length} Active Co-Workers</span>
+                <span>{participants.length} Live</span>
               </span>
             </div>
-            <p className="text-[10.5px] text-muted-foreground">
-              Body doubling co-study studio • Synced Pomodoro • Soundscapes
-            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 ml-auto">
+            {/* Pop Out */}
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}${window.location.pathname}#/focus-call/${groupId}?name=${encodeURIComponent(groupName)}`;
+                window.open(url, `PPS_Focus_${groupId}`, "width=1040,height=740,menubar=no,toolbar=no,location=no,status=no");
+                toast.success("Opened Focus Room in a separate window! 🪟");
+              }}
+              className="p-1 px-2 rounded-lg bg-surface border border-border/80 text-muted-foreground hover:text-foreground text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+              title="Pop out into separate window"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span className="hidden sm:inline">Pop Out</span>
+            </button>
+
+            {/* Room Lock */}
+            <button
+              onClick={toggleRoomLock}
+              className={`p-1 px-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                isRoomLocked
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                  : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
+              }`}
+              title={isRoomLocked ? "Room is Locked" : "Room is Open to Squad"}
+            >
+              {isRoomLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+              <span className="hidden sm:inline">{isRoomLocked ? "Locked" : "Open"}</span>
+            </button>
+
+            {/* Whiteboard Toggle */}
+            <button
+              onClick={() => setShowWhiteboard(!showWhiteboard)}
+              className={`p-1 px-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                showWhiteboard
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
+              }`}
+              title="Toggle Whiteboard"
+            >
+              <PenTool className="w-3 h-3" />
+              <span className="hidden sm:inline">{showWhiteboard ? "Video" : "Board"}</span>
+            </button>
+
+            {/* Exit Room */}
+            <button
+              onClick={handleLeaveAndClose}
+              className="px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive hover:bg-destructive hover:text-destructive-foreground border border-destructive/30 text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
+            >
+              <PhoneOff className="w-3 h-3" />
+              <span>Leave</span>
+            </button>
           </div>
         </div>
 
-        {/* Room Lock, Popout & Close Actions */}
-        <div className="flex items-center gap-2">
-          {/* Pop out to separate window */}
-          <button
-            onClick={() => {
-              const url = `${window.location.origin}${window.location.pathname}#/focus-call/${groupId}?name=${encodeURIComponent(groupName)}`;
-              window.open(url, `PPS_Focus_${groupId}`, "width=1040,height=740,menubar=no,toolbar=no,location=no,status=no");
-              toast.success("Opened Focus Room in a dedicated separate window! 🪟");
-            }}
-            className="p-1.5 px-2.5 rounded-xl bg-surface border border-border/80 text-muted-foreground hover:text-foreground hover:bg-card text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-            title="Pop out into separate browser window"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Pop Out</span>
-          </button>
-
-          <button
-            onClick={toggleRoomLock}
-            className={`p-1.5 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-              isRoomLocked
-                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
-            }`}
-            title={isRoomLocked ? "Room is Locked" : "Room is Open to Squad"}
-          >
-            {isRoomLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">{isRoomLocked ? "Locked" : "Open"}</span>
-          </button>
-
-          <button
-            onClick={handleLeaveAndClose}
-            className="px-3 py-1.5 rounded-xl bg-destructive/15 text-destructive hover:bg-destructive hover:text-destructive-foreground border border-destructive/30 text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5"
-          >
-            <PhoneOff className="w-3.5 h-3.5" />
-            <span>Leave</span>
-          </button>
+        {/* Synced Pomodoro Card + Soundscape Strip */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-2.5">
+          <div className="xl:col-span-8">
+            <PomodoroSyncOverlay
+              mode={pomodoroMode}
+              timeLeft={timeLeft}
+              isRunning={isTimerRunning}
+              cycles={completedCycles}
+              onStart={startPomodoro}
+              onPause={pausePomodoro}
+              onReset={resetPomodoro}
+            />
+          </div>
+          <div className="xl:col-span-4 flex items-center">
+            <AmbientAudioPlayer
+              currentAmbience={ambience}
+              volume={ambienceVolume}
+              onSelectAmbience={setAmbience}
+              onVolumeChange={setAmbienceVolume}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Top Overlays: Synced Pomodoro + Ambient Soundscape */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        <div className="lg:col-span-8">
-          <PomodoroSyncOverlay
-            mode={pomodoroMode}
-            timeLeft={timeLeft}
-            isRunning={isTimerRunning}
-            cycles={completedCycles}
-            onStart={startPomodoro}
-            onPause={pausePomodoro}
-            onReset={resetPomodoro}
-          />
-        </div>
-        <div className="lg:col-span-4 flex items-center">
-          <AmbientAudioPlayer
-            currentAmbience={ambience}
-            volume={ambienceVolume}
-            onSelectAmbience={setAmbience}
-            onVolumeChange={setAmbienceVolume}
-          />
-        </div>
-      </div>
-
-      {/* Main Studio View: Whiteboard vs Video Grid */}
+      {/* ── 2. Middle Main Area: Video Grid or Whiteboard Canvas (Spacious flex-1) ── */}
       {showWhiteboard ? (
-        <div className="flex-1 min-h-[340px]">
+        <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-border/80 shadow-lg">
           <FocusRoomWhiteboard onClose={() => setShowWhiteboard(false)} />
         </div>
       ) : (
-        <div className="flex-1 min-h-[280px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-1">
+        <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-1">
           {/* Screen Share Tile (if active) */}
           {isSharingScreen && (
             <div className="sm:col-span-2 relative rounded-2xl overflow-hidden bg-black border-2 border-primary shadow-xl aspect-video flex items-center justify-center">
@@ -210,26 +221,26 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
                 playsInline
                 className="w-full h-full object-contain"
               />
-              <div className="absolute top-3 left-3 px-3 py-1 bg-black/70 backdrop-blur-md rounded-xl text-xs font-bold text-primary flex items-center gap-1.5 border border-primary/40">
-                <ScreenShare className="w-3.5 h-3.5" />
+              <div className="absolute top-2.5 left-2.5 px-2.5 py-1 bg-black/80 backdrop-blur-md rounded-lg text-[11px] font-bold text-primary flex items-center gap-1.5 border border-primary/40">
+                <ScreenShare className="w-3 h-3" />
                 <span>You are sharing your screen</span>
               </div>
             </div>
           )}
 
-          {/* Participant Video & Avatar Tiles */}
+          {/* Real Active Participant Cards */}
           {participants.map((p) => {
             const isYou = p.name.includes("(You)");
             return (
               <div
                 key={p.id}
-                className={`relative rounded-2xl overflow-hidden border transition-all flex flex-col justify-between p-3.5 aspect-video sm:aspect-auto sm:min-h-[175px] shadow-lg group ${
+                className={`relative rounded-2xl overflow-hidden border transition-all flex flex-col justify-between p-3 min-h-[160px] shadow-md group ${
                   isYou
                     ? "bg-gradient-to-br from-card via-surface/80 to-primary/10 border-primary/40 ring-1 ring-primary/20"
-                    : "bg-surface/60 border-border/80 hover:border-border"
+                    : "bg-surface/70 border-border/80 hover:border-border"
                 }`}
               >
-                {/* If Camera is ON for local user, render real webcam video stream */}
+                {/* Real Webcam Stream if local camera is active */}
                 {isYou && isCameraOn ? (
                   <div className="absolute inset-0 bg-black z-0">
                     <video
@@ -241,7 +252,7 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
                     />
                   </div>
                 ) : (
-                  /* Avatar Mode */
+                  /* Avatar Focus Feed */
                   <div className="absolute inset-0 flex flex-col items-center justify-center z-0 p-4">
                     <div className="w-14 h-14 rounded-2xl bg-card/90 border border-border/80 shadow-md flex items-center justify-center text-3xl group-hover:scale-105 transition-transform relative">
                       <span>{p.avatar || "👤"}</span>
@@ -250,9 +261,9 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
                   </div>
                 )}
 
-                {/* Top Tile Badges */}
+                {/* Card Top Info */}
                 <div className="relative z-10 flex items-center justify-between w-full">
-                  <span className="text-xs font-bold text-foreground bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/10 flex items-center gap-1">
+                  <span className="text-xs font-bold text-foreground bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/10 flex items-center gap-1">
                     <span>{p.name}</span>
                     {p.role === "admin" && (
                       <span className="text-[9px] font-mono text-primary uppercase font-extrabold">
@@ -262,28 +273,28 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
                   </span>
 
                   <div className="flex items-center gap-1">
-                    <span className="p-1 rounded-lg bg-black/60 backdrop-blur-md text-amber-400 border border-white/10 text-[10px] font-bold flex items-center gap-0.5 px-2">
-                      <Flame className="w-3.5 h-3.5 fill-amber-400" />
+                    <span className="p-0.5 rounded-lg bg-black/60 backdrop-blur-md text-amber-400 border border-white/10 text-[10px] font-bold flex items-center gap-0.5 px-1.5">
+                      <Flame className="w-3 h-3 fill-amber-400" />
                       <span>{p.streak}d</span>
                     </span>
                     <span
-                      className={`p-1.5 rounded-lg backdrop-blur-md border border-white/10 ${
+                      className={`p-1 rounded-lg backdrop-blur-md border border-white/10 ${
                         p.isMuted ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"
                       }`}
                     >
-                      {p.isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                      {p.isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
                     </span>
                   </div>
                 </div>
 
-                {/* Bottom Tile Task Tag */}
+                {/* Card Bottom Current Focus Task */}
                 <div className="relative z-10 mt-auto pt-2">
-                  <div className="bg-black/75 backdrop-blur-md border border-white/10 rounded-xl p-2 flex items-center justify-between gap-2">
+                  <div className="bg-black/75 backdrop-blur-md border border-white/10 rounded-xl p-1.5 px-2 flex items-center justify-between gap-2">
                     <div className="overflow-hidden">
-                      <div className="text-[9px] font-mono font-extrabold uppercase text-primary tracking-wider">
+                      <div className="text-[8px] font-mono font-extrabold uppercase text-primary tracking-wider">
                         Current Task
                       </div>
-                      <div className="text-xs font-semibold text-white/90 truncate">
+                      <div className="text-[11px] font-semibold text-white/90 truncate">
                         {p.currentTask}
                       </div>
                     </div>
@@ -294,8 +305,9 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
                           setIsEditingTask(true);
                         }}
                         className="p-1 text-muted-foreground hover:text-white transition-colors cursor-pointer flex-shrink-0"
+                        title="Edit Focus Task"
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <Edit3 className="w-3 h-3" />
                       </button>
                     )}
                   </div>
@@ -306,22 +318,22 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
 
           {/* Waiting for peers solo card */}
           {participants.length === 1 && (
-            <div className="rounded-2xl border border-dashed border-border/80 bg-surface/30 p-4 flex flex-col items-center justify-center text-center aspect-video sm:aspect-auto sm:min-h-[175px] shadow-xs">
-              <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 text-xl flex items-center justify-center mb-1.5 animate-bounce">
+            <div className="rounded-2xl border border-dashed border-border/80 bg-surface/30 p-4 flex flex-col items-center justify-center text-center min-h-[160px] shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 text-lg flex items-center justify-center mb-1.5 animate-bounce">
                 👥
               </div>
               <div className="text-xs font-bold text-foreground">Waiting for Squad Peers...</div>
-              <p className="text-[10px] text-muted-foreground mt-0.5 max-w-[210px]">
-                You're the first in this focus room! When other members join, their live cards & avatars will appear here automatically.
+              <p className="text-[10px] text-muted-foreground mt-0.5 max-w-[220px]">
+                You're live in the room! When squad members join, their live cards & avatars will appear here automatically.
               </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Bottom Media Control Dock */}
-      <div className="p-3 bg-card/95 border border-border/80 rounded-2xl backdrop-blur-xl shadow-xl flex items-center justify-between flex-wrap gap-2.5">
-        {/* Left: Current Focus Goal Pill */}
+      {/* ── 3. Bottom Media Dock (Firmly Anchored & Visible) ── */}
+      <div className="flex-shrink-0 z-20 p-2.5 px-3.5 bg-card/95 border border-border/80 rounded-2xl backdrop-blur-xl shadow-2xl flex items-center justify-between flex-wrap gap-2">
+        {/* Left: Quick Focus Task Pill */}
         <div className="flex items-center gap-2">
           {isEditingTask ? (
             <form onSubmit={handleTaskSubmit} className="flex items-center gap-1.5">
@@ -330,12 +342,12 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
                 value={taskInput}
                 onChange={(e) => setTaskInput(e.target.value)}
                 placeholder="What are you studying right now?..."
-                className="px-3 py-1.5 bg-surface border border-primary/50 text-xs font-semibold text-foreground rounded-xl outline-none"
+                className="px-2.5 py-1 bg-surface border border-primary/50 text-xs font-semibold text-foreground rounded-lg outline-none max-w-[200px]"
                 autoFocus
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl cursor-pointer"
+                className="px-2.5 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-lg cursor-pointer"
               >
                 Save
               </button>
@@ -343,22 +355,22 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
           ) : (
             <button
               onClick={() => setIsEditingTask(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface/80 border border-border/80 hover:border-primary/40 text-xs font-medium text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-surface/80 border border-border/80 hover:border-primary/40 text-xs font-medium text-muted-foreground hover:text-foreground transition-all cursor-pointer"
             >
-              <span className="text-[10px] font-mono font-bold text-primary uppercase">Focus:</span>
-              <span className="font-semibold text-foreground truncate max-w-[160px] sm:max-w-[220px]">
+              <span className="text-[9px] font-mono font-bold text-primary uppercase">Task:</span>
+              <span className="font-semibold text-foreground truncate max-w-[140px] sm:max-w-[200px]">
                 {currentTask}
               </span>
-              <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
+              <Edit3 className="w-3 h-3 text-muted-foreground" />
             </button>
           )}
         </div>
 
-        {/* Center: Camera / Mic / Screen Share / Whiteboard Controls */}
+        {/* Center: Mic / Camera / Screen Share Controls */}
         <div className="flex items-center gap-2">
           <button
             onClick={toggleMic}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer shadow-md ${
+            className={`p-2 rounded-xl border transition-all cursor-pointer shadow-md ${
               isMuted
                 ? "bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30"
                 : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/30"
@@ -370,7 +382,7 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
 
           <button
             onClick={toggleCamera}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer shadow-md ${
+            className={`p-2 rounded-xl border transition-all cursor-pointer shadow-md ${
               isCameraOn
                 ? "bg-primary text-primary-foreground border-primary shadow-primary/20"
                 : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
@@ -382,7 +394,7 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
 
           <button
             onClick={toggleScreenShare}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer shadow-md ${
+            className={`p-2 rounded-xl border transition-all cursor-pointer shadow-md ${
               isSharingScreen
                 ? "bg-secondary text-secondary-foreground border-secondary"
                 : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
@@ -391,28 +403,12 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
           >
             <ScreenShare className="w-4 h-4" />
           </button>
-
-          {/* Whiteboard Toggle Button */}
-          <button
-            onClick={() => setShowWhiteboard(!showWhiteboard)}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer shadow-md flex items-center gap-1.5 ${
-              showWhiteboard
-                ? "bg-primary text-primary-foreground border-primary shadow-primary/20"
-                : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
-            }`}
-            title="Shared Whiteboard"
-          >
-            <PenTool className="w-4 h-4" />
-            <span className="text-xs font-extrabold hidden sm:inline">
-              {showWhiteboard ? "Video Grid" : "Whiteboard"}
-            </span>
-          </button>
         </div>
 
-        {/* Right: Exit Studio Button */}
+        {/* Right: Exit Call Button */}
         <button
           onClick={handleLeaveAndClose}
-          className="px-3.5 py-1.5 bg-destructive/15 text-destructive hover:bg-destructive hover:text-destructive-foreground border border-destructive/30 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
+          className="px-3 py-1 bg-destructive/15 text-destructive hover:bg-destructive hover:text-destructive-foreground border border-destructive/30 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1"
         >
           <PhoneOff className="w-3.5 h-3.5" />
           <span>Exit Studio</span>

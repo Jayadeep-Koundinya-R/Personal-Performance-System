@@ -300,6 +300,29 @@ export function useFocusRoom(groupId: string, groupName: string) {
       });
   }, [groupId, user, profile, isCameraOn, isMuted, isSharingScreen, currentTask]);
 
+  // Helper: Build complete presence payload to avoid dropping fields on track()
+  const getFullPresencePayload = useCallback(
+    (overrides: Partial<FocusParticipant> = {}) => {
+      const myUserId = user?.id || "local_user";
+      const myName = profile?.displayName || "You";
+      const myAvatar = profile?.avatarEmoji || "🌟";
+
+      return {
+        userId: myUserId,
+        name: myName,
+        avatar: myAvatar,
+        role: "member",
+        cameraOn: overrides.cameraOn !== undefined ? overrides.cameraOn : isCameraOn,
+        isMuted: overrides.isMuted !== undefined ? overrides.isMuted : isMuted,
+        isSharingScreen: overrides.isSharingScreen !== undefined ? overrides.isSharingScreen : isSharingScreen,
+        currentTask: overrides.currentTask !== undefined ? overrides.currentTask : currentTask,
+        streak: profile?.streak || 1,
+        joinedAt: new Date().toISOString(),
+      };
+    },
+    [user, profile, isCameraOn, isMuted, isSharingScreen, currentTask]
+  );
+
   // Join Room
   const joinRoom = useCallback(async () => {
     setIsInRoom(true);
@@ -395,7 +418,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
       );
       if (presenceChannelRef.current) {
         try {
-          presenceChannelRef.current.track({ cameraOn: false });
+          presenceChannelRef.current.track(getFullPresencePayload({ cameraOn: false }));
         } catch {}
       }
     } else {
@@ -409,20 +432,30 @@ export function useFocusRoom(groupId: string, groupName: string) {
           );
           if (presenceChannelRef.current) {
             try {
-              presenceChannelRef.current.track({ cameraOn: true });
+              presenceChannelRef.current.track(getFullPresencePayload({ cameraOn: true }));
             } catch {}
           }
           toast.success("Camera enabled 🎥");
         } else {
           setIsCameraOn(true);
+          if (presenceChannelRef.current) {
+            try {
+              presenceChannelRef.current.track(getFullPresencePayload({ cameraOn: true }));
+            } catch {}
+          }
           toast.info("Camera simulation mode active (privacy avatar feed)");
         }
       } catch {
         setIsCameraOn(true);
+        if (presenceChannelRef.current) {
+          try {
+            presenceChannelRef.current.track(getFullPresencePayload({ cameraOn: true }));
+          } catch {}
+        }
         toast.info("Camera active in avatar privacy mode");
       }
     }
-  }, [isCameraOn, localStream, isMuted]);
+  }, [isCameraOn, localStream, isMuted, getFullPresencePayload]);
 
   // Mic Toggle
   const toggleMic = useCallback(() => {
@@ -436,11 +469,11 @@ export function useFocusRoom(groupId: string, groupName: string) {
     );
     if (presenceChannelRef.current) {
       try {
-        presenceChannelRef.current.track({ isMuted: next });
+        presenceChannelRef.current.track(getFullPresencePayload({ isMuted: next }));
       } catch {}
     }
     toast.info(next ? "Microphone muted 🔇" : "Microphone active 🎙️");
-  }, [isMuted, localStream]);
+  }, [isMuted, localStream, getFullPresencePayload]);
 
   // Screen Share Toggle
   const toggleScreenShare = useCallback(async () => {
@@ -455,7 +488,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
       );
       if (presenceChannelRef.current) {
         try {
-          presenceChannelRef.current.track({ isSharingScreen: false });
+          presenceChannelRef.current.track(getFullPresencePayload({ isSharingScreen: false }));
         } catch {}
       }
       toast.info("Stopped sharing screen");
@@ -470,7 +503,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
           );
           if (presenceChannelRef.current) {
             try {
-              presenceChannelRef.current.track({ isSharingScreen: true });
+              presenceChannelRef.current.track(getFullPresencePayload({ isSharingScreen: true }));
             } catch {}
           }
           toast.success("Screen sharing active 🖥️");
@@ -480,19 +513,41 @@ export function useFocusRoom(groupId: string, groupName: string) {
             setScreenStream(null);
             if (presenceChannelRef.current) {
               try {
-                presenceChannelRef.current.track({ isSharingScreen: false });
+                presenceChannelRef.current.track(getFullPresencePayload({ isSharingScreen: false }));
               } catch {}
             }
           };
         } else {
           setIsSharingScreen(true);
+          if (presenceChannelRef.current) {
+            try {
+              presenceChannelRef.current.track(getFullPresencePayload({ isSharingScreen: true }));
+            } catch {}
+          }
           toast.info("Screen share mode active");
         }
       } catch (err) {
         console.error(err);
       }
     }
-  }, [isSharingScreen, screenStream]);
+  }, [isSharingScreen, screenStream, getFullPresencePayload]);
+
+  // Update Task and broadcast to presence
+  const updateCurrentTask = useCallback(
+    (newTask: string) => {
+      setCurrentTask(newTask);
+      setParticipants((prev) =>
+        prev.map((p) => (p.name.includes("(You)") ? { ...p, currentTask: newTask } : p))
+      );
+      if (presenceChannelRef.current) {
+        try {
+          presenceChannelRef.current.track(getFullPresencePayload({ currentTask: newTask }));
+        } catch {}
+      }
+      toast.success("Focus goal updated! 🎯");
+    },
+    [getFullPresencePayload]
+  );
 
   // Ambient Sound Handler
   const handleSetAmbience = useCallback((type: AmbienceType) => {
@@ -649,20 +704,6 @@ export function useFocusRoom(groupId: string, groupName: string) {
       toast.info(`Squad Pomodoro Reset to ${Math.floor(durationSec / 60)}:00 🔄`);
     },
     [groupId, currentTask, user, profile, isGuestUser]
-  );
-
-  const updateCurrentTask = useCallback(
-    (task: string) => {
-      setCurrentTask(task);
-      setParticipants((prev) =>
-        prev.map((p) => (p.name.includes("(You)") ? { ...p, currentTask: task } : p))
-      );
-      if (presenceChannelRef.current) {
-        presenceChannelRef.current.track({ currentTask: task });
-      }
-      toast.success(`Updated your room focus to: "${task}"`);
-    },
-    []
   );
 
   return {
