@@ -108,7 +108,7 @@ export function NotificationProvider({
 
     if (dueToday.length > 0) {
       addNotification({
-        type: "habit_due",
+        type: "reminder",
         title: "Habits waiting today!",
         message: `You have ${dueToday.length} habit${dueToday.length > 1 ? "s" : ""} to complete today.`,
         icon: "📋",
@@ -141,7 +141,7 @@ export function NotificationProvider({
           icon: n.icon,
           read: false,
         });
-      } catch {}
+      } catch { }
     },
     [userId, isGuestUser]
   );

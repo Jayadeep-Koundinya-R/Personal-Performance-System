@@ -20,7 +20,7 @@ function NotificationBridge({ children, user }: { children: ReactNode; user: Use
       isGuest={user.isGuest}
       habits={habits}
     >
-      <FocusTimerProvider>
+      <FocusTimerProvider userId={user.id} isGuest={user.isGuest} userEmail={user.email}>
         {children}
       </FocusTimerProvider>
     </NotificationProvider>

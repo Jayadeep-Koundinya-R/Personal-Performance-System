@@ -599,55 +599,58 @@ function DashboardInner({ user }: { user: User }) {
             <button onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) markAllRead(); }} className="bg-transparent border-none text-foreground text-lg cursor-pointer p-1 relative" title="Notifications">
               🔔
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
                   {unreadCount}
                 </span>
               )}
             </button>
             <AnimatePresence>
               {notifOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute right-0 top-full mt-2 w-72 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden"
-                  style={{ boxShadow: "var(--card-shadow-hover)" }}
-                >
-                  <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                    <span className="font-semibold text-[13px]">Notifications</span>
-                    {notifications.length > 0 && (
-                      <button onClick={clearAll} className="text-[11px] text-destructive hover:underline">Clear all</button>
-                    )}
-                  </div>
-                  {notifications.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-muted-foreground text-[13px]">
-                      <div className="text-2xl mb-2">🔕</div>
-                      No notifications yet
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-card/98 dark:bg-[#0f1222]/98 backdrop-blur-2xl border border-border/90 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/10 dark:ring-white/10"
+                    style={{ boxShadow: "var(--card-shadow-hover)" }}
+                  >
+                    <div className="px-4 py-3 border-b border-border/70 bg-surface/80 flex items-center justify-between">
+                      <span className="font-bold text-[13px] font-mono">🔔 Notifications</span>
+                      {notifications.length > 0 && (
+                        <button onClick={clearAll} className="text-[11px] text-destructive hover:underline font-bold cursor-pointer">Clear all</button>
+                      )}
                     </div>
-                  ) : (
-                    <div className="max-h-72 overflow-y-auto">
-                      {notifications.slice(0, 10).map((n, i) => (
-                        <motion.div
-                          key={n.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.03 }}
-                          className={`px-4 py-3 border-b border-border/50 hover:bg-surface/50 transition-colors ${!n.read ? "bg-primary/5" : ""}`}
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <span className="text-lg mt-0.5">{n.icon}</span>
-                            <div>
-                              <div className="text-[13px] font-semibold">{n.title}</div>
-                              <div className="text-[11px] text-muted-foreground">{n.message}</div>
-                              <div className="text-[10px] text-muted-foreground mt-1 font-mono">{n.time}</div>
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-muted-foreground text-[13px]">
+                        <div className="text-2xl mb-2">🔕</div>
+                        No notifications yet
+                      </div>
+                    ) : (
+                      <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
+                        {notifications.slice(0, 10).map((n, i) => (
+                          <motion.div
+                            key={n.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.03 }}
+                            className={`px-4 py-3 hover:bg-surface/70 transition-colors ${!n.read ? "bg-primary/10" : ""}`}
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <span className="text-lg mt-0.5 flex-shrink-0">{n.icon}</span>
+                              <div className="min-w-0">
+                                <div className="text-[12.5px] font-bold text-foreground truncate">{n.title}</div>
+                                <div className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</div>
+                                <div className="text-[9.5px] text-muted-foreground/80 mt-1 font-mono">{n.time}</div>
+                              </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                </>
               )}
             </AnimatePresence>
           </div>
@@ -791,48 +794,51 @@ function DashboardInner({ user }: { user: User }) {
               {/* Notification dropdown */}
               <AnimatePresence>
                 {notifOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden"
-                    style={{ boxShadow: "var(--card-shadow-hover)" }}
-                  >
-                    <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                      <span className="font-semibold text-[13px]">Notifications</span>
-                      {notifications.length > 0 && (
-                        <button onClick={clearAll} className="text-[11px] text-destructive hover:underline">Clear all</button>
-                      )}
-                    </div>
-                    {notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-muted-foreground text-[13px]">
-                        <div className="text-2xl mb-2">🔕</div>
-                        No notifications yet
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card/98 dark:bg-[#0f1222]/98 backdrop-blur-2xl border border-border/90 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/10 dark:ring-white/10"
+                      style={{ boxShadow: "var(--card-shadow-hover)" }}
+                    >
+                      <div className="px-4 py-3 border-b border-border/70 bg-surface/80 flex items-center justify-between">
+                        <span className="font-bold text-[13px] font-mono">🔔 Notifications</span>
+                        {notifications.length > 0 && (
+                          <button onClick={clearAll} className="text-[11px] text-destructive hover:underline font-bold cursor-pointer">Clear all</button>
+                        )}
                       </div>
-                    ) : (
-                      <div className="max-h-72 overflow-y-auto">
-                        {notifications.slice(0, 10).map((n, i) => (
-                          <motion.div
-                            key={n.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.03 }}
-                            className={`px-4 py-3 border-b border-border/50 hover:bg-surface/50 transition-colors ${!n.read ? "bg-primary/5" : ""}`}
-                          >
-                            <div className="flex items-start gap-2.5">
-                              <span className="text-lg mt-0.5">{n.icon}</span>
-                              <div>
-                                <div className="text-[13px] font-semibold">{n.title}</div>
-                                <div className="text-[11px] text-muted-foreground">{n.message}</div>
-                                <div className="text-[10px] text-muted-foreground mt-1 font-mono">{n.time}</div>
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-8 text-center text-muted-foreground text-[13px]">
+                          <div className="text-2xl mb-2">🔕</div>
+                          No notifications yet
+                        </div>
+                      ) : (
+                        <div className="max-h-80 overflow-y-auto divide-y divide-border/40">
+                          {notifications.slice(0, 10).map((n, i) => (
+                            <motion.div
+                              key={n.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.03 }}
+                              className={`px-4 py-3 hover:bg-surface/70 transition-colors ${!n.read ? "bg-primary/10" : ""}`}
+                            >
+                              <div className="flex items-start gap-2.5">
+                                <span className="text-lg mt-0.5 flex-shrink-0">{n.icon}</span>
+                                <div className="min-w-0">
+                                  <div className="text-[12.5px] font-bold text-foreground truncate">{n.title}</div>
+                                  <div className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</div>
+                                  <div className="text-[9.5px] text-muted-foreground/80 mt-1 font-mono">{n.time}</div>
+                                </div>
                               </div>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  </>
                 )}
               </AnimatePresence>
             </div>
