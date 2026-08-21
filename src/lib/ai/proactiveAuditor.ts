@@ -101,14 +101,39 @@ export function auditHabitPerformance(
 }
 
 /**
- * Saves proactive recommendations to localStorage cache.
+ * Saves proactive recommendations to Supabase ai_suggestions table and local cache.
  */
 export async function syncProactiveAuditRecommendations(
   userId: string | null | undefined,
   recommendations: HabitAuditRecommendation[]
 ): Promise<void> {
+  const isGuest = !userId || userId === "guest_local" || userId.startsWith("guest");
   const cacheKey = userId ? `pps_ai_suggestions_${userId}` : "pps_ai_suggestions_guest";
+
   try {
     localStorage.setItem(cacheKey, JSON.stringify(recommendations));
   } catch {}
+
+  if (isGuest || recommendations.length === 0) return;
+
+  try {
+    const payload = recommendations.map((rec) => ({
+      user_id: userId!,
+      type: rec.type,
+      habit_id: rec.habitId,
+      reason: rec.recommendation,
+      status: "pending",
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase
+      .from("ai_suggestions")
+      .upsert(payload as any, { onConflict: "user_id,habit_id,type" });
+
+    if (error) {
+      console.error("Failed to sync AI suggestions to Supabase:", error);
+    }
+  } catch (err) {
+    console.error("Network error syncing AI suggestions to Supabase:", err);
+  }
 }

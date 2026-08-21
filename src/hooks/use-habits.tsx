@@ -34,7 +34,7 @@ interface HabitsContextType {
   addHabit: (name: string, category: string, period: string, priority: string, startDate?: string | null, startTime?: string | null, endTime?: string | null, color?: string, startAlarm?: boolean, endAlarm?: boolean) => Promise<string | null>;
   deleteHabit: (id: string) => Promise<void>;
   updateHabit: (id: string, updates: Partial<Habit>) => Promise<void>;
-  toggleCompletion: (id: string) => Promise<void>;
+  toggleCompletion: (id: string, targetDateStr?: string) => Promise<void>;
   markAllDone: () => Promise<void>;
   useStreakFreeze: (habitId: string) => Promise<string | null>;
   isHabitDueToday: (habit: Habit) => boolean;

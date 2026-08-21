@@ -152,9 +152,16 @@ const CalendarSection = () => {
   };
 
   // Retroactive toggle habit completion
-  const handleRetroactiveToggle = (habitId: string, dateStr: string) => {
-    toggleCompletion(habitId, dateStr);
-    toast.success(`Updated habit completion for ${dateStr}!`);
+  const handleRetroactiveToggle = async (habitId: string, dateStr: string) => {
+    const habit = habits.find((h) => h.id === habitId);
+    if (!habit) return;
+    const wasCompleted = habit.completedDates.includes(dateStr);
+    await toggleCompletion(habitId, dateStr);
+    if (!wasCompleted) {
+      toast.success(`Completed "${habit.name}" for ${dateStr}! (+10 XP)`);
+    } else {
+      toast.info(`Marked "${habit.name}" as pending for ${dateStr}.`);
+    }
   };
 
   const selectedDayHabits = useMemo(() => {

@@ -1,11 +1,11 @@
 -- ============================================================================
--- PERSONAL PERFORMANCE SYSTEM (PPS) - COMPLETE BACKEND SETUP SCRIPT
+-- PERSONAL PERFORMANCE SYSTEM (PPS) - COMPLETE CLOUD BACKEND SETUP
 -- ============================================================================
--- Run this in your Supabase Dashboard -> SQL Editor if you wish to enable
--- cloud database syncing for all features (Reflections, AI Chat, Suggestions).
+-- Run this in your Supabase Dashboard -> SQL Editor (New Query -> Run)
+-- This script is completely IDEMPOTENT (safe to run multiple times without data loss).
 -- ============================================================================
 
--- 1. Profiles & Extensions
+-- 1. Ensure required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 2. Reflections Table
@@ -18,16 +18,19 @@ CREATE TABLE IF NOT EXISTS public.reflections (
   habits_log JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(user_id, reflection_date)
+  CONSTRAINT unique_user_reflection_date UNIQUE (user_id, reflection_date)
 );
 
 ALTER TABLE public.reflections ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'reflections' AND policyname = 'Users manage own reflections'
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'reflections' AND policyname = 'Users manage own reflections'
   ) THEN
-    CREATE POLICY "Users manage own reflections" ON public.reflections FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+    CREATE POLICY "Users manage own reflections" ON public.reflections 
+      FOR ALL 
+      USING (auth.uid() = user_id) 
+      WITH CHECK (auth.uid() = user_id);
   END IF;
 END $$;
 
@@ -37,19 +40,24 @@ CREATE TABLE IF NOT EXISTS public.ai_suggestions (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   habit_id UUID REFERENCES public.habits(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
-  reason TEXT,
+  reason TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'pending',
   suggested_time TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  alternative_habit_name TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.ai_suggestions ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'ai_suggestions' AND policyname = 'Users manage own suggestions'
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'ai_suggestions' AND policyname = 'Users manage own suggestions'
   ) THEN
-    CREATE POLICY "Users manage own suggestions" ON public.ai_suggestions FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+    CREATE POLICY "Users manage own suggestions" ON public.ai_suggestions 
+      FOR ALL 
+      USING (auth.uid() = user_id) 
+      WITH CHECK (auth.uid() = user_id);
   END IF;
 END $$;
 
@@ -69,8 +77,17 @@ ALTER TABLE public.ai_conversations ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'ai_conversations' AND policyname = 'Users manage own ai conversations'
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'ai_conversations' AND policyname = 'Users manage own ai conversations'
   ) THEN
-    CREATE POLICY "Users manage own ai conversations" ON public.ai_conversations FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+    CREATE POLICY "Users manage own ai conversations" ON public.ai_conversations 
+      FOR ALL 
+      USING (auth.uid() = user_id) 
+      WITH CHECK (auth.uid() = user_id);
   END IF;
 END $$;
+
+-- 5. Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_reflections_user_date ON public.reflections(user_id, reflection_date DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_user_created ON public.ai_conversations(user_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_ai_suggestions_user_status ON public.ai_suggestions(user_id, status);
+

@@ -36,51 +36,104 @@ function getChatCacheKey(userId?: string | null): string {
   return userId ? `pps_ai_chat_${userId}` : "pps_ai_chat_guest";
 }
 
+const DEFAULT_GREETING: ChatMessage = {
+  id: "greeting",
+  sender: "ai",
+  text: "Hey! I'm your AI Performance Coach & Agent. Ask me for a performance roast, daily audit, or ask me to create habits, schedule alarms, or start focus timers!",
+  source: "local",
+  model: "local",
+  created_at: new Date().toISOString(),
+};
+
 /**
- * Loads conversation history for the given user from local cache.
- * Returns up to 10 previous messages in chronological order.
+ * Loads conversation history for the given user from Supabase or guest local cache.
+ * Returns up to 20 previous messages in chronological order.
  */
 export async function loadConversationHistory(userId?: string | null): Promise<ChatMessage[]> {
-  const defaultGreeting: ChatMessage = {
-    id: "greeting",
-    sender: "ai",
-    text: "Hey! I'm your AI Performance Coach & Agent. Ask me for a performance roast, daily audit, or ask me to create habits, schedule alarms, or start focus timers!",
-    source: "local",
-    model: "local",
-    created_at: new Date().toISOString(),
-  };
+  const isGuest = !userId || userId === "guest_local" || userId.startsWith("guest");
 
-  const cacheKey = getChatCacheKey(userId);
-
-  try {
-    const raw = localStorage.getItem(cacheKey);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+  if (isGuest) {
+    const cacheKey = getChatCacheKey(userId);
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       }
+    } catch (err) {
+      console.error("Failed to parse guest chat cache:", err);
     }
-  } catch (err) {
-    console.error("Failed to parse local chat cache:", err);
+    return [DEFAULT_GREETING];
   }
 
-  return [defaultGreeting];
+  try {
+    const { data, error } = await supabase
+      .from("ai_conversations")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(20);
+
+    if (error) {
+      console.error("Failed to load chat history from database:", error);
+      return [DEFAULT_GREETING];
+    }
+
+    if (data && data.length > 0) {
+      const mapped: ChatMessage[] = data.map((row: any) => ({
+        id: row.id,
+        sender: row.role === "assistant" ? "ai" : "user",
+        text: row.content,
+        actionHabits: (row.action_habits as any) || undefined,
+        intent: row.intent || undefined,
+        model: row.model || "local",
+        source: row.model?.includes("gemini") ? "gemini" : "local",
+        created_at: row.created_at,
+      }));
+      return mapped;
+    }
+
+    return [DEFAULT_GREETING];
+  } catch (err) {
+    console.error("Network error fetching chat history:", err);
+    return [DEFAULT_GREETING];
+  }
 }
 
 /**
- * Persists a new chat message to user-scoped local storage.
+ * Persists a new chat message to Supabase ai_conversations table (or local storage for guests).
  */
 export async function persistChatMessage(message: ChatMessage, userId?: string | null): Promise<void> {
+  const isGuest = !userId || userId === "guest_local" || userId.startsWith("guest");
   const cacheKey = getChatCacheKey(userId);
 
+  // Always update local cache for instant client-side responsiveness
   try {
-    const history = await loadConversationHistory(userId);
-    const updated = [...history.filter((m) => m.id !== "greeting"), message];
-    // Keep maximum 20 messages in local storage
-    const trimmed = updated.slice(-20);
-    localStorage.setItem(cacheKey, JSON.stringify(trimmed));
+    const raw = localStorage.getItem(cacheKey);
+    const prev: ChatMessage[] = raw ? JSON.parse(raw) : [];
+    const updated = [...prev.filter((m) => m.id !== "greeting"), message].slice(-20);
+    localStorage.setItem(cacheKey, JSON.stringify(updated));
+  } catch {}
+
+  if (isGuest) return;
+
+  try {
+    const { error } = await supabase.from("ai_conversations").insert({
+      user_id: userId!,
+      role: message.sender === "ai" ? "assistant" : "user",
+      content: message.text,
+      action_habits: (message.actionHabits as any) || [],
+      intent: message.intent || null,
+      model: message.model || "local",
+    });
+
+    if (error) {
+      console.error("Failed to save chat message to Supabase:", error);
+    }
   } catch (err) {
-    console.error("Failed to update local chat cache:", err);
+    console.error("Network error saving chat message to Supabase:", err);
   }
 }
 
@@ -113,14 +166,27 @@ export async function saveConversationMessage(
 }
 
 /**
- * Clears the conversation history in user-scoped local cache.
+ * Clears the conversation history from Supabase and local cache.
  */
 export async function clearConversationHistory(userId?: string | null): Promise<void> {
+  const isGuest = !userId || userId === "guest_local" || userId.startsWith("guest");
   const cacheKey = getChatCacheKey(userId);
+
   try {
     localStorage.removeItem(cacheKey);
   } catch (err) {
     console.error("Failed to clear local chat cache:", err);
+  }
+
+  if (isGuest) return;
+
+  try {
+    const { error } = await supabase.from("ai_conversations").delete().eq("user_id", userId!);
+    if (error) {
+      console.error("Failed to delete chat conversations from database:", error);
+    }
+  } catch (err) {
+    console.error("Network error deleting chat conversations from database:", err);
   }
 }
 
