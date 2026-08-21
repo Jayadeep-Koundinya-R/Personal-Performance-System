@@ -33,9 +33,12 @@ export function useChannels(groupId: string) {
   const { profile } = useProfile();
   const isGuestUser = !user?.id || user?.id === "guest_local" || user?.id.startsWith("guest");
 
+  const channelsKey = `pps_focus_channels_store_${user?.id || "guest"}`;
+  const messagesKey = `pps_focus_messages_store_${user?.id || "guest"}`;
+
   const [channelsMap, setChannelsMap] = useState<Record<string, GroupChannel[]>>(() => {
     try {
-      const saved = localStorage.getItem("pps_focus_channels_store");
+      const saved = localStorage.getItem(channelsKey);
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -44,7 +47,7 @@ export function useChannels(groupId: string) {
 
   const [messagesMap, setMessagesMap] = useState<Record<string, ChannelMessage[]>>(() => {
     try {
-      const saved = localStorage.getItem("pps_focus_messages_store");
+      const saved = localStorage.getItem(messagesKey);
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};

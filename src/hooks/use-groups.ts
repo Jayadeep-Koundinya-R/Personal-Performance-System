@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
@@ -72,14 +72,26 @@ export const SAMPLE_TEMPLATE_MEMBERS: GroupMember[] = [
   },
 ];
 
+// ── Helper: user-scoped localStorage keys ──
+function groupsStorageKey(userId: string | undefined) {
+  return `pps_focus_groups_store_${userId || "guest"}`;
+}
+function membersStorageKey(userId: string | undefined) {
+  return `pps_focus_members_store_${userId || "guest"}`;
+}
+function activeGroupStorageKey(userId: string | undefined) {
+  return `pps_active_focus_group_${userId || "guest"}`;
+}
+
 export function useGroups() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const isGuestUser = !user?.id || user?.id === "guest_local" || user?.id.startsWith("guest");
+  const prevUserIdRef = useRef<string | undefined>(undefined);
 
   const [groups, setGroups] = useState<StudyGroup[]>(() => {
     try {
-      const saved = localStorage.getItem("pps_focus_groups_store");
+      const saved = localStorage.getItem(groupsStorageKey(user?.id));
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -88,7 +100,7 @@ export function useGroups() {
 
   const [membersMap, setMembersMap] = useState<Record<string, GroupMember[]>>(() => {
     try {
-      const saved = localStorage.getItem("pps_focus_members_store");
+      const saved = localStorage.getItem(membersStorageKey(user?.id));
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -96,13 +108,43 @@ export function useGroups() {
   });
 
   const [activeGroupId, setActiveGroupId] = useState<string>(() => {
-    const saved = localStorage.getItem("pps_active_focus_group");
+    const saved = localStorage.getItem(activeGroupStorageKey(user?.id));
     return saved || "";
   });
 
   const [loading, setLoading] = useState(true);
 
-  // ── 1. Fetch Groups and Active Group Members from Supabase ──
+  // ── Clear state and re-hydrate when user identity changes ──
+  useEffect(() => {
+    if (prevUserIdRef.current === user?.id) return;
+    const prevId = prevUserIdRef.current;
+    prevUserIdRef.current = user?.id;
+
+    // Don't reset on initial mount (prevId === undefined)
+    if (prevId === undefined) return;
+
+    // User identity changed — clear stale state and load from scoped storage
+    try {
+      const savedGroups = localStorage.getItem(groupsStorageKey(user?.id));
+      setGroups(savedGroups ? JSON.parse(savedGroups) : []);
+    } catch {
+      setGroups([]);
+    }
+    try {
+      const savedMembers = localStorage.getItem(membersStorageKey(user?.id));
+      setMembersMap(savedMembers ? JSON.parse(savedMembers) : {});
+    } catch {
+      setMembersMap({});
+    }
+    try {
+      const savedActive = localStorage.getItem(activeGroupStorageKey(user?.id));
+      setActiveGroupId(savedActive || "");
+    } catch {
+      setActiveGroupId("");
+    }
+  }, [user?.id]);
+
+  // ── 1. Fetch ONLY the user's groups from Supabase ──
   const fetchCloudGroups = useCallback(async () => {
     if (isGuestUser || !user?.id) {
       setLoading(false);
@@ -110,10 +152,38 @@ export function useGroups() {
     }
 
     try {
-      // 1. Fetch all groups where user is a member OR creator OR public
+      // Step 1: Get the group IDs where this user has an active membership
+      const { data: myMemberships, error: membershipError } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", user.id)
+        .eq("status", "active");
+
+      if (membershipError) {
+        console.error("Failed to fetch user's memberships:", membershipError);
+        setLoading(false);
+        return;
+      }
+
+      const myGroupIds = myMemberships?.map((m) => m.group_id) || [];
+
+      // If user has no groups, clear state
+      if (myGroupIds.length === 0) {
+        setGroups([]);
+        setMembersMap({});
+        try {
+          localStorage.setItem(groupsStorageKey(user.id), JSON.stringify([]));
+          localStorage.setItem(membersStorageKey(user.id), JSON.stringify({}));
+        } catch {}
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Fetch ONLY those groups by ID
       const { data: groupsData, error: groupsError } = await supabase
         .from("study_groups")
         .select("*")
+        .in("id", myGroupIds)
         .order("created_at", { ascending: false });
 
       if (groupsError) {
@@ -135,7 +205,7 @@ export function useGroups() {
 
         setGroups(mappedGroups);
         try {
-          localStorage.setItem("pps_focus_groups_store", JSON.stringify(mappedGroups));
+          localStorage.setItem(groupsStorageKey(user.id), JSON.stringify(mappedGroups));
         } catch {}
 
         if (!activeGroupId && mappedGroups.length > 0) {
@@ -143,10 +213,11 @@ export function useGroups() {
         }
       }
 
-      // 2. Fetch all members for all available groups
+      // Step 3: Fetch members ONLY for this user's groups
       const { data: membersData, error: membersError } = await supabase
         .from("group_members")
         .select("*")
+        .in("group_id", myGroupIds)
         .eq("status", "active");
 
       if (membersError) {
@@ -170,7 +241,7 @@ export function useGroups() {
         }
         setMembersMap(newMap);
         try {
-          localStorage.setItem("pps_focus_members_store", JSON.stringify(newMap));
+          localStorage.setItem(membersStorageKey(user.id), JSON.stringify(newMap));
         } catch {}
       }
     } catch (err) {
@@ -228,6 +299,13 @@ export function useGroups() {
       setActiveGroupId(groups[0].id);
     }
   }, [groups, activeGroupId]);
+
+  // Persist activeGroupId to scoped localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(activeGroupStorageKey(user?.id), activeGroupId);
+    } catch {}
+  }, [activeGroupId, user?.id]);
 
   const activeGroup = useMemo(() => {
     return groups.find((g) => g.id === activeGroupId) || null;
@@ -291,8 +369,8 @@ export function useGroups() {
       setActiveGroupId(newGroupId);
 
       try {
-        const currentSaved: StudyGroup[] = JSON.parse(localStorage.getItem("pps_focus_groups_store") || "[]");
-        localStorage.setItem("pps_focus_groups_store", JSON.stringify([newGroup, ...currentSaved.filter((g) => g.id !== newGroupId)]));
+        const currentSaved: StudyGroup[] = JSON.parse(localStorage.getItem(groupsStorageKey(userId)) || "[]");
+        localStorage.setItem(groupsStorageKey(userId), JSON.stringify([newGroup, ...currentSaved.filter((g) => g.id !== newGroupId)]));
       } catch {}
 
       if (isGuestUser) {
@@ -368,45 +446,42 @@ export function useGroups() {
       const userName = profile?.displayName || "You";
       const userAvatar = profile?.avatarEmoji || "✨";
 
-      // Check in-memory state and localStorage
-      const savedGroups: StudyGroup[] = (() => {
-        try {
-          return JSON.parse(localStorage.getItem("pps_focus_groups_store") || "[]");
-        } catch {
-          return [];
-        }
-      })();
-      const localFound = groups.find((g) => g.inviteCode === cleanCode) || savedGroups.find((g) => g.inviteCode === cleanCode);
+      // Check in-memory state only (not shared localStorage)
+      const localFound = groups.find((g) => g.inviteCode === cleanCode);
 
       if (localFound) {
         const existingMembers = membersMap[localFound.id] || [];
-        const alreadyIn = existingMembers.some((m) => m.userId === userId || m.displayName === userName);
+        const alreadyIn = existingMembers.some((m) => m.userId === userId);
 
-        if (!alreadyIn) {
-          const newMember: GroupMember = {
-            id: `m_join_${Date.now()}`,
-            groupId: localFound.id,
-            userId,
-            displayName: userName,
-            avatar: userAvatar,
-            role: "member",
-            status: "active",
-            currentStreak: profile?.streak || 0,
-            isStudying: false,
-            joinedAt: new Date().toISOString(),
-          };
-
-          setMembersMap((prev) => ({
-            ...prev,
-            [localFound.id]: [...(prev[localFound.id] || []), newMember],
-          }));
-
-          setGroups((prev) => {
-            const hasGroup = prev.some((g) => g.id === localFound.id);
-            if (!hasGroup) return [localFound, ...prev];
-            return prev.map((g) => (g.id === localFound.id ? { ...g, memberCount: g.memberCount + 1 } : g));
-          });
+        if (alreadyIn) {
+          setActiveGroupId(localFound.id);
+          toast.info(`You're already in "${localFound.name}".`);
+          return { success: true, groupId: localFound.id };
         }
+
+        const newMember: GroupMember = {
+          id: `m_join_${Date.now()}`,
+          groupId: localFound.id,
+          userId,
+          displayName: userName,
+          avatar: userAvatar,
+          role: "member",
+          status: "active",
+          currentStreak: profile?.streak || 0,
+          isStudying: false,
+          joinedAt: new Date().toISOString(),
+        };
+
+        setMembersMap((prev) => ({
+          ...prev,
+          [localFound.id]: [...(prev[localFound.id] || []), newMember],
+        }));
+
+        setGroups((prev) => {
+          const hasGroup = prev.some((g) => g.id === localFound.id);
+          if (!hasGroup) return [localFound, ...prev];
+          return prev.map((g) => (g.id === localFound.id ? { ...g, memberCount: g.memberCount + 1 } : g));
+        });
 
         setActiveGroupId(localFound.id);
         toast.success(`Joined "${localFound.name}"!`);
@@ -466,33 +541,79 @@ export function useGroups() {
     [groups, membersMap, user, profile, isGuestUser, fetchCloudGroups]
   );
 
-  // Leave Group
+  // Leave Group — with host-promotion and last-member cleanup
   const leaveGroup = useCallback(
     async (groupId: string) => {
+      const userId = user?.id || "local_user";
+      const groupMembers = membersMap[groupId] || [];
+      const myMembership = groupMembers.find((m) => m.userId === userId);
+      const isAdmin = myMembership?.role === "admin" || myMembership?.role === "teacher";
+      const otherActiveMembers = groupMembers.filter((m) => m.userId !== userId && m.status === "active");
+      const isLastMember = otherActiveMembers.length === 0;
+
+      // Optimistic local state removal
+      setGroups((prev) => prev.filter((g) => g.id !== groupId));
+      setMembersMap((prev) => {
+        const next = { ...prev };
+        delete next[groupId];
+        return next;
+      });
+      if (activeGroupId === groupId) {
+        const remaining = groups.filter((g) => g.id !== groupId);
+        setActiveGroupId(remaining.length > 0 ? remaining[0].id : "");
+      }
+
+      // Persist to scoped localStorage
+      try {
+        const currentGroups: StudyGroup[] = JSON.parse(localStorage.getItem(groupsStorageKey(userId)) || "[]");
+        localStorage.setItem(groupsStorageKey(userId), JSON.stringify(currentGroups.filter((g) => g.id !== groupId)));
+      } catch {}
+
       if (isGuestUser) {
-        setGroups((prev) => prev.filter((g) => g.id !== groupId));
-        if (activeGroupId === groupId) {
-          const remaining = groups.filter((g) => g.id !== groupId);
-          setActiveGroupId(remaining.length > 0 ? remaining[0].id : "");
-        }
         toast.info("You left the study group.");
         return;
       }
 
       try {
-        await supabase
-          .from("group_members")
-          .delete()
-          .eq("group_id", groupId)
-          .eq("user_id", user!.id);
+        if (isLastMember) {
+          // Last member leaving — delete the entire group (cascade deletes members, channels, messages)
+          const { error: deleteError } = await supabase
+            .from("study_groups")
+            .delete()
+            .eq("id", groupId);
+          if (deleteError) {
+            console.error("Failed to delete empty group:", deleteError);
+          }
+          toast.info("You left and the group was archived (no remaining members).");
+        } else {
+          // If the leaving user is admin and others exist, promote the oldest active member
+          if (isAdmin) {
+            const nextAdmin = otherActiveMembers.sort(
+              (a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
+            )[0];
+            if (nextAdmin) {
+              await supabase
+                .from("group_members")
+                .update({ role: "admin" })
+                .eq("id", nextAdmin.id);
+            }
+          }
 
-        await fetchCloudGroups();
-        toast.info("You left the study group.");
+          // Delete the leaving user's membership row
+          await supabase
+            .from("group_members")
+            .delete()
+            .eq("group_id", groupId)
+            .eq("user_id", userId);
+
+          toast.info("You left the study group.");
+        }
       } catch (err) {
         console.error("Failed to leave group:", err);
+        toast.error("Failed to leave group. Please try again.");
       }
     },
-    [activeGroupId, groups, isGuestUser, user, fetchCloudGroups]
+    [activeGroupId, groups, membersMap, isGuestUser, user]
   );
 
   // Toggle IsStudying status (Online study presence indicator)
