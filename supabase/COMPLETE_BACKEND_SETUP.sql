@@ -147,7 +147,8 @@ END $$;
 -- 5. FOCUS ROOMS STAGE 1: Study Groups, Members, Channels & Realtime Chat
 -- ============================================================================
 
--- 5.1 Study Groups Table
+-- 5.1 CREATE ALL TABLES FIRST (To satisfy cross-table RLS policy references)
+
 CREATE TABLE IF NOT EXISTS public.study_groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -161,6 +162,46 @@ CREATE TABLE IF NOT EXISTS public.study_groups (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.group_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  display_name TEXT DEFAULT 'Member',
+  avatar TEXT DEFAULT '👤',
+  role TEXT DEFAULT 'member' CHECK (role IN ('member', 'admin', 'teacher', 'mentor')),
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'blocked', 'left')),
+  current_streak INT DEFAULT 0,
+  is_studying BOOLEAN DEFAULT false,
+  joined_at TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT unique_group_user UNIQUE(group_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.group_channels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  type TEXT DEFAULT 'general' CHECK (type IN ('general', 'resources', 'custom', 'announcements')),
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.channel_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_id UUID REFERENCES public.group_channels(id) ON DELETE CASCADE NOT NULL,
+  group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE NOT NULL,
+  sender_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  sender_name TEXT NOT NULL DEFAULT 'User',
+  sender_avatar TEXT DEFAULT '👤',
+  content TEXT NOT NULL,
+  type TEXT DEFAULT 'text' CHECK (type IN ('text', 'link', 'system', 'file')),
+  link_url TEXT,
+  pinned BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 5.2 Ensure All Columns Exist (Self-Healing)
+
 ALTER TABLE public.study_groups ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE public.study_groups ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
 ALTER TABLE public.study_groups ADD COLUMN IF NOT EXISTS invite_code TEXT;
@@ -171,8 +212,44 @@ ALTER TABLE public.study_groups ADD COLUMN IF NOT EXISTS avatar_emoji TEXT DEFAU
 ALTER TABLE public.study_groups ADD COLUMN IF NOT EXISTS study_topic TEXT DEFAULT 'General Study';
 ALTER TABLE public.study_groups ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
 
-ALTER TABLE public.study_groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE;
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS display_name TEXT DEFAULT 'Member';
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '👤';
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS current_streak INT DEFAULT 0;
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS is_studying BOOLEAN DEFAULT false;
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS joined_at TIMESTAMPTZ DEFAULT now();
 
+ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE;
+ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'general';
+ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+
+ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS channel_id UUID REFERENCES public.group_channels(id) ON DELETE CASCADE;
+ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE;
+ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS sender_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS sender_name TEXT DEFAULT 'User';
+ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS sender_avatar TEXT DEFAULT '👤';
+ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS content TEXT;
+ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'text';
+ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS link_url TEXT;
+ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS pinned BOOLEAN DEFAULT false;
+ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+
+-- 5.3 Enable Row Level Security (RLS)
+
+ALTER TABLE public.study_groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.group_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.group_channels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.channel_messages ENABLE ROW LEVEL SECURITY;
+
+-- 5.4 RLS Policies (Safe to execute now because all 4 tables exist)
+
+-- Study Groups Policies
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'study_groups' AND policyname = 'Public and member read study groups'
@@ -210,33 +287,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- 5.2 Group Members Table
-CREATE TABLE IF NOT EXISTS public.group_members (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  display_name TEXT DEFAULT 'Member',
-  avatar TEXT DEFAULT '👤',
-  role TEXT DEFAULT 'member' CHECK (role IN ('member', 'admin', 'teacher', 'mentor')),
-  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'blocked', 'left')),
-  current_streak INT DEFAULT 0,
-  is_studying BOOLEAN DEFAULT false,
-  joined_at TIMESTAMPTZ DEFAULT now(),
-  CONSTRAINT unique_group_user UNIQUE(group_id, user_id)
-);
-
-ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE;
-ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
-ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS display_name TEXT DEFAULT 'Member';
-ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '👤';
-ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
-ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
-ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS current_streak INT DEFAULT 0;
-ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS is_studying BOOLEAN DEFAULT false;
-ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS joined_at TIMESTAMPTZ DEFAULT now();
-
-ALTER TABLE public.group_members ENABLE ROW LEVEL SECURITY;
-
+-- Group Members Policies
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'group_members' AND policyname = 'Members view group members'
@@ -274,26 +325,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- 5.3 Group Channels Table
-CREATE TABLE IF NOT EXISTS public.group_channels (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT DEFAULT '',
-  type TEXT DEFAULT 'general' CHECK (type IN ('general', 'resources', 'custom', 'announcements')),
-  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE;
-ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS name TEXT;
-ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
-ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'general';
-ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
-ALTER TABLE public.group_channels ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
-
-ALTER TABLE public.group_channels ENABLE ROW LEVEL SECURITY;
-
+-- Group Channels Policies
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'group_channels' AND policyname = 'Members view channels'
@@ -320,34 +352,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- 5.4 Channel Messages Table
-CREATE TABLE IF NOT EXISTS public.channel_messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  channel_id UUID REFERENCES public.group_channels(id) ON DELETE CASCADE NOT NULL,
-  group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE NOT NULL,
-  sender_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  sender_name TEXT NOT NULL DEFAULT 'User',
-  sender_avatar TEXT DEFAULT '👤',
-  content TEXT NOT NULL,
-  type TEXT DEFAULT 'text' CHECK (type IN ('text', 'link', 'system', 'file')),
-  link_url TEXT,
-  pinned BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS channel_id UUID REFERENCES public.group_channels(id) ON DELETE CASCADE;
-ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.study_groups(id) ON DELETE CASCADE;
-ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS sender_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
-ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS sender_name TEXT DEFAULT 'User';
-ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS sender_avatar TEXT DEFAULT '👤';
-ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS content TEXT;
-ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'text';
-ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS link_url TEXT;
-ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS pinned BOOLEAN DEFAULT false;
-ALTER TABLE public.channel_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
-
-ALTER TABLE public.channel_messages ENABLE ROW LEVEL SECURITY;
-
+-- Channel Messages Policies
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'channel_messages' AND policyname = 'Members view messages'
