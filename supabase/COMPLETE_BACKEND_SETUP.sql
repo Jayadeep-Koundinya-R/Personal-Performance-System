@@ -144,7 +144,55 @@ END $$;
 
 
 -- ============================================================================
--- 5. FOCUS ROOMS STAGE 1: Study Groups, Members, Channels & Realtime Chat
+-- 5. USER SETTINGS TABLE (Themes, Cross-Device Focus Session, Reminders)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.user_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  theme TEXT NOT NULL DEFAULT 'dark',
+  onboarding_completed BOOLEAN NOT NULL DEFAULT false,
+  notification_prefs JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ritual_last_done DATE,
+  default_reminder_settings JSONB DEFAULT '{"repeat": "Daily", "channel": "in_app", "deliveryType": "notification"}'::jsonb,
+  auto_streak_freeze BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Ensure all columns exist
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS theme TEXT DEFAULT 'dark';
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT false;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS notification_prefs JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS ritual_last_done DATE;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS default_reminder_settings JSONB DEFAULT '{"repeat": "Daily", "channel": "in_app", "deliveryType": "notification"}'::jsonb;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS auto_streak_freeze BOOLEAN DEFAULT false;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_settings' AND policyname = 'Users manage own settings'
+  ) THEN
+    CREATE POLICY "Users manage own settings" ON public.user_settings
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.user_settings;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_user_settings_user ON public.user_settings(user_id);
+
+
+-- ============================================================================
+-- 6. FOCUS ROOMS STAGE 1: Study Groups, Members, Channels & Realtime Chat
 -- ============================================================================
 
 -- 5.1 CREATE ALL TABLES FIRST (To satisfy cross-table RLS policy references)

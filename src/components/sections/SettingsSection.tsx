@@ -22,6 +22,7 @@ import { useReflections } from "@/hooks/use-reflections";
 import { exportToCSV, exportToJSON, exportReflectionsToCSV, prepareFullExport, parseAndValidateBackup } from "@/lib/dataExport";
 import { toast } from "sonner";
 import { useUserSettings } from "@/hooks/use-user-settings";
+import { useTheme } from "@/hooks/use-theme";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 import {
   User as UserIcon,
@@ -66,6 +67,7 @@ const SettingsSection = ({ user }: { user: User }) => {
   const { isPro, currentPeriodEnd, openBillingPortal, startCheckout } = useSubscription();
   const { entries: reflections, saveEntry } = useReflections();
   const { settings, loading: settingsLoading, updateSettings, resetOnboarding } = useUserSettings();
+  const { theme, setTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [displayName, setDisplayName] = useState(profile?.displayName || "");
@@ -421,6 +423,66 @@ const SettingsSection = ({ user }: { user: User }) => {
                     <div className="text-xs font-mono font-bold text-muted-foreground bg-surface border border-border/80 rounded-xl px-3.5 py-2.5 mt-1">
                       {profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
                     </div>
+                  </div>
+                </div>
+
+                {/* Account-Wide Theme Preference */}
+                <div className="pt-3 border-t border-border/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-extrabold text-foreground font-mono flex items-center gap-1.5">
+                        <span>🌓 Account-Wide Theme Preference</span>
+                      </label>
+                      <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                        Syncs across all your devices, browsers, and incognito sessions in real-time.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTheme("dark");
+                        toast.success("Theme preference set to Dark Mode (synced to cloud) 🌙");
+                      }}
+                      className={`p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${
+                        theme === "dark"
+                          ? "bg-primary/20 border-primary shadow-sm ring-1 ring-primary/40"
+                          : "bg-surface border-border/80 hover:border-primary/40 text-muted-foreground"
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-lg shadow-xs">
+                        🌙
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-foreground">Dark Obsidian</div>
+                        <div className="text-[10px] text-muted-foreground">Deep focus contrast</div>
+                      </div>
+                      {theme === "dark" && <Check className="w-4 h-4 text-primary ml-auto" />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTheme("light");
+                        toast.success("Theme preference set to Light Mode (synced to cloud) ☀️");
+                      }}
+                      className={`p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${
+                        theme === "light"
+                          ? "bg-primary/20 border-primary shadow-sm ring-1 ring-primary/40"
+                          : "bg-surface border-border/80 hover:border-primary/40 text-muted-foreground"
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-lg shadow-xs">
+                        ☀️
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-foreground">Light Platinum</div>
+                        <div className="text-[10px] text-muted-foreground">Clean daylight clarity</div>
+                      </div>
+                      {theme === "light" && <Check className="w-4 h-4 text-primary ml-auto" />}
+                    </button>
                   </div>
                 </div>
 

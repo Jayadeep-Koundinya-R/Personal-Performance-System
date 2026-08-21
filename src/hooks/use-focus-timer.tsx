@@ -223,19 +223,30 @@ export function FocusTimerProvider({
         localStorage.setItem(LOCAL_SESSION_KEY(userEmail), JSON.stringify(payload));
       } catch {}
 
-      // 2. If authenticated, update Supabase user_settings
+      // 2. If authenticated, upsert into Supabase user_settings
       if (!isGuestUser && userId) {
         try {
+          const { data: existingRow } = await supabase
+            .from("user_settings")
+            .select("notification_prefs")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          const currentPrefs = (existingRow?.notification_prefs as Record<string, any>) || {};
+
           await supabase
             .from("user_settings")
-            .update({
-              notification_prefs: {
-                ...((payload as any) || {}),
-                active_focus_session: payload,
+            .upsert(
+              {
+                user_id: userId,
+                notification_prefs: {
+                  ...currentPrefs,
+                  active_focus_session: payload,
+                },
+                updated_at: new Date().toISOString(),
               },
-              updated_at: new Date().toISOString(),
-            })
-            .eq("user_id", userId);
+              { onConflict: "user_id" }
+            );
         } catch (err) {
           console.error("Failed to sync active focus session to cloud:", err);
         }
@@ -384,15 +395,16 @@ export function FocusTimerProvider({
 
     // 3. Realtime multi-device sync subscription
     if (!isGuestUser && userId) {
+      const channelId = `user-focus-session-realtime-${userId}-${Math.random().toString(36).substring(2, 7)}`;
       const channel = supabase
-        .channel("user-focus-session-realtime")
+        .channel(channelId)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "user_settings", filter: `user_id=eq.${userId}` },
           (payload: any) => {
             const newPrefs = payload?.new?.notification_prefs;
             const session = newPrefs?.active_focus_session as ActiveFocusSessionPayload | undefined;
-            if (session) {
+            if (session && isMounted) {
               applySessionPayload(session);
             }
           }
@@ -401,7 +413,9 @@ export function FocusTimerProvider({
 
       return () => {
         isMounted = false;
-        supabase.removeChannel(channel);
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
       };
     }
 
