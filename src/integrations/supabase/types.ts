@@ -642,6 +642,156 @@ export type Database = {
           }
         ]
       }
+      study_groups: {
+        Row: {
+          id: string
+          name: string
+          description: string
+          invite_code: string
+          created_by: string | null
+          privacy: string
+          max_members: number
+          avatar_emoji: string
+          study_topic: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string
+          invite_code: string
+          created_by?: string | null
+          privacy?: string
+          max_members?: number
+          avatar_emoji?: string
+          study_topic?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string
+          invite_code?: string
+          created_by?: string | null
+          privacy?: string
+          max_members?: number
+          avatar_emoji?: string
+          study_topic?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      group_members: {
+        Row: {
+          id: string
+          group_id: string
+          user_id: string
+          display_name: string
+          avatar: string
+          role: string
+          status: string
+          current_streak: number
+          is_studying: boolean
+          joined_at: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          user_id: string
+          display_name?: string
+          avatar?: string
+          role?: string
+          status?: string
+          current_streak?: number
+          is_studying?: boolean
+          joined_at?: string
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          user_id?: string
+          display_name?: string
+          avatar?: string
+          role?: string
+          status?: string
+          current_streak?: number
+          is_studying?: boolean
+          joined_at?: string
+        }
+        Relationships: []
+      }
+      group_channels: {
+        Row: {
+          id: string
+          group_id: string
+          name: string
+          description: string
+          type: string
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          name: string
+          description?: string
+          type?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          name?: string
+          description?: string
+          type?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      channel_messages: {
+        Row: {
+          id: string
+          channel_id: string
+          group_id: string
+          sender_id: string | null
+          sender_name: string
+          sender_avatar: string
+          content: string
+          type: string
+          link_url: string | null
+          pinned: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          channel_id: string
+          group_id: string
+          sender_id?: string | null
+          sender_name?: string
+          sender_avatar?: string
+          content: string
+          type?: string
+          link_url?: string | null
+          pinned?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          channel_id?: string
+          group_id?: string
+          sender_id?: string | null
+          sender_name?: string
+          sender_avatar?: string
+          content?: string
+          type?: string
+          link_url?: string | null
+          pinned?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

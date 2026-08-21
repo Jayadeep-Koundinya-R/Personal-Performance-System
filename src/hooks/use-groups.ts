@@ -75,6 +75,7 @@ export const SAMPLE_TEMPLATE_MEMBERS: GroupMember[] = [
 export function useGroups() {
   const { user } = useAuth();
   const { profile } = useProfile();
+  const isGuestUser = !user?.id || user?.id === "guest_local" || user?.id.startsWith("guest");
 
   const [groups, setGroups] = useState<StudyGroup[]>(() => {
     try {
@@ -99,7 +100,125 @@ export function useGroups() {
     return saved || "";
   });
 
-  // Keep activeGroupId synced with available groups
+  const [loading, setLoading] = useState(true);
+
+  // ── 1. Fetch Groups and Active Group Members from Supabase ──
+  const fetchCloudGroups = useCallback(async () => {
+    if (isGuestUser || !user?.id) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // 1. Fetch all groups where user is a member OR creator OR public
+      const { data: groupsData, error: groupsError } = await supabase
+        .from("study_groups")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (groupsError) {
+        console.error("Failed to fetch study groups:", groupsError);
+      } else if (groupsData) {
+        const mappedGroups: StudyGroup[] = groupsData.map((g) => ({
+          id: g.id,
+          name: g.name,
+          description: g.description || "",
+          inviteCode: g.invite_code,
+          createdBy: g.created_by || "",
+          privacy: (g.privacy as "public" | "private") || "public",
+          maxMembers: g.max_members || 20,
+          avatarEmoji: g.avatar_emoji || "📚",
+          studyTopic: g.study_topic || "General Study",
+          createdAt: g.created_at || new Date().toISOString(),
+          memberCount: 1,
+        }));
+
+        setGroups(mappedGroups);
+        try {
+          localStorage.setItem("pps_focus_groups_store", JSON.stringify(mappedGroups));
+        } catch {}
+
+        if (!activeGroupId && mappedGroups.length > 0) {
+          setActiveGroupId(mappedGroups[0].id);
+        }
+      }
+
+      // 2. Fetch all members for all available groups
+      const { data: membersData, error: membersError } = await supabase
+        .from("group_members")
+        .select("*")
+        .eq("status", "active");
+
+      if (membersError) {
+        console.error("Failed to fetch group members:", membersError);
+      } else if (membersData) {
+        const newMap: Record<string, GroupMember[]> = {};
+        for (const m of membersData) {
+          if (!newMap[m.group_id]) newMap[m.group_id] = [];
+          newMap[m.group_id].push({
+            id: m.id,
+            groupId: m.group_id,
+            userId: m.user_id,
+            displayName: m.display_name || "Member",
+            avatar: m.avatar || "👤",
+            role: (m.role as GroupMember["role"]) || "member",
+            status: (m.status as GroupMember["status"]) || "active",
+            currentStreak: m.current_streak || 0,
+            isStudying: Boolean(m.is_studying),
+            joinedAt: m.joined_at || new Date().toISOString(),
+          });
+        }
+        setMembersMap(newMap);
+        try {
+          localStorage.setItem("pps_focus_members_store", JSON.stringify(newMap));
+        } catch {}
+      }
+    } catch (err) {
+      console.error("Network error fetching groups/members:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, isGuestUser, activeGroupId]);
+
+  // Initial Fetch & Realtime Listeners
+  useEffect(() => {
+    let isMounted = true;
+    fetchCloudGroups();
+
+    if (!isGuestUser && user?.id) {
+      const channelId = `realtime-study-groups-${user.id}-${Math.random().toString(36).substring(2, 7)}`;
+      const channel = supabase
+        .channel(channelId)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "study_groups" },
+          () => {
+            if (isMounted) fetchCloudGroups();
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "group_members" },
+          () => {
+            if (isMounted) fetchCloudGroups();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        isMounted = false;
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+      };
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchCloudGroups, isGuestUser, user?.id]);
+
+  // Keep activeGroupId valid
   useEffect(() => {
     if (groups.length === 0) {
       setActiveGroupId("");
@@ -110,31 +229,6 @@ export function useGroups() {
     }
   }, [groups, activeGroupId]);
 
-  // Sync with LocalStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem("pps_focus_groups_store", JSON.stringify(groups));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [groups]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("pps_focus_members_store", JSON.stringify(membersMap));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [membersMap]);
-
-  useEffect(() => {
-    if (activeGroupId) {
-      localStorage.setItem("pps_active_focus_group", activeGroupId);
-    } else {
-      localStorage.removeItem("pps_active_focus_group");
-    }
-  }, [activeGroupId]);
-
   const activeGroup = useMemo(() => {
     return groups.find((g) => g.id === activeGroupId) || null;
   }, [groups, activeGroupId]);
@@ -143,32 +237,6 @@ export function useGroups() {
     if (!activeGroup) return [];
     return membersMap[activeGroup.id] || [];
   }, [membersMap, activeGroup]);
-
-  // Ensure current user is in active group members list
-  useEffect(() => {
-    if (!activeGroup || !user) return;
-    const currentList = membersMap[activeGroup.id] || [];
-    const exists = currentList.some((m) => m.userId === user.id || m.displayName === (profile?.displayName || "You"));
-
-    if (!exists) {
-      const youMember: GroupMember = {
-        id: `m_you_${Date.now()}`,
-        groupId: activeGroup.id,
-        userId: user.id,
-        displayName: profile?.displayName || "You",
-        avatar: profile?.avatarEmoji || "🌟",
-        role: activeGroup.createdBy === user.id ? "admin" : "member",
-        status: "active",
-        currentStreak: profile?.streak || 1,
-        isStudying: false,
-        joinedAt: new Date().toISOString(),
-      };
-      setMembersMap((prev) => ({
-        ...prev,
-        [activeGroup.id]: [youMember, ...(prev[activeGroup.id] || [])],
-      }));
-    }
-  }, [activeGroup, user, profile, membersMap]);
 
   // Create Group
   const createGroup = useCallback(
@@ -182,10 +250,11 @@ export function useGroups() {
       if (!name.trim()) return { success: false, error: "Please enter a group name." };
 
       const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const newGroupId = `group_${Date.now()}`;
       const userId = user?.id || "local_user";
       const userName = profile?.displayName || "You";
+      const userAvatar = profile?.avatarEmoji || "👑";
 
+      const newGroupId = `group_${Date.now()}`;
       const newGroup: StudyGroup = {
         id: newGroupId,
         name: name.trim(),
@@ -205,7 +274,7 @@ export function useGroups() {
         groupId: newGroupId,
         userId,
         displayName: userName,
-        avatar: profile?.avatarEmoji || "👑",
+        avatar: userAvatar,
         role: "admin",
         status: "active",
         currentStreak: profile?.streak || 1,
@@ -213,6 +282,7 @@ export function useGroups() {
         joinedAt: new Date().toISOString(),
       };
 
+      // Optimistic state update
       setGroups((prev) => [newGroup, ...prev]);
       setMembersMap((prev) => ({
         ...prev,
@@ -220,10 +290,72 @@ export function useGroups() {
       }));
       setActiveGroupId(newGroupId);
 
-      toast.success(`Study Group "${newGroup.name}" created! Code: ${code}`);
-      return { success: true, groupId: newGroupId };
+      try {
+        const currentSaved: StudyGroup[] = JSON.parse(localStorage.getItem("pps_focus_groups_store") || "[]");
+        localStorage.setItem("pps_focus_groups_store", JSON.stringify([newGroup, ...currentSaved.filter((g) => g.id !== newGroupId)]));
+      } catch {}
+
+      if (isGuestUser) {
+        toast.success(`Study Group "${newGroup.name}" created! Code: ${code}`);
+        return { success: true, groupId: newGroupId };
+      }
+
+      try {
+        // 1. Insert into Supabase study_groups
+        const { data: groupData, error: groupError } = await supabase
+          .from("study_groups")
+          .insert({
+            name: name.trim(),
+            description: description.trim() || "Dedicated study & co-working group",
+            invite_code: code,
+            created_by: userId,
+            privacy,
+            max_members: 20,
+            avatar_emoji: avatarEmoji || "📚",
+            study_topic: studyTopic || "General Study",
+          })
+          .select()
+          .single();
+
+        if (!groupError && groupData) {
+          // 2. Insert creator into group_members as admin
+          await supabase.from("group_members").insert({
+            group_id: groupData.id,
+            user_id: userId,
+            display_name: userName,
+            avatar: userAvatar,
+            role: "admin",
+            status: "active",
+            current_streak: profile?.streak || 1,
+            is_studying: false,
+          });
+
+          // 3. Create default channels for this group
+          await supabase.from("group_channels").insert([
+            {
+              group_id: groupData.id,
+              name: "general-chat",
+              description: "General discussion, daily check-ins, and study schedules",
+              type: "general",
+              created_by: userId,
+            },
+            {
+              group_id: groupData.id,
+              name: "study-notes-and-links",
+              description: "Shared materials, cheat-sheets, and lecture links",
+              type: "resources",
+              created_by: userId,
+            },
+          ]);
+        }
+        toast.success(`Study Group "${name}" created live! Invite Code: ${code}`);
+        return { success: true, groupId: newGroupId };
+      } catch (err: any) {
+        console.error("Exception creating group in cloud:", err);
+        return { success: true, groupId: newGroupId };
+      }
     },
-    [user, profile]
+    [user, profile, isGuestUser, fetchCloudGroups]
   );
 
   // Join Group via Invite Code
@@ -232,45 +364,167 @@ export function useGroups() {
       const cleanCode = code.trim().toUpperCase();
       if (!cleanCode) return { success: false, error: "Please enter a valid 6-character code." };
 
-      const found = groups.find((g) => g.inviteCode === cleanCode);
-      if (!found) {
+      const userId = user?.id || "local_user";
+      const userName = profile?.displayName || "You";
+      const userAvatar = profile?.avatarEmoji || "✨";
+
+      // Check in-memory state and localStorage
+      const savedGroups: StudyGroup[] = (() => {
+        try {
+          return JSON.parse(localStorage.getItem("pps_focus_groups_store") || "[]");
+        } catch {
+          return [];
+        }
+      })();
+      const localFound = groups.find((g) => g.inviteCode === cleanCode) || savedGroups.find((g) => g.inviteCode === cleanCode);
+
+      if (localFound) {
+        const existingMembers = membersMap[localFound.id] || [];
+        const alreadyIn = existingMembers.some((m) => m.userId === userId || m.displayName === userName);
+
+        if (!alreadyIn) {
+          const newMember: GroupMember = {
+            id: `m_join_${Date.now()}`,
+            groupId: localFound.id,
+            userId,
+            displayName: userName,
+            avatar: userAvatar,
+            role: "member",
+            status: "active",
+            currentStreak: profile?.streak || 0,
+            isStudying: false,
+            joinedAt: new Date().toISOString(),
+          };
+
+          setMembersMap((prev) => ({
+            ...prev,
+            [localFound.id]: [...(prev[localFound.id] || []), newMember],
+          }));
+
+          setGroups((prev) => {
+            const hasGroup = prev.some((g) => g.id === localFound.id);
+            if (!hasGroup) return [localFound, ...prev];
+            return prev.map((g) => (g.id === localFound.id ? { ...g, memberCount: g.memberCount + 1 } : g));
+          });
+        }
+
+        setActiveGroupId(localFound.id);
+        toast.success(`Joined "${localFound.name}"!`);
+        return { success: true, groupId: localFound.id };
+      }
+
+      if (isGuestUser) {
         return { success: false, error: `No group found matching code "${cleanCode}".` };
       }
 
-      const userId = user?.id || "local_user";
-      const userName = profile?.displayName || "You";
-      const existingMembers = membersMap[found.id] || [];
-      const alreadyIn = existingMembers.some((m) => m.userId === userId || m.displayName === userName);
+      try {
+        // Query Supabase for group with invite_code
+        const { data: groupData, error: groupError } = await supabase
+          .from("study_groups")
+          .select("*")
+          .eq("invite_code", cleanCode)
+          .maybeSingle();
 
-      if (!alreadyIn) {
-        const newMember: GroupMember = {
-          id: `m_join_${Date.now()}`,
-          groupId: found.id,
-          userId,
-          displayName: userName,
-          avatar: profile?.avatarEmoji || "✨",
-          role: "member",
-          status: "active",
-          currentStreak: profile?.streak || 0,
-          isStudying: false,
-          joinedAt: new Date().toISOString(),
-        };
+        if (groupError || !groupData) {
+          return { success: false, error: `No group found matching code "${cleanCode}".` };
+        }
 
-        setMembersMap((prev) => ({
-          ...prev,
-          [found.id]: [...(prev[found.id] || []), newMember],
-        }));
+        // Check if already a member in DB
+        const { data: existingMember } = await supabase
+          .from("group_members")
+          .select("id")
+          .eq("group_id", groupData.id)
+          .eq("user_id", userId)
+          .maybeSingle();
 
-        setGroups((prev) =>
-          prev.map((g) => (g.id === found.id ? { ...g, memberCount: g.memberCount + 1 } : g))
-        );
+        if (!existingMember) {
+          const { error: joinError } = await supabase.from("group_members").insert({
+            group_id: groupData.id,
+            user_id: userId,
+            display_name: userName,
+            avatar: userAvatar,
+            role: "member",
+            status: "active",
+            current_streak: profile?.streak || 0,
+            is_studying: false,
+          });
+
+          if (joinError) {
+            console.error("Failed to insert member into cloud:", joinError);
+          }
+        }
+
+        await fetchCloudGroups();
+        setActiveGroupId(groupData.id);
+        toast.success(`Joined "${groupData.name}"!`);
+        return { success: true, groupId: groupData.id };
+      } catch (err: any) {
+        console.error("Exception joining group:", err);
+        return { success: false, error: err?.message || "Network error joining study group." };
+      }
+    },
+    [groups, membersMap, user, profile, isGuestUser, fetchCloudGroups]
+  );
+
+  // Leave Group
+  const leaveGroup = useCallback(
+    async (groupId: string) => {
+      if (isGuestUser) {
+        setGroups((prev) => prev.filter((g) => g.id !== groupId));
+        if (activeGroupId === groupId) {
+          const remaining = groups.filter((g) => g.id !== groupId);
+          setActiveGroupId(remaining.length > 0 ? remaining[0].id : "");
+        }
+        toast.info("You left the study group.");
+        return;
       }
 
-      setActiveGroupId(found.id);
-      toast.success(`Joined "${found.name}"!`);
-      return { success: true, groupId: found.id };
+      try {
+        await supabase
+          .from("group_members")
+          .delete()
+          .eq("group_id", groupId)
+          .eq("user_id", user!.id);
+
+        await fetchCloudGroups();
+        toast.info("You left the study group.");
+      } catch (err) {
+        console.error("Failed to leave group:", err);
+      }
     },
-    [groups, membersMap, user, profile]
+    [activeGroupId, groups, isGuestUser, user, fetchCloudGroups]
+  );
+
+  // Toggle IsStudying status (Online study presence indicator)
+  const toggleStudyingStatus = useCallback(
+    async (groupId: string, isStudying: boolean) => {
+      const userId = user?.id || "local_user";
+
+      // Optimistic local state update
+      setMembersMap((prev) => ({
+        ...prev,
+        [groupId]: (prev[groupId] || []).map((m) =>
+          m.userId === userId ? { ...m, isStudying } : m
+        ),
+      }));
+
+      if (!isGuestUser && user?.id) {
+        try {
+          await supabase
+            .from("group_members")
+            .update({ is_studying: isStudying })
+            .eq("group_id", groupId)
+            .eq("user_id", user.id);
+        } catch (err) {
+          console.error("Failed to update studying status:", err);
+        }
+      }
+
+      if (isStudying) {
+        toast.success("Focus presence: In Focus Room 🎯");
+      }
+    },
+    [user, isGuestUser]
   );
 
   // Load Sample Template Group for 1-Click Tutorial Demo
@@ -282,39 +536,6 @@ export function useGroups() {
     setActiveGroupId(SAMPLE_TEMPLATE_GROUP.id);
     toast.success("Loaded Sample Focus Squad template! Feel free to explore or create your own.");
   }, []);
-
-  // Leave Group
-  const leaveGroup = useCallback(
-    (groupId: string) => {
-      setGroups((prev) => prev.filter((g) => g.id !== groupId));
-      if (activeGroupId === groupId) {
-        const remaining = groups.filter((g) => g.id !== groupId);
-        setActiveGroupId(remaining.length > 0 ? remaining[0].id : "");
-      }
-      toast.info("You left the study group.");
-    },
-    [activeGroupId, groups]
-  );
-
-  // Toggle IsStudying status (Online study indicator)
-  const toggleStudyingStatus = useCallback(
-    (groupId: string, isStudying: boolean) => {
-      const userId = user?.id || "local_user";
-      setMembersMap((prev) => ({
-        ...prev,
-        [groupId]: (prev[groupId] || []).map((m) =>
-          m.userId === userId || m.displayName === (profile?.displayName || "You")
-            ? { ...m, isStudying }
-            : m
-        ),
-      }));
-
-      if (isStudying) {
-        toast.success("Focus status: Studying in Focus Room 🎯");
-      }
-    },
-    [user, profile]
-  );
 
   // Nudge a member
   const nudgeMember = useCallback((memberName: string) => {
@@ -329,11 +550,13 @@ export function useGroups() {
     activeGroupId,
     setActiveGroupId,
     members: activeGroupMembers,
+    loading,
     createGroup,
     joinGroup,
     leaveGroup,
     loadSampleSquad,
     toggleStudyingStatus,
     nudgeMember,
+    refreshGroups: fetchCloudGroups,
   };
 }
