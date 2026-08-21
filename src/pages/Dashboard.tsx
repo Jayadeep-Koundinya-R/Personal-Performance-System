@@ -595,7 +595,7 @@ function DashboardInner({ user }: { user: User }) {
           <button onClick={toggleTheme} className="p-1.5 rounded-xl bg-surface border border-border text-foreground hover:bg-muted transition-colors cursor-pointer text-sm" title="Toggle theme">
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
-          <div className="relative">
+          <div className="relative z-50">
             <button
               onClick={() => {
                 setNotifOpen(!notifOpen);
@@ -809,7 +809,7 @@ function DashboardInner({ user }: { user: User }) {
         <div className="flex-1 flex flex-col overflow-hidden relative z-10">
           <GuestTrialBanner />
           {/* Top bar — desktop only */}
-          <header className="hidden md:flex items-center justify-end px-8 py-3 border-b border-border bg-card/85 backdrop-blur-md gap-3" style={{ boxShadow: "var(--card-shadow)" }}>
+          <header className="hidden md:flex items-center justify-end px-8 py-3 border-b border-border bg-card/95 backdrop-blur-xl gap-3 relative z-40" style={{ boxShadow: "var(--card-shadow)" }}>
             <button
               onClick={toggleTheme}
               className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm cursor-pointer hover:bg-primary/10 transition-colors flex items-center gap-2"
@@ -818,7 +818,7 @@ function DashboardInner({ user }: { user: User }) {
               {theme === "dark" ? "☀️" : "🌙"}
               <span className="text-[12px] text-foreground">{theme === "dark" ? "Light" : "Dark"}</span>
             </button>
-            <div className="relative">
+            <div className="relative z-50">
               <button
                 onClick={() => {
                   setNotifOpen(!notifOpen);
