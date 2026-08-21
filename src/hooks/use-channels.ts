@@ -100,14 +100,22 @@ export function useChannels(groupId: string) {
       if (error) {
         console.error("Failed to fetch group channels:", error);
       } else if (data && data.length > 0) {
-        const mapped: GroupChannel[] = data.map((c) => ({
-          id: c.id,
-          groupId: c.group_id,
-          name: c.name,
-          description: c.description || "",
-          type: (c.type as GroupChannel["type"]) || "custom",
-          createdAt: c.created_at || new Date().toISOString(),
-        }));
+        const seenNames = new Set<string>();
+        const mapped: GroupChannel[] = [];
+        for (const c of data) {
+          const normName = (c.name || "").trim().toLowerCase();
+          if (!seenNames.has(normName)) {
+            seenNames.add(normName);
+            mapped.push({
+              id: c.id,
+              groupId: c.group_id,
+              name: c.name,
+              description: c.description || "",
+              type: (c.type as GroupChannel["type"]) || "custom",
+              createdAt: c.created_at || new Date().toISOString(),
+            });
+          }
+        }
 
         setChannelsMap((prev) => ({ ...prev, [groupId]: mapped }));
         if (!activeChannelId || !mapped.some((c) => c.id === activeChannelId)) {

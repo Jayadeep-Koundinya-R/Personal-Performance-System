@@ -9,9 +9,18 @@ interface MemberListProps {
 }
 
 export const MemberList: React.FC<MemberListProps> = ({ members, onNudge, onClose }) => {
-  const teachers = members.filter((m) => m.role === "teacher" || m.role === "mentor");
-  const admins = members.filter((m) => m.role === "admin");
-  const regularMembers = members.filter((m) => m.role === "member");
+  const uniqueMembers = React.useMemo(() => {
+    const map = new Map<string, GroupMember>();
+    members.forEach((m) => {
+      const key = m.userId || m.id;
+      if (!map.has(key)) map.set(key, m);
+    });
+    return Array.from(map.values());
+  }, [members]);
+
+  const teachers = uniqueMembers.filter((m) => m.role === "teacher" || m.role === "mentor");
+  const admins = uniqueMembers.filter((m) => m.role === "admin");
+  const regularMembers = uniqueMembers.filter((m) => m.role === "member");
 
   const renderMember = (m: GroupMember) => (
     <div

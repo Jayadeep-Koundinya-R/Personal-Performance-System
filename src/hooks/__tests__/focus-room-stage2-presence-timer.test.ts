@@ -104,4 +104,56 @@ describe("Focus Rooms Stage 2: Real Presence & Synced Group Pomodoro Timer", () 
     expect(result.current.timeLeft).toBe(25 * 60);
     expect(result.current.pomodoroMode).toBe("work");
   });
+
+  it("Stage 2.4: NaN Protection — Resets and Starts with Event objects or undefined never produce NaN", async () => {
+    const { result } = renderHook(() => useFocusRoom("group_cs_algorithms", "CS Algorithms Lab"));
+
+    act(() => {
+      result.current.joinRoom();
+    });
+
+    // Simulate button click passing a SyntheticEvent object to resetPomodoro
+    const mockClickEvent: any = { preventDefault: () => {}, target: {} };
+    await act(async () => {
+      await result.current.resetPomodoro(mockClickEvent);
+    });
+
+    expect(isNaN(result.current.timeLeft)).toBe(false);
+    expect(result.current.timeLeft).toBe(25 * 60);
+
+    // Simulate button click passing a SyntheticEvent object to startPomodoro
+    await act(async () => {
+      await result.current.startPomodoro(mockClickEvent);
+    });
+
+    expect(isNaN(result.current.timeLeft)).toBe(false);
+    expect(result.current.timeLeft).toBeGreaterThanOrEqual(1498);
+  });
+
+  it("Stage 2.5: Customizable Duration — Supports custom focus sprints (50m, 15m, 5m break)", async () => {
+    const { result } = renderHook(() => useFocusRoom("group_cs_algorithms", "CS Algorithms Lab"));
+
+    act(() => {
+      result.current.joinRoom();
+    });
+
+    // 50-minute deep sprint (3000 sec)
+    await act(async () => {
+      await result.current.startPomodoro(50 * 60, "work", "Deep Thesis Writing");
+    });
+
+    expect(result.current.isTimerRunning).toBe(true);
+    expect(result.current.timeLeft).toBeGreaterThanOrEqual(2998);
+    expect(result.current.timeLeft).toBeLessThanOrEqual(3000);
+
+    // 5-minute break (300 sec)
+    await act(async () => {
+      await result.current.startPomodoro(5 * 60, "break", "Tea Break");
+    });
+
+    expect(result.current.isTimerRunning).toBe(true);
+    expect(result.current.pomodoroMode).toBe("break");
+    expect(result.current.timeLeft).toBeGreaterThanOrEqual(298);
+    expect(result.current.timeLeft).toBeLessThanOrEqual(300);
+  });
 });

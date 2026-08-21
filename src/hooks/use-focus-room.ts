@@ -233,14 +233,14 @@ export function useFocusRoom(groupId: string, groupName: string) {
     channel
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
-        const livePeers: FocusParticipant[] = [];
+        const livePeersMap = new Map<string, FocusParticipant>();
 
         Object.keys(state).forEach((key) => {
           const presences = state[key] as any[];
           if (presences && presences.length > 0) {
             const p = presences[0];
             const isSelf = p.userId === myUserId;
-            livePeers.push({
+            livePeersMap.set(p.userId, {
               id: `presence_${p.userId}`,
               userId: p.userId,
               name: isSelf ? `${p.name} (You)` : p.name,
@@ -256,34 +256,14 @@ export function useFocusRoom(groupId: string, groupName: string) {
           }
         });
 
-        // Ensure current user is always included if in room
-        if (livePeers.length > 0) {
-          setParticipants(livePeers);
-        } else {
-          setParticipants([
-            {
-              id: `p_you_${Date.now()}`,
-              userId: myUserId,
-              name: `${myName} (You)`,
-              avatar: myAvatar,
-              role: "Host",
-              cameraOn: isCameraOn,
-              isMuted: isMuted,
-              isSharingScreen: isSharingScreen,
-              currentTask,
-              streak: profile?.streak || 1,
-              joinedAt: new Date().toISOString(),
-            },
-          ]);
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await channel.track({
+        // Always ensure local active user is included
+        if (!livePeersMap.has(myUserId)) {
+          livePeersMap.set(myUserId, {
+            id: `p_you_${Date.now()}`,
             userId: myUserId,
-            name: myName,
+            name: `${myName} (You)`,
             avatar: myAvatar,
-            role: "member",
+            role: "Host",
             cameraOn: isCameraOn,
             isMuted: isMuted,
             isSharingScreen: isSharingScreen,
@@ -291,6 +271,26 @@ export function useFocusRoom(groupId: string, groupName: string) {
             streak: profile?.streak || 1,
             joinedAt: new Date().toISOString(),
           });
+        }
+
+        setParticipants(Array.from(livePeersMap.values()));
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          try {
+            await channel.track({
+              userId: myUserId,
+              name: myName,
+              avatar: myAvatar,
+              role: "member",
+              cameraOn: isCameraOn,
+              isMuted: isMuted,
+              isSharingScreen: isSharingScreen,
+              currentTask,
+              streak: profile?.streak || 1,
+              joinedAt: new Date().toISOString(),
+            });
+          } catch {}
         }
       });
   }, [groupId, user, profile, isCameraOn, isMuted, isSharingScreen, currentTask]);
@@ -316,7 +316,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
       joinedAt: new Date().toISOString(),
     };
 
-    // Set genuine participant list (ONLY real user, zero fake participants)
+    // Set initial genuine participant list (ONLY real user)
     setParticipants([you]);
 
     // Setup Supabase Realtime Presence
@@ -389,7 +389,9 @@ export function useFocusRoom(groupId: string, groupName: string) {
         prev.map((p) => (p.name.includes("(You)") ? { ...p, cameraOn: false } : p))
       );
       if (presenceChannelRef.current) {
-        presenceChannelRef.current.track({ cameraOn: false });
+        try {
+          presenceChannelRef.current.track({ cameraOn: false });
+        } catch {}
       }
     } else {
       try {
@@ -401,7 +403,9 @@ export function useFocusRoom(groupId: string, groupName: string) {
             prev.map((p) => (p.name.includes("(You)") ? { ...p, cameraOn: true } : p))
           );
           if (presenceChannelRef.current) {
-            presenceChannelRef.current.track({ cameraOn: true });
+            try {
+              presenceChannelRef.current.track({ cameraOn: true });
+            } catch {}
           }
           toast.success("Camera enabled 🎥");
         } else {
@@ -426,7 +430,9 @@ export function useFocusRoom(groupId: string, groupName: string) {
       prev.map((p) => (p.name.includes("(You)") ? { ...p, isMuted: next } : p))
     );
     if (presenceChannelRef.current) {
-      presenceChannelRef.current.track({ isMuted: next });
+      try {
+        presenceChannelRef.current.track({ isMuted: next });
+      } catch {}
     }
     toast.info(next ? "Microphone muted 🔇" : "Microphone active 🎙️");
   }, [isMuted, localStream]);
@@ -443,7 +449,9 @@ export function useFocusRoom(groupId: string, groupName: string) {
         prev.map((p) => (p.name.includes("(You)") ? { ...p, isSharingScreen: false } : p))
       );
       if (presenceChannelRef.current) {
-        presenceChannelRef.current.track({ isSharingScreen: false });
+        try {
+          presenceChannelRef.current.track({ isSharingScreen: false });
+        } catch {}
       }
       toast.info("Stopped sharing screen");
     } else {
@@ -456,7 +464,9 @@ export function useFocusRoom(groupId: string, groupName: string) {
             prev.map((p) => (p.name.includes("(You)") ? { ...p, isSharingScreen: true } : p))
           );
           if (presenceChannelRef.current) {
-            presenceChannelRef.current.track({ isSharingScreen: true });
+            try {
+              presenceChannelRef.current.track({ isSharingScreen: true });
+            } catch {}
           }
           toast.success("Screen sharing active 🖥️");
 
@@ -464,7 +474,9 @@ export function useFocusRoom(groupId: string, groupName: string) {
             setIsSharingScreen(false);
             setScreenStream(null);
             if (presenceChannelRef.current) {
-              presenceChannelRef.current.track({ isSharingScreen: false });
+              try {
+                presenceChannelRef.current.track({ isSharingScreen: false });
+              } catch {}
             }
           };
         } else {
@@ -495,7 +507,17 @@ export function useFocusRoom(groupId: string, groupName: string) {
 
   // ── 6. Group Pomodoro Cloud Synchronization Actions ──
   const startPomodoro = useCallback(
-    async (durationSec: number = WORK_DURATION, mode: PomodoroMode = "work", task: string = "Group Focus Sprint") => {
+    async (
+      durationSecInput?: any,
+      modeInput: PomodoroMode = "work",
+      task: string = "Group Focus Sprint"
+    ) => {
+      const durationSec =
+        typeof durationSecInput === "number" && !isNaN(durationSecInput) && durationSecInput > 0
+          ? durationSecInput
+          : WORK_DURATION;
+
+      const mode = modeInput === "break" ? "break" : "work";
       const now = new Date();
       const endAt = new Date(now.getTime() + durationSec * 1000).toISOString();
       const userName = profile?.displayName || "Squad Member";
@@ -541,8 +563,13 @@ export function useFocusRoom(groupId: string, groupName: string) {
 
   const pausePomodoro = useCallback(async () => {
     const currentRemaining = calculateRemaining(targetEndAt, timeLeft, isTimerRunning);
+    const validRemaining =
+      typeof currentRemaining === "number" && !isNaN(currentRemaining) && currentRemaining >= 0
+        ? currentRemaining
+        : WORK_DURATION;
+
     setIsTimerRunning(false);
-    setTimeLeft(currentRemaining);
+    setTimeLeft(validRemaining);
     setTargetEndAt(null);
 
     const now = new Date();
@@ -552,7 +579,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
       started_at: null,
       target_end_at: null,
       total_sec: WORK_DURATION,
-      paused_remaining_sec: currentRemaining,
+      paused_remaining_sec: validRemaining,
       mode: pomodoroMode,
       task_name: currentTask,
       started_by: user?.id || null,
@@ -576,7 +603,12 @@ export function useFocusRoom(groupId: string, groupName: string) {
   }, [targetEndAt, timeLeft, isTimerRunning, calculateRemaining, groupId, pomodoroMode, currentTask, user, profile, isGuestUser]);
 
   const resetPomodoro = useCallback(
-    async (durationSec: number = WORK_DURATION) => {
+    async (durationSecInput?: any) => {
+      const durationSec =
+        typeof durationSecInput === "number" && !isNaN(durationSecInput) && durationSecInput > 0
+          ? durationSecInput
+          : WORK_DURATION;
+
       setIsTimerRunning(false);
       setPomodoroMode("work");
       setTimeLeft(durationSec);
