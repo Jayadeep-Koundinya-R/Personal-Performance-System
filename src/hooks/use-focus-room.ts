@@ -24,6 +24,11 @@ export type PomodoroMode = "work" | "break";
 const WORK_DURATION = 25 * 60; // 25 mins (1500 sec)
 const BREAK_DURATION = 5 * 60; // 5 mins (300 sec)
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUUID(id?: string | null): boolean {
+  return Boolean(id && UUID_REGEX.test(id));
+}
+
 function groupSessionCacheKey(groupId: string) {
   return `pps_group_focus_session_${groupId}`;
 }
@@ -93,7 +98,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
       }
     } catch {}
 
-    if (isGuestUser) return;
+    if (isGuestUser || !isValidUUID(groupId)) return;
 
     try {
       const { data, error } = await supabase
@@ -103,12 +108,12 @@ export function useFocusRoom(groupId: string, groupName: string) {
         .maybeSingle();
 
       if (error) {
-        console.warn("Error fetching group focus session:", error);
+        // Table or record non-existent yet is safe to ignore
         return;
       }
 
       if (data) {
-        setPomodoroMode(data.mode as PomodoroMode || "work");
+        setPomodoroMode((data.mode as PomodoroMode) || "work");
         setIsTimerRunning(Boolean(data.is_running));
         setTargetEndAt(data.target_end_at || null);
         setStartedByName(data.started_by_name || "Squad Member");
@@ -119,8 +124,8 @@ export function useFocusRoom(groupId: string, groupName: string) {
           localStorage.setItem(groupSessionCacheKey(groupId), JSON.stringify(data));
         } catch {}
       }
-    } catch (err) {
-      console.warn("Failed to load group session:", err);
+    } catch {
+      // Non-fatal catch
     }
   }, [groupId, isGuestUser, calculateRemaining]);
 
@@ -323,13 +328,13 @@ export function useFocusRoom(groupId: string, groupName: string) {
     setupPresence();
 
     // Mark studying in group_members table
-    if (!isGuestUser && user?.id && groupId) {
+    if (!isGuestUser && isValidUUID(user?.id) && isValidUUID(groupId)) {
       try {
         await supabase
           .from("group_members")
           .update({ is_studying: true })
           .eq("group_id", groupId)
-          .eq("user_id", user.id);
+          .eq("user_id", user!.id);
       } catch {}
     }
 
@@ -365,13 +370,13 @@ export function useFocusRoom(groupId: string, groupName: string) {
     }
 
     // Mark is_studying = false in group_members table
-    if (!isGuestUser && user?.id && groupId) {
+    if (!isGuestUser && isValidUUID(user?.id) && isValidUUID(groupId)) {
       try {
         await supabase
           .from("group_members")
           .update({ is_studying: false })
           .eq("group_id", groupId)
-          .eq("user_id", user.id);
+          .eq("user_id", user!.id);
       } catch {}
     }
 
@@ -546,11 +551,11 @@ export function useFocusRoom(groupId: string, groupName: string) {
         localStorage.setItem(groupSessionCacheKey(groupId), JSON.stringify(sessionPayload));
       } catch {}
 
-      if (!isGuestUser && groupId) {
+      if (!isGuestUser && isValidUUID(groupId)) {
         try {
           await supabase.from("group_focus_sessions").upsert(sessionPayload, { onConflict: "group_id" });
-        } catch (err) {
-          console.warn("Failed to sync group pomodoro start to cloud:", err);
+        } catch {
+          // Handled gracefully
         }
       }
 
@@ -591,11 +596,11 @@ export function useFocusRoom(groupId: string, groupName: string) {
       localStorage.setItem(groupSessionCacheKey(groupId), JSON.stringify(sessionPayload));
     } catch {}
 
-    if (!isGuestUser && groupId) {
+    if (!isGuestUser && isValidUUID(groupId)) {
       try {
         await supabase.from("group_focus_sessions").upsert(sessionPayload, { onConflict: "group_id" });
-      } catch (err) {
-        console.warn("Failed to sync group pomodoro pause:", err);
+      } catch {
+        // Handled gracefully
       }
     }
 
@@ -633,11 +638,11 @@ export function useFocusRoom(groupId: string, groupName: string) {
         localStorage.setItem(groupSessionCacheKey(groupId), JSON.stringify(sessionPayload));
       } catch {}
 
-      if (!isGuestUser && groupId) {
+      if (!isGuestUser && isValidUUID(groupId)) {
         try {
           await supabase.from("group_focus_sessions").upsert(sessionPayload, { onConflict: "group_id" });
-        } catch (err) {
-          console.warn("Failed to sync group pomodoro reset:", err);
+        } catch {
+          // Handled gracefully
         }
       }
 

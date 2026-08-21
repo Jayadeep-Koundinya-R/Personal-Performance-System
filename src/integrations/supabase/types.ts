@@ -681,6 +681,59 @@ export type Database = {
         }
         Relationships: []
       }
+      group_focus_sessions: {
+        Row: {
+          id: string
+          group_id: string
+          is_running: boolean
+          started_at: string | null
+          target_end_at: string | null
+          total_sec: number
+          paused_remaining_sec: number | null
+          mode: string
+          task_name: string
+          started_by: string | null
+          started_by_name: string
+          last_updated: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          is_running?: boolean
+          started_at?: string | null
+          target_end_at?: string | null
+          total_sec?: number
+          paused_remaining_sec?: number | null
+          mode?: string
+          task_name?: string
+          started_by?: string | null
+          started_by_name?: string
+          last_updated?: string
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          is_running?: boolean
+          started_at?: string | null
+          target_end_at?: string | null
+          total_sec?: number
+          paused_remaining_sec?: number | null
+          mode?: string
+          task_name?: string
+          started_by?: string | null
+          started_by_name?: string
+          last_updated?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_focus_sessions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       group_members: {
         Row: {
           id: string
