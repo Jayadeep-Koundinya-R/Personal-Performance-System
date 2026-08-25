@@ -26,72 +26,7 @@ export interface Masterclass {
   createdAt: string;
 }
 
-const DEFAULT_CLASSES: Masterclass[] = [
-  {
-    id: "cls_sys_design",
-    title: "Distributed Caching & Redis Architecture Masterclass",
-    subject: "Computer Science",
-    description: "Deep dive into cache invalidation, write-through vs write-back, and Redis cluster scaling for high-traffic apps.",
-    mentorId: "user_prof_dev",
-    mentorName: "Alex Vance",
-    mentorAvatar: "👨‍💻",
-    mentorRole: "Staff Distributed Systems Architect",
-    mentorBadge: "master",
-    rating: 4.9,
-    reviewCount: 38,
-    price: 199,
-    currency: "INR",
-    scheduledAt: new Date(Date.now() + 86400000 * 2).toISOString(), // in 2 days
-    durationMinutes: 60,
-    maxSeats: 30,
-    enrolledStudents: ["Elena Rostova", "Marcus K."],
-    recordingUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    resourcesUrl: "https://arxiv.org/abs/1706.03762",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "cls_gate_math",
-    title: "Engineering Mathematics & Calculus Shortcuts (GATE / JEE)",
-    subject: "Engineering & Exam Prep",
-    description: "Solve 20 high-frequency differential equations and linear algebra problems with rapid shortcut techniques.",
-    mentorId: "user_mentor_gate",
-    mentorName: "Prof. Sharma",
-    mentorAvatar: "👨‍🏫",
-    mentorRole: "Senior GATE Faculty",
-    mentorBadge: "verified",
-    rating: 4.8,
-    reviewCount: 52,
-    price: 149,
-    currency: "INR",
-    scheduledAt: new Date(Date.now() + 86400000 * 3).toISOString(),
-    durationMinutes: 75,
-    maxSeats: 40,
-    enrolledStudents: ["Rahul Sen", "Priya K."],
-    resourcesUrl: "https://google.com",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "cls_piano_voicings",
-    title: "Jazz Piano Voicings & Ear Training Workshop",
-    subject: "Music Theory",
-    description: "Master 2-5-1 chord progressions, rootless voicings, and improvisation scales over real backing tracks.",
-    mentorId: "user_maestro",
-    mentorName: "Maestro Julian",
-    mentorAvatar: "🎼",
-    mentorRole: "Concert Pianist & Producer",
-    mentorBadge: "master",
-    rating: 5.0,
-    reviewCount: 29,
-    price: 249,
-    currency: "INR",
-    scheduledAt: new Date(Date.now() + 86400000 * 4).toISOString(),
-    durationMinutes: 60,
-    maxSeats: 20,
-    enrolledStudents: ["Sarah K."],
-    recordingUrl: "https://youtube.com",
-    createdAt: new Date().toISOString(),
-  },
-];
+const DEFAULT_CLASSES: Masterclass[] = [];
 
 export function useClasses() {
   const { user } = useAuth();

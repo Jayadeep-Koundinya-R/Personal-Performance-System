@@ -39,6 +39,8 @@ import { useFocusTimer } from "@/hooks/use-focus-timer";
 import { ActiveCallProvider } from "@/context/ActiveCallContext";
 import { FloatingCallPiP } from "@/components/focus-rooms/FloatingCallPiP";
 import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
+import { KeyboardShortcutsModal } from "@/components/ui/KeyboardShortcutsModal";
+
 
 import { lazy, Suspense } from "react";
 import DashboardSection from "@/components/sections/DashboardSection";
@@ -237,7 +239,9 @@ function DashboardInner({ user }: { user: User }) {
   const { logout } = useAuth();
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [notifFilter, setNotifFilter] = useState<"all" | "unread">("all");
   const { calculateLevel, calculateTotalXP, habits, getTodayStr, isHabitDueToday, addHabit, toggleCompletion } = useHabits();
   const { theme, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllRead, clearAll, dismissNotification } = useNotifications();
@@ -245,6 +249,26 @@ function DashboardInner({ user }: { user: User }) {
   const { settings, loading: settingsLoading, completeOnboarding } = useUserSettings();
   const { isPro, refresh: refreshSub } = useSubscription();
   const focusTimer = useFocusTimer();
+
+  const desktopNotifRef = useRef<HTMLDivElement>(null);
+  const mobileNotifRef = useRef<HTMLDivElement>(null);
+
+  // Robust click/tap outside handler for notification dropdown
+  useEffect(() => {
+    if (!notifOpen) return;
+    function handlePointerDown(e: MouseEvent | TouchEvent) {
+      const target = e.target as Node;
+      const isInsideDesktop = desktopNotifRef.current && desktopNotifRef.current.contains(target);
+      const isInsideMobile = mobileNotifRef.current && mobileNotifRef.current.contains(target);
+      if (!isInsideDesktop && !isInsideMobile) {
+        setNotifOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [notifOpen]);
 
   // In-app reminder scheduler — checks every 60s for due reminders and habit time alerts
   useReminderScheduler();
@@ -394,8 +418,9 @@ function DashboardInner({ user }: { user: User }) {
     icon: string;
   }>({ show: false, type: "levelup", title: "", subtitle: "", icon: "" });
 
-  const prevLevelRef = useRef(calculateLevel());
-  const prevBadgeCountRef = useRef(0);
+  const isInitializedRef = useRef(false);
+  const prevLevelRef = useRef<number | null>(null);
+  const prevBadgeCountRef = useRef<number | null>(null);
 
   // Track badge unlocks
   const todayStr = getTodayStr();
@@ -423,16 +448,52 @@ function DashboardInner({ user }: { user: User }) {
     return count;
   }, [habits, todayStr, isHabitDueToday, calculateLevel]);
 
-  useEffect(() => {
-    prevBadgeCountRef.current = getBadgeCount();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Persistent seen storage keys
+  const seenBadgeKey = `pps_seen_badge_count_${user?.id || "guest"}`;
+  const seenLevelKey = `pps_seen_level_${user?.id || "guest"}`;
 
-  // Detect level up
+  // Safe Initialization: Hydrate previous seen values WITHOUT triggering celebratory popups
   useEffect(() => {
+    const currentCount = getBadgeCount();
     const currentLevel = calculateLevel();
-    if (currentLevel > prevLevelRef.current) {
-      const levelTitle = currentLevel >= 10 ? "Legend" : currentLevel >= 7 ? "Master" : currentLevel >= 5 ? "Warrior" : currentLevel >= 3 ? "Apprentice" : "Beginner";
+
+    // If not initialized yet, initialize refs from persistent storage or current state
+    if (!isInitializedRef.current) {
+      let savedSeenBadges = currentCount;
+      let savedSeenLevel = currentLevel;
+
+      try {
+        const storedBadgeCount = localStorage.getItem(seenBadgeKey);
+        if (storedBadgeCount !== null) {
+          savedSeenBadges = Math.max(Number(storedBadgeCount), currentCount);
+        }
+        const storedLevel = localStorage.getItem(seenLevelKey);
+        if (storedLevel !== null) {
+          savedSeenLevel = Math.max(Number(storedLevel), currentLevel);
+        }
+        localStorage.setItem(seenBadgeKey, String(savedSeenBadges));
+        localStorage.setItem(seenLevelKey, String(savedSeenLevel));
+      } catch {}
+
+      prevBadgeCountRef.current = savedSeenBadges;
+      prevLevelRef.current = savedSeenLevel;
+      isInitializedRef.current = true;
+      return;
+    }
+
+    // Active session Level Up detection (only when user actively levels up)
+    if (prevLevelRef.current !== null && currentLevel > prevLevelRef.current) {
+      const levelTitle =
+        currentLevel >= 10
+          ? "Legend"
+          : currentLevel >= 7
+          ? "Master"
+          : currentLevel >= 5
+          ? "Warrior"
+          : currentLevel >= 3
+          ? "Apprentice"
+          : "Beginner";
+
       setCelebration({
         show: true,
         type: "levelup",
@@ -440,14 +501,19 @@ function DashboardInner({ user }: { user: User }) {
         subtitle: `You've earned ${calculateTotalXP()} XP total!`,
         icon: "⬆️",
       });
-    }
-    prevLevelRef.current = currentLevel;
-  }, [calculateLevel, calculateTotalXP]);
 
-  // Detect badge unlock
-  useEffect(() => {
-    const currentCount = getBadgeCount();
-    if (currentCount > prevBadgeCountRef.current && !celebration.show) {
+      prevLevelRef.current = currentLevel;
+      try {
+        localStorage.setItem(seenLevelKey, String(currentLevel));
+      } catch {}
+    }
+
+    // Active session Badge Unlock detection (only when user actively unlocks a new badge)
+    if (
+      prevBadgeCountRef.current !== null &&
+      currentCount > prevBadgeCountRef.current &&
+      !celebration.show
+    ) {
       setCelebration({
         show: true,
         type: "badge",
@@ -455,18 +521,28 @@ function DashboardInner({ user }: { user: User }) {
         subtitle: `You now have ${currentCount} badges. Keep going!`,
         icon: "🏅",
       });
+
+      prevBadgeCountRef.current = currentCount;
+      try {
+        localStorage.setItem(seenBadgeKey, String(currentCount));
+      } catch {}
     }
-    prevBadgeCountRef.current = currentCount;
-  }, [getBadgeCount, celebration.show]);
+  }, [getBadgeCount, calculateLevel, calculateTotalXP, celebration.show, seenBadgeKey, seenLevelKey]);
 
   const level = calculateLevel();
   const xp = calculateTotalXP();
   const displayName = profile?.displayName ||
     (user.email ? user.email.split("@")[0] : "Guest");
 
-  // Navigation handler — allows sections to navigate to other sections
-  const navigateToSection = useCallback((section: SectionKey) => {
-    setActiveSection(section);
+  // Navigation handler — allows sections to navigate to other sections safely
+  const navigateToSection = useCallback((section: string) => {
+    if (section === "focus" || section === "squad" || section === "study-squad") {
+      setActiveSection("social");
+    } else if (section === "pomodoro" || section === "timer") {
+      setActiveSection("tracker");
+    } else if (NAV_ITEMS.some((n) => n.key === section)) {
+      setActiveSection(section as SectionKey);
+    }
   }, []);
 
   const renderSection = () => {
@@ -595,12 +671,9 @@ function DashboardInner({ user }: { user: User }) {
           <button onClick={toggleTheme} className="p-1.5 rounded-xl bg-surface border border-border text-foreground hover:bg-muted transition-colors cursor-pointer text-sm" title="Toggle theme">
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
-          <div className="relative z-50">
+          <div ref={mobileNotifRef} className="relative z-[1010]">
             <button
-              onClick={() => {
-                setNotifOpen(!notifOpen);
-                if (!notifOpen) markAllRead();
-              }}
+              onClick={() => setNotifOpen(!notifOpen)}
               className={`p-2 rounded-xl border transition-all cursor-pointer relative flex items-center justify-center ${
                 notifOpen
                   ? "bg-primary/20 border-primary text-primary shadow-sm"
@@ -617,62 +690,137 @@ function DashboardInner({ user }: { user: User }) {
             </button>
             <AnimatePresence>
               {notifOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-                  <motion.div
-                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/10 dark:ring-white/10"
-                  >
-                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#111625] flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-black text-xs font-mono uppercase tracking-wider text-foreground">
-                          🔔 Notifications
-                        </span>
-                        {unreadCount > 0 && (
-                          <span className="text-[10px] font-mono font-black bg-primary/15 text-primary px-1.5 py-0.2 rounded-full">
-                            {unreadCount}
-                          </span>
-                        )}
-                      </div>
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-card border border-border rounded-2xl shadow-2xl z-[1020] overflow-hidden ring-1 ring-black/10 dark:ring-white/10 flex flex-col"
+                >
+                  {/* GitHub-Style Filter Ribbon */}
+                  <div className="px-3 py-2 border-b border-border/80 bg-surface/90 flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1 bg-card p-0.5 rounded-xl border border-border/60">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNotifFilter("all");
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                          notifFilter === "all"
+                            ? "bg-primary text-primary-foreground font-black"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        All ({notifications.length})
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNotifFilter("unread");
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          notifFilter === "unread"
+                            ? "bg-primary text-primary-foreground font-black"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <span>Unread</span>
+                        {unreadCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAllRead();
+                          }}
+                          className="px-1.5 py-0.5 rounded-lg text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-surface cursor-pointer"
+                          title="Mark all as read"
+                        >
+                          ✓ Read
+                        </button>
+                      )}
                       {notifications.length > 0 && (
                         <button
-                          onClick={clearAll}
-                          className="text-[11px] font-bold text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearAll();
+                          }}
+                          className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-surface cursor-pointer"
+                          title="Clear all"
                         >
-                          Clear all
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       )}
                     </div>
-                    {notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-muted-foreground bg-white dark:bg-[#0b0f19]">
-                        <div className="text-2xl mb-1.5">✨</div>
-                        <div className="text-xs font-bold text-foreground">All caught up!</div>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">No active alerts</p>
+                  </div>
+
+                  {notifications.filter((n) => (notifFilter === "unread" ? !n.read : true)).length === 0 ? (
+                    <div className="px-4 py-8 text-center text-muted-foreground bg-card">
+                      <div className="w-10 h-10 mx-auto mb-2 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-xl shadow-inner">
+                        ✨
                       </div>
-                    ) : (
-                      <div className="max-h-72 overflow-y-auto p-2 space-y-1.5 bg-white dark:bg-[#0b0f19]">
-                        {notifications.slice(0, 10).map((n, i) => (
-                          <motion.div
-                            key={n.id}
-                            initial={{ opacity: 0, y: 3 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.02 }}
-                            onClick={() => markAsRead(n.id)}
-                            className={`p-2.5 rounded-xl border transition-all cursor-pointer relative group ${
-                              !n.read
-                                ? "bg-primary/5 dark:bg-[#151c2e] border-primary/40 shadow-xs"
-                                : "bg-slate-50 dark:bg-[#111625] border-slate-200/80 dark:border-slate-800/80"
-                            }`}
-                          >
-                            <div className="flex items-start gap-2.5">
-                              <span className="text-base mt-0.5 flex-shrink-0">{n.icon || "🔔"}</span>
+                      <div className="text-xs font-bold text-foreground">
+                        {notifFilter === "unread" ? "All Caught Up!" : "Inbox is Empty"}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 max-w-[200px] mx-auto">
+                        {notifFilter === "unread" ? "No unread alerts waiting." : "No notifications yet."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-72 overflow-y-auto p-2 space-y-1.5 bg-card">
+                      {notifications
+                        .filter((n) => (notifFilter === "unread" ? !n.read : true))
+                        .slice(0, 10)
+                        .map((n, i) => {
+                          const typeColor = 
+                            n.type === "alarm" ? "text-rose-400 bg-rose-500/15 border-rose-500/30" :
+                            n.type === "streak" ? "text-amber-400 bg-amber-500/15 border-amber-500/30" :
+                            n.type === "levelup" ? "text-purple-400 bg-purple-500/15 border-purple-500/30" :
+                            n.type === "achievement" ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/30" :
+                            n.type === "quest" ? "text-indigo-400 bg-indigo-500/15 border-indigo-500/30" :
+                            "text-cyan-400 bg-cyan-500/15 border-cyan-500/30";
+
+                          const typeIcon =
+                            n.type === "alarm" ? "⏰" :
+                            n.type === "streak" ? "🔥" :
+                            n.type === "levelup" ? "👑" :
+                            n.type === "achievement" ? "🏅" :
+                            n.type === "quest" ? "⚔️" :
+                            "📋";
+
+                          return (
+                            <motion.div
+                              key={n.id}
+                              initial={{ opacity: 0, y: 3 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.02 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAsRead(n.id);
+                              }}
+                              className={`p-2.5 rounded-xl border transition-all cursor-pointer relative group flex items-start gap-2.5 ${
+                                !n.read
+                                  ? "bg-gradient-to-r from-primary/10 via-card to-card border-primary/40 shadow-2xs"
+                                  : "bg-surface/50 border-border/50 hover:border-border"
+                              }`}
+                            >
+                              <div className="w-7 h-7 rounded-lg bg-surface border border-border/60 flex items-center justify-center text-xs flex-shrink-0 shadow-2xs mt-0.5">
+                                {typeIcon}
+                              </div>
                               <div className="min-w-0 flex-1 pr-3">
-                                <div className="text-[11.5px] font-bold text-foreground truncate">{n.title}</div>
-                                <div className="text-[10.5px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</div>
-                                <div className="text-[9px] text-muted-foreground/70 mt-1 font-mono">{n.time}</div>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <span className={`text-[8px] font-mono uppercase font-black px-1.5 py-0.2 rounded-md border ${typeColor}`}>
+                                    {n.type || "alert"}
+                                  </span>
+                                  <span className="text-[11px] font-bold text-foreground truncate">{n.title}</span>
+                                  {!n.read && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse ml-auto" />
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</div>
+                                <div className="text-[8.5px] text-muted-foreground/70 mt-1 font-mono">{n.time}</div>
                               </div>
                               <button
                                 onClick={(e) => {
@@ -680,17 +828,30 @@ function DashboardInner({ user }: { user: User }) {
                                   dismissNotification(n.id);
                                 }}
                                 title="Dismiss notification"
-                                className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-surface transition-all cursor-pointer absolute top-1.5 right-1.5"
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-surface transition-all cursor-pointer absolute top-2 right-2"
                               >
                                 <X className="w-3 h-3" />
                               </button>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
-                </>
+                            </motion.div>
+                          );
+                        })}
+                    </div>
+                  )}
+
+                  {/* Mobile Footer */}
+                  <div className="px-3 py-2 border-t border-border/80 bg-surface/60 flex items-center justify-between text-[10px]">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNotifOpen(false);
+                        setActiveSection("reminders");
+                      }}
+                      className="text-muted-foreground hover:text-primary font-mono font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <span>🔔 Alert Preferences →</span>
+                    </button>
+                  </div>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
@@ -722,225 +883,357 @@ function DashboardInner({ user }: { user: User }) {
         <ThreeDBackground />
 
         {/* Sidebar */}
-        <aside className={`
-          w-[230px] bg-card/90 backdrop-blur-xl border-r border-border/80 flex flex-col flex-shrink-0
-          md:relative md:translate-x-0
-          fixed top-0 bottom-0 left-0 z-[1001] transition-transform duration-300
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-        `} style={{ boxShadow: "var(--card-shadow)" }}>
-          <div className="font-mono text-xl font-bold text-primary px-5 py-6 border-b border-border tracking-[2px]">
-            PPS<span className="text-secondary">.</span>
+        <aside
+          className={`
+            bg-card/90 backdrop-blur-xl border-r border-border/80 flex flex-col flex-shrink-0
+            md:relative md:translate-x-0
+            fixed top-0 bottom-0 left-0 z-[1001] transition-all duration-300
+            ${sidebarCollapsed ? "md:w-[72px]" : "md:w-[235px]"}
+            ${sidebarOpen ? "w-[235px] translate-x-0" : "-translate-x-full md:translate-x-0"}
+          `}
+          style={{ boxShadow: "var(--card-shadow)" }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-5 border-b border-border/80">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <span className="w-3 h-3 rounded-full bg-primary animate-pulse flex-shrink-0" />
+              {!sidebarCollapsed && (
+                <span className="font-mono text-lg font-black text-primary tracking-[1.5px] truncate">
+                  PPS<span className="text-secondary">.</span>
+                </span>
+              )}
+            </div>
+            {/* Desktop Collapse Toggle */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden md:flex p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer text-xs"
+              title={sidebarCollapsed ? "Expand Sidebar (Ctrl+B)" : "Collapse Sidebar (Ctrl+B)"}
+            >
+              {sidebarCollapsed ? "→" : "←"}
+            </button>
+            {/* Mobile Close Button */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface cursor-pointer text-xs"
+            >
+              ✕
+            </button>
           </div>
 
-          <nav className="py-3 flex-1 overflow-y-auto">
-            <ul className="list-none">
-              {NAV_ITEMS.map((item, index) => (
-                <motion.li
-                  key={item.key}
-                  initial={{ opacity: 0, x: -15 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.03, duration: 0.3 }}
-                  onClick={() => { setActiveSection(item.key); setSidebarOpen(false); }}
-                  className={`
-                    py-[11px] px-5 cursor-pointer text-[13.5px] flex items-center gap-2.5
-                    border-l-[3px] transition-all duration-200
-                    ${activeSection === item.key
-                      ? "text-primary bg-primary/10 border-l-primary font-semibold shadow-[inset_0_0_20px_hsl(var(--primary)/0.05)]"
-                      : "text-muted-foreground border-l-transparent hover:text-foreground hover:bg-primary/[0.04] hover:border-l-primary/30"}
-                  `}
-                >
-                  <motion.span
-                    animate={activeSection === item.key ? { scale: [1, 1.15, 1] } : {}}
-                    transition={{ duration: 0.3 }}
+          {/* Nav List */}
+          <nav className="py-2.5 flex-1 overflow-y-auto overflow-x-hidden">
+            <ul className="list-none space-y-0.5 px-2">
+              {NAV_ITEMS.map((item, index) => {
+                const isActive = activeSection === item.key;
+                return (
+                  <motion.li
+                    key={item.key}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.02, duration: 0.2 }}
+                    onClick={() => {
+                      setActiveSection(item.key);
+                      setSidebarOpen(false);
+                    }}
+                    title={sidebarCollapsed ? item.label : undefined}
+                    className={`
+                      px-3 py-2 rounded-xl cursor-pointer text-xs flex items-center gap-2.5 transition-all relative group
+                      ${
+                        isActive
+                          ? "bg-primary text-primary-foreground font-black shadow-xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-surface"
+                      }
+                      ${sidebarCollapsed ? "justify-center px-0" : ""}
+                    `}
                   >
-                    {item.icon}
-                  </motion.span>
-                  <span>{item.label}</span>
-                  {item.key === "tracker" && focusTimer.isRunning && activeSection !== "tracker" && (
-                    <motion.div
-                      animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                      className="ml-auto w-2 h-2 rounded-full bg-pps-green shadow-[0_0_6px_hsl(var(--pps-green))]"
-                      title="Focus session active"
-                    />
-                  )}
-                  {activeSection === item.key && (
-                    <motion.div
-                      layoutId="activeNav"
-                      className="ml-auto w-1.5 h-1.5 rounded-full bg-primary"
-                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    />
-                  )}
-                </motion.li>
-              ))}
+                    <span className="text-base flex-shrink-0">{item.icon}</span>
+                    {!sidebarCollapsed && (
+                      <span className="truncate flex-1 font-medium">{item.label}</span>
+                    )}
+                    {/* Active Dot Indicator */}
+                    {isActive && (
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full bg-primary-foreground flex-shrink-0 animate-pulse ${
+                          sidebarCollapsed ? "absolute top-1.5 right-1.5" : ""
+                        }`}
+                      />
+                    )}
+                    {!sidebarCollapsed && item.key === "tracker" && focusTimer.isRunning && !isActive && (
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping flex-shrink-0" />
+                    )}
+                  </motion.li>
+                );
+              })}
             </ul>
           </nav>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="px-5 py-4 border-t border-border"
-          >
-            {!isPro && !user.isGuest && (
+          {/* User & Pro Footer */}
+          <div className="p-3 border-t border-border/80 bg-surface/40 flex-shrink-0">
+            {!isPro && !user.isGuest && !sidebarCollapsed && (
               <Link
                 to="/pricing"
-                className="block mb-3 text-center text-[12px] bg-primary/10 text-primary border border-primary/20 py-2 rounded-lg font-semibold hover:bg-primary/15"
+                className="block mb-2.5 text-center text-[11px] font-bold bg-primary/10 text-primary border border-primary/25 py-1.5 rounded-xl hover:bg-primary/20 transition-all shadow-2xs"
               >
                 Upgrade to Pro ✨
               </Link>
             )}
-            {isPro && (
-              <div className="mb-3 text-center text-[11px] font-semibold text-primary">Pro Member</div>
-            )}
-            <div className="flex items-center gap-2.5 bg-surface px-3 py-2.5 rounded-lg border border-border">
-              <div className="w-[30px] h-[30px] rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-xs font-bold text-primary-foreground flex-shrink-0">
+            <div className={`flex items-center gap-2.5 ${sidebarCollapsed ? "justify-center" : "px-1"}`}>
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-xs font-black text-primary-foreground flex-shrink-0 shadow-xs">
                 {displayName[0]?.toUpperCase() || "U"}
               </div>
-              <div>
-                <div className="text-[13px] font-semibold">{displayName}</div>
-                <div className="text-[11px] text-muted-foreground">Level {level} • {xp} XP</div>
-              </div>
+              {!sidebarCollapsed && (
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold text-foreground truncate">{displayName}</div>
+                  <div className="text-[10px] text-muted-foreground font-mono">
+                    Lvl {level} • {xp} XP
+                  </div>
+                </div>
+              )}
             </div>
-          </motion.div>
+          </div>
         </aside>
 
         {/* Main */}
         <div className="flex-1 flex flex-col overflow-hidden relative z-10">
           <GuestTrialBanner />
-          {/* Top bar — desktop only */}
-          <header className="hidden md:flex items-center justify-end px-8 py-3 border-b border-border bg-card/95 backdrop-blur-xl gap-3 relative z-40" style={{ boxShadow: "var(--card-shadow)" }}>
-            <button
-              onClick={toggleTheme}
-              className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm cursor-pointer hover:bg-primary/10 transition-colors flex items-center gap-2"
-              title="Toggle theme"
-            >
-              {theme === "dark" ? "☀️" : "🌙"}
-              <span className="text-[12px] text-foreground">{theme === "dark" ? "Light" : "Dark"}</span>
-            </button>
-            <div className="relative z-50">
+          {/* Top bar — desktop only (GitHub-Style) */}
+          <header
+            className="hidden md:flex items-center justify-between px-6 py-2.5 border-b border-border/80 bg-card/95 backdrop-blur-xl gap-3 sticky top-0 z-[100] shadow-xs"
+            style={{ boxShadow: "var(--card-shadow)" }}
+          >
+            {/* Breadcrumb / Workspace Header */}
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <span className="text-muted-foreground">workspace</span>
+              <span className="text-muted-foreground/60">/</span>
+              <span className="font-bold text-foreground flex items-center gap-1.5 bg-surface px-2.5 py-1 rounded-lg border border-border/60">
+                <span>{NAV_ITEMS.find((n) => n.key === activeSection)?.icon}</span>
+                <span>{NAV_ITEMS.find((n) => n.key === activeSection)?.label}</span>
+              </span>
+            </div>
+
+            {/* Right Tools: Theme + GitHub-Style Notifications + Logout */}
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  setNotifOpen(!notifOpen);
-                  if (!notifOpen) markAllRead();
-                }}
-                className={`bg-surface border rounded-xl px-3 py-1.5 text-sm cursor-pointer transition-all flex items-center gap-1.5 relative ${
-                  notifOpen
-                    ? "border-primary bg-primary/15 text-primary shadow-sm"
-                    : "border-border hover:bg-primary/10 hover:border-primary/40 text-foreground"
-                }`}
-                title="Notifications"
+                onClick={toggleTheme}
+                className="bg-surface border border-border/80 rounded-xl px-2.5 py-1.5 text-xs cursor-pointer hover:bg-surface/80 transition-colors flex items-center gap-1.5 text-foreground"
+                title="Toggle theme"
               >
-                <Bell className="w-4 h-4" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-mono font-black rounded-full flex items-center justify-center shadow-md animate-pulse">
-                    {unreadCount}
-                  </span>
-                )}
+                {theme === "dark" ? "☀️" : "🌙"}
               </button>
-              {/* Notification dropdown */}
-              <AnimatePresence>
-                {notifOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+
+              {/* GitHub-Style Notification Center */}
+              <div ref={desktopNotifRef} className="relative z-[110]">
+                <button
+                  onClick={() => setNotifOpen(!notifOpen)}
+                  className={`bg-surface border rounded-xl px-3 py-1.5 text-xs cursor-pointer transition-all flex items-center gap-1.5 relative ${
+                    notifOpen
+                      ? "border-primary bg-primary/15 text-primary shadow-sm"
+                      : "border-border/80 hover:bg-surface/80 text-foreground"
+                  }`}
+                  title="Notifications"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  {unreadCount > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  )}
+                  <span className="font-mono text-[11px] font-bold">{unreadCount > 0 ? unreadCount : ""}</span>
+                </button>
+
+                {/* Dropdown Card */}
+                <AnimatePresence>
+                  {notifOpen && (
                     <motion.div
                       initial={{ opacity: 0, y: -6, scale: 0.97 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.97 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/10 dark:ring-white/10"
+                      className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-2xl z-[120] overflow-hidden ring-1 ring-black/10 dark:ring-white/10 flex flex-col"
                     >
-                      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#111625] flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-black text-xs font-mono uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                            <Bell className="w-3.5 h-3.5 text-primary" />
-                            <span>Notifications</span>
-                          </span>
-                          {unreadCount > 0 ? (
-                            <span className="text-[10px] font-mono font-black bg-primary/15 text-primary px-2 py-0.5 rounded-full border border-primary/30">
-                              {unreadCount} New
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-mono font-medium text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">
-                              All read
-                            </span>
+                      {/* Top GitHub-Style Filter Ribbon */}
+                      <div className="px-3.5 py-2.5 border-b border-border/80 bg-surface/90 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1 bg-card p-0.5 rounded-xl border border-border/60">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNotifFilter("all");
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                              notifFilter === "all"
+                                ? "bg-primary text-primary-foreground font-black shadow-xs"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            All ({notifications.length})
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNotifFilter("unread");
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                              notifFilter === "unread"
+                                ? "bg-primary text-primary-foreground font-black shadow-xs"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <span>Unread</span>
+                            {unreadCount > 0 && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            )}
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          {unreadCount > 0 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAllRead();
+                              }}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface text-[11px] font-bold transition-colors cursor-pointer"
+                              title="Mark all as read"
+                            >
+                              ✓ Read
+                            </button>
+                          )}
+                          {notifications.length > 0 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                clearAll();
+                              }}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-surface text-[11px] font-bold transition-colors cursor-pointer"
+                              title="Clear all"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </div>
-                        {notifications.length > 0 && (
-                          <button
-                            onClick={clearAll}
-                            className="text-[11px] font-bold text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            <span>Clear all</span>
-                          </button>
-                        )}
                       </div>
-                      {notifications.length === 0 ? (
-                        <div className="px-6 py-10 text-center text-muted-foreground bg-white dark:bg-[#0b0f19]">
-                          <div className="w-12 h-12 mx-auto mb-2 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl">
+
+                      {/* List Area */}
+                      {notifications.filter((n) => (notifFilter === "unread" ? !n.read : true)).length === 0 ? (
+                        <div className="px-6 py-10 text-center text-muted-foreground bg-card">
+                          <div className="w-12 h-12 mx-auto mb-2.5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl shadow-inner">
                             ✨
                           </div>
-                          <div className="text-xs font-bold text-foreground">All caught up!</div>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            No new notifications or habit reminders.
+                          <div className="text-xs font-bold text-foreground">
+                            {notifFilter === "unread" ? "All Caught Up!" : "Inbox is Empty"}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-1 max-w-[220px] mx-auto leading-relaxed">
+                            {notifFilter === "unread"
+                              ? "You have completed all active habit alerts and streak reminders."
+                              : "Habit alerts, streak freezes, and milestone updates will appear here."}
                           </p>
                         </div>
                       ) : (
-                        <div className="max-h-80 overflow-y-auto p-2.5 space-y-1.5 bg-white dark:bg-[#0b0f19]">
-                          {notifications.slice(0, 15).map((n, i) => (
-                            <motion.div
-                              key={n.id}
-                              initial={{ opacity: 0, y: 3 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: i * 0.02 }}
-                              onClick={() => markAsRead(n.id)}
-                              className={`p-3 rounded-xl border transition-all cursor-pointer relative group ${
-                                !n.read
-                                  ? "bg-primary/5 dark:bg-[#151c2e] border-primary/40 shadow-xs"
-                                  : "bg-slate-50 dark:bg-[#111625] border-slate-200/80 dark:border-slate-800/80 hover:border-border"
-                              }`}
-                            >
-                              <div className="flex items-start gap-2.5">
-                                <span className="text-base mt-0.5 flex-shrink-0">{n.icon || "🔔"}</span>
-                                <div className="min-w-0 flex-1 pr-3">
-                                  <div className="flex items-center gap-1.5">
-                                    <div className="text-xs font-bold text-foreground truncate">{n.title}</div>
-                                    {!n.read && (
-                                      <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                                    )}
-                                  </div>
-                                  <div className="text-[11px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">{n.message}</div>
-                                  <div className="text-[9.5px] text-muted-foreground/70 mt-1 font-mono">{n.time}</div>
-                                </div>
-                                <button
+                        <div className="max-h-80 overflow-y-auto p-2 space-y-1.5 bg-card">
+                          {notifications
+                            .filter((n) => (notifFilter === "unread" ? !n.read : true))
+                            .slice(0, 15)
+                            .map((n, i) => {
+                              const typeColor = 
+                                n.type === "alarm" ? "text-rose-400 bg-rose-500/15 border-rose-500/30" :
+                                n.type === "streak" ? "text-amber-400 bg-amber-500/15 border-amber-500/30" :
+                                n.type === "levelup" ? "text-purple-400 bg-purple-500/15 border-purple-500/30" :
+                                n.type === "achievement" ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/30" :
+                                n.type === "quest" ? "text-indigo-400 bg-indigo-500/15 border-indigo-500/30" :
+                                "text-cyan-400 bg-cyan-500/15 border-cyan-500/30";
+
+                              const typeIcon =
+                                n.type === "alarm" ? "⏰" :
+                                n.type === "streak" ? "🔥" :
+                                n.type === "levelup" ? "👑" :
+                                n.type === "achievement" ? "🏅" :
+                                n.type === "quest" ? "⚔️" :
+                                "📋";
+
+                              return (
+                                <motion.div
+                                  key={n.id}
+                                  initial={{ opacity: 0, y: 4 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: i * 0.02 }}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    dismissNotification(n.id);
+                                    markAsRead(n.id);
                                   }}
-                                  title="Dismiss notification"
-                                  className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-surface transition-all cursor-pointer absolute top-2 right-2"
+                                  className={`p-3 rounded-2xl border transition-all cursor-pointer relative group flex items-start gap-3 ${
+                                    !n.read
+                                      ? "bg-gradient-to-r from-primary/10 via-card to-card border-primary/40 shadow-xs"
+                                      : "bg-surface/40 border-border/50 hover:border-border hover:bg-surface/70"
+                                  }`}
                                 >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </motion.div>
-                          ))}
+                                  {/* Icon container */}
+                                  <div className="w-8 h-8 rounded-xl bg-surface border border-border/60 flex items-center justify-center text-sm flex-shrink-0 shadow-2xs mt-0.5">
+                                    {typeIcon}
+                                  </div>
+
+                                  {/* Content */}
+                                  <div className="min-w-0 flex-1 pr-3">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className={`text-[8.5px] font-mono uppercase font-black px-1.5 py-0.2 rounded-md border ${typeColor}`}>
+                                        {n.type || "alert"}
+                                      </span>
+                                      <span className="text-xs font-bold text-foreground truncate">{n.title}</span>
+                                      {!n.read && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse ml-auto" />
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-muted-foreground leading-snug mt-1 line-clamp-2">
+                                      {n.message}
+                                    </div>
+                                    <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-border/30 text-[9.5px] text-muted-foreground font-mono">
+                                      <span>{n.time}</span>
+                                      {!n.read && (
+                                        <span className="text-primary font-bold hover:underline">Click to mark read</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Quick dismiss button */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      dismissNotification(n.id);
+                                    }}
+                                    title="Dismiss"
+                                    className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-surface transition-all cursor-pointer absolute top-2.5 right-2.5"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </motion.div>
+                              );
+                            })}
                         </div>
                       )}
+
+                      {/* Dropdown Footer Quick Link */}
+                      <div className="px-3.5 py-2 border-t border-border/80 bg-surface/60 flex items-center justify-between text-[11px]">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNotifOpen(false);
+                            setActiveSection("reminders");
+                          }}
+                          className="text-muted-foreground hover:text-primary font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <span>🔔 Manage Alert Preferences →</span>
+                        </button>
+                      </div>
                     </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <button
+                onClick={logout}
+                className="bg-surface border border-border/80 rounded-xl px-3 py-1.5 text-xs cursor-pointer hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-colors flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                title="Log out"
+              >
+                <span>Logout</span>
+              </button>
             </div>
-            <button
-              onClick={logout}
-              className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm cursor-pointer hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-colors flex items-center gap-2"
-              title="Log out"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-              <span className="text-[12px] font-medium">Logout</span>
-            </button>
           </header>
 
           <main className="flex-1 px-4 py-4 pb-24 md:px-8 md:py-7 md:pb-7 overflow-y-auto">
@@ -1092,11 +1385,6 @@ function DashboardInner({ user }: { user: User }) {
           </>
         )}
       </AnimatePresence>
-
-      {/* Close notif on click outside */}
-      {notifOpen && (
-        <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-      )}
       <FloatingMiniTimer activeSection={activeSection} onNavigate={(s) => setActiveSection(s as any)} />
       <FloatingCallPiP />
       <AiChatWidget />
@@ -1115,9 +1403,13 @@ function DashboardInner({ user }: { user: User }) {
         onClose={() => setShowVoiceModal(false)}
         onNavigate={(s) => setActiveSection(s as any)}
       />
+
+      {/* ⌨️ Power User Keyboard Shortcuts (?) */}
+      <KeyboardShortcutsModal onNavigate={(s) => setActiveSection(s as any)} />
     </>
   );
 }
+
 
 const DashboardPage = () => {
   const { user, isLoggedIn, loading } = useAuth();

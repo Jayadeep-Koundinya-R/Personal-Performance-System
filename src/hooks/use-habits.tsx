@@ -37,6 +37,7 @@ interface HabitsContextType {
   toggleCompletion: (id: string, targetDateStr?: string) => Promise<void>;
   markAllDone: () => Promise<void>;
   useStreakFreeze: (habitId: string) => Promise<string | null>;
+  applyStreakFreeze: (habitId: string) => Promise<string | null>;
   isHabitDueToday: (habit: Habit) => boolean;
   getTodayStr: () => string;
   calculateTotalXP: () => number;
@@ -327,7 +328,7 @@ export function HabitsProvider({
     return null;
   }, [habits.length, maxHabits, isGuest, userId, fetchHabits]);
 
-  const useStreakFreeze = useCallback(async (habitId: string): Promise<string | null> => {
+  const applyStreakFreeze = useCallback(async (habitId: string): Promise<string | null> => {
     const habit = habits.find((h) => h.id === habitId);
     if (!habit) return "Habit not found.";
     if ((habit.freezeCredits || 0) <= 0) return "No freeze credits remaining.";
@@ -398,7 +399,7 @@ export function HabitsProvider({
           !habit.archived
         ) {
           console.log(`Auto-applying streak freeze for habit: ${habit.name}`);
-          const err = await useStreakFreeze(habit.id);
+          const err = await applyStreakFreeze(habit.id);
           if (!err) {
             anyFrozen = true;
           }
@@ -411,7 +412,7 @@ export function HabitsProvider({
     };
 
     checkAndAutoFreeze();
-  }, [habits, loading, settingsLoading, autoChecked, settings?.autoStreakFreeze, useStreakFreeze]);
+  }, [habits, loading, settingsLoading, autoChecked, settings?.autoStreakFreeze, applyStreakFreeze]);
 
   const deleteHabit = useCallback(async (id: string) => {
     const previousHabits = [...habits];
@@ -687,7 +688,9 @@ export function HabitsProvider({
   return (
     <HabitsContext.Provider
       value={{
-        habits, loading, addHabit, deleteHabit, updateHabit, toggleCompletion, markAllDone, useStreakFreeze,
+        habits, loading, addHabit, deleteHabit, updateHabit, toggleCompletion, markAllDone,
+        useStreakFreeze: applyStreakFreeze,
+        applyStreakFreeze,
         isHabitDueToday, getTodayStr, calculateTotalXP, calculateLevel,
         calculateWeeklyPoints, getMaxStreak, getTotalFreezeCredits, resetAllData,
       }}

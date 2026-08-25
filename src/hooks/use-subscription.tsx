@@ -58,47 +58,22 @@ export function SubscriptionProvider({ children, userId, isGuest }: { children: 
     refresh();
   }, [refresh]);
 
-  const startCheckout = useCallback(async (interval: "monthly" | "yearly"): Promise<string | null> => {
-    if (!userId) return "Please sign in to upgrade.";
-    try {
-      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-        body: { interval, userId },
-      });
-      if (error) {
-        console.error("Checkout invocation error:", error);
-        return error.message || "Failed to launch payment checkout session.";
-      }
-      if (data?.url) {
-        window.location.href = data.url;
-        return null;
-      }
-      return data?.error || "Checkout session unavailable. Please ensure Stripe environment keys are configured.";
-    } catch (err: any) {
-      console.error("Checkout exception:", err);
-      return err?.message || "Checkout service is currently unreachable. Please check your internet connection.";
-    }
-  }, [userId]);
+  const startCheckout = useCallback(async (_interval: "monthly" | "yearly"): Promise<string | null> => {
+    // Agni Launch: Honest Early Access Beta handling
+    toast.info("🚀 Student Pro is Free in Early Access Beta!", {
+      description: "Payment gateways (UPI & Stripe) will activate during official commercial launch. All Pro features are unlocked for testing.",
+      duration: 5000,
+    });
+    return null;
+  }, []);
 
   const openBillingPortal = useCallback(async (): Promise<string | null> => {
-    if (!userId) return "Please sign in to access billing management.";
-    try {
-      const { data, error } = await supabase.functions.invoke("create-portal-session", {
-        body: { userId },
-      });
-      if (error) {
-        console.error("Billing portal error:", error);
-        return error.message || "Failed to open billing portal.";
-      }
-      if (data?.url) {
-        window.location.href = data.url;
-        return null;
-      }
-      return data?.error || "Billing management is currently unavailable for your account.";
-    } catch (err: any) {
-      console.error("Portal exception:", err);
-      return err?.message || "Billing portal service is unreachable.";
-    }
-  }, [userId]);
+    toast.info("💳 Billing Portal", {
+      description: "You are currently on the complimentary Early Access Beta tier with ₹0 charge.",
+      duration: 4000,
+    });
+    return null;
+  }, []);
 
   const tier = plan;
   return (

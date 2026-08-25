@@ -38,7 +38,7 @@ const MILESTONES = [
 ];
 
 const StreakSection = () => {
-  const { habits, getMaxStreak, getTotalFreezeCredits, useStreakFreeze, toggleCompletion, getTodayStr, isHabitDueToday } = useHabits();
+  const { habits, getMaxStreak, getTotalFreezeCredits, applyStreakFreeze, toggleCompletion, getTodayStr, isHabitDueToday } = useHabits();
   const { limits } = useSubscription();
   const todayStr = getTodayStr();
 
@@ -61,7 +61,7 @@ const StreakSection = () => {
 
   // Handle Shield activation
   const handleFreeze = async (habitId: string) => {
-    const err = await useStreakFreeze(habitId);
+    const err = await applyStreakFreeze(habitId);
     if (err) {
       toast.error(err);
     } else {

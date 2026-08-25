@@ -31,6 +31,17 @@ interface FocusRoomStudioProps {
   onClose: () => void;
 }
 
+// Remote WebRTC Peer Video Track Helper
+const RemotePeerVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
+  const vRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (vRef.current && stream) {
+      vRef.current.srcObject = stream;
+    }
+  }, [stream]);
+  return <video ref={vRef} autoPlay playsInline className="w-full h-full object-cover" />;
+};
+
 export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
   groupId,
   groupName,
@@ -48,6 +59,7 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
     toggleScreenShare,
     localStream,
     screenStream,
+    peerStreams,
     currentTask,
     updateCurrentTask,
     pomodoroMode,
@@ -120,83 +132,78 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
               <h2 className="text-xs font-black text-foreground font-mono truncate max-w-[150px] sm:max-w-[220px]">
                 {groupName} Focus Studio
               </h2>
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{participants.length} Live</span>
-              </span>
+              {isRoomLocked ? (
+                <span className="flex items-center gap-1 text-[9px] font-mono font-bold text-red-400 bg-red-500/15 border border-red-500/30 px-1.5 py-0.5 rounded-md">
+                  <Lock className="w-2.5 h-2.5" />
+                  <span>Locked</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-md">
+                  <Unlock className="w-2.5 h-2.5" />
+                  <span>Open Room</span>
+                </span>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 ml-auto">
-            {/* Pop Out */}
-            <button
-              onClick={() => {
-                const url = `${window.location.origin}${window.location.pathname}#/focus-call/${groupId}?name=${encodeURIComponent(groupName)}`;
-                window.open(url, `PPS_Focus_${groupId}`, "width=1040,height=740,menubar=no,toolbar=no,location=no,status=no");
-                toast.success("Opened Focus Room in a separate window! 🪟");
-              }}
-              className="p-1 px-2 rounded-lg bg-surface border border-border/80 text-muted-foreground hover:text-foreground text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
-              title="Pop out into separate window"
-            >
-              <ExternalLink className="w-3 h-3" />
-              <span className="hidden sm:inline">Pop Out</span>
-            </button>
-
-            {/* Room Lock */}
-            <button
-              onClick={toggleRoomLock}
-              className={`p-1 px-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                isRoomLocked
-                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                  : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
-              }`}
-              title={isRoomLocked ? "Room is Locked" : "Room is Open to Squad"}
-            >
-              {isRoomLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-              <span className="hidden sm:inline">{isRoomLocked ? "Locked" : "Open"}</span>
-            </button>
-
+          {/* Quick Studio Toggles (Whiteboard, Lock, PiP, Leave) */}
+          <div className="flex items-center gap-1 sm:gap-1.5">
             {/* Whiteboard Toggle */}
             <button
               onClick={() => setShowWhiteboard(!showWhiteboard)}
-              className={`p-1 px-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
                 showWhiteboard
-                  ? "bg-primary text-primary-foreground border-primary"
+                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
                   : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
               }`}
-              title="Toggle Whiteboard"
+              title="Toggle Live Collaborative Whiteboard"
             >
-              <PenTool className="w-3 h-3" />
-              <span className="hidden sm:inline">{showWhiteboard ? "Video" : "Board"}</span>
+              <PenTool className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{showWhiteboard ? "Video Grid" : "Whiteboard"}</span>
             </button>
 
-            {/* Exit Room */}
+            {/* Room Lock Button */}
+            <button
+              onClick={toggleRoomLock}
+              className={`p-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
+                isRoomLocked
+                  ? "bg-red-500/20 border-red-500/40 text-red-400"
+                  : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
+              }`}
+              title={isRoomLocked ? "Unlock room for all group members" : "Lock room for private sprint"}
+            >
+              {isRoomLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+            </button>
+
+            {/* Leave Room Button */}
             <button
               onClick={handleLeaveAndClose}
-              className="px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive hover:bg-destructive hover:text-destructive-foreground border border-destructive/30 text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
+              className="px-2.5 py-1.5 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-black transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+              title="Leave Room"
             >
-              <PhoneOff className="w-3 h-3" />
-              <span>Leave</span>
+              <PhoneOff className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Leave</span>
             </button>
           </div>
         </div>
 
-        {/* Synced Pomodoro Card + Soundscape Strip */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-2.5">
-          <div className="xl:col-span-8">
+        {/* Sync Ribbon: Pomodoro Timer Bar & Ambience Synthesizer */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 bg-surface/90 border border-border/70 p-2.5 sm:p-3 rounded-2xl shadow-inner">
+          <div className="md:col-span-7 flex items-center">
             <PomodoroSyncOverlay
               mode={pomodoroMode}
               timeLeft={timeLeft}
               isRunning={isTimerRunning}
-              cycles={completedCycles}
+              completedCycles={completedCycles}
               onStart={startPomodoro}
               onPause={pausePomodoro}
               onReset={resetPomodoro}
             />
           </div>
-          <div className="xl:col-span-4 flex items-center">
+
+          <div className="md:col-span-5 flex items-center justify-end pl-0 md:pl-2 border-t md:border-t-0 md:border-l border-border/60 pt-2 md:pt-0">
             <AmbientAudioPlayer
-              currentAmbience={ambience}
+              ambience={ambience}
               volume={ambienceVolume}
               onSelectAmbience={setAmbience}
               onVolumeChange={setAmbienceVolume}
@@ -208,7 +215,7 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
       {/* ── 2. Middle Main Area: Video Grid or Whiteboard Canvas (Spacious flex-1) ── */}
       {showWhiteboard ? (
         <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-border/80 shadow-lg">
-          <FocusRoomWhiteboard onClose={() => setShowWhiteboard(false)} />
+          <FocusRoomWhiteboard groupId={groupId} onClose={() => setShowWhiteboard(false)} />
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-1">
@@ -231,6 +238,8 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
           {/* Real Active Participant Cards */}
           {participants.map((p) => {
             const isYou = p.name.includes("(You)");
+            const remoteStream = !isYou ? peerStreams[p.userId] : null;
+
             return (
               <div
                 key={p.id}
@@ -240,7 +249,7 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
                     : "bg-surface/70 border-border/80 hover:border-border"
                 }`}
               >
-                {/* Real Webcam Stream if local camera is active */}
+                {/* Real Webcam Stream if local camera is active or remote peer video is streaming */}
                 {isYou && isCameraOn ? (
                   <div className="absolute inset-0 bg-black z-0">
                     <video
@@ -250,6 +259,13 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
                       muted
                       className="w-full h-full object-cover transform -scale-x-100"
                     />
+                    <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[9px] font-mono font-bold text-primary border border-primary/40">
+                      Local Preview (Beta)
+                    </span>
+                  </div>
+                ) : !isYou && p.cameraOn && remoteStream ? (
+                  <div className="absolute inset-0 bg-black z-0">
+                    <RemotePeerVideo stream={remoteStream} />
                   </div>
                 ) : (
                   /* Avatar Focus Feed */
@@ -387,7 +403,7 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
                 ? "bg-primary text-primary-foreground border-primary shadow-primary/20"
                 : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
             }`}
-            title={isCameraOn ? "Turn Camera Off" : "Turn Camera On"}
+            title={isCameraOn ? "Turn Camera Off" : "Turn Camera On (Local Preview / Beta)"}
           >
             {isCameraOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
           </button>

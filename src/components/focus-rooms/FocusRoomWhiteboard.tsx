@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import {
   PenTool,
   Eraser,
@@ -9,10 +9,13 @@ import {
   Maximize2,
   Minimize2,
   Sparkles,
+  Users,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface FocusRoomWhiteboardProps {
+  groupId?: string;
   onClose?: () => void;
 }
 
@@ -25,13 +28,17 @@ const COLORS = [
   { label: "Red", value: "#ef4444" },
 ];
 
-export const FocusRoomWhiteboard: React.FC<FocusRoomWhiteboardProps> = ({ onClose }) => {
+export const FocusRoomWhiteboard: React.FC<FocusRoomWhiteboardProps> = ({ groupId, onClose }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState("#ffffff");
   const [lineWidth, setLineWidth] = useState(3);
   const [tool, setTool] = useState<"pen" | "eraser">("pen");
+  const [syncedPeersCount, setSyncedPeersCount] = useState(1);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const channelRef = useRef<any>(null);
 
+  // Initialize Canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -47,6 +54,43 @@ export const FocusRoomWhiteboard: React.FC<FocusRoomWhiteboardProps> = ({ onClos
     ctx.lineJoin = "round";
   }, []);
 
+  // Subscribe to Multi-User Whiteboard Broadcast Channel (Task 12)
+  useEffect(() => {
+    const channelName = `whiteboard_sync_${groupId || "room"}`;
+    const channel = supabase.channel(channelName);
+
+    channel
+      .on("broadcast", { event: "draw_segment" }, ({ payload }) => {
+        if (!payload) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        ctx.strokeStyle = payload.tool === "eraser" ? "#12131a" : payload.color;
+        ctx.lineWidth = payload.tool === "eraser" ? payload.lineWidth * 4 : payload.lineWidth;
+        ctx.beginPath();
+        ctx.moveTo(payload.prevX, payload.prevY);
+        ctx.lineTo(payload.x, payload.y);
+        ctx.stroke();
+      })
+      .on("broadcast", { event: "clear_board" }, () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        toast.info("Whiteboard cleared by squad member 🧼");
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [groupId]);
+
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -58,12 +102,16 @@ export const FocusRoomWhiteboard: React.FC<FocusRoomWhiteboardProps> = ({ onClos
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
     ctx.beginPath();
-    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    ctx.moveTo(x, y);
+    lastPointRef.current = { x, y };
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
+    if (!isDrawing || !lastPointRef.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -73,14 +121,44 @@ export const FocusRoomWhiteboard: React.FC<FocusRoomWhiteboardProps> = ({ onClos
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
-    ctx.strokeStyle = tool === "eraser" ? "#12131a" : color;
-    ctx.lineWidth = tool === "eraser" ? lineWidth * 4 : lineWidth;
-    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const prevX = lastPointRef.current.x;
+    const prevY = lastPointRef.current.y;
+
+    const strokeStyle = tool === "eraser" ? "#12131a" : color;
+    const actualLineWidth = tool === "eraser" ? lineWidth * 4 : lineWidth;
+
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = actualLineWidth;
+    ctx.lineTo(x, y);
     ctx.stroke();
+
+    // Broadcast stroke segment to room peers (Task 12)
+    if (channelRef.current) {
+      try {
+        channelRef.current.send({
+          type: "broadcast",
+          event: "draw_segment",
+          payload: {
+            prevX,
+            prevY,
+            x,
+            y,
+            color,
+            lineWidth,
+            tool,
+          },
+        });
+      } catch {}
+    }
+
+    lastPointRef.current = { x, y };
   };
 
   const stopDrawing = () => {
     setIsDrawing(false);
+    lastPointRef.current = null;
   };
 
   const handleClear = () => {
@@ -89,6 +167,18 @@ export const FocusRoomWhiteboard: React.FC<FocusRoomWhiteboardProps> = ({ onClos
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Broadcast clear event
+    if (channelRef.current) {
+      try {
+        channelRef.current.send({
+          type: "broadcast",
+          event: "clear_board",
+          payload: {},
+        });
+      } catch {}
+    }
+
     toast.info("Whiteboard cleared");
   };
 

@@ -28,10 +28,13 @@ export interface ChannelMessage {
   createdAt: string;
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const isUuid = (str: string | null | undefined): boolean => Boolean(str && UUID_REGEX.test(str));
+
 export function useChannels(groupId: string) {
   const { user } = useAuth();
   const { profile } = useProfile();
-  const isGuestUser = !user?.id || user?.id === "guest_local" || user?.id.startsWith("guest");
+  const isGuestUser = !user?.id || user?.id === "guest_local" || user?.id.startsWith("guest") || !isUuid(user?.id) || !isUuid(groupId);
 
   const channelsKey = `pps_focus_channels_store_${user?.id || "guest"}`;
   const messagesKey = `pps_focus_messages_store_${user?.id || "guest"}`;
@@ -419,7 +422,7 @@ export function useChannels(groupId: string) {
         [activeChannel.id]: [...(prev[activeChannel.id] || []), optimisticMsg],
       }));
 
-      if (isGuestUser) return;
+      if (isGuestUser || !isUuid(activeChannel.id) || !isUuid(groupId) || !isUuid(userId)) return;
 
       try {
         const { data, error } = await supabase

@@ -57,7 +57,7 @@ export default function AiChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { isLoggedIn, user } = useAuth();
-  const { habits, addHabit, toggleCompletion, useStreakFreeze, isHabitDueToday, getTodayStr, getMaxStreak } = useHabits();
+  const { habits, addHabit, toggleCompletion, applyStreakFreeze, isHabitDueToday, getTodayStr, getMaxStreak } = useHabits();
   const { entries: reflections } = useReflections();
   const { addReminder } = useReminders();
   const { changeTimerMode, startTimer, setActiveTaskName, setLinkedHabitId } = useFocusTimer();
@@ -113,7 +113,7 @@ export default function AiChatWidget() {
       } else if (action.actionType === "FREEZE_STREAK") {
         const p = action.parameters;
         if (p.habitId) {
-          const err = await useStreakFreeze(p.habitId);
+          const err = await applyStreakFreeze(p.habitId);
           if (err) {
             toast.error(err);
             return;

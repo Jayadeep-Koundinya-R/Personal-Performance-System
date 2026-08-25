@@ -29,19 +29,29 @@ describe("PPS Masterclasses & Teacher Marketplace System", () => {
     localStorage.clear();
   });
 
-  it("loads default verified masterclasses cleanly", () => {
+  it("initializes masterclasses cleanly with zero hardcoded fake data", () => {
     const { result } = renderHook(() => useClasses());
-
-    expect(result.current.classes.length).toBeGreaterThanOrEqual(3);
-    const firstClass = result.current.classes[0];
-    expect(firstClass.title).toBeDefined();
-    expect(firstClass.price).toBeGreaterThanOrEqual(0);
-    expect(firstClass.mentorName).toBeDefined();
+    expect(result.current.classes).toEqual([]);
   });
 
-  it("allows a student to book a ticket and prevents double booking", async () => {
+  it("allows a student to book a ticket for a published class and prevents double booking", async () => {
     const { result } = renderHook(() => useClasses());
+
+    let createRes: any;
+    await act(async () => {
+      createRes = await result.current.createMasterclass({
+        title: "Competitive Programming Graphs Masterclass",
+        subject: "Computer Science",
+        description: "Learn Dijkstra and segment trees.",
+        price: 199,
+        durationMinutes: 60,
+        maxSeats: 20,
+        scheduledAt: new Date(Date.now() + 86400000).toISOString(),
+      });
+    });
+
     const targetClass = result.current.classes[0];
+    expect(targetClass).toBeDefined();
 
     let bookingRes: any;
     await act(async () => {

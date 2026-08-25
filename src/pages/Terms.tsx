@@ -1,8 +1,12 @@
 import { Link } from "react-router-dom";
+import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
+import { ScrollToTop } from "@/components/ui/ScrollToTop";
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground relative">
+      <ScrollProgressBar />
+
       <nav className="px-6 py-4 border-b border-border max-w-4xl mx-auto flex items-center justify-between">
         <Link to="/" className="font-mono text-xl font-extrabold text-primary">
           PPS<span className="text-secondary">.</span>
@@ -79,6 +83,10 @@ export default function TermsPage() {
           </p>
         </section>
       </article>
+
+      {/* 🚀 Floating Scroll to Top */}
+      <ScrollToTop />
     </div>
   );
 }
+

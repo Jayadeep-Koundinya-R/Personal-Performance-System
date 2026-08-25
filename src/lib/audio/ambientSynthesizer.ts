@@ -210,3 +210,7 @@ class AmbientSynthesizer {
 }
 
 export const ambientAudio = new AmbientSynthesizer();
+export const ambientSynthesizer = ambientAudio;
+export { AmbientSynthesizer };
+
+

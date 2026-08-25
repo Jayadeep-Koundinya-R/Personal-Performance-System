@@ -18,7 +18,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      disable: isCapacitor,
+      disable: isCapacitor || process.env.NODE_ENV === "development",
+      devOptions: {
+        enabled: false,
+      },
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       manifest: {

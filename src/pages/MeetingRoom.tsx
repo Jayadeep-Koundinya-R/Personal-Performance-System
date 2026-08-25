@@ -404,6 +404,9 @@ const MeetingRoomInner: React.FC = () => {
                           muted
                           className="w-full h-full object-cover transform -scale-x-100"
                         />
+                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[9px] font-mono font-bold text-primary border border-primary/40">
+                          Local Preview (Beta)
+                        </span>
                       </div>
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center z-0 p-4">

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useClasses, Masterclass } from "@/hooks/use-classes";
+import { useHabits } from "@/hooks/use-habits";
 import { ClassBookingModal } from "./ClassBookingModal";
 import {
   GraduationCap,
@@ -18,8 +19,61 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+function parseLectureNotesToHabits(notes: string): { name: string; category: string; period: string }[] {
+  const clean = notes.trim();
+  if (!clean) return [];
+
+  const lines = clean.split(/[\n.;]+/).map((s) => s.trim()).filter(Boolean);
+  const results: { name: string; category: string; period: string }[] = [];
+
+  const actionVerbs = /^(practice|solve|read|review|study|code|write|summarize|learn|implement|revise|exercise|memorize|create|build)\b/i;
+
+  for (const line of lines) {
+    if (actionVerbs.test(line) && line.length > 5 && line.length < 100) {
+      const formatted = line.charAt(0).toUpperCase() + line.slice(1);
+      results.push({
+        name: `⚡ ${formatted}`,
+        category: "Learning",
+        period: "Daily",
+      });
+    }
+    if (results.length >= 3) break;
+  }
+
+  if (results.length < 3) {
+    const words = clean.split(/\s+/).filter((w) => w.length > 3 && !/^(about|their|there|which|these|those|where|could|would|should|their|under|covered|today|session|lecture)/i.test(w));
+    const topic1 = words.slice(0, 3).join(" ") || "Core Concepts";
+    const topic2 = words.slice(3, 6).join(" ") || "Practical Exercises";
+
+    if (results.length === 0) {
+      results.push({
+        name: `⚡ Review & Active Recall: ${topic1}`,
+        category: "Learning",
+        period: "Daily",
+      });
+    }
+    if (results.length < 2) {
+      results.push({
+        name: `📝 Solve 3 Practice Problems on ${topic2}`,
+        category: "Productivity",
+        period: "Daily",
+      });
+    }
+    if (results.length < 3) {
+      results.push({
+        name: `📚 Create 5 Flashcards from ${topic1}`,
+        category: "Learning",
+        period: "Daily",
+      });
+    }
+  }
+
+  return results;
+}
+
 export const TeacherMarketplace: React.FC = () => {
   const { classes, myTickets, bookClassTicket, createMasterclass } = useClasses();
+  const { addHabit } = useHabits();
 
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<"browse" | "my_tickets" | "mentor_studio" | "ai_extractor">("browse");
@@ -55,23 +109,37 @@ export const TeacherMarketplace: React.FC = () => {
     setIsExtracting(true);
     setTimeout(() => {
       setIsExtracting(false);
-      setExtractedHabits([
-        { name: "⚡ Review Lecture Key Concepts (20 mins)", category: "Learning", period: "Daily" },
-        { name: "📝 Solve 3 Numerical / Coding Exercises", category: "Productivity", period: "Daily" },
-        { name: "📚 Active Recall Flashcards from Slides", category: "Learning", period: "Daily" },
-      ]);
-      toast.success("AI Extracted 3 Daily Habit Actions from Lecture! ✨");
-    }, 800);
+      const generated = parseLectureNotesToHabits(lectureNotes);
+      setExtractedHabits(generated);
+      toast.success(`Generated ${generated.length} actionable habits from your lecture notes! ✨`);
+    }, 400);
+  };
+
+  const handleInstallAllHabits = () => {
+    if (extractedHabits.length === 0) return;
+    extractedHabits.forEach((h) => {
+      addHabit({
+        name: h.name,
+        category: h.category,
+        frequency: "daily",
+        priority: "medium",
+      });
+    });
+    toast.success(`Installed ${extractedHabits.length} habits directly into your Habit Architect! 🚀`);
   };
 
   // Export Attendance CSV Handler
   const handleExportAttendance = (className: string) => {
-    const csvContent = "data:text/csv;charset=utf-8," +
-      "Student Name,Role,Attendance Status,Join Timestamp,Completion Rate\n" +
-      "Alex Vance,Student,Present,2026-08-20 10:00:00,100%\n" +
-      "Elena Rostova,Student,Present,2026-08-20 10:02:15,95%\n" +
-      "Marcus K.,Student,Present,2026-08-20 10:05:30,90%\n" +
-      "Sarah K.,Student,Present,2026-08-20 10:01:10,100%\n";
+    const targetClass = classes.find((c) => c.title === className || c.id === className);
+    const students = targetClass && targetClass.enrolledStudents.length > 0
+      ? targetClass.enrolledStudents
+      : ["Live Student (Session Attendee)"];
+
+    let csvContent = "data:text/csv;charset=utf-8,Student Name,Role,Attendance Status,Join Timestamp,Completion Rate\n";
+    students.forEach((s) => {
+      csvContent += `${s},Student,Present,${new Date().toISOString().replace("T", " ").substring(0, 19)},100%\n`;
+    });
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -194,89 +262,111 @@ export const TeacherMarketplace: React.FC = () => {
 
       {/* Masterclass Cards Grid */}
       {activeTab === "browse" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredClasses.map((cls) => {
-            const isEnrolled = myTickets.includes(cls.id);
-            const seatsLeft = cls.maxSeats - cls.enrolledStudents.length;
-
-            return (
-              <div
-                key={cls.id}
-                className="p-5 rounded-3xl bg-card border border-border/80 hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-4 shadow-lg group"
+        filteredClasses.length === 0 ? (
+          <div className="p-12 rounded-3xl bg-card border border-border/80 text-center space-y-4 shadow-xl">
+            <div className="w-14 h-14 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-3xl">
+              🎓
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground font-mono">No Live Masterclasses Scheduled Yet</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto leading-relaxed">
+                Be the first educator, peer mentor, or study lead to host a live workshop on PPS! Publish a session to share knowledge and set cohort habits.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="px-5 py-2.5 rounded-2xl bg-amber-500 text-black font-black text-xs hover:bg-amber-400 transition-all shadow-md cursor-pointer"
               >
-                <div className="space-y-3">
-                  {/* Top Subject Tag & Price */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground bg-surface border border-border/60 px-2 py-0.5 rounded-md">
-                      {cls.subject}
-                    </span>
-                    <span className="text-sm font-mono font-black text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-xl">
-                      {cls.price === 0 ? "FREE" : `₹${cls.price}`}
-                    </span>
-                  </div>
+                + Host Your First Masterclass
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredClasses.map((cls) => {
+              const isEnrolled = myTickets.includes(cls.id);
+              const seatsLeft = cls.maxSeats - cls.enrolledStudents.length;
 
-                  {/* Title & Description */}
-                  <h3 className="text-sm font-black text-foreground group-hover:text-primary transition-colors leading-snug">
-                    {cls.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                    {cls.description}
-                  </p>
+              return (
+                <div
+                  key={cls.id}
+                  className="p-5 rounded-3xl bg-card border border-border/80 hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-4 shadow-lg group"
+                >
+                  <div className="space-y-3">
+                    {/* Top Subject Tag & Price */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground bg-surface border border-border/60 px-2 py-0.5 rounded-md">
+                        {cls.subject}
+                      </span>
+                      <span className="text-sm font-mono font-black text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-xl">
+                        {cls.price === 0 ? "FREE" : `₹${cls.price}`}
+                      </span>
+                    </div>
 
-                  {/* Mentor Info */}
-                  <div className="p-3 rounded-2xl bg-surface/60 border border-border/60 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-2xl">{cls.mentorAvatar}</span>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-foreground truncate">
-                          {cls.mentorName}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground truncate">
-                          {cls.mentorRole}
+                    {/* Title & Description */}
+                    <h3 className="text-sm font-black text-foreground group-hover:text-primary transition-colors leading-snug">
+                      {cls.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      {cls.description}
+                    </p>
+
+                    {/* Mentor Info */}
+                    <div className="p-3 rounded-2xl bg-surface/60 border border-border/60 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-2xl">{cls.mentorAvatar}</span>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-foreground truncate">
+                            {cls.mentorName}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground truncate">
+                            {cls.mentorRole}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-1 text-[11px] font-bold text-amber-400">
+                        <Star className="w-3.5 h-3.5 fill-amber-400" />
+                        <span>{cls.rating}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 text-[11px] font-bold text-amber-400">
-                      <Star className="w-3.5 h-3.5 fill-amber-400" />
-                      <span>{cls.rating}</span>
+
+                    {/* Date & Seats Meta */}
+                    <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground pt-1">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-primary" />
+                        <span>{cls.durationMinutes}m duration</span>
+                      </span>
+                      <span className={`font-bold ${seatsLeft <= 5 ? "text-red-400" : "text-emerald-400"}`}>
+                        {seatsLeft} seats remaining
+                      </span>
                     </div>
                   </div>
 
-                  {/* Date & Seats Meta */}
-                  <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground pt-1">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-primary" />
-                      <span>{cls.durationMinutes}m duration</span>
-                    </span>
-                    <span className={`font-bold ${seatsLeft <= 5 ? "text-red-400" : "text-emerald-400"}`}>
-                      {seatsLeft} seats remaining
-                    </span>
-                  </div>
+                  {/* Enrollment Action */}
+                  <button
+                    onClick={() => setSelectedClassForBooking(cls)}
+                    disabled={isEnrolled}
+                    className={`w-full py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      isEnrolled
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        : "bg-gradient-to-r from-primary via-secondary to-accent text-white hover:opacity-90 shadow-md shadow-primary/20"
+                    }`}
+                  >
+                    {isEnrolled ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Enrolled (Seat Reserved)</span>
+                      </>
+                    ) : (
+                      <span>Book Ticket • {cls.price === 0 ? "Free" : `₹${cls.price}`}</span>
+                    )}
+                  </button>
                 </div>
-
-                {/* Enrollment Action */}
-                <button
-                  onClick={() => setSelectedClassForBooking(cls)}
-                  disabled={isEnrolled}
-                  className={`w-full py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    isEnrolled
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                      : "bg-gradient-to-r from-primary via-secondary to-accent text-white hover:opacity-90 shadow-md shadow-primary/20"
-                  }`}
-                >
-                  {isEnrolled ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Enrolled (Seat Reserved)</span>
-                    </>
-                  ) : (
-                    <span>Book Ticket • {cls.price === 0 ? "Free" : `₹${cls.price}`}</span>
-                  )}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )
       ) : activeTab === "mentor_studio" ? (
         /* 🎓 Teacher Studio & Cohorts Tab */
         <div className="space-y-6">
@@ -410,10 +500,10 @@ export const TeacherMarketplace: React.FC = () => {
               <div className="text-xs font-mono font-bold text-cyan-400 uppercase flex items-center justify-between">
                 <span>AI Recommended Daily Habit Stack:</span>
                 <button
-                  onClick={() => toast.success("All 3 habits installed into your Habit Architect! 🚀")}
+                  onClick={handleInstallAllHabits}
                   className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
                 >
-                  Install All 3 Habits →
+                  Install All {extractedHabits.length} Habits →
                 </button>
               </div>
               <div className="space-y-2">

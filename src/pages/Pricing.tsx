@@ -7,6 +7,9 @@ import { useTheme } from "@/hooks/use-theme";
 import { useSubscription, SubscriptionProvider } from "@/hooks/use-subscription";
 import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
 import { CampusDemoModal } from "@/components/pricing/CampusDemoModal";
+import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
+import { ScrollToTop } from "@/components/ui/ScrollToTop";
+
 import {
   Globe,
   MapPin,
@@ -76,6 +79,7 @@ function PricingContent() {
 
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+  const [isProModalOpen, setIsProModalOpen] = useState(false);
 
   // Teacher Earnings Calculator State
   const [teacherStudents, setTeacherStudents] = useState(20);
@@ -107,12 +111,61 @@ function PricingContent() {
       {/* 🌌 Animated 3D Floating Background */}
       <ThreeDBackground />
 
+      {/* 📊 Top Scroll Progress Bar */}
+      <ScrollProgressBar />
+
+
       {/* Enterprise Campus Demo Modal */}
       <CampusDemoModal
         isOpen={isDemoModalOpen}
         onClose={() => setIsDemoModalOpen(false)}
         defaultStudents={campusStudents}
       />
+
+      {/* Pro Early Access Modal */}
+      {isProModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-card border border-border/80 rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full relative animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center text-2xl mb-4 text-primary">
+              ⭐
+            </div>
+            <h3 className="text-xl font-black font-mono text-foreground">
+              Student Pro Early Access
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              We are currently in public beta! Live payment gateways (UPI & Stripe) will be enabled for the commercial release.
+            </p>
+
+            <div className="my-5 p-4 rounded-2xl bg-surface/80 border border-border/70 space-y-2 text-xs">
+              <div className="font-bold text-foreground flex items-center gap-1.5 text-[11px] font-mono uppercase text-primary">
+                <span>🎁 Beta Perks Included (₹0):</span>
+              </div>
+              <ul className="space-y-1.5 text-muted-foreground text-[11.5px]">
+                <li className="flex items-center gap-2">✓ Unlimited habits & custom time windows</li>
+                <li className="flex items-center gap-2">✓ 24/7 Drop-in Study Squad focus rooms</li>
+                <li className="flex items-center gap-2">✓ Unlimited AI Coach conversations</li>
+                <li className="flex items-center gap-2">✓ Full historical analytics & reports</li>
+              </ul>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setIsProModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-border/80 bg-surface hover:bg-surface/80 text-foreground font-bold text-xs cursor-pointer transition-colors"
+              >
+                Close
+              </button>
+              <Link
+                to="/dashboard"
+                onClick={() => setIsProModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-black text-xs text-center hover:opacity-90 transition-all shadow-md"
+              >
+                Open Dashboard →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Top Navigation Bar ── */}
       <header className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between border-b border-border/40 backdrop-blur-md">
@@ -264,11 +317,10 @@ function PricingContent() {
             </div>
 
             <button
-              onClick={() => startCheckout(interval)}
-              disabled={loading}
+              onClick={() => setIsProModalOpen(true)}
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary via-secondary to-accent text-white font-black text-xs shadow-xl shadow-primary/30 hover:opacity-95 transition-all cursor-pointer"
             >
-              {isPro ? "Current Plan Active" : "Upgrade to Pro"}
+              {isPro ? "Current Plan Active (Beta)" : "Get Early Access (Free) →"}
             </button>
           </div>
 
@@ -602,9 +654,13 @@ function PricingContent() {
       <footer className="relative z-10 border-t border-border/40 py-8 text-center text-xs text-muted-foreground font-mono">
         © 2026 Personal Performance System • All Rights Reserved
       </footer>
+
+      {/* 🚀 Floating Scroll to Top */}
+      <ScrollToTop />
     </div>
   );
 }
+
 
 export const PricingPage = () => {
   return (

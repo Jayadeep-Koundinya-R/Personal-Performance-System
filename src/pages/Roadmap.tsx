@@ -5,6 +5,8 @@ import { RoadmapSection } from "@/components/roadmap/RoadmapSection";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
 import { ArrowLeft, Sparkles } from "lucide-react";
+import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
+import { ScrollToTop } from "@/components/ui/ScrollToTop";
 
 export const RoadmapPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
@@ -14,6 +16,10 @@ export const RoadmapPage: React.FC = () => {
     <div className="min-h-screen bg-background text-foreground relative selection:bg-primary selection:text-white transition-colors duration-500 overflow-x-hidden flex flex-col justify-between">
       {/* 🌌 Dynamic 3D Ambient Background Layer */}
       <ThreeDBackground />
+
+      {/* 📊 Top Scroll Progress Bar */}
+      <ScrollProgressBar />
+
 
       {/* Top Global Nav */}
       <nav className="sticky top-0 z-50 backdrop-blur-2xl bg-card/80 border-b border-border/40 transition-colors duration-500">
@@ -88,8 +94,12 @@ export const RoadmapPage: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* 🚀 Floating Scroll to Top */}
+      <ScrollToTop />
     </div>
   );
+
 };
 
 export default RoadmapPage;

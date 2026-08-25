@@ -61,7 +61,7 @@ const CalendarSection = () => {
 
   // Filter habits by category or single habit
   const filteredHabits = useMemo(() => {
-    let list = habits.filter((h) => !h.archived);
+    const list = habits.filter((h) => !h.archived);
     if (selectedHabitId) {
       return list.filter((h) => h.id === selectedHabitId);
     }

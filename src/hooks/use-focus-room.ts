@@ -44,9 +44,11 @@ export function useFocusRoom(groupId: string, groupName: string) {
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [currentTask, setCurrentTask] = useState("Deep Work & Revision");
 
-  // Web Streams (media mock/stub in stage 2)
+  // Web Streams & Real WebRTC Mesh
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [peerStreams, setPeerStreams] = useState<Record<string, MediaStream>>({});
+  const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
 
   // Real Presence Participants
   const [participants, setParticipants] = useState<FocusParticipant[]>([]);
@@ -280,6 +282,130 @@ export function useFocusRoom(groupId: string, groupName: string) {
 
         setParticipants(Array.from(livePeersMap.values()));
       })
+      .on("broadcast", { event: "webrtc_signal" }, async ({ payload }) => {
+        if (!payload || payload.senderId === myUserId) return;
+        if (payload.targetPeerId && payload.targetPeerId !== myUserId) return;
+
+        const { type, senderId, sdp, candidate } = payload;
+        const ICE_CONFIG = {
+          iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        };
+
+        if (type === "peer_join") {
+          if (localStream && typeof RTCPeerConnection !== "undefined") {
+            try {
+              const pc = new RTCPeerConnection(ICE_CONFIG);
+              peerConnections.current.set(senderId, pc);
+
+              localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+
+              pc.onicecandidate = (e) => {
+                if (e.candidate) {
+                  channel.send({
+                    type: "broadcast",
+                    event: "webrtc_signal",
+                    payload: {
+                      type: "candidate",
+                      senderId: myUserId,
+                      targetPeerId: senderId,
+                      candidate: e.candidate,
+                    },
+                  });
+                }
+              };
+
+              pc.ontrack = (e) => {
+                if (e.streams && e.streams[0]) {
+                  setPeerStreams((prev) => ({ ...prev, [senderId]: e.streams[0] }));
+                }
+              };
+
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+
+              channel.send({
+                type: "broadcast",
+                event: "webrtc_signal",
+                payload: {
+                  type: "offer",
+                  senderId: myUserId,
+                  targetPeerId: senderId,
+                  sdp: offer,
+                },
+              });
+            } catch (err) {
+              console.error("WebRTC offer creation error:", err);
+            }
+          }
+        } else if (type === "offer" && sdp) {
+          if (typeof RTCPeerConnection !== "undefined") {
+            try {
+              const pc = new RTCPeerConnection(ICE_CONFIG);
+              peerConnections.current.set(senderId, pc);
+
+              if (localStream) {
+                localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+              }
+
+              pc.onicecandidate = (e) => {
+                if (e.candidate) {
+                  channel.send({
+                    type: "broadcast",
+                    event: "webrtc_signal",
+                    payload: {
+                      type: "candidate",
+                      senderId: myUserId,
+                      targetPeerId: senderId,
+                      candidate: e.candidate,
+                    },
+                  });
+                }
+              };
+
+              pc.ontrack = (e) => {
+                if (e.streams && e.streams[0]) {
+                  setPeerStreams((prev) => ({ ...prev, [senderId]: e.streams[0] }));
+                }
+              };
+
+              await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+
+              channel.send({
+                type: "broadcast",
+                event: "webrtc_signal",
+                payload: {
+                  type: "answer",
+                  senderId: myUserId,
+                  targetPeerId: senderId,
+                  sdp: answer,
+                },
+              });
+            } catch (err) {
+              console.error("WebRTC answer error:", err);
+            }
+          }
+        } else if (type === "answer" && sdp) {
+          const pc = peerConnections.current.get(senderId);
+          if (pc) {
+            try {
+              await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+            } catch (err) {
+              console.error("WebRTC setRemoteDescription error:", err);
+            }
+          }
+        } else if (type === "candidate" && candidate) {
+          const pc = peerConnections.current.get(senderId);
+          if (pc) {
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (err) {
+              console.error("WebRTC addIceCandidate error:", err);
+            }
+          }
+        }
+      })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           try {
@@ -294,6 +420,13 @@ export function useFocusRoom(groupId: string, groupName: string) {
               currentTask,
               streak: profile?.streak || 1,
               joinedAt: new Date().toISOString(),
+            });
+
+            // Announce presence for peer connections
+            channel.send({
+              type: "broadcast",
+              event: "webrtc_signal",
+              payload: { type: "peer_join", senderId: myUserId },
             });
           } catch {}
         }
@@ -402,6 +535,11 @@ export function useFocusRoom(groupId: string, groupName: string) {
           .eq("user_id", user!.id);
       } catch {}
     }
+
+    // Clean up WebRTC peer connections
+    peerConnections.current.forEach((pc) => pc.close());
+    peerConnections.current.clear();
+    setPeerStreams({});
 
     toast.info("Left the Focus Room.");
   }, [localStream, screenStream, isGuestUser, user, groupId]);
@@ -719,6 +857,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
     toggleScreenShare,
     localStream,
     screenStream,
+    peerStreams,
     currentTask,
     updateCurrentTask,
     // Group Pomodoro Synced State

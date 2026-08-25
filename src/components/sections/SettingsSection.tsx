@@ -23,6 +23,9 @@ import { exportToCSV, exportToJSON, exportReflectionsToCSV, prepareFullExport, p
 import { toast } from "sonner";
 import { useUserSettings } from "@/hooks/use-user-settings";
 import { useTheme } from "@/hooks/use-theme";
+import { AutomationTab } from "@/components/settings/AutomationTab";
+import { SecurityTab } from "@/components/settings/SecurityTab";
+import { DataVaultTab } from "@/components/settings/DataVaultTab";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 import {
   User as UserIcon,
@@ -74,9 +77,6 @@ const SettingsSection = ({ user }: { user: User }) => {
   const [username, setUsername] = useState(profile?.username || "");
   const [identityClass, setIdentityClass] = useState(profile?.identityClass || "");
   const [selectedAvatar, setSelectedAvatar] = useState(profile?.avatarEmoji || "🌟");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [isUpgrading, setIsUpgrading] = useState(false);
 
@@ -112,100 +112,6 @@ const SettingsSection = ({ user }: { user: User }) => {
     });
     if (err) toast.error(err);
     else toast.success("Profile updated successfully!");
-  };
-
-  // Password Change Handler
-  const changePassword = async () => {
-    if (!newPassword || !confirmPassword) {
-      toast.error("Please fill in all password fields.");
-      return;
-    }
-    if (newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match.");
-      return;
-    }
-    if (user.isGuest) {
-      toast.error("Guest accounts cannot change password.");
-      return;
-    }
-
-    const err = await updatePassword(newPassword);
-    if (err) toast.error(err);
-    else {
-      setNewPassword("");
-      setConfirmPassword("");
-      toast.success("Password updated successfully!");
-    }
-  };
-
-  // Data Export Handler
-  const exportData = async () => {
-    try {
-      if (exportFormat === "csv") {
-        exportToCSV(habits);
-        if (reflections.length > 0) exportReflectionsToCSV(reflections);
-        toast.success("Data exported to CSV format!");
-      } else {
-        const fullData = prepareFullExport(habits, reflections);
-        exportToJSON(fullData);
-        toast.success("Data exported to JSON format!");
-      }
-    } catch (error) {
-      console.error("Export error:", error);
-      toast.error("Failed to export data.");
-    }
-  };
-
-  // Restore / Import Data Backup Handler
-  const handleImportBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const content = e.target?.result as string;
-      const res = parseAndValidateBackup(content);
-      if (!res.success || !res.data) {
-        toast.error(res.error || "Failed to parse backup file.");
-        return;
-      }
-
-      if (!confirm(`Restore backup containing ${res.data.habits.length} habits and ${res.data.reflections.length} reflections? This will import missing items to your account.`)) {
-        return;
-      }
-
-      let restoredHabits = 0;
-      for (const h of res.data.habits) {
-        if (!habits.some((existing) => existing.name === h.name)) {
-          await addHabit(h.name, h.category, h.period, h.priority, h.dueDate, h.startTime, h.endTime, h.color);
-          restoredHabits++;
-        }
-      }
-
-      let restoredReflections = 0;
-      for (const r of res.data.reflections) {
-        if (!reflections.some((existing) => existing.date === r.date)) {
-          await saveEntry(r.text, r.mood);
-          restoredReflections++;
-        }
-      }
-
-      toast.success(`Backup restored! Imported ${restoredHabits} new habits & ${restoredReflections} reflections.`);
-    };
-
-    reader.readAsText(file);
-    event.target.value = "";
-  };
-
-  // Reset All Data
-  const handleReset = () => {
-    if (!confirm("⚠️ Reset ALL habits and streak history? This action cannot be reversed.")) return;
-    resetAllData();
-    toast.success("All habit and performance data reset.");
   };
 
   // Billing portal
@@ -892,323 +798,31 @@ const SettingsSection = ({ user }: { user: User }) => {
         {/* TAB 4: AUTOMATION, ALARMS & SHIELDS                                      */}
         {/* ========================================================================= */}
         {activeTab === "automation" && (
-          <motion.div
-            key="automation"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="space-y-5"
-          >
-            <div className="bg-card border border-border p-6 rounded-3xl shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-border/40 pb-3">
-                <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-sky-400" />
-                  <span>Circadian Alerts & Automated Shield Preferences</span>
-                </h3>
-                <button
-                  onClick={testAlarmTone}
-                  className="text-xs bg-surface border border-border/80 text-foreground px-3 py-1.5 rounded-xl font-bold hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <Volume2 className="w-3.5 h-3.5 text-primary" />
-                  <span>Test Tone 🔊</span>
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {/* Email Notifications */}
-                <div className="flex items-center justify-between p-4 bg-surface/60 border border-border/80 rounded-2xl">
-                  <div>
-                    <div className="text-xs font-extrabold text-foreground">Email Notifications & Digest</div>
-                    <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Receive circadian morning briefings and weekly executive report digests</div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateSettings({
-                        notificationPrefs: {
-                          email: !settings?.notificationPrefs?.email,
-                          push: !!settings?.notificationPrefs?.push,
-                        },
-                      })
-                    }
-                    className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${
-                      settings?.notificationPrefs?.email ? "bg-primary" : "bg-border"
-                    }`}
-                  >
-                    <div
-                      className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${
-                        settings?.notificationPrefs?.email ? "left-6" : "left-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* In-App Bell */}
-                <div className="flex items-center justify-between p-4 bg-surface/60 border border-border/80 rounded-2xl">
-                  <div>
-                    <div className="text-xs font-extrabold text-foreground">In-App Notification Bell</div>
-                    <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Display real-time habit alarms and streak milestone achievements</div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateSettings({
-                        notificationPrefs: {
-                          email: !!settings?.notificationPrefs?.email,
-                          push: !settings?.notificationPrefs?.push,
-                        },
-                      })
-                    }
-                    className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${
-                      settings?.notificationPrefs?.push ? "bg-primary" : "bg-border"
-                    }`}
-                  >
-                    <div
-                      className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${
-                        settings?.notificationPrefs?.push ? "left-6" : "left-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* Auto Streak Shield */}
-                <div className="flex items-center justify-between p-4 bg-surface/60 border border-border/80 rounded-2xl">
-                  <div>
-                    <div className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
-                      <Shield className="w-3.5 h-3.5 text-pps-green" />
-                      <span>Automatic Streak Shield Freeze Protection</span>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
-                      Automatically consume available freeze credits when a circadian habit window is missed to preserve streaks
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateSettings({
-                        autoStreakFreeze: !settings?.autoStreakFreeze,
-                      })
-                    }
-                    className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${
-                      settings?.autoStreakFreeze ? "bg-primary" : "bg-border"
-                    }`}
-                  >
-                    <div
-                      className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${
-                        settings?.autoStreakFreeze ? "left-6" : "left-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          <AutomationTab
+            settings={settings}
+            updateSettings={updateSettings}
+            onTestAlarmTone={testAlarmTone}
+          />
         )}
 
         {/* ========================================================================= */}
         {/* TAB 5: SECURITY & ACTIVE SESSIONS                                        */}
         {/* ========================================================================= */}
         {activeTab === "security" && (
-          <motion.div
-            key="security"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-5"
-          >
-            {/* Password Studio */}
-            <div className="bg-card border border-border p-6 rounded-3xl shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-border/40 pb-3">
-                <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-primary" />
-                  <span>Password & Authentication</span>
-                </h3>
-              </div>
-
-              <div className="space-y-3.5">
-                <div>
-                  <label className="text-xs font-extrabold text-foreground font-mono">New Password</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="At least 6 characters"
-                    className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary mt-1"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-extrabold text-foreground font-mono">Confirm New Password</label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repeat password"
-                    className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary mt-1"
-                  />
-                </div>
-
-                <button
-                  onClick={changePassword}
-                  className="w-full text-xs bg-primary text-primary-foreground font-extrabold py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm mt-2"
-                >
-                  Update Account Password
-                </button>
-              </div>
-            </div>
-
-            {/* Active Device Session Card */}
-            <div className="bg-card border border-border p-6 rounded-3xl shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-border/40 pb-3">
-                <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-                  <Laptop className="w-4 h-4 text-pps-green" />
-                  <span>Active Device Sessions</span>
-                </h3>
-                <span className="text-[11px] font-mono text-pps-green font-bold">1 Device Online</span>
-              </div>
-
-              <div className="space-y-3">
-                <div className="p-4 bg-surface/60 border border-border/80 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-pps-green/15 border border-pps-green/30 flex items-center justify-center text-lg">
-                      💻
-                    </div>
-                    <div>
-                      <div className="text-xs font-extrabold text-foreground">Current Desktop Session</div>
-                      <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                        Windows • Chrome / Edge • Active Now
-                      </div>
-                    </div>
-                  </div>
-
-                  <span className="text-[10.5px] font-mono font-bold bg-pps-green/20 text-pps-green border border-pps-green/30 px-2.5 py-0.5 rounded-full">
-                    Current
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => toast.info("🔒 All other device sessions invalidated.")}
-                  className="w-full text-xs bg-surface border border-border/80 text-muted-foreground hover:text-foreground font-extrabold py-2.5 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs"
-                >
-                  Sign Out All Other Devices
-                </button>
-              </div>
-            </div>
-          </motion.div>
+          <SecurityTab onUpdatePassword={updatePassword} />
         )}
 
         {/* ========================================================================= */}
         {/* TAB 6: DATA VAULT & BACKUPS                                              */}
         {/* ========================================================================= */}
         {activeTab === "datavault" && (
-          <motion.div
-            key="datavault"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="space-y-5"
-          >
-            <div className="bg-card border border-border p-6 rounded-3xl shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-border/40 pb-3">
-                <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-                  <Download className="w-4 h-4 text-pps-green" />
-                  <span>Data Vault, Portability & Backups</span>
-                </h3>
-              </div>
-
-              <div className="space-y-4">
-                {/* Export Card */}
-                <div className="p-4 bg-surface/60 border border-border/80 rounded-2xl space-y-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <div className="text-xs font-extrabold text-foreground">Export Complete Workspace Data</div>
-                      <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
-                        Download your full habits catalog, completion logs, streaks, and reflections journal
-                      </div>
-                    </div>
-
-                    <select
-                      value={exportFormat}
-                      onChange={(e) => setExportFormat(e.target.value as "csv" | "json")}
-                      className="bg-surface border border-border/80 text-xs font-mono font-bold rounded-xl px-3 py-1.5 outline-none text-foreground cursor-pointer"
-                    >
-                      <option value="json">JSON Structured Backup</option>
-                      <option value="csv">CSV Spreadsheet Format</option>
-                    </select>
-                  </div>
-
-                  <button
-                    onClick={exportData}
-                    className="w-full text-xs bg-primary text-primary-foreground font-extrabold py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
-                  >
-                    Download Data Snapshot ({exportFormat.toUpperCase()})
-                  </button>
-                </div>
-
-                {/* Import / Restore Card */}
-                <div className="p-4 bg-surface/60 border border-border/80 rounded-2xl flex items-center justify-between flex-wrap gap-3">
-                  <div>
-                    <div className="text-xs font-extrabold text-foreground">Restore Data from JSON Backup</div>
-                    <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
-                      Import missing habits, streak milestones, and reflection entries with dry-run validation
-                    </div>
-                  </div>
-
-                  <label className="text-xs bg-surface border border-border/80 text-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs">
-                    <Upload className="w-3.5 h-3.5 text-primary" />
-                    <span>Choose JSON Backup</span>
-                    <input
-                      type="file"
-                      accept=".json,application/json"
-                      onChange={handleImportBackup}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {/* Replay Guide */}
-                <div className="p-4 bg-surface/60 border border-border/80 rounded-2xl flex items-center justify-between flex-wrap gap-3">
-                  <div>
-                    <div className="text-xs font-extrabold text-foreground">Replay Interactive Onboarding Tour</div>
-                    <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
-                      Relaunch the interactive 7-step guided walk-through of the dashboard features
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={async () => {
-                      await resetOnboarding();
-                      toast.success("Tutorial replaying. Refreshing...");
-                      setTimeout(() => window.location.reload(), 800);
-                    }}
-                    className="text-xs bg-primary/15 text-primary border border-primary/30 font-extrabold px-4 py-2 rounded-xl hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer"
-                  >
-                    Replay Walkthrough
-                  </button>
-                </div>
-
-                {/* Emergency Reset */}
-                <div className="p-4 bg-surface/60 border border-destructive/30 rounded-2xl flex items-center justify-between flex-wrap gap-3">
-                  <div>
-                    <div className="text-xs font-extrabold text-destructive">Emergency Workspace Reset</div>
-                    <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
-                      Permanently wipes all local habit histories, streak logs, and timer statistics
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleReset}
-                    className="text-xs bg-destructive/15 text-destructive border border-destructive/30 font-extrabold px-4 py-2 rounded-xl hover:bg-destructive hover:text-white transition-all cursor-pointer"
-                  >
-                    Reset All Data
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          <DataVaultTab
+            habits={habits}
+            reflections={reflections}
+            onResetOnboarding={resetOnboarding}
+            onResetAllData={resetAllData}
+            onRestoreHabit={addHabit}
+          />
         )}
 
         {/* ========================================================================= */}

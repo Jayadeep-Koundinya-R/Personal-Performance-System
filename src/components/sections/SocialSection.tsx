@@ -16,6 +16,7 @@ import { useHabits } from "@/hooks/use-habits";
 import { useProfile } from "@/hooks/use-profile";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useClassrooms } from "@/hooks/use-classrooms";
+import { supabase } from "@/integrations/supabase/client";
 import ShareWinCard from "@/components/ShareWinCard";
 import AccountabilityCircles from "@/components/AccountabilityCircles";
 import { GroupView } from "@/components/focus-rooms/GroupView";
@@ -74,16 +75,14 @@ const INITIAL_QUESTS: CoOpQuest[] = [
     id: "quest_7day_pact",
     title: "7-Day Squad Consistency Pact",
     category: "Streak Arena",
-    description: "Every member in your circle must complete all high-priority daily habits for 7 consecutive days.",
-    currentProgress: 5,
+    description: "Complete all high-priority daily habits for 7 consecutive days with your squad circle.",
+    currentProgress: 0,
     targetProgress: 7,
     unit: "days",
     rewardXp: 500,
-    daysRemaining: 2,
+    daysRemaining: 7,
     participants: [
       { name: "You", avatar: "🌟" },
-      { name: "Alex Vance", avatar: "👨‍💻" },
-      { name: "Elena Rostova", avatar: "👩‍🔬" },
     ],
     isJoined: true,
   },
@@ -91,15 +90,13 @@ const INITIAL_QUESTS: CoOpQuest[] = [
     id: "quest_century_habits",
     title: "The Century Club: 100 Habits",
     category: "Community Quest",
-    description: "Collectively check off 100 study and wellness habits across the squad this week.",
-    currentProgress: 68,
+    description: "Check off 100 total study and performance habits across your study circle this week.",
+    currentProgress: 0,
     targetProgress: 100,
     unit: "completions",
     rewardXp: 350,
-    daysRemaining: 4,
+    daysRemaining: 7,
     participants: [
-      { name: "Sarah K.", avatar: "🎨" },
-      { name: "Marcus A.", avatar: "🏛️" },
       { name: "You", avatar: "🌟" },
     ],
     isJoined: true,
@@ -108,59 +105,20 @@ const INITIAL_QUESTS: CoOpQuest[] = [
     id: "quest_deep_focus_50h",
     title: "Deep Work Marathon: 50 Hours",
     category: "Focus Studio",
-    description: "Log 50 total hours in synced Pomodoro Focus Rooms together.",
-    currentProgress: 32,
+    description: "Log 50 total hours in synced Pomodoro Focus Rooms with your study circle.",
+    currentProgress: 0,
     targetProgress: 50,
     unit: "hours",
     rewardXp: 750,
-    daysRemaining: 5,
+    daysRemaining: 7,
     participants: [
-      { name: "Prof. Sharma", avatar: "👨‍🏫" },
-      { name: "Jordan Lee", avatar: "⚡" },
+      { name: "You", avatar: "🌟" },
     ],
     isJoined: false,
   },
 ];
 
-const INITIAL_ACTIVITIES: SocialActivity[] = [
-  {
-    id: "act_1",
-    user: "Alex Vance",
-    avatar: "👨‍💻",
-    action: "hit a 21-Day Master Streak",
-    detail: "Completed 'LeetCode Hard Challenge' 21 days in a row! 🔥",
-    timestamp: "12m ago",
-    reactions: [
-      { emoji: "🔥", count: 7, reactedByUser: false },
-      { emoji: "⚡", count: 4, reactedByUser: false },
-      { emoji: "👑", count: 3, reactedByUser: false },
-    ],
-  },
-  {
-    id: "act_2",
-    user: "Elena Rostova",
-    avatar: "👩‍🔬",
-    action: "completed 4 Focus Sprints",
-    detail: "Studied 100 minutes in 'CS Study Lab' Focus Room 🎯",
-    timestamp: "35m ago",
-    reactions: [
-      { emoji: "🎯", count: 5, reactedByUser: false },
-      { emoji: "👏", count: 3, reactedByUser: false },
-    ],
-  },
-  {
-    id: "act_3",
-    user: "Marcus Aurelius",
-    avatar: "🏛️",
-    action: "unlocked Level 15 Grandmaster",
-    detail: "Surpassed 7,500 Total Performance XP! 🏆",
-    timestamp: "2h ago",
-    reactions: [
-      { emoji: "👑", count: 9, reactedByUser: false },
-      { emoji: "💎", count: 6, reactedByUser: false },
-    ],
-  },
-];
+const INITIAL_ACTIVITIES: SocialActivity[] = [];
 
 export default function SocialSection() {
   const { habits, getMaxStreak, calculateTotalXP, calculateLevel, getTodayStr, addHabit } = useHabits();
@@ -215,7 +173,121 @@ export default function SocialSection() {
   const level = calculateLevel();
   const streak = getMaxStreak();
 
-  // Dynamic Leaderboard with Podium
+  const [dbProfiles, setDbProfiles] = useState<any[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+
+  const loadLeaderboardProfiles = useCallback(async () => {
+    setLoadingProfiles(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, display_name, avatar_emoji, total_xp, current_level, current_streak")
+        .order("total_xp", { ascending: false })
+        .limit(50);
+      if (!error && data && data.length > 0) {
+        setDbProfiles(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch leaderboard profiles:", err);
+    } finally {
+      setLoadingProfiles(false);
+    }
+  }, []);
+
+  // Supabase Realtime Subscription to profiles & quest updates
+  useEffect(() => {
+    loadLeaderboardProfiles();
+
+    // Realtime postgres_changes listener for community profiles (Task 11)
+    const profileChannel = supabase
+      .channel("public:profiles:leaderboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => {
+          loadLeaderboardProfiles();
+        }
+      )
+      .on("broadcast", { event: "squad_quest_update" }, ({ payload }) => {
+        if (payload && payload.questId && typeof payload.delta === "number") {
+          setQuests((prev) =>
+            prev.map((q) =>
+              q.id === payload.questId
+                ? {
+                    ...q,
+                    currentProgress: Math.min(q.targetProgress, q.currentProgress + payload.delta),
+                    participants: payload.participant
+                      ? [...q.participants.filter((p) => p.name !== payload.participant.name), payload.participant]
+                      : q.participants,
+                  }
+                : q
+            )
+          );
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profileChannel);
+    };
+  }, [loadLeaderboardProfiles]);
+
+  // Compute live Quest progress dynamically from user's authentic habit data (Task 13)
+  useEffect(() => {
+    const totalCompletions = habits.reduce((sum, h) => sum + h.completedDates.length, 0);
+    setQuests((prev) =>
+      prev.map((q) => {
+        if (q.id === "quest_7day_pact") {
+          return { ...q, currentProgress: Math.min(7, streak) };
+        }
+        if (q.id === "quest_century_habits") {
+          return { ...q, currentProgress: Math.min(100, totalCompletions) };
+        }
+        return q;
+      })
+    );
+  }, [habits, streak]);
+
+  const handleToggleQuest = (questId: string) => {
+    setQuests((prev) =>
+      prev.map((q) => {
+        if (q.id === questId) {
+          const nextJoined = !q.isJoined;
+          const myAvatar = profile?.avatarEmoji || "🌟";
+          const myName = profile?.displayName || "You";
+
+          const updatedParticipants = nextJoined
+            ? [...q.participants.filter((p) => p.name !== "You" && p.name !== myName), { name: "You", avatar: myAvatar }]
+            : q.participants.filter((p) => p.name !== "You" && p.name !== myName);
+
+          toast.success(nextJoined ? `Joined ${q.title}! ⚔️` : `Left ${q.title}`);
+
+          // Broadcast quest state to squad peers (Task 13)
+          try {
+            const syncChannel = supabase.channel("public:profiles:leaderboard");
+            syncChannel.send({
+              type: "broadcast",
+              event: "squad_quest_update",
+              payload: {
+                questId,
+                delta: nextJoined ? 1 : 0,
+                participant: nextJoined ? { name: myName, avatar: myAvatar } : null,
+              },
+            });
+          } catch {}
+
+          return {
+            ...q,
+            isJoined: nextJoined,
+            participants: updatedParticipants,
+          };
+        }
+        return q;
+      })
+    );
+  };
+
+  // Dynamic Leaderboard with Real Data Only (Zero fake bots)
   const leaderboardData = useMemo(() => {
     const you = {
       id: "you",
@@ -225,19 +297,25 @@ export default function SocialSection() {
       streak,
       xp: totalXP,
       isYou: true,
-      badges: ["⚡ Pro Member", "🔥 Streak Guard"],
+      badges: ["⚡ Live Account", "🔥 Active Streak"],
     };
 
-    const peers = [
-      { id: "p1", name: "Marcus Aurelius", avatar: "🏛️", level: 15, streak: 45, xp: 7400, isYou: false, badges: ["👑 Grandmaster", "🏆 #1 Legend"] },
-      { id: "p2", name: "Sarah Vance", avatar: "🎨", level: 12, streak: 24, xp: 4850, isYou: false, badges: ["🔥 20d Streak", "💎 Pioneer"] },
-      { id: "p3", name: "Alex Chen", avatar: "👨‍💻", level: 10, streak: 18, xp: 3600, isYou: false, badges: ["⚡ Focus Beast"] },
-      { id: "p4", name: "Elena Rostova", avatar: "👩‍🔬", level: 8, streak: 12, xp: 2900, isYou: false, badges: ["🎯 Scholar"] },
-      { id: "p5", name: "Jordan Lee", avatar: "🚀", level: 7, streak: 9, xp: 2450, isYou: false, badges: ["🌱 Rising Star"] },
-    ];
+    // Include other real registered users if present in database
+    const otherUsers = (dbProfiles || [])
+      .filter((p) => p.id !== profile?.userId && p.display_name && p.display_name !== profile?.displayName)
+      .map((p) => ({
+        id: p.id,
+        name: p.display_name || "Community Member",
+        avatar: p.avatar_emoji || "👤",
+        level: p.current_level || 1,
+        streak: p.current_streak || 0,
+        xp: p.total_xp || 0,
+        isYou: false,
+        badges: ["👥 Verified Member"],
+      }));
 
-    return [you, ...peers].sort((a, b) => b.xp - a.xp);
-  }, [profile, level, streak, totalXP]);
+    return [you, ...otherUsers].sort((a, b) => b.xp - a.xp);
+  }, [profile, level, streak, totalXP, dbProfiles]);
 
   const sendInvite = () => {
     if (!inviteUsername.trim()) return;
@@ -245,23 +323,6 @@ export default function SocialSection() {
       description: "They will receive an accountability invite in their notifications.",
     });
     setInviteUsername("");
-  };
-
-  const handleToggleQuest = (questId: string) => {
-    setQuests((prev) =>
-      prev.map((q) => {
-        if (q.id !== questId) return q;
-        const nextJoined = !q.isJoined;
-        if (nextJoined) {
-          toast.success(`Joined Quest: "${q.title}"! ⚔️`, {
-            description: `Complete your habits this week to win +${q.rewardXp} XP.`,
-          });
-        } else {
-          toast.info(`Left quest "${q.title}".`);
-        }
-        return { ...q, isJoined: nextJoined };
-      })
-    );
   };
 
   const handleReactToActivity = (activityId: string, emoji: string) => {
@@ -363,9 +424,28 @@ export default function SocialSection() {
       {/* ── TAB 1: LEADERBOARD & PODIUM ── */}
       {activeTab === "leaderboard" && (
         <div className="space-y-6">
-          {/* Top 3 Podium Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-            {/* 2nd Place (Silver) */}
+          {/* Honest Live Status Banner */}
+          <div className="p-3.5 px-4 rounded-2xl bg-surface/80 border border-primary/25 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="text-base">🏆</span>
+              <div className="text-muted-foreground text-[11.5px]">
+                <strong className="text-foreground font-bold">Live Account Leaderboard:</strong> Your personal total XP ({totalXP.toLocaleString()} XP), Level {level}, and {streak}-day streak are active. Connect with friends and focus room peers to see their real-time standings.
+              </div>
+            </div>
+            <span className="text-[10px] font-mono font-black uppercase text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md flex-shrink-0">
+              Live Standing
+            </span>
+          </div>
+
+          {/* Top Podium Cards */}
+          <div className={`grid gap-4 pt-2 ${
+            leaderboardData.length === 1
+              ? "grid-cols-1 max-w-md mx-auto"
+              : leaderboardData.length === 2
+              ? "grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto"
+              : "grid-cols-1 md:grid-cols-3"
+          }`}>
+            {/* 2nd Place (Silver) - if exists */}
             {leaderboardData[1] && (
               <div className="p-5 rounded-3xl bg-gradient-to-b from-card to-slate-500/10 border border-slate-400/30 flex flex-col items-center text-center space-y-3 shadow-lg relative order-2 md:order-1">
                 <div className="w-8 h-8 rounded-full bg-slate-300 text-black font-black flex items-center justify-center text-xs shadow-md">
@@ -391,7 +471,7 @@ export default function SocialSection() {
               <div className="p-6 rounded-3xl bg-gradient-to-b from-card via-amber-500/10 to-amber-500/20 border-2 border-amber-400 shadow-2xl flex flex-col items-center text-center space-y-3 relative order-1 md:order-2 transform md:-translate-y-2">
                 <div className="absolute -top-3.5 bg-amber-400 text-black font-mono font-black text-[11px] uppercase px-3 py-0.5 rounded-full flex items-center gap-1 shadow-md">
                   <Crown className="w-3.5 h-3.5" />
-                  <span>Champion</span>
+                  <span>Rank #1 Leader</span>
                 </div>
                 <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center text-4xl shadow-xl mt-1">
                   {leaderboardData[0].avatar}
@@ -403,12 +483,12 @@ export default function SocialSection() {
                 <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
                   <span className="flex items-center gap-0.5 text-amber-400 font-black"><Flame className="w-3.5 h-3.5 fill-amber-400" /> {leaderboardData[0].streak}d Streak</span>
                   <span>•</span>
-                  <span className="font-bold text-foreground">Level {leaderboardData[0].level} Master</span>
+                  <span className="font-bold text-foreground">Level {leaderboardData[0].level} Achiever</span>
                 </div>
               </div>
             )}
 
-            {/* 3rd Place (Bronze) */}
+            {/* 3rd Place (Bronze) - if exists */}
             {leaderboardData[2] && (
               <div className="p-5 rounded-3xl bg-gradient-to-b from-card to-amber-700/10 border border-amber-700/30 flex flex-col items-center text-center space-y-3 shadow-lg relative order-3">
                 <div className="w-8 h-8 rounded-full bg-amber-700/60 text-amber-200 font-black flex items-center justify-center text-xs shadow-md">
@@ -475,16 +555,44 @@ export default function SocialSection() {
                     <div className="text-xs font-mono font-black text-primary">
                       {item.xp.toLocaleString()} XP
                     </div>
-                    <button
-                      onClick={() => toast.success(`Sent cheer to ${item.name}! 👏`)}
-                      className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                    >
-                      Cheer 👏
-                    </button>
+                    {!item.isYou && (
+                      <button
+                        onClick={() => toast.success(`Sent cheer to ${item.name}! 👏`)}
+                        className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                      >
+                        Cheer 👏
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Squad Invite Card when solo */}
+            {leaderboardData.length <= 1 && (
+              <div className="mt-4 p-5 rounded-2xl bg-surface/50 border border-border/60 text-center space-y-3">
+                <div className="w-10 h-10 mx-auto rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-xl">
+                  👥
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-foreground">Invite Your Study Squad to Compete</h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 max-w-md mx-auto">
+                    Challenge your friends, classmates, and study group members on this leaderboard to build streaks together.
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/login?tab=signup`);
+                      toast.success("Squad invite link copied to clipboard! 📋");
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer shadow-xs"
+                  >
+                    📋 Copy Squad Invite Link
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -576,48 +684,74 @@ export default function SocialSection() {
             <span className="text-[10px] font-mono text-primary font-bold">+1 XP per cheer</span>
           </div>
 
-          <div className="space-y-3">
-            {activities.map((act) => (
-              <div key={act.id} className="p-4 rounded-3xl bg-card border border-border/80 shadow-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-2xl bg-surface border border-border/70 flex items-center justify-center text-xl">
-                      {act.avatar}
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-foreground">
-                        <span>{act.user}</span>{" "}
-                        <span className="font-normal text-muted-foreground">{act.action}</span>
-                      </div>
-                      <div className="text-[10px] text-muted-foreground font-mono">{act.timestamp}</div>
-                    </div>
-                  </div>
+          {activities.length === 0 ? (
+            <div className="p-8 rounded-3xl bg-card border border-border/80 text-center space-y-4 shadow-xl">
+              <div className="w-12 h-12 mx-auto rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl">
+                ⚡
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Your Squad Activity Wall</h3>
+                <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                  When you or your study circle members hit streaks, complete focus sprints, or unlock achievements, live cheer events will stream here!
+                </p>
+              </div>
+              {/* Real User Live Highlights */}
+              <div className="p-4 rounded-2xl bg-surface/50 border border-border/60 text-left space-y-2 max-w-md mx-auto">
+                <div className="text-[11px] font-mono font-bold text-primary uppercase">Your Active Milestones:</div>
+                <div className="flex items-center gap-2 text-xs text-foreground font-semibold">
+                  <span>🔥</span>
+                  <span>{streak > 0 ? `${streak}-day streak active` : "Start today's first habit streak"}</span>
                 </div>
-
-                <div className="p-3 rounded-2xl bg-surface/70 border border-border/60 text-xs font-semibold text-foreground">
-                  {act.detail}
-                </div>
-
-                {/* Reactions Dock */}
-                <div className="flex items-center gap-2 pt-1">
-                  {act.reactions.map((r) => (
-                    <button
-                      key={r.emoji}
-                      onClick={() => handleReactToActivity(act.id, r.emoji)}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
-                        r.reactedByUser
-                          ? "bg-primary/20 border-primary text-primary"
-                          : "bg-surface border-border/70 text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <span>{r.emoji}</span>
-                      <span className="text-[11px] font-mono">{r.count}</span>
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2 text-xs text-foreground font-semibold">
+                  <span>⬆️</span>
+                  <span>Level {level} Achiever ({totalXP.toLocaleString()} Total XP)</span>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {activities.map((act) => (
+                <div key={act.id} className="p-4 rounded-3xl bg-card border border-border/80 shadow-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-2xl bg-surface border border-border/70 flex items-center justify-center text-xl">
+                        {act.avatar}
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-foreground">
+                          <span>{act.user}</span>{" "}
+                          <span className="font-normal text-muted-foreground">{act.action}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground font-mono">{act.timestamp}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-surface/70 border border-border/60 text-xs font-semibold text-foreground">
+                    {act.detail}
+                  </div>
+
+                  {/* Reactions Dock */}
+                  <div className="flex items-center gap-2 pt-1">
+                    {act.reactions.map((r) => (
+                      <button
+                        key={r.emoji}
+                        onClick={() => handleReactToActivity(act.id, r.emoji)}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                          r.reactedByUser
+                            ? "bg-primary/20 border-primary text-primary"
+                            : "bg-surface border-border/70 text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <span>{r.emoji}</span>
+                        <span className="text-[11px] font-mono">{r.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

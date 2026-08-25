@@ -115,7 +115,7 @@ export function getCoachResponse(
   // Step 4: If the template returned generic action habits with placeholder IDs,
   // try to resolve them to real habit IDs from the pending list
   // (Templates use `pending_0`, `pending_1` etc. as placeholders)
-  let resolvedActions = response.actionHabits;
+  const resolvedActions = response.actionHabits;
   if (resolvedActions && resolvedActions.length > 0) {
     // The templates create placeholder IDs like "pending_0" — but AiChatWidget
     // needs real habit IDs to call toggleCompletion(). We'll handle this in the

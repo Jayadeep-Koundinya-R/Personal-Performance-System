@@ -25,26 +25,7 @@ export function useClassrooms() {
   const [classrooms, setClassrooms] = useState<Classroom[]>(() => {
     try {
       const saved = localStorage.getItem("pps_classrooms_store");
-      return saved ? JSON.parse(saved) : [
-        {
-          id: "class_demo_1",
-          name: "12th Science — Batch A (NEET Prep)",
-          description: "Daily study habits, physics numericals, and bio revision",
-          inviteCode: "NEET26",
-          ownerId: "teacher_1",
-          memberCount: 28,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "class_demo_2",
-          name: "Computer Science Dept — Sem 5",
-          description: "Daily coding block, DSA practice, and project documentation",
-          inviteCode: "CS2026",
-          ownerId: "prof_2",
-          memberCount: 42,
-          createdAt: new Date().toISOString(),
-        },
-      ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -53,24 +34,7 @@ export function useClassrooms() {
   const [assignedHabits, setAssignedHabits] = useState<AssignedHabit[]>(() => {
     try {
       const saved = localStorage.getItem("pps_assigned_habits_store");
-      return saved ? JSON.parse(saved) : [
-        {
-          id: "assign_1",
-          classroomId: "class_demo_1",
-          habitName: "📚 1 Hour Biology NCERT Revision",
-          category: "Learning",
-          period: "Daily",
-          assignedBy: "Prof. Sharma",
-        },
-        {
-          id: "assign_2",
-          classroomId: "class_demo_2",
-          habitName: "💻 Solve 1 LeetCode Problem",
-          category: "Productivity",
-          period: "Daily",
-          assignedBy: "Prof. Verma",
-        },
-      ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }

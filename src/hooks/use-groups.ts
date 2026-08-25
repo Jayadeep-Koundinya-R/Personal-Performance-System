@@ -33,44 +33,35 @@ export interface StudyGroup {
 
 export const SAMPLE_TEMPLATE_GROUP: StudyGroup = {
   id: "group_sample_squad",
-  name: "Mastery & Focus Squad (Sample)",
+  name: "Mastery & Focus Squad",
   description: "Daily Pomodoro deep work sprints, sharing study cheat-sheets and lecture notes.",
   inviteCode: "FOCUS1",
-  createdBy: "sample_host",
+  createdBy: "current_user",
   privacy: "public",
   maxMembers: 20,
   avatarEmoji: "⚡",
   studyTopic: "General Deep Work & Study",
   createdAt: new Date().toISOString(),
-  memberCount: 3,
+  memberCount: 1,
 };
 
 export const SAMPLE_TEMPLATE_MEMBERS: GroupMember[] = [
   {
     id: "m_sample_1",
     groupId: "group_sample_squad",
-    userId: "sample_host",
-    displayName: "Study Lead (Mentor)",
-    avatar: "👨‍🏫",
-    role: "teacher",
+    userId: "current_user",
+    displayName: "Squad Leader (You)",
+    avatar: "🌟",
+    role: "admin",
     status: "active",
-    currentStreak: 21,
+    currentStreak: 1,
     isStudying: true,
     joinedAt: new Date().toISOString(),
   },
-  {
-    id: "m_sample_2",
-    groupId: "group_sample_squad",
-    userId: "sample_peer",
-    displayName: "Elena R.",
-    avatar: "👩‍🔬",
-    role: "member",
-    status: "active",
-    currentStreak: 14,
-    isStudying: false,
-    joinedAt: new Date().toISOString(),
-  },
 ];
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const isUuid = (str: string | null | undefined): boolean => Boolean(str && UUID_REGEX.test(str));
 
 // ── Helper: user-scoped localStorage keys ──
 function groupsStorageKey(userId: string | undefined) {
@@ -86,7 +77,7 @@ function activeGroupStorageKey(userId: string | undefined) {
 export function useGroups() {
   const { user } = useAuth();
   const { profile } = useProfile();
-  const isGuestUser = !user?.id || user?.id === "guest_local" || user?.id.startsWith("guest");
+  const isGuestUser = !user?.id || user?.id === "guest_local" || user?.id.startsWith("guest") || !isUuid(user?.id);
   const prevUserIdRef = useRef<string | undefined>(undefined);
 
   const [groups, setGroups] = useState<StudyGroup[]>(() => {
@@ -569,7 +560,7 @@ export function useGroups() {
         localStorage.setItem(groupsStorageKey(userId), JSON.stringify(currentGroups.filter((g) => g.id !== groupId)));
       } catch {}
 
-      if (isGuestUser) {
+      if (isGuestUser || !isUuid(groupId)) {
         toast.info("You left the study group.");
         return;
       }
@@ -577,12 +568,14 @@ export function useGroups() {
       try {
         if (isLastMember) {
           // Last member leaving — delete the entire group (cascade deletes members, channels, messages)
-          const { error: deleteError } = await supabase
-            .from("study_groups")
-            .delete()
-            .eq("id", groupId);
-          if (deleteError) {
-            console.error("Failed to delete empty group:", deleteError);
+          if (isUuid(groupId)) {
+            const { error: deleteError } = await supabase
+              .from("study_groups")
+              .delete()
+              .eq("id", groupId);
+            if (deleteError) {
+              console.error("Failed to delete empty group:", deleteError);
+            }
           }
           toast.info("You left and the group was archived (no remaining members).");
         } else {
@@ -591,7 +584,7 @@ export function useGroups() {
             const nextAdmin = otherActiveMembers.sort(
               (a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
             )[0];
-            if (nextAdmin) {
+            if (nextAdmin && isUuid(nextAdmin.id)) {
               await supabase
                 .from("group_members")
                 .update({ role: "admin" })
@@ -600,11 +593,13 @@ export function useGroups() {
           }
 
           // Delete the leaving user's membership row
-          await supabase
-            .from("group_members")
-            .delete()
-            .eq("group_id", groupId)
-            .eq("user_id", userId);
+          if (isUuid(groupId) && isUuid(userId)) {
+            await supabase
+              .from("group_members")
+              .delete()
+              .eq("group_id", groupId)
+              .eq("user_id", userId);
+          }
 
           toast.info("You left the study group.");
         }
@@ -629,7 +624,7 @@ export function useGroups() {
         ),
       }));
 
-      if (!isGuestUser && user?.id) {
+      if (!isGuestUser && user?.id && isUuid(groupId) && isUuid(user.id)) {
         try {
           await supabase
             .from("group_members")
@@ -671,6 +666,7 @@ export function useGroups() {
     activeGroupId,
     setActiveGroupId,
     members: activeGroupMembers,
+    membersMap,
     loading,
     createGroup,
     joinGroup,
@@ -681,3 +677,4 @@ export function useGroups() {
     refreshGroups: fetchCloudGroups,
   };
 }
+
