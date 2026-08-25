@@ -8,9 +8,10 @@ interface StatCardProps {
   trend: React.ReactNode;
   progress: number;
   variant: "indigo" | "orange" | "cyan" | "green";
+  onClick?: () => void;
 }
 
-export function StatCard({ value, label, icon, trend, progress, variant }: StatCardProps) {
+export function StatCard({ value, label, icon, trend, progress, variant, onClick }: StatCardProps) {
   const variantMap = {
     indigo: { from: "var(--stat-indigo-from)", to: "var(--stat-indigo-to)", border: "var(--stat-indigo-border)", bar: "hsl(var(--primary))" },
     orange: { from: "var(--stat-orange-from)", to: "var(--stat-orange-to)", border: "var(--stat-orange-border)", bar: "hsl(var(--orange))" },
@@ -21,10 +22,11 @@ export function StatCard({ value, label, icon, trend, progress, variant }: StatC
 
   return (
     <motion.div
+      onClick={onClick}
       whileHover={{ scale: 1.03, y: -4 }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 400, damping: 20 }}
-      className="rounded-xl p-[18px] px-5 relative overflow-hidden cursor-default"
+      className={`rounded-xl p-[18px] px-5 relative overflow-hidden transition-shadow ${onClick ? "cursor-pointer hover:shadow-lg" : "cursor-default"}`}
       style={{
         background: `linear-gradient(135deg, hsl(${v.from}), hsl(${v.to}))`,
         borderWidth: "1px",

@@ -12,11 +12,13 @@ import { LevelWidget } from "@/components/dashboard/LevelWidget";
 import { supabase } from "@/integrations/supabase/client";
 import { MotivationalQuoteWidget } from "@/components/dashboard/MotivationalQuoteWidget";
 import { LiveSquadMeetingCard } from "@/components/dashboard/LiveSquadMeetingCard";
+import { StickyNotesWidget } from "@/components/dashboard/StickyNotesWidget";
 import { toast } from "sonner";
 
 import { Link } from "react-router-dom";
-import { Search, X, Filter } from "lucide-react";
+import { Search, X, Filter, Volume2, VolumeX } from "lucide-react";
 import { feedbackSounds } from "@/lib/audio/clickFeedback";
+
 
 
 const LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -310,14 +312,64 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
 
   const dueToday = habits.filter((h) => isHabitDueToday(h));
 
+  // Audio FX Mute State
+  const [isAudioMuted, setIsAudioMuted] = useState(() => feedbackSounds.getIsMuted());
+  const toggleAudioMute = () => {
+    const next = !isAudioMuted;
+    setIsAudioMuted(next);
+    feedbackSounds.setMuted(next);
+    if (!next) {
+      feedbackSounds.playClick();
+      toast.success("Sound Effects: Enabled 🔊");
+    } else {
+      toast.info("Sound Effects: Muted 🔇");
+    }
+  };
+
   const doneToday = dueToday.filter((h) => h.completedDates.includes(todayStr));
   const completionRate = dueToday.length > 0 ? Math.round((doneToday.length / dueToday.length) * 100) : 0;
+
+  // ⚡ Smart Next-Up Habit: Priority (Critical > High > Medium > Low) + Urgency + Time-Block
   const nextUpHabit = useMemo(() => {
-    return dueToday.find((h) => !h.completedDates.includes(todayStr));
+    const uncompleted = dueToday.filter((h) => !h.completedDates.includes(todayStr));
+    if (uncompleted.length === 0) return null;
+
+    const priorityWeights: Record<string, number> = {
+      Critical: 4,
+      High: 3,
+      Medium: 2,
+      Low: 1,
+    };
+
+    return [...uncompleted].sort((a, b) => {
+      // 1. Urgency Level (Overdue > Urgent within 1h > Normal)
+      const urgA = getUrgencyLevel(a);
+      const urgB = getUrgencyLevel(b);
+      if (urgA === "overdue" && urgB !== "overdue") return -1;
+      if (urgB === "overdue" && urgA !== "overdue") return 1;
+      if (urgA === "urgent" && urgB !== "urgent") return -1;
+      if (urgB === "urgent" && urgA !== "urgent") return 1;
+
+      // 2. Priority Weight
+      const pA = priorityWeights[a.priority] || 2;
+      const pB = priorityWeights[b.priority] || 2;
+      if (pA !== pB) return pB - pA;
+
+      // 3. Scheduled Start Time
+      if (a.startTime && b.startTime) {
+        return a.startTime.localeCompare(b.startTime);
+      }
+      if (a.startTime && !b.startTime) return -1;
+      if (!a.startTime && b.startTime) return 1;
+
+      return 0;
+    })[0];
   }, [dueToday, todayStr]);
+
   const maxStreak = getMaxStreak();
   const freezeCredits = getTotalFreezeCredits();
   const weeklyPoints = calculateWeeklyPoints();
+
 
   // --- Completion Celebration ---
   const [showCelebration, setShowCelebration] = useState(false);
@@ -854,6 +906,20 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
             <kbd className="hidden sm:inline-block text-[10px] bg-muted/60 text-muted-foreground px-1.5 py-0.2 rounded border border-border font-mono">Q</kbd>
           </button>
 
+          {/* Sound Effects Mute Toggle */}
+          <button
+            onClick={toggleAudioMute}
+            className={`p-1.5 rounded-lg border transition-all duration-200 cursor-pointer flex items-center justify-center ${
+              isAudioMuted
+                ? "bg-surface border-border text-muted-foreground hover:text-foreground"
+                : "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 shadow-2xs"
+            }`}
+            title={isAudioMuted ? "Unmute Sound Effects (currently muted)" : "Mute Sound Effects"}
+          >
+            {isAudioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+          </button>
+
+
           {dueToday.length > 0 && doneToday.length < dueToday.length && (
             <button
               onClick={markAllDone}
@@ -1004,19 +1070,73 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         </motion.div>
       )}
 
-      {/* Stat Cards */}
+      {/* Stat Cards with Direct Section Shortcuts */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
         {[
-          { value: `${completionRate}%`, label: "Completion Rate", icon: "📊", trend: <TrendBadge diff={trend.diff} suffix="%" />, progress: completionRate, variant: "indigo" as const },
-          { value: `🔥 ${maxStreak}`, label: "Current Streak", icon: "⚡", trend: <span className="text-[11px] font-semibold text-pps-orange font-mono">{maxStreak >= 7 ? "🏆 On fire!" : maxStreak > 0 ? "Keep pushing!" : "Start today!"}</span>, progress: Math.min(maxStreak * 10, 100), variant: "orange" as const },
-          { value: String(freezeCredits), label: "Freeze Credits", icon: "🧊", trend: <span className="text-[11px] font-semibold text-secondary font-mono">{freezeCredits > 3 ? "Well stocked" : freezeCredits > 0 ? "Use wisely" : "Earn more!"}</span>, progress: Math.min(freezeCredits * 20, 100), variant: "cyan" as const },
-          { value: String(weeklyPoints), label: "Points This Week", icon: "🎯", trend: <span className={`text-[11px] font-semibold font-mono ${weeklyTrend.diff >= 0 ? "text-pps-green" : "text-destructive"}`}>{weeklyTrend.diff > 0 ? `▲ +${weeklyTrend.diff}` : weeklyTrend.diff < 0 ? `▼ ${weeklyTrend.diff}` : "—"} vs last week</span>, progress: Math.min(weeklyPoints, 100), variant: "green" as const },
+          {
+            value: `${completionRate}%`,
+            label: "Completion Rate",
+            icon: "📊",
+            trend: <TrendBadge diff={trend.diff} suffix="%" />,
+            progress: completionRate,
+            variant: "indigo" as const,
+            onClick: () => onNavigate?.("analytics"),
+          },
+          {
+            value: `🔥 ${maxStreak}`,
+            label: "Current Streak",
+            icon: "⚡",
+            trend: (
+              <span className="text-[11px] font-semibold text-pps-orange font-mono">
+                {maxStreak >= 7 ? "🏆 On fire!" : maxStreak > 0 ? "Keep pushing!" : "Start today!"}
+              </span>
+            ),
+            progress: Math.min(maxStreak * 10, 100),
+            variant: "orange" as const,
+            onClick: () => onNavigate?.("streak"),
+          },
+          {
+            value: String(freezeCredits),
+            label: "Freeze Credits",
+            icon: "🧊",
+            trend: (
+              <span className="text-[11px] font-semibold text-secondary font-mono">
+                {freezeCredits > 3 ? "Well stocked" : freezeCredits > 0 ? "Use wisely" : "Earn more!"}
+              </span>
+            ),
+            progress: Math.min(freezeCredits * 20, 100),
+            variant: "cyan" as const,
+            onClick: () => onNavigate?.("streak"),
+          },
+          {
+            value: String(weeklyPoints),
+            label: "Points This Week",
+            icon: "🎯",
+            trend: (
+              <span
+                className={`text-[11px] font-semibold font-mono ${
+                  weeklyTrend.diff >= 0 ? "text-pps-green" : "text-destructive"
+                }`}
+              >
+                {weeklyTrend.diff > 0
+                  ? `▲ +${weeklyTrend.diff}`
+                  : weeklyTrend.diff < 0
+                  ? `▼ ${weeklyTrend.diff}`
+                  : "—"}{" "}
+                vs last week
+              </span>
+            ),
+            progress: Math.min(weeklyPoints, 100),
+            variant: "green" as const,
+            onClick: () => onNavigate?.("achievements"),
+          },
         ].map((card, i) => (
           <motion.div key={card.label} variants={scaleIn} custom={i} initial="hidden" animate="visible">
             <StatCard {...card} />
           </motion.div>
         ))}
       </div>
+
 
 
 
@@ -1110,8 +1230,9 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
 
       {/* 🔍 Power-User Search & Category Filter Toolbar */}
       {habits.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-surface/50 border border-border/60">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-surface/50 border border-border/60 mb-6 shadow-xs">
           <div className="relative flex-1 max-w-md">
+
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
@@ -1145,9 +1266,24 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
                 {cat}
               </button>
             ))}
+
+            {(searchQuery || categoryFilter !== "All") && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setCategoryFilter("All");
+                }}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive/25 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 shadow-2xs"
+                title="Clear active search and category filters"
+              >
+                <X className="w-3 h-3" />
+                <span>Clear Filters</span>
+              </button>
+            )}
           </div>
         </div>
       )}
+
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
@@ -1274,7 +1410,8 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         ) : (
           <>
             {/* Left — Task Lists (Dynamically toggles between Priority & Time-block view) */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
+
               {energyCorrelationMsg && (
                 <div className="text-[11px] font-mono text-primary font-semibold px-2.5 py-0.5 bg-primary/10 border border-primary/20 rounded-full">
                   {energyCorrelationMsg}
@@ -1380,61 +1517,25 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
               </AnimatePresence>
             </div>
 
-            {/* Right — Widgets */}
-            <div className="flex flex-col gap-4">
-              {/* Today's Progress + Circular Momentum Gauge */}
-              <motion.div variants={scaleIn} custom={7} initial="hidden" animate="visible" className="bg-card border border-border rounded-2xl p-5 shadow-xs">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Today's Progress</h4>
-                  <span className="text-[11px] font-mono text-primary font-bold">
-                    {doneToday.length} / {dueToday.length} Done
-                  </span>
-                </div>
-                
-                {/* Circular Momentum Gauge */}
-                <MomentumGauge percentage={completionRate} />
+            {/* Right — Widgets (Action-First Ordering) */}
+            <div className="flex flex-col gap-5">
 
-                {completionRate === 100 && dueToday.length > 0 && (
-                  <div className="mt-2 mb-3 p-2.5 text-center text-xs text-pps-green font-semibold bg-pps-green/10 border border-pps-green/20 rounded-xl">
-                    🏆 All due habits completed today!
-                  </div>
-                )}
-
-
-                <div className="mt-3 space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
-                  <AnimatePresence>
-                    {dueToday.map((h, i) => {
-                      const done = h.completedDates.includes(todayStr);
-                      return (
-                        <motion.div
-                          key={h.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.04 }}
-                          className="flex items-center justify-between text-[12px] py-1 border-b border-border/30 last:border-0"
-                        >
-                          <div className="flex items-center gap-2 overflow-hidden">
-                            <motion.span animate={done ? { scale: [1, 1.3, 1] } : {}} transition={{ duration: 0.3 }} className={done ? "text-pps-green" : "text-muted-foreground"}>
-                              {done ? "✅" : "⬜"}
-                            </motion.span>
-                            <span className={`truncate ${done ? "text-muted-foreground line-through" : "text-foreground/80"}`}>{h.name}</span>
-                          </div>
-                          {h.startTime && (
-                            <span className="text-[10px] font-mono text-muted-foreground">{formatTime12(h.startTime)}</span>
-                          )}
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
-                </div>
+              {/* 1. 📌 Super-Elevated Sticky Notes with Checklist & 1-Click Habit Converter (Top Priority) */}
+              <motion.div variants={scaleIn} custom={7} initial="hidden" animate="visible">
+                <StickyNotesWidget todayStr={todayStr} onAddHabit={addHabit} />
               </motion.div>
 
-              {/* Reminders Widget */}
+              {/* 2. 🔔 Upcoming Reminders & Alarms */}
               <motion.div variants={scaleIn} custom={8} initial="hidden" animate="visible" className="bg-card border border-border/90 rounded-2xl p-5 shadow-xs">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
                     <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 5 }}>🔔</motion.span>
                     Upcoming Reminders
+                    {reminders.length > 0 && (
+                      <span className="text-[9px] bg-secondary/15 text-secondary border border-secondary/30 px-1.5 py-0.2 rounded font-mono font-bold">
+                        {reminders.length} active
+                      </span>
+                    )}
                   </h4>
                   <button
                     onClick={() => onNavigate?.("reminders")}
@@ -1446,19 +1547,19 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
                 </div>
 
                 {reminders.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground text-[12px]">
-                    <div className="text-xl mb-1">🔕</div>
+                  <div className="text-center py-3 text-muted-foreground text-[12px]">
+                    <div className="text-lg mb-0.5">🔕</div>
                     No active reminders
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {reminders.slice(0, 4).map((r, i) => (
+                    {reminders.slice(0, 3).map((r, i) => (
                       <motion.div
                         key={r.id}
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.06 }}
-                        className="flex flex-col gap-1.5 p-3 bg-surface/60 border border-border/70 rounded-xl text-xs"
+                        className="flex flex-col gap-1.5 p-3 bg-surface/60 border border-border/70 rounded-xl text-xs hover:border-primary/30 transition-all"
                       >
                         <div className="flex items-center justify-between">
                           <div className="font-semibold text-foreground truncate pr-2">{r.label}</div>
@@ -1491,28 +1592,60 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
                         </div>
                       </motion.div>
                     ))}
-                    {reminders.length > 4 && (
-                      <div className="text-[11px] text-muted-foreground text-center pt-1 font-mono">+{reminders.length - 4} more reminders</div>
+                    {reminders.length > 3 && (
+                      <div className="text-[11px] text-muted-foreground text-center pt-1 font-mono">+{reminders.length - 3} more reminders</div>
                     )}
                   </div>
                 )}
               </motion.div>
 
-              {/* Quick Sticky Notes Widget */}
-              <motion.div variants={scaleIn} custom={9} initial="hidden" animate="visible" className="bg-card border border-amber-500/25 bg-gradient-to-br from-card via-card to-amber-500/5 rounded-2xl p-5 shadow-xs">
-                <h4 className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold mb-2.5 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-amber-500 font-bold">
-                    <span>📌</span> Sticky Notes
+              {/* 3. 🎯 Today's Progress + Circular Momentum Gauge */}
+              <motion.div variants={scaleIn} custom={9} initial="hidden" animate="visible" className="bg-card border border-border rounded-2xl p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Today's Progress</h4>
+                  <span className="text-[11px] font-mono text-primary font-bold">
+                    {doneToday.length} / {dueToday.length} Done
                   </span>
-                  <span className="text-[10px] text-muted-foreground font-mono">Auto-saved</span>
-                </h4>
-                <textarea
-                  value={dailyNote}
-                  onChange={(e) => handleDailyNoteChange(e.target.value)}
-                  placeholder="Jot down quick thoughts, wins, or ideas for today..."
-                  className="w-full bg-surface/90 border border-amber-500/20 rounded-xl p-3 text-xs outline-none focus:border-amber-500 resize-none h-24 leading-relaxed font-sans shadow-inner"
-                />
+                </div>
+                
+                {/* Circular Momentum Gauge */}
+                <MomentumGauge percentage={completionRate} />
+
+                {completionRate === 100 && dueToday.length > 0 && (
+                  <div className="mt-2 mb-3 p-2.5 text-center text-xs text-pps-green font-semibold bg-pps-green/10 border border-pps-green/20 rounded-xl">
+                    🏆 All due habits completed today!
+                  </div>
+                )}
+
+                <div className="mt-3 space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
+                  <AnimatePresence>
+                    {dueToday.map((h, i) => {
+                      const done = h.completedDates.includes(todayStr);
+                      return (
+                        <motion.div
+                          key={h.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          className="flex items-center justify-between text-[12px] py-1 border-b border-border/30 last:border-0"
+                        >
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <motion.span animate={done ? { scale: [1, 1.3, 1] } : {}} transition={{ duration: 0.3 }} className={done ? "text-pps-green" : "text-muted-foreground"}>
+                              {done ? "✅" : "⬜"}
+                            </motion.span>
+                            <span className={`truncate ${done ? "text-muted-foreground line-through" : "text-foreground/80"}`}>{h.name}</span>
+                          </div>
+                          {h.startTime && (
+                            <span className="text-[10px] font-mono text-muted-foreground">{formatTime12(h.startTime)}</span>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
               </motion.div>
+
+
 
               {/* 30-Day Activity Heatmap Grid with Window Pagination */}
               <motion.div variants={scaleIn} custom={10} initial="hidden" animate="visible" className="bg-card border border-border/90 rounded-2xl p-5 shadow-xs">
