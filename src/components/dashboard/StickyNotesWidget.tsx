@@ -426,33 +426,34 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
                 >
                   {/* Left: Reorder Up/Down + Checkbox + Text */}
                   <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    {/* Compact Reorder Up / Down Controls */}
+                    {/* Prominent Reorder Up / Down Controls */}
                     {items.length > 1 && (
-                      <div className="flex flex-col -space-y-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                      <div className="flex flex-col -space-y-0.5 opacity-80 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <button
                           type="button"
                           onClick={() => handleMoveUp(index)}
                           disabled={index === 0}
-                          className={`p-0.5 rounded hover:bg-surface/80 text-muted-foreground hover:text-amber-500 transition-colors cursor-pointer ${
-                            index === 0 ? "opacity-20 cursor-not-allowed" : ""
+                          className={`p-0.5 rounded hover:bg-amber-500/20 text-muted-foreground hover:text-amber-500 transition-all cursor-pointer ${
+                            index === 0 ? "opacity-20 cursor-not-allowed pointer-events-none" : "hover:scale-110 active:scale-95"
                           }`}
                           title={index === 0 ? "Already at top" : "Move task up"}
                         >
-                          <ChevronUp className="w-2.5 h-2.5" />
+                          <ChevronUp className="w-3.5 h-3.5 stroke-[2.5]" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleMoveDown(index)}
                           disabled={index === items.length - 1}
-                          className={`p-0.5 rounded hover:bg-surface/80 text-muted-foreground hover:text-amber-500 transition-colors cursor-pointer ${
-                            index === items.length - 1 ? "opacity-20 cursor-not-allowed" : ""
+                          className={`p-0.5 rounded hover:bg-amber-500/20 text-muted-foreground hover:text-amber-500 transition-all cursor-pointer ${
+                            index === items.length - 1 ? "opacity-20 cursor-not-allowed pointer-events-none" : "hover:scale-110 active:scale-95"
                           }`}
                           title={index === items.length - 1 ? "Already at bottom" : "Move task down"}
                         >
-                          <ChevronDown className="w-2.5 h-2.5" />
+                          <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
                         </button>
                       </div>
                     )}
+
 
                     <button
                       type="button"
