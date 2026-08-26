@@ -113,6 +113,7 @@ export const HomePage: React.FC = () => {
 
   // ── Simulator Tab State ──
   const [activeSimTab, setActiveSimTab] = useState<"pomodoro" | "soundscape" | "ai">("pomodoro");
+  const [activePersona, setActivePersona] = useState<"aspirants" | "coders" | "students">("aspirants");
 
   // ── Simulator 1: Live Interactive Pomodoro & Habit XP State ──
   const [pomoSeconds, setPomoSeconds] = useState(25 * 60);
@@ -375,18 +376,18 @@ export const HomePage: React.FC = () => {
         <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={0} className="max-w-4xl mx-auto space-y-6">
           <div className="inline-flex items-center gap-2 text-xs font-mono font-black text-primary bg-primary/15 border border-primary/30 px-4 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>PPS Enterprise Architecture • Live Video & AI Execution</span>
+            <span>Multiplayer Discipline & Focus Architecture • 100% Real Live Sync</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black font-mono leading-[1.08] tracking-tight text-foreground">
-            The Complete Operating System for <br />
+            Stop Studying Alone. <br />
             <span className="bg-gradient-to-r from-primary via-cyan-400 to-amber-300 bg-clip-text text-transparent">
-              Habits, Focus & Study Meetings
+              Build Relentless Focus With Your Squad.
             </span>
           </h1>
 
           <p className="text-xs sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed font-medium">
-            Drop-in WebRTC video focus rooms, verified mentor masterclasses, procedural 432Hz soundscapes, dual-engine AI performance coaching, and zero-penalty streak shields — built into one powerhouse platform.
+            The all-in-one discipline operating system combining live drop-in video focus rooms, synced Pomodoro sprints, procedural 432Hz soundscapes, and gamified Kaizen habit streaks.
           </p>
 
           <div className="flex items-center justify-center gap-3.5 flex-wrap pt-2">
@@ -394,17 +395,29 @@ export const HomePage: React.FC = () => {
               to={isLoggedIn ? "/dashboard" : "/login?tab=signup"}
               className="bg-gradient-to-r from-primary via-secondary to-accent text-white py-3.5 px-8 rounded-2xl text-xs sm:text-sm font-black hover:opacity-95 hover:scale-[1.02] transition-all shadow-xl shadow-primary/25 flex items-center gap-2 cursor-pointer"
             >
-              <span>{isLoggedIn ? "Launch Your Dashboard" : "Start Free — No Credit Card"}</span>
+              <span>{isLoggedIn ? "Launch Your Dashboard →" : "🚀 Start Free Study Sprint"}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
 
             <button
               onClick={() => document.getElementById("simulator")?.scrollIntoView({ behavior: "smooth" })}
-              className="text-xs sm:text-sm text-foreground border border-border/80 bg-surface/70 backdrop-blur-xl py-3.5 px-6 rounded-2xl hover:border-primary/50 hover:bg-surface transition-all font-bold cursor-pointer"
+              className="text-xs sm:text-sm text-foreground border border-border/80 bg-surface/70 backdrop-blur-xl py-3.5 px-6 rounded-2xl hover:border-primary/50 hover:bg-surface transition-all font-bold cursor-pointer flex items-center gap-1.5"
             >
-              ⚡ Try Live Simulator Below
+              <span>⚡ Try Live Interactive Demo</span>
             </button>
           </div>
+
+          {/* Trust Badges Bar */}
+          <div className="flex items-center justify-center gap-3 flex-wrap text-[11px] font-mono text-muted-foreground pt-1">
+            <span className="flex items-center gap-1 text-emerald-400 font-bold">✓ 100% Free Forever Tier</span>
+            <span className="text-border">•</span>
+            <span>✓ No Credit Card Required</span>
+            <span className="text-border">•</span>
+            <span>✓ Zero Fake Bots</span>
+            <span className="text-border">•</span>
+            <span>✓ Works on Phone & Laptop</span>
+          </div>
+
 
           {/* Metric Badges */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-8 max-w-3xl mx-auto">
@@ -987,74 +1000,166 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* ═══════════ TARGET PERSONAS & WORKFLOWS ═══════════ */}
+      {/* ═══════════ TARGET PERSONAS & WORKFLOWS (INTERACTIVE) ═══════════ */}
       <section className="relative z-10 max-w-7xl mx-auto px-6 py-16 space-y-8">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-mono font-black uppercase">
-            <span>🎯 Designed for High Performers</span>
+        <div className="text-center space-y-3 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-mono font-black uppercase">
+            <span>🎯 Tailored For Your Exact Journey</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-black font-mono">
-            Architected for Top Achievers
+          <h2 className="text-3xl sm:text-5xl font-black font-mono tracking-tight">
+            How Top Achievers Use PPS
           </h2>
-          <p className="text-xs text-muted-foreground">Workflows from competitive programmers, graduate researchers, and creators.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            Select your discipline path below to see how PPS organizes daily study rituals, focus sprints, and accountability.
+          </p>
+
+          {/* Persona Tab Switcher */}
+          <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
+            {[
+              { id: "aspirants" as const, label: "🎯 Exam Aspirants (JEE/UPSC/GATE)", icon: "🎓" },
+              { id: "coders" as const, label: "💻 Software Engineers & Coders", icon: "👨‍💻" },
+              { id: "students" as const, label: "📚 University & Research Cohorts", icon: "👩‍🎓" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActivePersona(tab.id)}
+                className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-2 ${
+                  activePersona === tab.id
+                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-[1.02]"
+                    : "bg-card border-border/80 text-muted-foreground hover:text-foreground hover:border-primary/40"
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 sm:p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-border/80 shadow-xl space-y-4 flex flex-col justify-between">
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono font-bold uppercase text-primary bg-primary/15 px-2 py-0.5 rounded-md border border-primary/30">
-                Competitive Coder
-              </span>
-              <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed">
-                "Maintaining daily LeetCode consistency was always tough. The streak engine and auto-freeze shields make missing a day hurt just enough to stay on track."
-              </p>
-            </div>
-            <div className="flex items-center gap-3 pt-2 border-t border-border/40">
-              <span className="text-2xl">👨‍💻</span>
-              <div>
-                <div className="text-xs font-bold text-foreground">Alex V.</div>
-                <div className="text-[10px] text-muted-foreground font-mono">CS Student · Beta Tester</div>
+        {/* Dynamic Persona Preview Card */}
+        <div className="max-w-5xl mx-auto rounded-3xl bg-card border border-border/80 p-6 sm:p-8 shadow-2xl space-y-6">
+          {activePersona === "aspirants" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 uppercase">
+                  <span>⚡ 8+ Hours Daily Consistency Without Burnout</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black font-mono text-foreground">
+                  Competitive Exam & Board Sprint Routine
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  "Studying 8+ hours a day alone in a room used to lead to motivation crashes by week 3. With PPS, our 4-person study squad joins the <strong>8:00 AM Focus Room</strong> every morning. The synced 25m Pomodoros and streak shields keep our entire batch relentlessly on track."
+                </p>
+                <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xl">
+                    👨‍🎓
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-foreground">Rohan K.</div>
+                    <div className="text-[11px] text-muted-foreground font-mono">AIR 342 Aspirant · Daily Squad Lead</div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="p-6 sm:p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-border/80 shadow-xl space-y-4 flex flex-col justify-between">
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono font-bold uppercase text-secondary bg-secondary/15 px-2 py-0.5 rounded-md border border-secondary/30">
-                Graduate Researcher
-              </span>
-              <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed">
-                "The synced Pomodoro timer, deep analytics heatmaps, and evening reflections have become my daily study ritual. The soundscapes are a great bonus."
-              </p>
-            </div>
-            <div className="flex items-center gap-3 pt-2 border-t border-border/40">
-              <span className="text-2xl">👩‍🎓</span>
-              <div>
-                <div className="text-xs font-bold text-foreground">Priya R.</div>
-                <div className="text-[10px] text-muted-foreground font-mono">Graduate Researcher · Early Adopter</div>
+              <div className="p-4 rounded-2xl bg-surface border border-border/70 space-y-2.5">
+                <div className="text-xs font-mono font-bold uppercase text-primary">Daily Habit Stack:</div>
+                {[
+                  { name: "3h High-Yield Revision", time: "08:00 AM", xp: "+10 XP" },
+                  { name: "Daily Mock Test Synthesis", time: "02:00 PM", xp: "+10 XP" },
+                  { name: "Formula Active Recall", time: "07:30 PM", xp: "+10 XP" },
+                  { name: "Evening Reflection Journal", time: "09:45 PM", xp: "+10 XP" },
+                ].map((item, idx) => (
+                  <div key={idx} className="p-2 rounded-xl bg-card border border-border/60 flex items-center justify-between text-xs font-semibold">
+                    <span className="truncate max-w-[150px]">{item.name}</span>
+                    <span className="text-[10px] font-mono text-emerald-400">{item.time}</span>
+                  </div>
+                ))}
               </div>
-            </div>
-          </div>
+            </motion.div>
+          )}
 
-          <div className="p-6 sm:p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-border/80 shadow-xl space-y-4 flex flex-col justify-between">
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono font-black uppercase text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-400/30">
-                Building in Public
-              </span>
-              <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed">
-                "We are building PPS stage-by-stage with transparent labeling. Real-time squads, timestamped Pomodoro sync, and account isolation are live today."
-              </p>
-            </div>
-            <div className="flex items-center gap-3 pt-2 border-t border-border/40">
-              <span className="text-2xl">⚙️</span>
-              <div>
-                <div className="text-xs font-bold text-foreground">PPS Core Team</div>
-                <div className="text-[10px] text-muted-foreground font-mono">Engineering & Product</div>
+          {activePersona === "coders" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20 uppercase">
+                  <span>💻 Unbroken LeetCode & Architecture Sprints</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black font-mono text-foreground">
+                  Developer & Software Engineer Workflow
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  "Maintaining daily LeetCode and side-project momentum while working a full-time schedule is hard. The <strong>0KB 432Hz procedural soundscapes</strong> and auto-freeze shields gave me the exact flow-state buffer I needed to complete 90 days of deep coding."
+                </p>
+                <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center text-xl">
+                    👨‍💻
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-foreground">Alex V.</div>
+                    <div className="text-[11px] text-muted-foreground font-mono">Software Engineer · Beta Benchmark User</div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+
+              <div className="p-4 rounded-2xl bg-surface border border-border/70 space-y-2.5">
+                <div className="text-xs font-mono font-bold uppercase text-primary">Daily Developer Stack:</div>
+                {[
+                  { name: "2x LeetCode Medium/Hard", time: "07:30 AM", xp: "+10 XP" },
+                  { name: "90m Deep Build Block", time: "06:00 PM", xp: "+10 XP" },
+                  { name: "System Design Review", time: "08:30 PM", xp: "+10 XP" },
+                  { name: "Commit & Sync Daily Vault", time: "10:00 PM", xp: "+10 XP" },
+                ].map((item, idx) => (
+                  <div key={idx} className="p-2 rounded-xl bg-card border border-border/60 flex items-center justify-between text-xs font-semibold">
+                    <span className="truncate max-w-[150px]">{item.name}</span>
+                    <span className="text-[10px] font-mono text-cyan-400">{item.time}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {activePersona === "students" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-secondary bg-secondary/10 px-3 py-1 rounded-full border border-secondary/20 uppercase">
+                  <span>📚 Collaborative Whiteboards & Study Circles</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black font-mono text-foreground">
+                  University Cohorts & Research Groups
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  "During final project weeks, our research group pops out the <strong>Meeting Studio window</strong>, sketches architecture diagrams on the real-time whiteboard, and uses the NLP lecture parser to convert syllabus topics directly into our shared daily habit queue."
+                </p>
+                <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+                  <div className="w-10 h-10 rounded-2xl bg-secondary/20 border border-secondary/30 flex items-center justify-center text-xl">
+                    👩‍🎓
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-foreground">Priya R.</div>
+                    <div className="text-[11px] text-muted-foreground font-mono">Graduate Researcher · Early Adopter</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-surface border border-border/70 space-y-2.5">
+                <div className="text-xs font-mono font-bold uppercase text-primary">Daily Research Stack:</div>
+                {[
+                  { name: "Literature Review Synthesis", time: "09:00 AM", xp: "+10 XP" },
+                  { name: "Squad Whiteboard Sync", time: "03:00 PM", xp: "+10 XP" },
+                  { name: "Data Analysis Sprint", time: "05:30 PM", xp: "+10 XP" },
+                  { name: "Daily Journal Audit", time: "09:00 PM", xp: "+10 XP" },
+                ].map((item, idx) => (
+                  <div key={idx} className="p-2 rounded-xl bg-card border border-border/60 flex items-center justify-between text-xs font-semibold">
+                    <span className="truncate max-w-[150px]">{item.name}</span>
+                    <span className="text-[10px] font-mono text-purple-400">{item.time}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </div>
       </section>
+
 
       {/* ═══════════ FAQ SECTION ═══════════ */}
       <section className="relative z-10 max-w-3xl mx-auto px-6 py-16 space-y-6">
