@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Pin,
@@ -9,17 +10,23 @@ import {
   Plus,
   Zap,
   Check,
+  Bell,
+  Clock,
   Sparkles,
   Edit2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { feedbackSounds } from "@/lib/audio/clickFeedback";
+import { useReminders } from "@/hooks/use-reminders";
 
 export interface ChecklistItem {
   id: string;
   text: string;
   done: boolean;
   convertedToHabit?: boolean;
+  convertedToReminder?: boolean;
+  reminderTime?: string;
 }
 
 interface StickyNotesWidgetProps {
@@ -36,6 +43,8 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
   todayStr,
   onAddHabit,
 }) => {
+  const { addReminder } = useReminders();
+
   // Title state
   const [title, setTitle] = useState<string>(() => {
     try {
@@ -79,6 +88,11 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
   });
 
   const [newItemText, setNewItemText] = useState("");
+
+  // Reminder Popover state
+  const [reminderModalItem, setReminderModalItem] = useState<ChecklistItem | null>(null);
+  const [selectedReminderTime, setSelectedReminderTime] = useState<string>("09:00");
+  const [selectedRepeat, setSelectedRepeat] = useState<string>("One-time");
 
   // Persist Title
   const handleTitleChange = (newTitle: string) => {
@@ -154,7 +168,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
       const err = await onAddHabit(item.text, "General", "Today", "Medium");
       if (!err) {
         toast.success(`Converted "${item.text}" into Today's Habit! ⚡`, {
-          description: "+10 XP reward attached. Added directly to your daily schedule!",
+          description: "+10 XP attached. Added directly to your daily habit schedule!",
         });
         const updated = items.map((it) =>
           it.id === item.id ? { ...it, convertedToHabit: true, done: true } : it
@@ -167,6 +181,75 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
     } catch {
       toast.error("Failed to convert item to habit");
     }
+  };
+
+  // Open Reminder Time Picker Modal
+  const handleOpenReminderModal = (item: ChecklistItem) => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 15);
+    const defaultTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    setSelectedReminderTime(defaultTime);
+    setSelectedRepeat("One-time");
+    setReminderModalItem(item);
+  };
+
+  // Confirm Reminder Creation
+  const handleConfirmReminder = async () => {
+    if (!reminderModalItem) return;
+    if (!selectedReminderTime) {
+      toast.error("Please pick a time for the reminder!");
+      return;
+    }
+
+    try {
+      const err = await addReminder(
+        reminderModalItem.text,
+        selectedReminderTime,
+        selectedRepeat,
+        null,
+        "in_app",
+        "alarm"
+      );
+
+      if (err) {
+        toast.error(err);
+      } else {
+        const [hh, mm] = selectedReminderTime.split(":").map(Number);
+        const ampm = hh >= 12 ? "PM" : "AM";
+        const h12 = hh % 12 || 12;
+        const formatted = `${h12}:${String(mm).padStart(2, "0")} ${ampm}`;
+
+        toast.success(`Reminder set for ${formatted}! 🔔`, {
+          description: `Alarm scheduled for "${reminderModalItem.text}".`,
+        });
+
+        const updated = items.map((it) =>
+          it.id === reminderModalItem.id
+            ? { ...it, convertedToReminder: true, reminderTime: formatted }
+            : it
+        );
+        saveItems(updated);
+        feedbackSounds.playSuccessChime();
+        setReminderModalItem(null);
+      }
+    } catch {
+      toast.error("Failed to schedule reminder");
+    }
+  };
+
+  // Quick Preset Helper for Reminder Time
+  const setQuickTime = (minsFromNow: number, repeatPattern: string = "One-time") => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + minsFromNow);
+    const t = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    setSelectedReminderTime(t);
+    setSelectedRepeat(repeatPattern);
+  };
+
+  const setSpecificTime = (hours: number, mins: number, repeatPattern: string = "Daily") => {
+    const t = `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+    setSelectedReminderTime(t);
+    setSelectedRepeat(repeatPattern);
   };
 
   // Copy to Clipboard
@@ -226,6 +309,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
             />
           ) : (
             <button
+              type="button"
               onClick={() => setIsEditingTitle(true)}
               className="flex items-center gap-1.5 text-xs font-extrabold text-foreground hover:text-amber-500 transition-colors group cursor-pointer"
               title="Click to rename note (e.g. To-Do List, Study Sprint)"
@@ -247,17 +331,19 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
           {/* Mode Switcher */}
           <div className="flex items-center bg-surface border border-border/80 rounded-lg p-0.5">
             <button
+              type="button"
               onClick={() => handleModeToggle("checklist")}
               className={`p-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                 mode === "checklist"
                   ? "bg-amber-500 text-black shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              title="Checklist View (with 1-click habit conversion)"
+              title="Checklist View (with 1-click Habit & Reminder conversion)"
             >
               <CheckSquare className="w-3 h-3" />
             </button>
             <button
+              type="button"
               onClick={() => handleModeToggle("text")}
               className={`p-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                 mode === "text"
@@ -272,6 +358,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
 
           {/* Copy Button */}
           <button
+            type="button"
             onClick={handleCopy}
             className="p-1.5 rounded-lg bg-surface border border-border/80 hover:border-amber-500/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-2xs"
             title="Copy Note to Clipboard"
@@ -281,6 +368,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
 
           {/* Clear Button */}
           <button
+            type="button"
             onClick={handleClear}
             className="p-1.5 rounded-lg bg-surface border border-border/80 hover:border-destructive/40 text-muted-foreground hover:text-destructive transition-all cursor-pointer shadow-2xs"
             title="Clear Note"
@@ -310,6 +398,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <button
+                      type="button"
                       onClick={() => handleToggleItem(item.id)}
                       className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
                         item.done
@@ -328,10 +417,12 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
                     </span>
                   </div>
 
-                  {/* Micro Actions (Convert to Habit / Delete) */}
-                  <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                  {/* Micro Actions (Convert to Habit / Convert to Reminder / Delete) */}
+                  <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    {/* +Habit Button */}
                     {!item.convertedToHabit && !item.done && onAddHabit && (
                       <button
+                        type="button"
                         onClick={() => handleConvertToHabit(item)}
                         className="text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/30 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition-all cursor-pointer"
                         title="Convert to Today's Habit (+10 XP)"
@@ -340,12 +431,42 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
                         <span className="hidden sm:inline">+Habit</span>
                       </button>
                     )}
+
+                    {/* +Reminder Button */}
+                    {!item.convertedToReminder && !item.done && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenReminderModal(item)}
+                        className="text-[10px] font-bold bg-primary/15 hover:bg-primary/30 text-primary border border-primary/30 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition-all cursor-pointer"
+                        title="Convert to Alarm / Reminder (Select Time)"
+                      >
+                        <Bell className="w-2.5 h-2.5" />
+                        <span className="hidden sm:inline">+Remind</span>
+                      </button>
+                    )}
+
+                    {/* Converted Badges */}
                     {item.convertedToHabit && (
-                      <span className="text-[9px] font-mono font-bold text-pps-green bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-md">
-                        ✓ In Today
+                      <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-md">
+                        ⚡ In Today
                       </span>
                     )}
+
+                    {item.convertedToReminder && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenReminderModal(item)}
+                        className="text-[9px] font-mono font-bold text-primary bg-primary/15 border border-primary/30 px-1.5 py-0.5 rounded-md hover:bg-primary/25 cursor-pointer flex items-center gap-0.5"
+                        title="Click to reschedule reminder"
+                      >
+                        <Bell className="w-2 h-2" />
+                        <span>{item.reminderTime || "Alarm"}</span>
+                      </button>
+                    )}
+
+                    {/* Delete Item */}
                     <button
+                      type="button"
                       onClick={() => handleDeleteItem(item.id)}
                       className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors cursor-pointer"
                       title="Delete Item"
@@ -397,6 +518,129 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
           </div>
         </div>
       )}
+
+      {/* ── Modal / Popover: Schedule Reminder for Checklist Item (Rendered at Root via Portal) ── */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {reminderModalItem && (
+              <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ scale: 0.92, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.92, opacity: 0 }}
+                  className="bg-card border-2 border-primary/40 rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 relative"
+                >
+                  {/* Modal Header */}
+                  <div className="flex items-start justify-between gap-2 border-b border-border/40 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-base shadow-xs">
+                        🔔
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-foreground">Set Task Alarm</h3>
+                        <p className="text-xs text-muted-foreground font-medium truncate max-w-[200px]">
+                          "{reminderModalItem.text}"
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReminderModalItem(null)}
+                      className="text-muted-foreground hover:text-foreground p-1.5 rounded-xl hover:bg-surface cursor-pointer transition-colors"
+                      title="Close"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Quick Time Presets */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold">
+                      Quick Presets:
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setQuickTime(15, "One-time")}
+                        className="px-3 py-2 rounded-xl bg-surface border border-border/80 hover:border-primary/50 text-xs font-bold text-foreground hover:text-primary transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
+                      >
+                        <span>⚡ In 15 min</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickTime(60, "One-time")}
+                        className="px-3 py-2 rounded-xl bg-surface border border-border/80 hover:border-primary/50 text-xs font-bold text-foreground hover:text-primary transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
+                      >
+                        <span>⏰ In 1 hour</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSpecificTime(20, 0, "One-time")}
+                        className="px-3 py-2 rounded-xl bg-surface border border-border/80 hover:border-primary/50 text-xs font-bold text-foreground hover:text-primary transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
+                      >
+                        <span>🌙 Tonight (8 PM)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSpecificTime(9, 0, "Daily")}
+                        className="px-3 py-2 rounded-xl bg-surface border border-border/80 hover:border-primary/50 text-xs font-bold text-foreground hover:text-primary transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
+                      >
+                        <span>☀️ Morning (9 AM)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Custom Time Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-primary" />
+                      <span>Custom Alarm Time & Repeat:</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="time"
+                        value={selectedReminderTime}
+                        onChange={(e) => setSelectedReminderTime(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-surface border border-border/80 focus:border-primary text-xs font-mono font-bold text-foreground rounded-xl outline-none"
+                      />
+                      <select
+                        value={selectedRepeat}
+                        onChange={(e) => setSelectedRepeat(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-surface border border-border/80 focus:border-primary text-xs font-bold text-foreground rounded-xl outline-none cursor-pointer"
+                      >
+                        <option value="One-time">One-time</option>
+                        <option value="Daily">Daily</option>
+                        <option value="Weekdays">Weekdays</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons (Full Size & Clickable) */}
+                  <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border/40">
+                    <button
+                      type="button"
+                      onClick={() => setReminderModalItem(null)}
+                      className="px-4 py-2.5 rounded-xl bg-surface hover:bg-muted border border-border/80 text-xs font-bold text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmReminder}
+                      className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-primary/20 active:scale-98"
+                    >
+                      <Bell className="w-4 h-4" />
+                      <span>Set Alarm</span>
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </motion.div>
   );
 };
+

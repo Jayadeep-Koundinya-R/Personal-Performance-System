@@ -192,7 +192,62 @@ CREATE INDEX IF NOT EXISTS idx_user_settings_user ON public.user_settings(user_i
 
 
 -- ============================================================================
+-- 5.1 REMINDERS & ALARM STUDIO TABLE
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.reminders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  habit_id UUID REFERENCES public.habits(id) ON DELETE SET NULL,
+  label TEXT NOT NULL,
+  reminder_time TIME NOT NULL,
+  repeat_pattern TEXT NOT NULL DEFAULT 'Daily',
+  channel TEXT NOT NULL DEFAULT 'in_app',
+  delivery_type TEXT NOT NULL DEFAULT 'alarm',
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  snoozed_until TIMESTAMPTZ,
+  last_triggered_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Ensure all columns exist for legacy migrations
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS habit_id UUID REFERENCES public.habits(id) ON DELETE SET NULL;
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS label TEXT DEFAULT 'Habit Reminder';
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS reminder_time TIME DEFAULT '09:00:00';
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS repeat_pattern TEXT DEFAULT 'Daily';
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS channel TEXT DEFAULT 'in_app';
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS delivery_type TEXT DEFAULT 'alarm';
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT true;
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS snoozed_until TIMESTAMPTZ;
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS last_triggered_at TIMESTAMPTZ;
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+ALTER TABLE public.reminders ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'reminders' AND policyname = 'Users manage own reminders'
+  ) THEN
+    CREATE POLICY "Users manage own reminders" ON public.reminders
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.reminders;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_reminders_user ON public.reminders(user_id);
+
+
+-- ============================================================================
 -- 6. FOCUS ROOMS STAGE 1: Study Groups, Members, Channels & Realtime Chat
+
 -- ============================================================================
 
 -- 5.1 CREATE ALL TABLES FIRST (To satisfy cross-table RLS policy references)
