@@ -86,10 +86,24 @@ export const GroupView: React.FC = () => {
   };
 
   const handleToggleFocusRoom = () => {
-    const nextState = !isStudyingInRoom;
-    setIsStudyingInRoom(nextState);
-    toggleStudyingStatus(activeGroupId, nextState);
+    if (!activeGroup) return;
+    const meetUrl = `${window.location.origin}${window.location.pathname}#/meet/${activeGroupId}?name=${encodeURIComponent(activeGroup.name)}`;
+    const popup = window.open(
+      meetUrl,
+      `PPS_Meet_${activeGroupId}`,
+      "width=1320,height=840,menubar=no,toolbar=no,location=no,status=no,resizable=yes"
+    );
+    if (!popup || popup.closed || typeof popup.closed === "undefined") {
+      window.open(meetUrl, "_blank");
+    }
+    setIsStudyingInRoom(false);
+    toggleStudyingStatus(activeGroupId, true);
+    toast.success(`Launched ${activeGroup.name} in a dedicated Focus Call window! 🎥`, {
+      description: "Live camera, synced Pomodoro, and collaborative whiteboard active.",
+    });
   };
+
+
 
   const handleLeaveGroup = async () => {
     if (!activeGroup) return;

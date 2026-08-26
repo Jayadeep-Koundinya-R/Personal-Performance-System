@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import DailyIframe, { DailyCall, DailyParticipant } from "@daily-co/daily-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
@@ -44,11 +45,15 @@ export function useFocusRoom(groupId: string, groupName: string) {
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [currentTask, setCurrentTask] = useState("Deep Work & Revision");
 
-  // Web Streams & Real WebRTC Mesh
+  // Daily.co Video Calling State
+  const dailyCallRef = useRef<DailyCall | null>(null);
+  const [dailyRoomUrl, setDailyRoomUrl] = useState<string | null>(null);
+  const [isDailyConnected, setIsDailyConnected] = useState(false);
+
+  // Web Streams (Local & Real Remote Peer Streams)
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [peerStreams, setPeerStreams] = useState<Record<string, MediaStream>>({});
-  const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
 
   // Real Presence Participants
   const [participants, setParticipants] = useState<FocusParticipant[]>([]);
@@ -109,10 +114,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
         .eq("group_id", groupId)
         .maybeSingle();
 
-      if (error) {
-        // Table or record non-existent yet is safe to ignore
-        return;
-      }
+      if (error) return;
 
       if (data) {
         setPomodoroMode((data.mode as PomodoroMode) || "work");
@@ -126,9 +128,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
           localStorage.setItem(groupSessionCacheKey(groupId), JSON.stringify(data));
         } catch {}
       }
-    } catch {
-      // Non-fatal catch
-    }
+    } catch {}
   }, [groupId, isGuestUser, calculateRemaining]);
 
   // Initial load
@@ -151,21 +151,27 @@ export function useFocusRoom(groupId: string, groupName: string) {
           table: "group_focus_sessions",
           filter: `group_id=eq.${groupId}`,
         },
-        (payload: any) => {
-          const row = payload.new;
-          if (!row) return;
+        (payload) => {
+          const updated = payload.new as any;
+          if (!updated) return;
 
-          setPomodoroMode((row.mode as PomodoroMode) || "work");
-          setIsTimerRunning(Boolean(row.is_running));
-          setTargetEndAt(row.target_end_at || null);
-          setStartedByName(row.started_by_name || "Squad Member");
+          setPomodoroMode((updated.mode as PomodoroMode) || "work");
+          setIsTimerRunning(Boolean(updated.is_running));
+          setTargetEndAt(updated.target_end_at || null);
+          setStartedByName(updated.started_by_name || "Squad Member");
 
-          const remaining = calculateRemaining(row.target_end_at, row.paused_remaining_sec, row.is_running);
+          const remaining = calculateRemaining(updated.target_end_at, updated.paused_remaining_sec, updated.is_running);
           setTimeLeft(remaining);
 
           try {
-            localStorage.setItem(groupSessionCacheKey(groupId), JSON.stringify(row));
+            localStorage.setItem(groupSessionCacheKey(groupId), JSON.stringify(updated));
           } catch {}
+
+          if (updated.is_running) {
+            toast.info(`Synced Squad Pomodoro: ${updated.mode === "work" ? "Focus Sprint 🚀" : "Rest Break ☕"}`, {
+              description: `Started by ${updated.started_by_name || "Squad Member"}`,
+            });
+          }
         }
       )
       .subscribe();
@@ -175,35 +181,39 @@ export function useFocusRoom(groupId: string, groupName: string) {
     };
   }, [groupId, isGuestUser, calculateRemaining]);
 
-  // ── 4. High-Precision Local Ticker with Zero-Drift Recalculation ──
+  // ── 4. Local Countdown Tick ──
   useEffect(() => {
     let interval: any = null;
 
-    if (isTimerRunning && targetEndAt) {
-      // Immediate sync calculation
-      const initialRemaining = calculateRemaining(targetEndAt, null, true);
-      setTimeLeft(initialRemaining);
-
+    if (isTimerRunning) {
       interval = setInterval(() => {
-        const remaining = calculateRemaining(targetEndAt, null, true);
-        setTimeLeft(remaining);
+        if (targetEndAt) {
+          const remaining = calculateRemaining(targetEndAt, null, true);
+          setTimeLeft(remaining);
 
-        if (remaining <= 0) {
-          clearInterval(interval);
-          setIsTimerRunning(false);
-
-          if (pomodoroMode === "work") {
-            setPomodoroMode("break");
-            setTimeLeft(BREAK_DURATION);
-            setCompletedCycles((c) => c + 1);
-            toast.success("🎉 Focus Sprint Complete! Take a 5-minute break. (+25 XP)", {
-              description: `Great job studying together in ${groupName}!`,
-            });
-          } else {
-            setPomodoroMode("work");
-            setTimeLeft(WORK_DURATION);
-            toast.info("Break ended! Ready for the next Group Focus Sprint. 🎯");
+          if (remaining <= 0) {
+            setIsTimerRunning(false);
+            if (pomodoroMode === "work") {
+              setCompletedCycles((c) => c + 1);
+              setPomodoroMode("break");
+              setTimeLeft(BREAK_DURATION);
+              toast.success("Focus Sprint Complete! 🎉 Take a 5-minute break.", {
+                description: `Great job studying together in ${groupName}!`,
+              });
+            } else {
+              setPomodoroMode("work");
+              setTimeLeft(WORK_DURATION);
+              toast.info("Break ended! Ready for the next Group Focus Sprint. 🎯");
+            }
           }
+        } else {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              setIsTimerRunning(false);
+              return 0;
+            }
+            return prev - 1;
+          });
         }
       }, 1000);
     }
@@ -213,231 +223,22 @@ export function useFocusRoom(groupId: string, groupName: string) {
     };
   }, [isTimerRunning, targetEndAt, pomodoroMode, groupName, calculateRemaining]);
 
-  // ── 5. Real Presence Tracking (No Fake Participants) ──
-  const setupPresence = useCallback(() => {
-    if (!groupId) return;
+  // Stable Client Session ID to prevent duplicate presence tiles
+  const effectiveUserId = useMemo(() => {
+    if (user?.id) return user.id;
+    let cached = localStorage.getItem("pps_stable_client_session_id");
+    if (!cached) {
+      cached = `guest_${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem("pps_stable_client_session_id", cached);
+    }
+    return cached;
+  }, [user?.id]);
 
-    // Clean up any stale channel for this topic first
-    try {
-      const existing = supabase.getChannels().filter((c) => c.topic === `realtime:group-presence-${groupId}`);
-      existing.forEach((c) => supabase.removeChannel(c));
-    } catch {}
-
-    const myUserId = user?.id || `guest_${Date.now()}`;
-    const myName = profile?.displayName || "You";
-    const myAvatar = profile?.avatarEmoji || "🌟";
-
-    const channel = supabase.channel(`group-presence-${groupId}`, {
-      config: {
-        presence: {
-          key: myUserId,
-        },
-      },
-    });
-
-    presenceChannelRef.current = channel;
-
-    channel
-      .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
-        const livePeersMap = new Map<string, FocusParticipant>();
-
-        Object.keys(state).forEach((key) => {
-          const presences = state[key] as any[];
-          if (presences && presences.length > 0) {
-            const p = presences[0];
-            const isSelf = p.userId === myUserId;
-            livePeersMap.set(p.userId, {
-              id: `presence_${p.userId}`,
-              userId: p.userId,
-              name: isSelf ? `${p.name} (You)` : p.name,
-              avatar: p.avatar || "👤",
-              role: p.role || "member",
-              cameraOn: Boolean(p.cameraOn),
-              isMuted: Boolean(p.isMuted),
-              isSharingScreen: Boolean(p.isSharingScreen),
-              currentTask: p.currentTask || "Focus Sprint",
-              streak: p.streak || 1,
-              joinedAt: p.joinedAt || new Date().toISOString(),
-            });
-          }
-        });
-
-        // Always ensure local active user is included
-        if (!livePeersMap.has(myUserId)) {
-          livePeersMap.set(myUserId, {
-            id: `p_you_${Date.now()}`,
-            userId: myUserId,
-            name: `${myName} (You)`,
-            avatar: myAvatar,
-            role: "Host",
-            cameraOn: isCameraOn,
-            isMuted: isMuted,
-            isSharingScreen: isSharingScreen,
-            currentTask,
-            streak: profile?.streak || 1,
-            joinedAt: new Date().toISOString(),
-          });
-        }
-
-        setParticipants(Array.from(livePeersMap.values()));
-      })
-      .on("broadcast", { event: "webrtc_signal" }, async ({ payload }) => {
-        if (!payload || payload.senderId === myUserId) return;
-        if (payload.targetPeerId && payload.targetPeerId !== myUserId) return;
-
-        const { type, senderId, sdp, candidate } = payload;
-        const ICE_CONFIG = {
-          iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-        };
-
-        if (type === "peer_join") {
-          if (localStream && typeof RTCPeerConnection !== "undefined") {
-            try {
-              const pc = new RTCPeerConnection(ICE_CONFIG);
-              peerConnections.current.set(senderId, pc);
-
-              localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
-
-              pc.onicecandidate = (e) => {
-                if (e.candidate) {
-                  channel.send({
-                    type: "broadcast",
-                    event: "webrtc_signal",
-                    payload: {
-                      type: "candidate",
-                      senderId: myUserId,
-                      targetPeerId: senderId,
-                      candidate: e.candidate,
-                    },
-                  });
-                }
-              };
-
-              pc.ontrack = (e) => {
-                if (e.streams && e.streams[0]) {
-                  setPeerStreams((prev) => ({ ...prev, [senderId]: e.streams[0] }));
-                }
-              };
-
-              const offer = await pc.createOffer();
-              await pc.setLocalDescription(offer);
-
-              channel.send({
-                type: "broadcast",
-                event: "webrtc_signal",
-                payload: {
-                  type: "offer",
-                  senderId: myUserId,
-                  targetPeerId: senderId,
-                  sdp: offer,
-                },
-              });
-            } catch (err) {
-              console.error("WebRTC offer creation error:", err);
-            }
-          }
-        } else if (type === "offer" && sdp) {
-          if (typeof RTCPeerConnection !== "undefined") {
-            try {
-              const pc = new RTCPeerConnection(ICE_CONFIG);
-              peerConnections.current.set(senderId, pc);
-
-              if (localStream) {
-                localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
-              }
-
-              pc.onicecandidate = (e) => {
-                if (e.candidate) {
-                  channel.send({
-                    type: "broadcast",
-                    event: "webrtc_signal",
-                    payload: {
-                      type: "candidate",
-                      senderId: myUserId,
-                      targetPeerId: senderId,
-                      candidate: e.candidate,
-                    },
-                  });
-                }
-              };
-
-              pc.ontrack = (e) => {
-                if (e.streams && e.streams[0]) {
-                  setPeerStreams((prev) => ({ ...prev, [senderId]: e.streams[0] }));
-                }
-              };
-
-              await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
-
-              channel.send({
-                type: "broadcast",
-                event: "webrtc_signal",
-                payload: {
-                  type: "answer",
-                  senderId: myUserId,
-                  targetPeerId: senderId,
-                  sdp: answer,
-                },
-              });
-            } catch (err) {
-              console.error("WebRTC answer error:", err);
-            }
-          }
-        } else if (type === "answer" && sdp) {
-          const pc = peerConnections.current.get(senderId);
-          if (pc) {
-            try {
-              await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-            } catch (err) {
-              console.error("WebRTC setRemoteDescription error:", err);
-            }
-          }
-        } else if (type === "candidate" && candidate) {
-          const pc = peerConnections.current.get(senderId);
-          if (pc) {
-            try {
-              await pc.addIceCandidate(new RTCIceCandidate(candidate));
-            } catch (err) {
-              console.error("WebRTC addIceCandidate error:", err);
-            }
-          }
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          try {
-            await channel.track({
-              userId: myUserId,
-              name: myName,
-              avatar: myAvatar,
-              role: "member",
-              cameraOn: isCameraOn,
-              isMuted: isMuted,
-              isSharingScreen: isSharingScreen,
-              currentTask,
-              streak: profile?.streak || 1,
-              joinedAt: new Date().toISOString(),
-            });
-
-            // Announce presence for peer connections
-            channel.send({
-              type: "broadcast",
-              event: "webrtc_signal",
-              payload: { type: "peer_join", senderId: myUserId },
-            });
-          } catch {}
-        }
-      });
-  }, [groupId, user, profile, isCameraOn, isMuted, isSharingScreen, currentTask]);
-
-  // Helper: Build complete presence payload to avoid dropping fields on track()
+  // Helper: Build complete presence payload
   const getFullPresencePayload = useCallback(
     (overrides: Partial<FocusParticipant> = {}) => {
-      const myUserId = user?.id || "local_user";
-      const myName = profile?.displayName || "You";
+      const myUserId = effectiveUserId;
+      const myName = (profile?.displayName || "You").replace(/\s*\(You\)$/i, "");
       const myAvatar = profile?.avatarEmoji || "🌟";
 
       return {
@@ -453,18 +254,148 @@ export function useFocusRoom(groupId: string, groupName: string) {
         joinedAt: new Date().toISOString(),
       };
     },
-    [user, profile, isCameraOn, isMuted, isSharingScreen, currentTask]
+    [effectiveUserId, profile, isCameraOn, isMuted, isSharingScreen, currentTask]
   );
 
-  // Join Room
+  // ── 5. Setup Supabase Presence Channel ──
+  const setupPresence = useCallback(() => {
+    if (!groupId) return;
+
+    try {
+      const existing = supabase.getChannels().filter((c) => c.topic === `realtime:group-presence-${groupId}`);
+      existing.forEach((c) => supabase.removeChannel(c));
+    } catch {}
+
+    const myUserId = effectiveUserId;
+    const myName = (profile?.displayName || "You").replace(/\s*\(You\)$/i, "");
+    const myAvatar = profile?.avatarEmoji || "🌟";
+
+    const channel = supabase.channel(`group-presence-${groupId}`, {
+      config: {
+        presence: {
+          key: myUserId,
+        },
+      },
+    });
+
+    presenceChannelRef.current = channel;
+
+        channel
+          .on("presence", { event: "sync" }, () => {
+            const state = channel.presenceState();
+            const rawPeersList: FocusParticipant[] = [];
+
+            Object.keys(state).forEach((key) => {
+              const presences = state[key] as any[];
+              if (presences && presences.length > 0) {
+                const p = presences[0];
+                const pId = p.userId || key;
+                const isSelf = pId === myUserId || key === myUserId;
+                const cleanName = (p.name || "Squad Member").replace(/\s*\(You\)$/i, "");
+                rawPeersList.push({
+                  id: `presence_${pId}`,
+                  userId: pId,
+                  name: isSelf ? `${cleanName} (You)` : cleanName,
+                  avatar: p.avatar || "👤",
+                  role: p.role || "member",
+                  cameraOn: Boolean(p.cameraOn),
+                  isMuted: Boolean(p.isMuted),
+                  isSharingScreen: Boolean(p.isSharingScreen),
+                  currentTask: p.currentTask || "Focus Sprint",
+                  streak: p.streak || 1,
+                  joinedAt: p.joinedAt || new Date().toISOString(),
+                });
+              }
+            });
+
+            // 100% Strict Deduplication
+            const uniqueParticipants: FocusParticipant[] = [];
+            let localUserAdded = false;
+
+            rawPeersList.forEach((p) => {
+              const isSelf = p.userId === myUserId || p.name.endsWith("(You)") || p.name === myName;
+              if (isSelf) {
+                if (!localUserAdded) {
+                  localUserAdded = true;
+                  uniqueParticipants.push({
+                    ...p,
+                    userId: myUserId,
+                    name: `${myName} (You)`,
+                    avatar: myAvatar,
+                    cameraOn: isCameraOn,
+                    isMuted: isMuted,
+                  });
+                }
+              } else {
+                if (!uniqueParticipants.some((existing) => existing.userId === p.userId)) {
+                  uniqueParticipants.push(p);
+                }
+              }
+            });
+
+            if (!localUserAdded) {
+              uniqueParticipants.unshift({
+                id: `p_you_${myUserId}`,
+                userId: myUserId,
+                name: `${myName} (You)`,
+                avatar: myAvatar,
+                role: "Host",
+                cameraOn: isCameraOn,
+                isMuted: isMuted,
+                isSharingScreen: isSharingScreen,
+                currentTask,
+                streak: profile?.streak || 1,
+                joinedAt: new Date().toISOString(),
+              });
+            }
+
+            setParticipants(uniqueParticipants);
+          })
+
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          try {
+            await channel.track(getFullPresencePayload());
+          } catch {}
+        }
+      });
+  }, [groupId, effectiveUserId, profile, isCameraOn, isMuted, isSharingScreen, currentTask, getFullPresencePayload]);
+
+
+  // ── 6. Fetch / Create Daily.co Room URL ──
+  const fetchDailyRoomUrl = useCallback(async (roomId: string, roomTitle: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("create-daily-room", {
+        body: { roomId, roomName: roomTitle },
+      });
+
+      if (!error && data?.url) {
+        return data.url;
+      }
+
+      // Check if user set VITE_DAILY_DOMAIN in .env
+      const dailyDomain = (import.meta as any).env?.VITE_DAILY_DOMAIN;
+      if (dailyDomain) {
+        const cleanDomain = dailyDomain.replace(/\/$/, "");
+        const sanitizedId = String(roomId).replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 30);
+        return `${cleanDomain}/pps-${sanitizedId}`;
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // ── 7. Join Focus Room & Initialize Daily.co Managed Call Object ──
   const joinRoom = useCallback(async () => {
     setIsInRoom(true);
-    const myUserId = user?.id || "local_user";
-    const myName = profile?.displayName || "You";
+    const myUserId = effectiveUserId;
+    const myName = (profile?.displayName || "You").replace(/\s*\(You\)$/i, "");
     const myAvatar = profile?.avatarEmoji || "🌟";
 
     const you: FocusParticipant = {
-      id: `p_you_${Date.now()}`,
+      id: `p_you_${myUserId}`,
       userId: myUserId,
       name: `${myName} (You)`,
       avatar: myAvatar,
@@ -477,11 +408,9 @@ export function useFocusRoom(groupId: string, groupName: string) {
       joinedAt: new Date().toISOString(),
     };
 
-    // Set initial genuine participant list (ONLY real user)
     setParticipants([you]);
-
-    // Setup Supabase Realtime Presence
     setupPresence();
+
 
     // Mark studying in group_members table
     if (!isGuestUser && isValidUUID(user?.id) && isValidUUID(groupId)) {
@@ -494,13 +423,133 @@ export function useFocusRoom(groupId: string, groupName: string) {
       } catch {}
     }
 
-    toast.success(`Joined ${groupName} Focus Room! 🎯`, {
-      description: "Live presence active. Start a synced group Pomodoro sprint with your squad.",
-    });
-  }, [user, profile, isCameraOn, isMuted, currentTask, groupName, setupPresence, isGuestUser, groupId]);
+    // ── Daily.co Call Object Initialization ──
+    try {
+      const roomUrl = await fetchDailyRoomUrl(groupId, groupName);
+      setDailyRoomUrl(roomUrl);
 
-  // Leave Room
+      if (roomUrl && typeof window !== "undefined") {
+        const call = DailyIframe.createCallObject({
+          videoSource: isCameraOn,
+          audioSource: !isMuted,
+          subscribeToTracksAutomatically: true,
+        });
+
+        dailyCallRef.current = call;
+
+        // Process Participant Track Updates
+        const handleParticipantUpdate = (p: DailyParticipant) => {
+          if (!p) return;
+
+          if (p.local) {
+            const videoTrack = p.tracks?.video?.persistentTrack;
+            const audioTrack = p.tracks?.audio?.persistentTrack;
+            const tracks: MediaStreamTrack[] = [];
+            if (videoTrack) tracks.push(videoTrack);
+            if (audioTrack) tracks.push(audioTrack);
+            if (tracks.length > 0) {
+              setLocalStream(new MediaStream(tracks));
+            }
+            return;
+          }
+
+          // Remote Peer Tracks
+          const peerId = (p.userData as any)?.userId || p.user_id || p.session_id;
+          const videoTrack = p.tracks?.video?.persistentTrack;
+          const audioTrack = p.tracks?.audio?.persistentTrack;
+          const tracks: MediaStreamTrack[] = [];
+          if (videoTrack) tracks.push(videoTrack);
+          if (audioTrack) tracks.push(audioTrack);
+
+          if (tracks.length > 0) {
+            setPeerStreams((prev) => ({
+              ...prev,
+              [peerId]: new MediaStream(tracks),
+            }));
+          }
+        };
+
+        call.on("participant-joined", (e) => {
+          if (e?.participant) handleParticipantUpdate(e.participant);
+        });
+        call.on("participant-updated", (e) => {
+          if (e?.participant) handleParticipantUpdate(e.participant);
+        });
+        call.on("participant-left", (e) => {
+          if (e?.participant) {
+            const peerId = (e.participant.userData as any)?.userId || e.participant.user_id || e.participant.session_id;
+            setPeerStreams((prev) => {
+              const copy = { ...prev };
+              delete copy[peerId];
+              return copy;
+            });
+          }
+        });
+        call.on("track-started", (e) => {
+          if (e?.participant) handleParticipantUpdate(e.participant);
+        });
+        call.on("track-stopped", (e) => {
+          if (e?.participant) handleParticipantUpdate(e.participant);
+        });
+        call.on("joined-meeting", (e) => {
+          setIsDailyConnected(true);
+          if (e?.participants?.local) {
+            handleParticipantUpdate(e.participants.local);
+          }
+        });
+        call.on("left-meeting", () => {
+          setIsDailyConnected(false);
+        });
+        call.on("error", (err) => {
+          console.warn("Daily.co call notice:", err);
+        });
+
+        await call.join({
+          url: roomUrl,
+          userName: `${myName}`,
+          userData: {
+            userId: myUserId,
+            avatar: myAvatar,
+          },
+        });
+
+        toast.success(`Connected to Daily.co Live Video Room! 🎥`, {
+          description: `Managed WebRTC mesh active for ${groupName}.`,
+        });
+      } else {
+        // Fallback: Local preview mode if Daily key not configured yet
+        try {
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && isCameraOn) {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !isMuted });
+            setLocalStream(stream);
+          }
+        } catch {}
+
+        toast.info(`Joined ${groupName} Focus Room 🎯`, {
+          description: "Live squad presence and synced Pomodoro active.",
+        });
+      }
+    } catch (err: any) {
+      console.warn("Daily.co setup notice:", err);
+      toast.info(`Joined ${groupName} Focus Room 🎯`);
+    }
+  }, [user, profile, isCameraOn, isMuted, currentTask, groupName, setupPresence, isGuestUser, groupId, fetchDailyRoomUrl]);
+
+  // ── 8. Leave Room & Clean Teardown ──
   const leaveRoom = useCallback(async () => {
+    // 1. Destroy Daily Call Object
+    if (dailyCallRef.current) {
+      try {
+        await dailyCallRef.current.leave();
+        await dailyCallRef.current.destroy();
+      } catch {}
+      dailyCallRef.current = null;
+    }
+
+    setIsDailyConnected(false);
+    setDailyRoomUrl(null);
+
+    // 2. Stop all local media tracks
     if (localStream) {
       localStream.getTracks().forEach((t) => t.stop());
       setLocalStream(null);
@@ -509,6 +558,8 @@ export function useFocusRoom(groupId: string, groupName: string) {
       screenStream.getTracks().forEach((t) => t.stop());
       setScreenStream(null);
     }
+
+    setPeerStreams({});
     ambientAudio.stop();
     setAmbience("none");
     setIsInRoom(false);
@@ -516,7 +567,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
     setIsSharingScreen(false);
     setParticipants([]);
 
-    // Untrack presence
+    // 3. Untrack Supabase presence
     if (presenceChannelRef.current) {
       try {
         presenceChannelRef.current.untrack();
@@ -525,7 +576,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
       presenceChannelRef.current = null;
     }
 
-    // Mark is_studying = false in group_members table
+    // 4. Mark is_studying = false in group_members table
     if (!isGuestUser && isValidUUID(user?.id) && isValidUUID(groupId)) {
       try {
         await supabase
@@ -536,84 +587,78 @@ export function useFocusRoom(groupId: string, groupName: string) {
       } catch {}
     }
 
-    // Clean up WebRTC peer connections
-    peerConnections.current.forEach((pc) => pc.close());
-    peerConnections.current.clear();
-    setPeerStreams({});
-
     toast.info("Left the Focus Room.");
   }, [localStream, screenStream, isGuestUser, user, groupId]);
 
-  // Camera Toggle
+  // ── 9. Camera Toggle ──
   const toggleCamera = useCallback(async () => {
-    if (isCameraOn) {
-      if (localStream) {
-        localStream.getVideoTracks().forEach((t) => t.stop());
-      }
-      setIsCameraOn(false);
-      setParticipants((prev) =>
-        prev.map((p) => (p.name.includes("(You)") ? { ...p, cameraOn: false } : p))
-      );
-      if (presenceChannelRef.current) {
-        try {
-          presenceChannelRef.current.track(getFullPresencePayload({ cameraOn: false }));
-        } catch {}
-      }
-    } else {
+    const next = !isCameraOn;
+    setIsCameraOn(next);
+
+    if (dailyCallRef.current) {
       try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !isMuted });
-          setLocalStream(stream);
-          setIsCameraOn(true);
-          setParticipants((prev) =>
-            prev.map((p) => (p.name.includes("(You)") ? { ...p, cameraOn: true } : p))
-          );
-          if (presenceChannelRef.current) {
-            try {
-              presenceChannelRef.current.track(getFullPresencePayload({ cameraOn: true }));
-            } catch {}
+        dailyCallRef.current.setLocalVideo(next);
+      } catch {}
+    } else {
+      if (next) {
+        try {
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !isMuted });
+            setLocalStream(stream);
           }
-          toast.success("Camera enabled 🎥");
-        } else {
-          setIsCameraOn(true);
-          if (presenceChannelRef.current) {
-            try {
-              presenceChannelRef.current.track(getFullPresencePayload({ cameraOn: true }));
-            } catch {}
-          }
-          toast.info("Camera simulation mode active (privacy avatar feed)");
+        } catch {}
+      } else {
+        if (localStream) {
+          localStream.getVideoTracks().forEach((t) => t.stop());
         }
-      } catch {
-        setIsCameraOn(true);
-        if (presenceChannelRef.current) {
-          try {
-            presenceChannelRef.current.track(getFullPresencePayload({ cameraOn: true }));
-          } catch {}
-        }
-        toast.info("Camera active in avatar privacy mode");
       }
     }
-  }, [isCameraOn, localStream, isMuted, getFullPresencePayload]);
 
-  // Mic Toggle
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.userId === effectiveUserId || p.name.includes("(You)") ? { ...p, cameraOn: next } : p
+      )
+    );
+
+    if (presenceChannelRef.current) {
+      try {
+        presenceChannelRef.current.track(getFullPresencePayload({ cameraOn: next }));
+      } catch {}
+    }
+
+    toast.info(next ? "Camera enabled 🎥" : "Camera turned off 🚫");
+  }, [isCameraOn, isMuted, localStream, effectiveUserId, getFullPresencePayload]);
+
+  // ── 10. Microphone Toggle ──
   const toggleMic = useCallback(() => {
     const next = !isMuted;
     setIsMuted(next);
-    if (localStream) {
+
+    if (dailyCallRef.current) {
+      try {
+        dailyCallRef.current.setLocalAudio(!next);
+      } catch {}
+    } else if (localStream) {
       localStream.getAudioTracks().forEach((t) => (t.enabled = !next));
     }
+
     setParticipants((prev) =>
-      prev.map((p) => (p.name.includes("(You)") ? { ...p, isMuted: next } : p))
+      prev.map((p) =>
+        p.userId === effectiveUserId || p.name.includes("(You)") ? { ...p, isMuted: next } : p
+      )
     );
+
+
     if (presenceChannelRef.current) {
       try {
         presenceChannelRef.current.track(getFullPresencePayload({ isMuted: next }));
       } catch {}
     }
+
     toast.info(next ? "Microphone muted 🔇" : "Microphone active 🎙️");
   }, [isMuted, localStream, getFullPresencePayload]);
 
-  // Screen Share Toggle
+  // ── 11. Screen Share Toggle ──
   const toggleScreenShare = useCallback(async () => {
     if (isSharingScreen) {
       if (screenStream) {
@@ -655,14 +700,6 @@ export function useFocusRoom(groupId: string, groupName: string) {
               } catch {}
             }
           };
-        } else {
-          setIsSharingScreen(true);
-          if (presenceChannelRef.current) {
-            try {
-              presenceChannelRef.current.track(getFullPresencePayload({ isSharingScreen: true }));
-            } catch {}
-          }
-          toast.info("Screen share mode active");
         }
       } catch (err) {
         console.error(err);
@@ -703,7 +740,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
     ambientAudio.setVolume(val);
   }, []);
 
-  // ── 6. Group Pomodoro Cloud Synchronization Actions ──
+  // ── 12. Group Pomodoro Cloud Synchronization Actions ──
   const startPomodoro = useCallback(
     async (
       durationSecInput?: any,
@@ -747,9 +784,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
       if (!isGuestUser && isValidUUID(groupId)) {
         try {
           await supabase.from("group_focus_sessions").upsert(sessionPayload, { onConflict: "group_id" });
-        } catch {
-          // Handled gracefully
-        }
+        } catch {}
       }
 
       toast.success(`Squad Pomodoro Sprint Started! ⏱️ ${Math.floor(durationSec / 60)}:00`, {
@@ -792,9 +827,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
     if (!isGuestUser && isValidUUID(groupId)) {
       try {
         await supabase.from("group_focus_sessions").upsert(sessionPayload, { onConflict: "group_id" });
-      } catch {
-        // Handled gracefully
-      }
+      } catch {}
     }
 
     toast.info("Squad Pomodoro Paused ⏸️");
@@ -834,9 +867,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
       if (!isGuestUser && isValidUUID(groupId)) {
         try {
           await supabase.from("group_focus_sessions").upsert(sessionPayload, { onConflict: "group_id" });
-        } catch {
-          // Handled gracefully
-        }
+        } catch {}
       }
 
       toast.info(`Squad Pomodoro Reset to ${Math.floor(durationSec / 60)}:00 🔄`);
@@ -858,6 +889,8 @@ export function useFocusRoom(groupId: string, groupName: string) {
     localStream,
     screenStream,
     peerStreams,
+    dailyRoomUrl,
+    isDailyConnected,
     currentTask,
     updateCurrentTask,
     // Group Pomodoro Synced State

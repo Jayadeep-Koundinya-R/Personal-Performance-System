@@ -38,6 +38,20 @@ import { toast } from "sonner";
 
 import { DashboardProviders } from "@/providers/AppProviders";
 
+// Remote Daily.co Peer Video & Audio Track Helper
+const RemotePeerVideo: React.FC<{ stream: MediaStream }> = ({ stream }) => {
+  const vRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (vRef.current && stream) {
+      vRef.current.srcObject = stream;
+      vRef.current.muted = false;
+      vRef.current.volume = 1.0;
+      vRef.current.play().catch(() => {});
+    }
+  }, [stream]);
+  return <video ref={vRef} autoPlay playsInline className="w-full h-full object-cover" />;
+};
+
 const MeetingRoomInner: React.FC = () => {
   const { roomId = "squad-lab" } = useParams<{ roomId: string }>();
   const [searchParams] = useSearchParams();
@@ -71,6 +85,9 @@ const MeetingRoomInner: React.FC = () => {
     toggleScreenShare,
     localStream,
     screenStream,
+    peerStreams,
+    dailyRoomUrl,
+    isDailyConnected,
     currentTask,
     updateCurrentTask,
     pomodoroMode,
@@ -93,6 +110,7 @@ const MeetingRoomInner: React.FC = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const screenVideoRef = useRef<HTMLVideoElement>(null);
   const lobbyVideoRef = useRef<HTMLVideoElement>(null);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Handle joining from lobby
@@ -384,6 +402,9 @@ const MeetingRoomInner: React.FC = () => {
               {/* Participant Video & Avatar Cards (with 3D perspective hover) */}
               {participants.map((p) => {
                 const isYou = p.name.includes("(You)");
+                const participantIsMuted = isYou ? isMuted : p.isMuted;
+                const participantCameraOn = isYou ? isCameraOn : p.cameraOn;
+                const remoteStream = !isYou ? peerStreams[p.userId] : null;
 
                 return (
                   <div
@@ -395,7 +416,7 @@ const MeetingRoomInner: React.FC = () => {
                     }`}
                   >
                     {/* Real Video or Avatar */}
-                    {isYou && isCameraOn ? (
+                    {isYou && participantCameraOn ? (
                       <div className="absolute inset-0 bg-black z-0">
                         <video
                           ref={localVideoRef}
@@ -404,8 +425,17 @@ const MeetingRoomInner: React.FC = () => {
                           muted
                           className="w-full h-full object-cover transform -scale-x-100"
                         />
-                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[9px] font-mono font-bold text-primary border border-primary/40">
-                          Local Preview (Beta)
+                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[9px] font-mono font-bold text-primary border border-primary/40 flex items-center gap-1.5 z-20 shadow-md">
+                          <span className={`w-1.5 h-1.5 rounded-full ${isDailyConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+                          <span>{isDailyConnected ? "Daily.co Live HD" : "Camera Active"}</span>
+                        </span>
+                      </div>
+                    ) : !isYou && participantCameraOn && remoteStream ? (
+                      <div className="absolute inset-0 bg-black z-0">
+                        <RemotePeerVideo stream={remoteStream} />
+                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[9px] font-mono font-bold text-emerald-400 border border-emerald-500/40 flex items-center gap-1.5 z-20 shadow-md">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>Peer Live HD</span>
                         </span>
                       </div>
                     ) : (
@@ -434,13 +464,15 @@ const MeetingRoomInner: React.FC = () => {
                         </span>
                         <span
                           className={`p-1.5 rounded-lg backdrop-blur-md border border-white/10 ${
-                            p.isMuted ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"
+                            participantIsMuted ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"
                           }`}
+                          title={participantIsMuted ? "Muted" : "Microphone Active"}
                         >
-                          {p.isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+                          {participantIsMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
                         </span>
                       </div>
                     </div>
+
 
                     {/* Bottom Tile Task Tag */}
                     <div className="relative z-10 mt-auto pt-2">

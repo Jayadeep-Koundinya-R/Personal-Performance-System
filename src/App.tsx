@@ -49,6 +49,8 @@ const App = () => {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/focus-rooms" element={<DashboardPage />} />
+                <Route path="/social" element={<DashboardPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/marketplace" element={<MarketplacePage />} />
                 <Route path="/classes" element={<MarketplacePage />} />
@@ -60,6 +62,7 @@ const App = () => {
                 <Route path="/meet/:roomId" element={<MeetingRoom />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+
             </HashRouter>
           </TooltipProvider>
         </ThemeProvider>

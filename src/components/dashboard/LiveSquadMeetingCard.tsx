@@ -127,6 +127,8 @@ export const LiveSquadMeetingCard: React.FC<LiveSquadMeetingCardProps> = ({ onNa
 
           <button
             onClick={() => {
+              const meetUrl = `${window.location.origin}${window.location.pathname}#/meet/${active.group.id}?name=${encodeURIComponent(active.group.name)}`;
+              window.open(meetUrl, `PPS_Meet_${active.group.id}`, "width=1320,height=840,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
               setActiveGroupId(active.group.id);
               onNavigate?.("social");
             }}
@@ -135,6 +137,7 @@ export const LiveSquadMeetingCard: React.FC<LiveSquadMeetingCardProps> = ({ onNa
             <span>🚀 Join Live Room</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
+
         </div>
       </motion.div>
     );
