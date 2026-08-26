@@ -15,7 +15,10 @@ import {
   Sparkles,
   Edit2,
   X,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { feedbackSounds } from "@/lib/audio/clickFeedback";
 import { useReminders } from "@/hooks/use-reminders";
@@ -160,6 +163,29 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
   const handleDeleteItem = (id: string) => {
     saveItems(items.filter((it) => it.id !== id));
   };
+
+  // Move Item Up
+  const handleMoveUp = (index: number) => {
+    if (index <= 0) return;
+    const updated = [...items];
+    const temp = updated[index];
+    updated[index] = updated[index - 1];
+    updated[index - 1] = temp;
+    saveItems(updated);
+    feedbackSounds.playClick();
+  };
+
+  // Move Item Down
+  const handleMoveDown = (index: number) => {
+    if (index >= items.length - 1) return;
+    const updated = [...items];
+    const temp = updated[index];
+    updated[index] = updated[index + 1];
+    updated[index + 1] = temp;
+    saveItems(updated);
+    feedbackSounds.playClick();
+  };
+
 
   // 1-Click Convert to Active Today's Habit
   const handleConvertToHabit = async (item: ChecklistItem) => {
@@ -384,9 +410,11 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
           {/* Items List */}
           <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
             <AnimatePresence>
-              {items.map((item) => (
+              {items.map((item, index) => (
                 <motion.div
                   key={item.id}
+                  layout
+                  transition={{ type: "spring", stiffness: 450, damping: 30 }}
                   initial={{ opacity: 0, x: -5 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
@@ -396,7 +424,36 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
                       : "bg-surface/80 border-border/70 hover:border-amber-500/30 text-foreground"
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* Left: Reorder Up/Down + Checkbox + Text */}
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    {/* Compact Reorder Up / Down Controls */}
+                    {items.length > 1 && (
+                      <div className="flex flex-col -space-y-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveUp(index)}
+                          disabled={index === 0}
+                          className={`p-0.5 rounded hover:bg-surface/80 text-muted-foreground hover:text-amber-500 transition-colors cursor-pointer ${
+                            index === 0 ? "opacity-20 cursor-not-allowed" : ""
+                          }`}
+                          title={index === 0 ? "Already at top" : "Move task up"}
+                        >
+                          <ChevronUp className="w-2.5 h-2.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveDown(index)}
+                          disabled={index === items.length - 1}
+                          className={`p-0.5 rounded hover:bg-surface/80 text-muted-foreground hover:text-amber-500 transition-colors cursor-pointer ${
+                            index === items.length - 1 ? "opacity-20 cursor-not-allowed" : ""
+                          }`}
+                          title={index === items.length - 1 ? "Already at bottom" : "Move task down"}
+                        >
+                          <ChevronDown className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => handleToggleItem(item.id)}
@@ -477,6 +534,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
                 </motion.div>
               ))}
             </AnimatePresence>
+
 
             {items.length === 0 && (
               <div className="text-center py-3 text-muted-foreground text-xs font-medium">

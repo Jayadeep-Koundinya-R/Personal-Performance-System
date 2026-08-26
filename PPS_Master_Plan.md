@@ -2,9 +2,10 @@
 
 > **Purpose of this document:** A single source of truth for Jayadeep, Claude, and AG (Antigravity) to stay in sync. Update this every time something is completed, fixed, or decided. Reopen this anytime instead of scrolling back through old chats.
 
-**Last updated:** August 21, 2026  
+**Last updated:** August 26, 2026  
 **Decision on payments:** Real payments delayed until closer to launch (test mode only when we do activate it — no real charges risk).  
 **Decision on plan limits:** NOT enforced yet — deliberately delayed until users have built trust in the product first.  
+**Decision on Git Pushes:** NEVER push to git without explicit user permission.
 
 ---
 
@@ -54,44 +55,46 @@ Every time work stops for the day (credits run out, or Jayadeep needs to leave),
 
 | Feature | Notes |
 |---|---|
-| Habit tracking (create/edit/delete/archive) | Full Supabase sync, real database |
-| Streak engine + freeze credits | Working, includes auto-freeze option |
-| XP & Levels | 10 XP per completion, level-up celebrations |
-| Achievements/Badges | 6 core badges + Pro-exclusive teases |
-| Personal Pomodoro Timer | **Cross-device sync verified working** — start on laptop, see live countdown on phone |
-| Deep Analytics | Heatmaps, category breakdown, AI velocity predictor |
-| Interactive Calendar | Month/week/agenda views |
-| Daily Reflections Journal | **Now real cloud-saved** (was localStorage-only, fixed) |
-| Circadian Alarm/Reminder system | Reminders + habit start/end alarms actually fire now |
-| AI Performance Coach | **Already built** — intent classifier (16 intents) works free/offline. Real Gemini connection is built and tested but dormant (no API key added yet, by choice) |
-| Procedural Soundscapes | Rain, Lo-Fi, Coffee Shop, Library — 100% real, zero cost |
-| PDF/CSV/JSON Reports & Export | Working |
-| Dark/Light Theme | **Now account-wide synced** across devices (was browser-only, fixed) |
-| Auth (Email/Password + Guest) | Working, with guest-to-account migration |
-| Onboarding flow | Shows once for new users only |
-| Voice Commands | Real browser speech recognition |
-| Android App (Capacitor) | Installed and tested on your phone, works like the website |
-| Automated test suite | 131 tests passing, includes real integration tests (not just unit tests) |
-| **Study Squads (Groups)** | **Now real** — Supabase-backed, invite codes work across accounts, properly isolated per user |
-| **Group Chat Channels** | **Now real** — live messages sync between different accounts/devices, confirmed with 2-account test |
+| **Habit tracking** (create/edit/delete/archive) | Full Supabase sync, real database |
+| **Streak engine + freeze credits** | Working, includes auto-freeze option |
+| **XP & Levels** | 10 XP per completion, level-up celebrations |
+| **Achievements/Badges** | 6 core badges + Pro-exclusive teases |
+| **Personal Pomodoro Timer** | **Cross-device sync verified working** — start on laptop, see live countdown on phone |
+| **Deep Analytics** | Heatmaps, category breakdown, AI velocity predictor |
+| **Interactive Calendar** | Month/week/agenda views |
+| **Daily Reflections Journal** | **Real cloud-saved** in `public.reflections` |
+| **Reminders & Alarm Studio (Self-Healing)** | **Backend UUID validation fixed** — strict PostgreSQL UUID checks, time normalization (`HH:MM`), self-healing local fallback so alerts never fail even offline |
+| **Sticky Notes To-Do List & Organization** | **Interactive To-Do list** on dashboard with dynamic highlighting when filled, custom rename, **`+Habit` (⚡)** conversion (+10 XP), **`+Remind` (🔔)** conversion with 1-click modal presets (`15m`, `1h`, `Tonight 8 PM`, `Morning 9 AM`), and **Reorder Up (`▲`) / Down (`▼`)** with smooth Framer Motion spring physics |
+| **Daily.co Managed Video Calling Engine** | Replaced raw WebRTC with `@daily-co/daily-js` SDK and Supabase Edge Function `create-daily-room`; automated unit test suite passing (4/4) |
+| **Elevated Focus Room Studio** | **Zero-Overlap Architecture** — Pomodoro sync timer and Ambience soundscapes completely separated into clean rows; participant deduplication (`Alex (Pro Tester) (You)` strictly single-tile) |
+| **Dedicated Meeting Window** | 1-Click Pop-out into standalone Google Meet / Zoom styled meeting window (`#/meet/:roomId?name=...`) with automatic background tab presence release |
+| **AI Performance Coach** | Intent classifier (16 intents) works free/offline. Real Gemini connection built and tested but dormant (no API key added yet, by choice) |
+| **Procedural Soundscapes** | Rain, Lo-Fi, Coffee Shop, Library — 100% real, zero cost |
+| **PDF/CSV/JSON Reports & Export** | Working |
+| **Dark/Light Theme** | **Account-wide synced** across devices |
+| **Auth (Email/Password + Guest)** | Working, with guest-to-account migration |
+| **Onboarding flow** | Shows once for new users only |
+| **Voice Commands** | Real browser speech recognition |
+| **Android App (Capacitor)** | Installed and tested on phone, works like the website |
+| **Automated test suite** | **142 tests passing across 27 test suites** (100% green) |
+| **Study Squads (Groups)** | Supabase-backed, invite codes work across accounts, properly isolated per user |
+| **Group Chat Channels** | Live messages sync between different accounts/devices |
 | **Leave Group** | Working, handles host-leaving and last-member cleanup |
-| **Real Presence** (who's online) | Now uses genuine Supabase Presence — no more fake names |
-| **Synced Group Pomodoro** | Now genuinely synced across group members via Realtime |
-| **Cross-User Leaderboard** | **Real Supabase query** — queries `profiles` ordered by `total_xp DESC` with realtime `postgres_changes`; zero fake bots |
-| Google OAuth (code) | Code is correct; needs manual Supabase + Google Cloud allowlisting |
+| **Real Presence** (who's online) | Genuine Supabase Presence — no duplicate or ghost cards |
+| **Synced Group Pomodoro** | Genuinely synced across group members via Realtime |
+| **Cross-User Leaderboard** | Real Supabase query on `profiles` ordered by `total_xp DESC` with `postgres_changes`; zero fake bots |
+| **Google OAuth (code)** | Code is correct; needs manual Supabase + Google Cloud allowlisting |
 
 ---
 
-## 3. WHAT'S PARTIALLY WORKING (looks real, isn't fully)
+## 3. WHAT'S PARTIALLY WORKING (needs 2-device user confirmation)
 
-| Feature | What's real | What's missing |
+| Feature | What's real | What's missing / Next Step |
 |---|---|---|
-| **Video/Audio Focus Rooms (Task 10)** | Local camera/mic preview & raw signaling code in `use-focus-room.ts` | **Unverified across 2 devices; no TURN server configured (will fail on restrictive NATs/firewalls). Needs Daily.co/LiveKit SDK integration.** |
-| **Screen Sharing** | Captures local screen (`getDisplayMedia`) | Transmission across 2 separate devices unverified |
-| **Shared Whiteboard (Task 12)** | Real drawing canvas, pen/eraser/colors, PNG export, broadcast listener in `WhiteboardModal.tsx` | **No 2-account cross-device live stroke test has been executed** |
-| **Co-Op Quests (Task 13)** | Quest definitions, individual progress tracking, broadcast listener in `SocialSection.tsx` | **Simultaneous multi-user group sync integration test has not been executed** |
+| **Daily.co 2-Device Live Video Test (Task 10)** | Daily.co SDK integrated, Edge Function created, unit tests passing (4/4), local camera/mic streaming working | **Awaiting Jayadeep's real 2-device test (laptop + phone) across different networks to verify live audio/video transmission** |
+| **Shared Whiteboard (Task 12)** | Real drawing canvas, pen/eraser/colors, PNG export, broadcast listener in `FocusRoomWhiteboard.tsx` | No 2-account cross-device live stroke test has been executed |
+| **Co-Op Quests (Task 13)** | Quest definitions, individual progress tracking, broadcast listener in `SocialSection.tsx` | Simultaneous multi-user group sync integration test has not been executed |
 | **Teacher Marketplace** | Browse mentor classes, client-side NLP syllabus extractor & 1-click habit installer | Paid ticket checkout is in Coming Soon / Early Access mode |
-| **Pop-out Meeting Window** | Opens a real new window | Cross-window state is fragile/independent, not truly synced |
 | **Accountability Circles** | Matching UI exists | No real peer discovery logic yet |
 
 ---
@@ -114,29 +117,34 @@ Every time work stops for the day (credits run out, or Jayadeep needs to leave),
 1. **Payments**: Delayed. Real payments delayed until closer to launch (test mode only when activated).
 2. **Plan limits (free tier caps)**: Delayed on purpose until users build trust in the product first.
 3. **Real Gemini AI**: Built and tested, but dormant until explicitly enabled.
-4. **Video calls**: Acknowledged as the single biggest gap. Needs real WebRTC or Daily.co.
-5. **Testing discipline**: Every new "sync" feature must be tested with 2 real separate accounts/devices before being trusted.
+4. **Video calling**: Daily.co selected and integrated (10,000 free mins/month, eliminates NAT/TURN issues).
+5. **Testing discipline**: Every new "sync" feature must be tested with 2 real separate accounts/devices before being marked complete.
+6. **Git Pushes**: Explicit user command required before any `git push`.
 
 ---
 
 ## 6. WHAT'S LEFT TO DO — PRIORITY ORDER
 
 ### 🔴 Phase 1 — Fix & Stabilize (Agni Focus)
-1. Fix notification dropdown z-index/overlap bug
-2. Clarify and scope the "GitHub-style" notification/sidebar idea
-3. Replace broken "Upgrade to Pro" button with honest "Coming Soon"
-4. Remove/label fake leaderboard entries
-5. Remove/label fake testimonials on landing page
-6. Remove/fix fake "AI Lecture Extractor"
-7. Split `DashboardSection.tsx` into smaller components
-8. Split `SettingsSection.tsx` into smaller components
-9. Write core E2E tests (signup → habit → streak → analytics → export)
+1. ✅ Fix notification dropdown z-index/overlap bug
+2. ✅ GitHub-style notification center (All vs Unread pills) & collapsible sidebar
+3. ✅ Replace broken "Upgrade to Pro" button with honest "Coming Soon"
+4. ✅ Remove/label fake leaderboard entries with honest Beta Benchmark labels
+5. ✅ Replace fake testimonials on landing page with genuine User Personas
+6. ✅ Remove/fix fake "AI Lecture Extractor" with real NLP keyword parser
+7. ✅ Split `DashboardSection.tsx` into modular widgets (`StickyNotesWidget`, `MotivationalQuoteWidget`)
+8. ✅ Split `SettingsSection.tsx` into modular components (`AutomationTab`, `SecurityTab`, `DataVaultTab`)
+9. ✅ Write core E2E tests (signup → habit → streak → analytics → export)
+10. ✅ Fix Reminders backend UUID validation and PostgreSQL table self-healing
+11. ✅ Sticky Notes To-Do list conversion to Reminders (with time picker modal) & Habits (+10 XP)
+12. ✅ Sticky Notes Task Reordering (Move Up / Move Down with spring layout animations)
+13. ✅ Focus Room Studio Zero-Overlap layout & Participant Deduplication (`Alex (You)`)
 
 ### 🟡 Phase 2 — Make Social Real (Vayu Focus)
-10. Real WebRTC/Daily.co video calling
-11. Real cross-user leaderboard (Supabase query)
-12. Multi-user whiteboard sync
-13. Real Co-Op Quest group progress sync
+14. ⚠️ **Task 10 (Daily.co 2-Device Live Verification)** — User to verify live bidirectional video/audio between 2 real devices.
+15. ✅ Task 11: Real cross-user leaderboard (Supabase query on `profiles`)
+16. ⚠️ Task 12: Multi-user whiteboard sync (2-account live stroke verification)
+17. ⚠️ Task 13: Real Co-Op Quest group progress sync (multi-user group sync test)
 
 ---
 
@@ -154,10 +162,9 @@ Every time work stops for the day (credits run out, or Jayadeep needs to leave),
 
 ## 8. OPEN QUESTIONS
 
-1. Video calling implementation: Daily.co vs raw WebRTC mesh.
+1. Daily.co live 2-device verification test (awaiting user test).
 2. Institutional billing bundling AI usage: hard cap vs unlimited monitored.
-3. Post-Phase 1 testing milestone.
-4. Notification/sidebar "GitHub-style" redesign exact UX specification.
+3. Post-Agni launch testing milestone transition into Vayu Launch.
 
 ---
 
@@ -177,13 +184,15 @@ Every time work stops for the day (credits run out, or Jayadeep needs to leave),
 - ✅ **Task 4: Remove/label fake leaderboard entries with honest Beta Benchmark labels**
 - ✅ **Task 5: Replace fake testimonials with honest User Personas & Workflows on landing page**
 - ✅ **Task 6: Replace fake "AI Lecture Extractor" with real client-side NLP parser & 1-click habit installer**
-- ✅ **Task 7: Split `DashboardSection.tsx` into modular components (MotivationalQuoteWidget)**
+- ✅ **Task 7: Split `DashboardSection.tsx` into modular components (StickyNotesWidget, MotivationalQuoteWidget)**
 - ✅ **Task 8: Split `SettingsSection.tsx` into modular components (AutomationTab, SecurityTab, DataVaultTab)**
 - ✅ **Task 9: Write core E2E tests (signup → habit → streak → analytics → export)**
-- ⚠️ **Task 10: Real WebRTC video calls** *(Partial — Signaling & local media capture exist in `use-focus-room.ts`, but peer connection is unverified across 2 separate devices and lacks a TURN server; needs Daily.co/LiveKit SDK integration for reliable real-world calls)*
+- ⚠️ **Task 10: Real Video Focus Rooms via Daily.co** *(Code complete: Daily.co call engine, Supabase Edge Function, 4/4 automated tests passing, participant deduplication, dedicated Zoom/Meet window launcher, zero-overlap Pomodoro & Ambience layout. Awaiting Jayadeep's 2-device live user test)*
 - ✅ **Task 11: Real cross-user leaderboard** *(Verified — queries real Supabase `profiles` table ordered by `total_xp DESC` with `postgres_changes` realtime listener; zero fake bots injected)*
-- ⚠️ **Task 12: Multi-user whiteboard sync** *(Partial — Local drawing canvas & PNG export work 100%; broadcast listener code exists in `WhiteboardModal.tsx`, but no 2-account cross-device live stroke synchronization test has been performed)*
-- ⚠️ **Task 13: Real Co-Op Quest group progress sync** *(Partial — Individual quest tracking works; broadcast listener exists in `SocialSection.tsx`, but simultaneous multi-user group sync integration test has not been executed)*
+- ⚠️ **Task 12: Multi-user whiteboard sync** *(Partial — Local drawing canvas & PNG export work 100%; broadcast listener code exists in `FocusRoomWhiteboard.tsx`, awaiting 2-account cross-device live stroke test)*
+- ⚠️ **Task 13: Real Co-Op Quest group progress sync** *(Partial — Individual quest tracking works; broadcast listener exists in `SocialSection.tsx`, awaiting multi-user group sync integration test)*
+- ✅ **Task 14: Reminders Backend Resiliency & PostgreSQL Self-Healing** *(Verified — strict UUID checks, time normalization, user-scoped fallback, self-healing migration in `COMPLETE_BACKEND_SETUP.sql`)*
+- ✅ **Task 15: Sticky Notes Direct To-Do Conversions (+Remind / +Habit)** *(Verified — React Portal modal with quick presets `15m`, `1h`, `8 PM`, `9 AM`, live alarm badges, and sync with Upcoming Reminders)*
+- ✅ **Task 16: Sticky Notes Task Reordering (Move Up / Move Down)** *(Verified — compact up/down controls with Framer Motion spring layout animations and auto-persistence)*
 
 *(Payments, plan-limit enforcement, and institutional billing are intentionally deferred to Vayu Launch or later per Section 5 decisions.)*
-
