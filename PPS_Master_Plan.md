@@ -186,7 +186,6 @@ Every time work stops for the day (credits run out, or Jayadeep needs to leave),
 - ✅ **Task 6: Replace fake "AI Lecture Extractor" with real client-side NLP parser & 1-click habit installer**
 - ✅ **Task 7: Split `DashboardSection.tsx` into modular components (StickyNotesWidget, MotivationalQuoteWidget)**
 - ✅ **Task 8: Split `SettingsSection.tsx` into modular components (AutomationTab, SecurityTab, DataVaultTab)**
-- ✅ **Task 9: Write core E2E tests (signup → habit → streak → analytics → export)**
 - ⚠️ **Task 10: Real Video Focus Rooms via Daily.co** *(Code complete: Daily.co call engine, Supabase Edge Function, 4/4 automated tests passing, participant deduplication, dedicated Zoom/Meet window launcher, zero-overlap Pomodoro & Ambience layout. Awaiting Jayadeep's 2-device live user test)*
 - ✅ **Task 11: Real cross-user leaderboard** *(Verified — queries real Supabase `profiles` table ordered by `total_xp DESC` with `postgres_changes` realtime listener; zero fake bots injected)*
 - ⚠️ **Task 12: Multi-user whiteboard sync** *(Partial — Local drawing canvas & PNG export work 100%; broadcast listener code exists in `FocusRoomWhiteboard.tsx`, awaiting 2-account cross-device live stroke test)*
@@ -194,5 +193,9 @@ Every time work stops for the day (credits run out, or Jayadeep needs to leave),
 - ✅ **Task 14: Reminders Backend Resiliency & PostgreSQL Self-Healing** *(Verified — strict UUID checks, time normalization, user-scoped fallback, self-healing migration in `COMPLETE_BACKEND_SETUP.sql`)*
 - ✅ **Task 15: Sticky Notes Direct To-Do Conversions (+Remind / +Habit)** *(Verified — React Portal modal with quick presets `15m`, `1h`, `8 PM`, `9 AM`, live alarm badges, and sync with Upcoming Reminders)*
 - ✅ **Task 16: Sticky Notes Task Reordering (Move Up / Move Down)** *(Verified — compact up/down controls with Framer Motion spring layout animations and auto-persistence)*
+- ✅ **Task 17: Interactive 3-Step Guided Onboarding** *(Verified — actionable journey replacing passive slides: 1-click persona starter packs, custom habit addition, instant Study Squad joining, and 5-min Focus Pomodoro launcher integrated with existing user-settings onboarding tracking)*
+- ✅ **Task 18: Compassionate Retention & Comeback Resilience System** *(Verified — gentle "Welcome Back / Fresh Day" recovery banners on Dashboard and Streak Engine with 7-day gentle resilience tracker to eliminate broken streak anxiety)*
 
-*(Payments, plan-limit enforcement, and institutional billing are intentionally deferred to Vayu Launch or later per Section 5 decisions.)*
+*(Payments, plan-limit enforcement, and institutional billing are intentionally deferred to Vayu Launch or later per Section 5 decisions. Task 10 Daily.co video remains ⚠️ pending user manual 2-device test tomorrow.)*
+
+

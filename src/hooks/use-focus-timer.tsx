@@ -304,6 +304,19 @@ export function FocusTimerProvider({
 
     setShowFlowExtend(true);
 
+    // ── Vayu Autonomous Real-Time Flow Notification ──
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("pps_focus_session_completed", {
+          detail: {
+            durationMins: elapsedMins,
+            linkedHabitId: s.linkedHabitId,
+            taskName: s.activeTaskName,
+          },
+        })
+      );
+    }
+
     // Clear active session from cloud
     const endPayload: ActiveFocusSessionPayload = {
       isRunning: false,

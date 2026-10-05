@@ -144,18 +144,76 @@ const StreakSection = () => {
           </div>
         </div>
 
-        {/* Pure Discipline Bonus Badge */}
-        {maxStreak >= 7 && (
+        {/* Pure Discipline Bonus Badge or Forgiving Comeback Badge */}
+        {maxStreak >= 7 ? (
           <div className="inline-flex items-center gap-1.5 text-xs font-mono font-extrabold bg-pps-green/15 text-pps-green border border-pps-green/30 px-3.5 py-1 rounded-full shadow-xs">
             <span>✨ Pure Discipline Bonus:</span>
             <span>+25 XP for maintaining 7d+ unshielded streak!</span>
           </div>
-        )}
+        ) : maxStreak === 0 && totalCompletions > 0 ? (
+          <div className="inline-flex items-center gap-1.5 text-xs font-mono font-extrabold bg-primary/15 text-primary border border-primary/30 px-3.5 py-1 rounded-full shadow-xs">
+            <span>🌱 Fresh Day Momentum:</span>
+            <span>Every master restart begins with 1 clean action. Check off 1 habit to ignite a new spark!</span>
+          </div>
+        ) : null}
 
         <p className="text-[11px] text-muted-foreground font-mono font-medium">
           Free Tier: {limits?.streakFreezesPerMonth ?? 3} freeze/month • Pro Tier: 3 freezes/month
         </p>
       </motion.div>
+
+      {/* ── 🌟 GENTLE RETENTION: WEEKLY RESILIENCE & COMEBACK SUMMARY ── */}
+      <div className="bg-surface/70 border border-border/80 p-5 rounded-3xl shadow-lg space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🌱</span>
+            <div>
+              <h3 className="text-xs font-extrabold uppercase font-mono tracking-wider text-foreground">
+                Compassionate Habit Resilience
+              </h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Consistency is about showing up over time — not perfection. A missed day is just data, never failure.
+              </p>
+            </div>
+          </div>
+          <span className="text-[10.5px] font-mono font-bold bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full">
+            {totalCompletions} Total Wins Recorded
+          </span>
+        </div>
+
+        {/* 7-Day Gentle Mini-Strip */}
+        <div className="grid grid-cols-7 gap-1.5 pt-1">
+          {Array.from({ length: 7 }).map((_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - (6 - i));
+            const ds = d.toISOString().split("T")[0];
+            const isToday = i === 6;
+            const completedCount = habits.filter((h) => (h.completedDates || []).includes(ds)).length;
+            const dayLabel = d.toLocaleDateString(undefined, { weekday: "narrow" });
+
+            return (
+              <div
+                key={ds}
+                className={`p-2 rounded-2xl border text-center transition-all ${
+                  completedCount > 0
+                    ? "bg-pps-green/10 border-pps-green/40 shadow-2xs"
+                    : isToday
+                    ? "bg-surface border-primary/40"
+                    : "bg-surface/40 border-border/40"
+                }`}
+              >
+                <div className="text-[10px] font-mono font-bold text-muted-foreground">{dayLabel}</div>
+                <div className="text-sm my-0.5">
+                  {completedCount > 0 ? "✓" : isToday ? "⏳" : "—"}
+                </div>
+                <div className="text-[9px] font-mono text-muted-foreground">
+                  {completedCount > 0 ? `${completedCount} done` : isToday ? "in progress" : "rest"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* ── 2. 🚨 AT-RISK EMERGENCY RESCUE ALERT BANNER ── */}
       <AnimatePresence>
@@ -163,6 +221,7 @@ const StreakSection = () => {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
+
             exit={{ opacity: 0, y: -10 }}
             className="bg-gradient-to-r from-destructive/20 via-card to-pps-orange/15 border border-destructive/40 p-4 sm:p-5 rounded-3xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
           >

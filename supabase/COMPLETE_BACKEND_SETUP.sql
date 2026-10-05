@@ -567,4 +567,43 @@ CREATE INDEX IF NOT EXISTS idx_channel_messages_channel ON public.channel_messag
 CREATE INDEX IF NOT EXISTS idx_channel_messages_created ON public.channel_messages(created_at ASC);
 CREATE INDEX IF NOT EXISTS idx_group_focus_sessions_group ON public.group_focus_sessions(group_id);
 
+-- ============================================================================
+-- 9. VAYU AUTONOMOUS REAL-TIME PLANNING & TRACKING
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.vayu_daily_plans (
+  id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  plan_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  blocks JSONB NOT NULL DEFAULT '[]'::jsonb,
+  total_target_minutes INTEGER NOT NULL DEFAULT 0,
+  completed_minutes INTEGER NOT NULL DEFAULT 0,
+  completion_rate INTEGER NOT NULL DEFAULT 0,
+  strategy_summary TEXT DEFAULT '',
+  last_recalibrated_at TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT unique_user_vayu_plan_date UNIQUE (user_id, plan_date)
+);
+
+ALTER TABLE public.vayu_daily_plans ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'vayu_daily_plans' AND policyname = 'Users manage own vayu plans'
+  ) THEN
+    CREATE POLICY "Users manage own vayu plans" ON public.vayu_daily_plans
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.vayu_daily_plans;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_vayu_plans_user_date ON public.vayu_daily_plans(user_id, plan_date DESC);
+
+
 

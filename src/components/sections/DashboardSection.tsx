@@ -13,7 +13,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { MotivationalQuoteWidget } from "@/components/dashboard/MotivationalQuoteWidget";
 import { LiveSquadMeetingCard } from "@/components/dashboard/LiveSquadMeetingCard";
 import { StickyNotesWidget } from "@/components/dashboard/StickyNotesWidget";
+import { MiniPomodoroCard } from "@/components/dashboard/MiniPomodoroCard";
 import { toast } from "sonner";
+import { useVayu } from "@/hooks/use-vayu";
+import { VayuPulseBanner } from "@/components/vayu/VayuPulseBanner";
+import { VayuFlowStudioModal } from "@/components/vayu/VayuFlowStudioModal";
+
 
 import { Link } from "react-router-dom";
 import { Search, X, Filter, Volume2, VolumeX } from "lucide-react";
@@ -175,6 +180,19 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
       return "comfortable";
     }
   });
+
+  // ── 🌬️ Vayu Autonomous Real-Time Flow Subsystem ──
+  const {
+    plan: vayuPlan,
+    currentBlock: vayuCurrentBlock,
+    nextBlock: vayuNextBlock,
+    completionRate: vayuRate,
+    generateNewPlan: generateVayuPlan,
+    completeBlock: completeVayuBlock,
+    rebalanceSchedule: rebalanceVayuSchedule,
+    processNaturalInput: processVayuInput,
+  } = useVayu();
+  const [isVayuStudioOpen, setIsVayuStudioOpen] = useState(false);
 
   // Skipped habits state for forgiving rest-day system
   const [skippedHabits, setSkippedHabits] = useState<Record<string, string>>(() => {
@@ -844,6 +862,39 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
           </Link>
         </motion.div>
       )}
+
+      {/* Gentle Comeback & Fresh Day Resilience Banner (Shows when returning after a break) */}
+      {!nudge && maxStreak === 0 && habits.some((h) => (h.completedDates || []).length > 0) && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-5 bg-gradient-to-r from-primary/10 via-surface to-pps-green/10 border border-primary/25 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary border border-primary/30 flex items-center justify-center text-lg flex-shrink-0">
+              🌱
+            </div>
+            <div>
+              <div className="text-xs font-black text-foreground flex items-center gap-1.5">
+                <span>Welcome Back! Fresh Day Momentum</span>
+                <span className="text-[10px] font-mono text-pps-green bg-pps-green/15 px-2 py-0.2 rounded-full font-bold">
+                  Zero Guilt • Data, Not Failure
+                </span>
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                Consistency is built over months, not single days. Check off your first habit today to start a fresh streak.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate?.("habits")}
+            className="text-xs bg-surface border border-border/80 hover:border-primary text-foreground font-extrabold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap shadow-2xs"
+          >
+            View Habit Stack →
+          </button>
+        </motion.div>
+      )}
+
       {/* Greeting Header */}
       <motion.div
         initial={{ opacity: 0, y: -15 }}
@@ -946,6 +997,27 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         </div>
       </motion.div>
 
+      {/* 🌬️ Vayu Real-Time Autonomous Flow Banner */}
+      <VayuPulseBanner
+        plan={vayuPlan}
+        currentBlock={vayuCurrentBlock}
+        nextBlock={vayuNextBlock}
+        completionRate={vayuRate}
+        onProcessInput={processVayuInput}
+        onRebalance={rebalanceVayuSchedule}
+        onOpenStudio={() => setIsVayuStudioOpen(true)}
+        onCompleteCurrent={(blockId) => completeVayuBlock(blockId, 100, "manual")}
+      />
+
+      <VayuFlowStudioModal
+        isOpen={isVayuStudioOpen}
+        onClose={() => setIsVayuStudioOpen(false)}
+        plan={vayuPlan}
+        onGenerateNewPlan={generateVayuPlan}
+        onRebalance={rebalanceVayuSchedule}
+        onCompleteBlock={(blockId, pct) => completeVayuBlock(blockId, pct || 100, "manual")}
+      />
+
       {/* Quick Add Habit Dropdown Panel */}
       <AnimatePresence>
         {showQuickAdd && (
@@ -1014,16 +1086,14 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
         )}
       </AnimatePresence>
 
-      {/* 🔴 Live Squad Meeting & Group Chat Activity Banner */}
-      <LiveSquadMeetingCard onNavigate={onNavigate} />
-
-      {/* Motivational Quote Widget */}
-      <div className="mb-4">
+      {/* Condensed Side-by-Side Focus Modules: Live Squad Co-Study & Daily Motivation */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-5 items-stretch">
+        <LiveSquadMeetingCard onNavigate={onNavigate} />
         <MotivationalQuoteWidget />
       </div>
 
-
       {/* AI Suggestions Cards */}
+
       {suggestions.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -1520,10 +1590,16 @@ const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
             {/* Right — Widgets (Action-First Ordering) */}
             <div className="flex flex-col gap-5">
 
-              {/* 1. 📌 Super-Elevated Sticky Notes with Checklist & 1-Click Habit Converter (Top Priority) */}
+              {/* 1. ⏱️ Quick Focus Studio & Pomodoro Engine (Compact Studio in Dashboard) */}
+              <motion.div variants={scaleIn} custom={6} initial="hidden" animate="visible">
+                <MiniPomodoroCard onNavigate={onNavigate} />
+              </motion.div>
+
+              {/* 2. 📌 Super-Elevated Sticky Notes with Checklist & 1-Click Habit Converter (Top Priority) */}
               <motion.div variants={scaleIn} custom={7} initial="hidden" animate="visible">
                 <StickyNotesWidget todayStr={todayStr} onAddHabit={addHabit} />
               </motion.div>
+
 
               {/* 2. 🔔 Upcoming Reminders & Alarms */}
               <motion.div variants={scaleIn} custom={8} initial="hidden" animate="visible" className="bg-card border border-border/90 rounded-2xl p-5 shadow-xs">

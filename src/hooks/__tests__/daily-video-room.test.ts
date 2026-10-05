@@ -23,6 +23,29 @@ vi.mock("@/hooks/use-profile", () => ({
   }),
 }));
 
+// Mock Supabase
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    functions: {
+      invoke: vi.fn().mockResolvedValue({ data: null, error: null }),
+    },
+    channel: () => ({
+      on: () => ({ subscribe: () => ({}) }),
+      track: vi.fn(),
+      subscribe: (cb: any) => {
+        if (cb) cb("SUBSCRIBED");
+        return {};
+      },
+    }),
+    removeChannel: vi.fn(),
+    from: () => ({
+      select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }),
+      upsert: () => Promise.resolve({ data: null, error: null }),
+      update: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }) }),
+    }),
+  },
+}));
+
 describe("Daily.co Managed Video Calling Engine in Focus Rooms", () => {
   beforeEach(() => {
     localStorage.clear();

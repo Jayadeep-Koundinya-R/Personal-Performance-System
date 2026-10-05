@@ -40,6 +40,8 @@ import { ActiveCallProvider } from "@/context/ActiveCallContext";
 import { FloatingCallPiP } from "@/components/focus-rooms/FloatingCallPiP";
 import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
 import { KeyboardShortcutsModal } from "@/components/ui/KeyboardShortcutsModal";
+import { InteractiveOnboardingModal } from "@/components/onboarding/InteractiveOnboardingModal";
+
 
 
 import { lazy, Suspense } from "react";
@@ -56,138 +58,37 @@ import SocialSection from "@/components/sections/SocialSection";
 const ReportsSection = lazy(() => import("@/components/sections/ReportsSection").then(m => ({ default: m.default })));
 const SettingsSection = lazy(() => import("@/components/sections/SettingsSection").then(m => ({ default: m.default })));
 
-const NAV_ITEMS = [
-  { key: "dashboard", icon: "⚡", label: "Dashboard" },
-  { key: "tracker", icon: "🎯", label: "Focus Studio" },
-  { key: "calendar", icon: "📅", label: "Calendar" },
-  { key: "analytics", icon: "📊", label: "Analytics" },
-  { key: "streak", icon: "🔥", label: "Streak Engine" },
-  { key: "achievements", icon: "🏅", label: "Achievements" },
-  { key: "social", icon: "👥", label: "Social & Focus Hub" },
-  { key: "reports", icon: "📈", label: "Reports" },
-  { key: "reflections", icon: "📝", label: "Reflections" },
-  { key: "habits", icon: "⚙️", label: "Habit Architect" },
-  { key: "reminders", icon: "🔔", label: "Reminders" },
-  { key: "settings", icon: "🛠", label: "Settings" },
-] as const;
-
-type SectionKey = (typeof NAV_ITEMS)[number]["key"];
-
-/* Onboarding overlay for first-time users */
-function OnboardingOverlay({ onDismiss, onApplyTemplate }: { onDismiss: () => void; onApplyTemplate: (templateId: string) => Promise<void> }) {
-  const [step, setStep] = useState(0);
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const steps = [
-    { icon: "🎯", title: "Welcome to PPS!", desc: "Your Personal Performance System — track habits, earn XP, and level up your life." },
-    { icon: "📋", title: "Add Your First Habit", desc: "Head to the Habit Manager to create habits. They'll appear in your Daily Tracker automatically." },
-    { icon: "🔥", title: "Build Streaks & Earn XP", desc: "Complete habits daily to build streaks. Every completion earns 10 XP towards leveling up!" },
-    { icon: "🏅", title: "Unlock Achievements", desc: "Hit milestones to unlock badges. Challenge friends on the leaderboard. You're ready!" },
-    { icon: "🌱", title: "Choose a Starter Pack", desc: "Select a ready-made template pack to populate your habits on day 1 (optional)!" },
-  ];
-
-  const handleNext = async () => {
-    if (step < steps.length - 1) {
-      setStep(step + 1);
-    } else {
-      if (selectedTemplate) {
-        await onApplyTemplate(selectedTemplate);
-      }
-      onDismiss();
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 z-[2000] flex items-center justify-center p-4"
-      onClick={(e) => e.target === e.currentTarget && onDismiss()}
-    >
-      <motion.div
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
-        className="bg-card border border-border rounded-2xl p-6 max-w-md w-full text-center"
-      >
-        <motion.div
-          key={step}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          className="mb-4"
-        >
-          <motion.div
-            animate={{ y: [0, -8, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="text-5xl mb-3"
-          >
-            {steps[step].icon}
-          </motion.div>
-          <h2 className="text-lg font-bold mb-1.5">{steps[step].title}</h2>
-          <p className="text-[12.5px] text-muted-foreground leading-relaxed mb-3">{steps[step].desc}</p>
-
-          {step === 4 && (
-            <div className="grid grid-cols-2 gap-2.5 my-3 max-h-[30vh] overflow-y-auto pr-1 text-left">
-              {HABIT_TEMPLATES.map((tmpl) => (
-                <button
-                  key={tmpl.id}
-                  type="button"
-                  onClick={() => setSelectedTemplate(tmpl.id === selectedTemplate ? null : tmpl.id)}
-                  className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between ${
-                    selectedTemplate === tmpl.id 
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
-                      : "border-border bg-surface hover:border-primary/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-base">{tmpl.icon}</span>
-                    <span className="text-[11.5px] font-bold text-foreground leading-tight">{tmpl.name}</span>
-                  </div>
-                  <p className="text-[9.5px] text-muted-foreground leading-snug line-clamp-2">{tmpl.description}</p>
-                </button>
-              ))}
-            </div>
-          )}
-        </motion.div>
-
-        {/* Progress dots */}
-        <div className="flex items-center justify-center gap-2 mb-4">
-          {steps.map((_, i) => (
-            <div
-              key={i}
-              className={`w-2 h-2 rounded-full transition-all ${i === step ? "bg-primary w-6" : "bg-border"}`}
-            />
-          ))}
-        </div>
-
-        <div className="flex gap-3">
-          {step > 0 && (
-            <button
-              onClick={() => setStep(step - 1)}
-              className="flex-1 py-2.5 rounded-xl border border-border text-muted-foreground text-[13px] font-semibold hover:text-foreground transition-colors"
-            >
-              Back
-            </button>
-          )}
-          <button
-            onClick={handleNext}
-            className="flex-1 bg-gradient-to-br from-primary to-accent text-primary-foreground py-2.5 rounded-xl text-[13px] font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200"
-          >
-            {step < steps.length - 1 ? "Next" : selectedTemplate ? "Add & Start! 🚀" : "Get Started! 🚀"}
-          </button>
-        </div>
-
-        <button
-          onClick={onDismiss}
-          className="mt-3 text-[11px] text-muted-foreground hover:text-foreground bg-transparent border-none cursor-pointer"
-        >
-          Skip tutorial
-        </button>
-      </motion.div>
-    </motion.div>
-  );
+export interface NavItemConfig {
+  key: string;
+  icon: string;
+  label: string;
+  category: "Core Workspace" | "Focus & Social" | "Growth & Stats" | "System";
 }
+
+const NAV_ITEMS: NavItemConfig[] = [
+  // Core Workspace
+  { key: "dashboard", icon: "⚡", label: "Dashboard", category: "Core Workspace" },
+  { key: "habits", icon: "⚙️", label: "Habit Architect", category: "Core Workspace" },
+  { key: "calendar", icon: "📅", label: "Calendar", category: "Core Workspace" },
+  
+  // Focus & Social
+  { key: "tracker", icon: "🎯", label: "Focus Studio", category: "Focus & Social" },
+  { key: "social", icon: "👥", label: "Study Squads", category: "Focus & Social" },
+  { key: "streak", icon: "🔥", label: "Streak Engine", category: "Focus & Social" },
+
+  // Growth & Intelligence
+  { key: "analytics", icon: "📊", label: "Analytics", category: "Growth & Stats" },
+  { key: "achievements", icon: "🏅", label: "Achievements", category: "Growth & Stats" },
+  { key: "reflections", icon: "📝", label: "Reflections", category: "Growth & Stats" },
+  { key: "reports", icon: "📈", label: "Reports", category: "Growth & Stats" },
+
+  // System
+  { key: "reminders", icon: "🔔", label: "Reminders", category: "System" },
+  { key: "settings", icon: "🛠", label: "Settings", category: "System" },
+];
+
+type SectionKey = string;
+
 
 /* Persistent Must-Dismiss Alarm Overlay */
 function AlarmOverlay({ alarm, onDismiss, onSnooze, onComplete }: {
@@ -572,8 +473,15 @@ function DashboardInner({ user }: { user: User }) {
     <>
       {/* Onboarding overlay for new users */}
       <AnimatePresence>
-        {showOnboarding && <OnboardingOverlay onDismiss={dismissOnboarding} onApplyTemplate={handleApplyTemplate} />}
+        {showOnboarding && (
+          <InteractiveOnboardingModal
+            onDismiss={dismissOnboarding}
+            onApplyTemplate={handleApplyTemplate}
+            onNavigateToSection={navigateToSection}
+          />
+        )}
       </AnimatePresence>
+
 
       <AnimatePresence>
         {showRitual && !showOnboarding && <RitualOverlay onDismiss={() => setShowRitual(false)} />}
@@ -920,52 +828,70 @@ function DashboardInner({ user }: { user: User }) {
             </button>
           </div>
 
-          {/* Nav List */}
-          <nav className="py-2.5 flex-1 overflow-y-auto overflow-x-hidden">
-            <ul className="list-none space-y-0.5 px-2">
-              {NAV_ITEMS.map((item, index) => {
-                const isActive = activeSection === item.key;
+          {/* Nav List with Categorized Group Headers */}
+          <nav className="py-2 flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="space-y-3 px-2">
+              {(["Core Workspace", "Focus & Social", "Growth & Stats", "System"] as const).map((categoryName) => {
+                const categoryItems = NAV_ITEMS.filter((item) => item.category === categoryName);
                 return (
-                  <motion.li
-                    key={item.key}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.02, duration: 0.2 }}
-                    onClick={() => {
-                      setActiveSection(item.key);
-                      setSidebarOpen(false);
-                    }}
-                    title={sidebarCollapsed ? item.label : undefined}
-                    className={`
-                      px-3 py-2 rounded-xl cursor-pointer text-xs flex items-center gap-2.5 transition-all relative group
-                      ${
-                        isActive
-                          ? "bg-primary text-primary-foreground font-black shadow-xs"
-                          : "text-muted-foreground hover:text-foreground hover:bg-surface"
-                      }
-                      ${sidebarCollapsed ? "justify-center px-0" : ""}
-                    `}
-                  >
-                    <span className="text-base flex-shrink-0">{item.icon}</span>
+                  <div key={categoryName} className="space-y-0.5">
                     {!sidebarCollapsed && (
-                      <span className="truncate flex-1 font-medium">{item.label}</span>
+                      <div className="px-3 py-1 text-[9.5px] font-mono font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center justify-between">
+                        <span>{categoryName}</span>
+                      </div>
                     )}
-                    {/* Active Dot Indicator */}
-                    {isActive && (
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full bg-primary-foreground flex-shrink-0 animate-pulse ${
-                          sidebarCollapsed ? "absolute top-1.5 right-1.5" : ""
-                        }`}
-                      />
+                    {sidebarCollapsed && (
+                      <div className="w-5 h-[1px] bg-border/80 mx-auto my-1.5" />
                     )}
-                    {!sidebarCollapsed && item.key === "tracker" && focusTimer.isRunning && !isActive && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping flex-shrink-0" />
-                    )}
-                  </motion.li>
+                    <ul className="list-none space-y-0.5 m-0 p-0">
+                      {categoryItems.map((item, index) => {
+                        const isActive = activeSection === item.key;
+                        return (
+                          <motion.li
+                            key={item.key}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.02, duration: 0.2 }}
+                            onClick={() => {
+                              setActiveSection(item.key);
+                              setSidebarOpen(false);
+                            }}
+                            title={sidebarCollapsed ? item.label : undefined}
+                            className={`
+                              px-3 py-2 rounded-xl cursor-pointer text-xs flex items-center gap-2.5 transition-all relative group
+                              ${
+                                isActive
+                                  ? "bg-primary text-primary-foreground font-black shadow-xs"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-surface"
+                              }
+                              ${sidebarCollapsed ? "justify-center px-0" : ""}
+                            `}
+                          >
+                            <span className="text-base flex-shrink-0">{item.icon}</span>
+                            {!sidebarCollapsed && (
+                              <span className="truncate flex-1 font-medium">{item.label}</span>
+                            )}
+                            {/* Active Dot Indicator */}
+                            {isActive && (
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full bg-primary-foreground flex-shrink-0 animate-pulse ${
+                                  sidebarCollapsed ? "absolute top-1.5 right-1.5" : ""
+                                }`}
+                              />
+                            )}
+                            {!sidebarCollapsed && item.key === "tracker" && focusTimer.isRunning && !isActive && (
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping flex-shrink-0" />
+                            )}
+                          </motion.li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           </nav>
+
 
           {/* User & Pro Footer */}
           <div className="p-3 border-t border-border/80 bg-surface/40 flex-shrink-0">
