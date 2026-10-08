@@ -3,6 +3,7 @@ import { useFocusRoom } from "@/hooks/use-focus-room";
 import { PomodoroSyncOverlay } from "./PomodoroSyncOverlay";
 import { AmbientAudioPlayer } from "./AmbientAudioPlayer";
 import { FocusRoomWhiteboard } from "./FocusRoomWhiteboard";
+import { FEATURE_FLAGS } from "@/config/features";
 import {
   Video,
   VideoOff,
@@ -181,19 +182,21 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
             </button>
 
             {/* Whiteboard Toggle */}
-            <button
-              type="button"
-              onClick={() => setShowWhiteboard(!showWhiteboard)}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
-                showWhiteboard
-                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                  : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
-              }`}
-              title="Toggle Live Collaborative Whiteboard"
-            >
-              <PenTool className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{showWhiteboard ? "Video Grid" : "Whiteboard"}</span>
-            </button>
+            {FEATURE_FLAGS.ENABLE_WHITEBOARD && (
+              <button
+                type="button"
+                onClick={() => setShowWhiteboard(!showWhiteboard)}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                  showWhiteboard
+                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                    : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
+                }`}
+                title="Toggle Live Collaborative Whiteboard"
+              >
+                <PenTool className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{showWhiteboard ? "Video Grid" : "Whiteboard"}</span>
+              </button>
+            )}
 
             {/* Room Lock Button */}
             <button
@@ -251,7 +254,7 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
       </div>
 
       {/* ── 3. Middle Main Area: Video Grid or Whiteboard Canvas ── */}
-      {showWhiteboard ? (
+      {showWhiteboard && FEATURE_FLAGS.ENABLE_WHITEBOARD ? (
         <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-border/80 shadow-lg">
           <FocusRoomWhiteboard groupId={groupId} onClose={() => setShowWhiteboard(false)} />
         </div>

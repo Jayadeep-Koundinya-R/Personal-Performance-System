@@ -5,7 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { FEATURE_FLAGS } from "@/config/features";
 import { ThemeProvider } from "@/hooks/use-theme";
 import HomePage from "./pages/Home";
 import LoginPage from "./pages/Login";
@@ -52,14 +53,32 @@ const App = () => {
                 <Route path="/focus-rooms" element={<DashboardPage />} />
                 <Route path="/social" element={<DashboardPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
-                <Route path="/marketplace" element={<MarketplacePage />} />
-                <Route path="/classes" element={<MarketplacePage />} />
+                {FEATURE_FLAGS.ENABLE_TEACHER_MARKETPLACE ? (
+                  <>
+                    <Route path="/marketplace" element={<MarketplacePage />} />
+                    <Route path="/classes" element={<MarketplacePage />} />
+                  </>
+                ) : (
+                  <>
+                    <Route path="/marketplace" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/classes" element={<Navigate to="/dashboard" replace />} />
+                  </>
+                )}
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/focus-call/:groupId" element={<FocusCallWindow />} />
-                <Route path="/meet/:roomId" element={<MeetingRoom />} />
+                {FEATURE_FLAGS.ENABLE_VIDEO_ROOMS ? (
+                  <>
+                    <Route path="/focus-call/:groupId" element={<FocusCallWindow />} />
+                    <Route path="/meet/:roomId" element={<MeetingRoom />} />
+                  </>
+                ) : (
+                  <>
+                    <Route path="/focus-call/:groupId" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/meet/:roomId" element={<Navigate to="/dashboard" replace />} />
+                  </>
+                )}
                 <Route path="*" element={<NotFound />} />
               </Routes>
 

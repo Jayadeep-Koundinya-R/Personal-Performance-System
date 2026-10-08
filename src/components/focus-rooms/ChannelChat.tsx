@@ -14,6 +14,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
+import { FEATURE_FLAGS } from "@/config/features";
 
 interface ChannelChatProps {
   channel: GroupChannel;
@@ -97,31 +98,36 @@ export const ChannelChat: React.FC<ChannelChatProps> = ({
             <span>Pinned Notes ({messages.filter((m) => m.pinned).length})</span>
           </button>
 
-          {/* Drop-in Focus Room Call Button */}
-          <button
-            onClick={onJoinFocusRoom}
-            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
-              isStudyingInRoom
-                ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20 animate-pulse"
-                : "bg-gradient-to-r from-primary via-secondary to-accent text-primary-foreground hover:opacity-90"
-            }`}
-          >
-            <Video className="w-3.5 h-3.5" />
-            <span>{isStudyingInRoom ? "In Studio 🟢" : "Studio"}</span>
-          </button>
+          {/* Video Focus Room Buttons */}
+          {FEATURE_FLAGS.ENABLE_VIDEO_ROOMS && (
+            <>
+              {/* Drop-in Focus Room Call Button */}
+              <button
+                onClick={onJoinFocusRoom}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
+                  isStudyingInRoom
+                    ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20 animate-pulse"
+                    : "bg-gradient-to-r from-primary via-secondary to-accent text-primary-foreground hover:opacity-90"
+                }`}
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>{isStudyingInRoom ? "In Studio 🟢" : "Studio"}</span>
+              </button>
 
-          {/* Dedicated Separate Window Launcher */}
-          <button
-            onClick={() => {
-              const meetUrl = `${window.location.origin}${window.location.pathname}#/meet/${channel.groupId}?name=${encodeURIComponent(channel.name)}`;
-              window.open(meetUrl, `PPS_Meet_${channel.groupId}`, "width=1200,height=800,menubar=no,toolbar=no,location=no,status=no");
-              toast.success(`Launched #${channel.name} in a dedicated Meet Window! 🎥`);
-            }}
-            className="p-1.5 rounded-xl bg-surface border border-border/80 text-muted-foreground hover:text-foreground hover:bg-card transition-all cursor-pointer flex items-center gap-1"
-            title="Launch Zoom / Google Meet styled separate window"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
+              {/* Dedicated Separate Window Launcher */}
+              <button
+                onClick={() => {
+                  const meetUrl = `${window.location.origin}${window.location.pathname}#/meet/${channel.groupId}?name=${encodeURIComponent(channel.name)}`;
+                  window.open(meetUrl, `PPS_Meet_${channel.groupId}`, "width=1200,height=800,menubar=no,toolbar=no,location=no,status=no");
+                  toast.success(`Launched #${channel.name} in a dedicated Meet Window! 🎥`);
+                }}
+                className="p-1.5 rounded-xl bg-surface border border-border/80 text-muted-foreground hover:text-foreground hover:bg-card transition-all cursor-pointer flex items-center gap-1"
+                title="Launch Zoom / Google Meet styled separate window"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 

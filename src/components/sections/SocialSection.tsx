@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ShareWinCard from "@/components/ShareWinCard";
 import AccountabilityCircles from "@/components/AccountabilityCircles";
 import { GroupView } from "@/components/focus-rooms/GroupView";
+import { FEATURE_FLAGS } from "@/config/features";
 import {
   Trophy,
   Users,
@@ -386,7 +387,11 @@ export default function SocialSection() {
       <div className="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-border/40">
         <div className="flex items-center gap-1.5 p-1 bg-surface border border-border/80 rounded-2xl shadow-xs overflow-x-auto max-w-full">
           {[
-            { key: "focus_rooms" as const, label: "📚 Focus Rooms & Group Calls", icon: Video },
+            {
+              key: "focus_rooms" as const,
+              label: FEATURE_FLAGS.ENABLE_VIDEO_ROOMS ? "📚 Focus Rooms & Group Calls" : "📚 Study Squads & Channels",
+              icon: FEATURE_FLAGS.ENABLE_VIDEO_ROOMS ? Video : Users,
+            },
             { key: "leaderboard" as const, label: "🏆 Leaderboard & Podium", icon: Trophy },
             { key: "quests" as const, label: "⚔️ Co-Op Quests", icon: Target },
             { key: "feed" as const, label: "⚡ Live Activity Wall", icon: Radio },

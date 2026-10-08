@@ -76,10 +76,10 @@ export function generateVayuPlan(options: GeneratePlanOptions): VayuDailyPlan {
   // 1. Check for habits to schedule
   const pendingHabits = habits.filter((h) => !h.completed);
 
-  // Intent classification on user directive to adapt strategy without hardcoded regex
+  // Intent classification on user directive to adapt strategy strictly through DOMPurify & local Phase 1 intent classifier
   const directiveClassification = sanitizedDirective ? classifyIntent(sanitizedDirective) : null;
-  const hasCodingFocus = directiveClassification?.intent === "focus" || /code|program|software|algorithm|exam|study|project/i.test(sanitizedDirective);
-  const hasFitnessFocus = directiveClassification?.intent === "exercise" || /run|gym|workout|exercise|health/i.test(sanitizedDirective);
+  const hasCodingFocus = directiveClassification?.intent === "focus";
+  const hasFitnessFocus = directiveClassification?.intent === "exercise";
 
   // Helper to map category
   const mapCategory = (habitCategory?: string): VayuBlockCategory => {

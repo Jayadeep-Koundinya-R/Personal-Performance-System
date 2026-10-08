@@ -9,6 +9,7 @@ import { FocusRoomTutorial } from "./FocusRoomTutorial";
 import { AddGroupHabitModal } from "./AddGroupHabitModal";
 import { FocusRoomStudio } from "./FocusRoomStudio";
 import { TeacherMarketplace } from "./TeacherMarketplace";
+import { FEATURE_FLAGS } from "@/config/features";
 import {
   Hash,
   Plus,
@@ -172,7 +173,7 @@ export const GroupView: React.FC = () => {
     );
   }
 
-  if (mode === "marketplace") {
+  if (mode === "marketplace" && FEATURE_FLAGS.ENABLE_TEACHER_MARKETPLACE) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between pb-1 border-b border-border/40 flex-wrap gap-2">
@@ -222,13 +223,15 @@ export const GroupView: React.FC = () => {
           >
             📚 Study Squads ({groups.length})
           </button>
-          <button
-            onClick={() => setMode("marketplace")}
-            className="px-4 py-1.5 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>Masterclasses</span>
-          </button>
+          {FEATURE_FLAGS.ENABLE_TEACHER_MARKETPLACE && (
+            <button
+              onClick={() => setMode("marketplace")}
+              className="px-4 py-1.5 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Masterclasses</span>
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button

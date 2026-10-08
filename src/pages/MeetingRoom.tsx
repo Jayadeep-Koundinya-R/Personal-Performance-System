@@ -6,6 +6,7 @@ import { useFocusRoom, FocusParticipant } from "@/hooks/use-focus-room";
 import { PomodoroSyncOverlay } from "@/components/focus-rooms/PomodoroSyncOverlay";
 import { AmbientAudioPlayer } from "@/components/focus-rooms/AmbientAudioPlayer";
 import { FocusRoomWhiteboard } from "@/components/focus-rooms/FocusRoomWhiteboard";
+import { FEATURE_FLAGS } from "@/config/features";
 import {
   Video,
   VideoOff,
@@ -377,7 +378,7 @@ const MeetingRoomInner: React.FC = () => {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main Stage: Whiteboard vs Video Grid */}
         <div className="flex-1 p-3 sm:p-4 flex flex-col min-h-0 overflow-hidden">
-          {showWhiteboard ? (
+          {showWhiteboard && FEATURE_FLAGS.ENABLE_WHITEBOARD ? (
             <div className="flex-1 rounded-3xl overflow-hidden border border-border/80 shadow-2xl">
               <FocusRoomWhiteboard onClose={() => setShowWhiteboard(false)} />
             </div>
@@ -654,20 +655,22 @@ const MeetingRoomInner: React.FC = () => {
             </span>
           </button>
 
-          <button
-            onClick={() => setShowWhiteboard(!showWhiteboard)}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer shadow-md flex items-center gap-1.5 ${
-              showWhiteboard
-                ? "bg-primary text-primary-foreground border-primary shadow-primary/20"
-                : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
-            }`}
-            title="Whiteboard"
-          >
-            <PenTool className="w-4 h-4" />
-            <span className="text-xs font-bold hidden md:inline">
-              {showWhiteboard ? "Video Grid" : "Whiteboard"}
-            </span>
-          </button>
+          {FEATURE_FLAGS.ENABLE_WHITEBOARD && (
+            <button
+              onClick={() => setShowWhiteboard(!showWhiteboard)}
+              className={`p-3 rounded-2xl border transition-all cursor-pointer shadow-md flex items-center gap-1.5 ${
+                showWhiteboard
+                  ? "bg-primary text-primary-foreground border-primary shadow-primary/20"
+                  : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
+              }`}
+              title="Whiteboard"
+            >
+              <PenTool className="w-4 h-4" />
+              <span className="text-xs font-bold hidden md:inline">
+                {showWhiteboard ? "Video Grid" : "Whiteboard"}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Right: Drawers (Chat, Participants) & Leave Button */}
