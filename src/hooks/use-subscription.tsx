@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlanLimits, isPro, PlanTier } from "@/lib/plans";
+import { toast } from "sonner";
 
 interface SubscriptionContextType {
   plan: PlanTier;
@@ -9,7 +10,7 @@ interface SubscriptionContextType {
   loading: boolean;
   currentPeriodEnd: string | null;
   refresh: () => Promise<void>;
-  startCheckout: (interval: "monthly" | "yearly") => Promise<string | null>;
+  startCheckout: (intervalOrPriceId?: "monthly" | "yearly" | string, explicitPriceId?: string) => Promise<string | null>;
   openBillingPortal: () => Promise<string | null>;
 }
 
@@ -58,22 +59,101 @@ export function SubscriptionProvider({ children, userId, isGuest }: { children: 
     refresh();
   }, [refresh]);
 
-  const startCheckout = useCallback(async (_interval: "monthly" | "yearly"): Promise<string | null> => {
-    // Agni Launch: Honest Early Access Beta handling
-    toast.info("🚀 Student Pro is Free in Early Access Beta!", {
-      description: "Payment gateways (UPI & Stripe) will activate during official commercial launch. All Pro features are unlocked for testing.",
-      duration: 5000,
-    });
-    return null;
-  }, []);
+  const startCheckout = useCallback(async (
+    intervalOrPriceId?: "monthly" | "yearly" | string,
+    explicitPriceId?: string
+  ): Promise<string | null> => {
+    if (isGuestUser || !userId) {
+      toast.error("Authentication Required", {
+        description: "Please sign in or create an account to subscribe to Student Pro.",
+      });
+      return "auth_required";
+    }
+
+    try {
+      const isYearly = intervalOrPriceId === "yearly";
+      const interval = isYearly ? "yearly" : "monthly";
+
+      const envPriceId = isYearly
+        ? (import.meta.env.VITE_STRIPE_PRO_YEARLY_PRICE_ID as string)
+        : (import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID as string);
+
+      const targetPriceId =
+        explicitPriceId ||
+        (typeof intervalOrPriceId === "string" && intervalOrPriceId.startsWith("price_")
+          ? intervalOrPriceId
+          : envPriceId);
+
+      toast.loading("Preparing secure Stripe Checkout...", { id: "stripe-checkout" });
+
+      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+        body: {
+          interval,
+          priceId: targetPriceId || undefined,
+        },
+      });
+
+      if (error) {
+        toast.dismiss("stripe-checkout");
+        const errMsg = error.message || "Failed to initiate Stripe Checkout.";
+        toast.error("Checkout Error", { description: errMsg });
+        return errMsg;
+      }
+
+      if (data?.url) {
+        toast.success("Redirecting to Stripe...", { id: "stripe-checkout" });
+        window.location.href = data.url;
+        return null;
+      }
+
+      toast.dismiss("stripe-checkout");
+      toast.error("Checkout Failed", { description: "No checkout URL returned from server." });
+      return "no_checkout_url";
+    } catch (err: any) {
+      toast.dismiss("stripe-checkout");
+      const errMsg = err?.message || "Network error connecting to checkout.";
+      toast.error("Checkout Error", { description: errMsg });
+      return errMsg;
+    }
+  }, [isGuestUser, userId]);
 
   const openBillingPortal = useCallback(async (): Promise<string | null> => {
-    toast.info("💳 Billing Portal", {
-      description: "You are currently on the complimentary Early Access Beta tier with ₹0 charge.",
-      duration: 4000,
-    });
-    return null;
-  }, []);
+    if (isGuestUser || !userId) {
+      toast.error("Authentication Required", {
+        description: "Please sign in to access your billing portal.",
+      });
+      return "auth_required";
+    }
+
+    try {
+      toast.loading("Loading billing portal...", { id: "billing-portal" });
+      const { data, error } = await supabase.functions.invoke("create-portal-session", {
+        body: { userId },
+      });
+
+      if (error) {
+        toast.dismiss("billing-portal");
+        toast.error("Billing Portal", {
+          description: error.message || "No active billing customer found.",
+        });
+        return error.message;
+      }
+
+      if (data?.url) {
+        toast.dismiss("billing-portal");
+        window.location.href = data.url;
+        return null;
+      }
+
+      toast.dismiss("billing-portal");
+      toast.error("Billing portal unavailable.");
+      return "no_portal_url";
+    } catch (err: any) {
+      toast.dismiss("billing-portal");
+      toast.error("Billing Portal", { description: err?.message || "Network error." });
+      return err?.message;
+    }
+  }, [isGuestUser, userId]);
 
   const tier = plan;
   return (

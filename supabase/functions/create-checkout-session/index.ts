@@ -64,11 +64,13 @@ Deno.serve(async (req) => {
 
     const userId = user.id;
 
-    const { interval } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const interval = body.interval === "yearly" ? "yearly" : "monthly";
     const priceId =
-      interval === "yearly"
+      body.priceId ||
+      (interval === "yearly"
         ? Deno.env.get("STRIPE_PRICE_YEARLY")
-        : Deno.env.get("STRIPE_PRICE_MONTHLY");
+        : Deno.env.get("STRIPE_PRICE_MONTHLY"));
 
     if (!priceId) {
       return new Response(JSON.stringify({ error: "Stripe prices not configured" }), {

@@ -317,10 +317,10 @@ function PricingContent() {
             </div>
 
             <button
-              onClick={() => setIsProModalOpen(true)}
+              onClick={() => startCheckout(interval)}
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary via-secondary to-accent text-white font-black text-xs shadow-xl shadow-primary/30 hover:opacity-95 transition-all cursor-pointer"
             >
-              {isPro ? "Current Plan Active (Beta)" : "Get Early Access (Free) →"}
+              {isPro ? "Current Plan Active (Pro)" : `Upgrade to Pro (${interval === "yearly" ? "Annual" : "Monthly"}) →`}
             </button>
           </div>
 

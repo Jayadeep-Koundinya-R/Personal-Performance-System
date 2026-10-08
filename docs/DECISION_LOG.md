@@ -9,10 +9,61 @@
 
 ## 📌 Decision Log Index
 
+- [Entry 2026-10-08: Sprint 2 — Monetization Wiring & Database Performance Indexing](#entry-2026-10-08-sprint-2--monetization-wiring--database-performance-indexing)
+- [Entry 2026-10-08: Sprint 1 — Security Remediation & Navigation Pruning](#entry-2026-10-08-sprint-1--security-remediation--navigation-pruning)
 - [Entry 2026-10-06: Unfiltered 360° Executive Reality Audit](#entry-2026-10-06-unfiltered-360-executive-reality-audit)
 - [Entry 2026-10-05: Strict Architectural Audit & Roadmap Commitment](#entry-2026-10-05-strict-architectural-audit--roadmap-commitment)
 - [Entry 2026-10-04: Vayu Launch Elevation & DOMPurify Security Hardening](#entry-2026-10-04-vayu-launch-elevation--dompurify-security-hardening)
 - [Entry 2026-08-24: Agni Launch Stabilization & Truth-in-Features Audit](#entry-2026-08-24-agni-launch-stabilization--truth-in-features-audit)
+
+---
+
+## [Entry 2026-10-08: Sprint 2 — Monetization Wiring & Database Performance Indexing]
+
+### 1. Context & Objectives
+- Execute Month 1, Week 2 of the launch blueprint.
+- Eliminate the dormant billing stub in `use-subscription.tsx` and wire live checkout sessions via Supabase Edge Function `create-checkout-session` into Stripe.
+- Add compound database performance indexes across high-traffic tables to prevent full-table scans.
+- Provide DPDP / GDPR compliant account deletion RPC (`delete_user_account`).
+
+### 2. Architectural Decisions
+- **Live Checkout Wiring:** Replaced early-access toast stub in `use-subscription.tsx` with authentic `supabase.functions.invoke('create-checkout-session')` call. On response, redirects to `data.url` with seamless sonner toast states. Supported both monthly and annual price intervals with environment variable fallbacks.
+- **Performance Indexing:** Created migration `20261008120000_performance_indexes.sql` adding compound indexes:
+  - `idx_habits_user_active` on `habits(user_id, is_active)`
+  - `idx_habits_user_archived` on `habits(user_id, archived)`
+  - `idx_habit_completions_user_date` on `habit_completions(user_id, completed_date)`
+  - `idx_habit_logs_user_date` on `habit_logs(user_id, completed_date)`
+  - `idx_vayu_daily_plans_user_date` on `vayu_daily_plans(user_id, plan_date)`
+  - `idx_squad_messages_room_created` on `squad_messages(room_id, created_at DESC)`
+  - `idx_channel_messages_group_created` on `channel_messages(group_id, created_at DESC)`
+- **DPDP / GDPR Compliance:** Implemented `delete_user_account()` `SECURITY DEFINER` Postgres function that authoritatively takes `auth.uid()` and cascade purges all user data across all tables and `auth.users`.
+- **Vitest Windows Resilience:** Configured `pool: "forks"` in `vitest.config.ts` to prevent worker IPC timeouts.
+
+### 3. Shipped Files
+- `src/hooks/use-subscription.tsx`
+- `src/pages/Pricing.tsx`
+- `supabase/functions/create-checkout-session/index.ts`
+- `supabase/migrations/20261008120000_performance_indexes.sql`
+- `supabase/COMPLETE_BACKEND_SETUP.sql`
+- `vitest.config.ts`
+
+### 4. Verification
+- **Build Status:** `npm run build` completed with zero TypeScript errors.
+- **Test Suite Status:** 30/30 suites passing (158/158 tests passing).
+
+---
+
+## [Entry 2026-10-08: Sprint 1 — Security Remediation & Navigation Pruning]
+
+### 1. Context & Objectives
+- Remediate SEC-001 (Edge Function CORS wildcard) and SEC-002 (JWT authentication bypass in checkout).
+- Prune unreleased modules (Video Rooms, Whiteboard, Teacher Marketplace) behind a central feature flag configuration.
+- Clean residual hardcoded regex in `vayuPlanner.ts`.
+
+### 2. Architectural Decisions
+- Restrict CORS in all 6 Edge Functions to allowed domains: `https://jayadeep-koundinya-r.github.io`, `http://localhost:5173`, `capacitor://localhost`, `http://localhost`.
+- Authoritative user JWT extraction in `create-checkout-session/index.ts` via `supabase.auth.getUser(token)`.
+- Central feature flag repository `src/config/features.ts` with `ENABLE_VIDEO_ROOMS: false`, `ENABLE_WHITEBOARD: false`, and `ENABLE_TEACHER_MARKETPLACE: false`.
 
 ---
 
