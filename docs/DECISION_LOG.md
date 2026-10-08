@@ -9,12 +9,50 @@
 
 ## 📌 Decision Log Index
 
+- [Entry 2026-10-08: Sprint 3 — Capacitor Android Native Build, Safe Areas & Native Haptics](#entry-2026-10-08-sprint-3--capacitor-android-native-build-safe-areas--native-haptics)
 - [Entry 2026-10-08: Sprint 2 — Monetization Wiring & Database Performance Indexing](#entry-2026-10-08-sprint-2--monetization-wiring--database-performance-indexing)
 - [Entry 2026-10-08: Sprint 1 — Security Remediation & Navigation Pruning](#entry-2026-10-08-sprint-1--security-remediation--navigation-pruning)
 - [Entry 2026-10-06: Unfiltered 360° Executive Reality Audit](#entry-2026-10-06-unfiltered-360-executive-reality-audit)
 - [Entry 2026-10-05: Strict Architectural Audit & Roadmap Commitment](#entry-2026-10-05-strict-architectural-audit--roadmap-commitment)
 - [Entry 2026-10-04: Vayu Launch Elevation & DOMPurify Security Hardening](#entry-2026-10-04-vayu-launch-elevation--dompurify-security-hardening)
 - [Entry 2026-08-24: Agni Launch Stabilization & Truth-in-Features Audit](#entry-2026-08-24-agni-launch-stabilization--truth-in-features-audit)
+
+---
+
+## [Entry 2026-10-08: Sprint 3 — Capacitor Android Native Build, Safe Areas & Native Haptics]
+
+### 1. Context & Objectives
+- Execute Month 1, Week 3 of the launch blueprint.
+- Transform PPS into an installed, production-grade Android application with native haptic feedback, safe area compliance, and hardware back-button handling.
+- Verify the Android Capacitor build pipeline and assemble the debug APK (`app-debug.apk`).
+
+### 2. Architectural Decisions
+- **Capacitor Configuration & Plugins:** Audited `capacitor.config.ts`, setting `appId` to `com.personalperformancesystem.app`, `appName` to `Personal Performance System`, and `webDir` to `dist`. Installed and synced core plugins: `@capacitor/app`, `@capacitor/haptics`, `@capacitor/keyboard`, `@capacitor/local-notifications`, and `@capacitor/status-bar`.
+- **Haptic Feedback Integration:** Integrated `@capacitor/haptics` with `ImpactStyle.Medium` upon habit completion, batch completion (`markAllDone`), focus timer session completion (`use-focus-timer.tsx`), and autonomous time-block completion (`use-vayu.ts`). Wrapped calls with async `.catch(() => {})` for seamless web and Vitest headless fallbacks.
+- **Hardware Back Button Handling:** Integrated `App.addListener('backButton')` in `src/App.tsx` via `NativeAppController`. It automatically closes active modals/sheets (via synthetic `Escape` key event dispatch), navigates history back on nested routes, and exits the app when on root views (`/` or `/dashboard`).
+- **Safe Area Inset Compliance:** Verified `<meta name="viewport" ... viewport-fit=cover>` in `index.html`. Added `.safe-area-bottom` and updated `.safe-pb` in `src/index.css` to respect `padding-bottom: max(1rem, env(safe-area-inset-bottom))` across mobile navigation docks and drawers.
+- **Android Manifest & Build Configuration:** Added `android.permission.VIBRATE` to `android/app/src/main/AndroidManifest.xml`. Configured `applicationId "com.personalperformancesystem.app"` in `android/app/build.gradle` and `strings.xml`. Configured Java 17 compileOptions across subprojects and set `org.gradle.vfs.watch=false` in `gradle.properties` for reliable Windows build execution.
+
+### 3. Shipped Files
+- `capacitor.config.ts`
+- `package.json`
+- `src/App.tsx`
+- `src/hooks/use-habits.tsx`
+- `src/hooks/use-focus-timer.tsx`
+- `src/hooks/use-vayu.ts`
+- `src/index.css`
+- `android/app/src/main/AndroidManifest.xml`
+- `android/app/src/main/res/values/strings.xml`
+- `android/app/build.gradle`
+- `android/build.gradle`
+- `android/gradle.properties`
+- `docs/DECISION_LOG.md`
+
+### 4. Verification
+- **Vite Production Build:** `npm run build` completed in 4.97s with zero errors.
+- **Capacitor Android Sync:** `npx cap sync android` successfully synchronized web assets and all 5 native plugins.
+- **Gradle Android Assemble:** `./gradlew assembleDebug` assembled `app-debug.apk` (6.69 MB) with `BUILD SUCCESSFUL`.
+- **Automated Test Suite:** 30/30 suites passing (158/158 tests passing in 27.20s with zero errors).
 
 ---
 

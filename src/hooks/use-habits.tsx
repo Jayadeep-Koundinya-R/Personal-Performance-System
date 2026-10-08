@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserSettings } from "@/hooks/use-user-settings";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
 
 export const CONFIG = {
   XP_PER_COMPLETION: 10,
@@ -483,6 +484,11 @@ export function HabitsProvider({
     let updatedDueDate = habit.dueDate;
 
     if (!isCompleted) {
+      try {
+        Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
+      } catch {
+        // Fallback silently in web or non-Capacitor environment
+      }
       // Prevent duplicate dates in array
       if (!updatedCompletedDates.includes(dateToToggle)) {
         updatedCompletedDates = [...updatedCompletedDates, dateToToggle];
@@ -583,6 +589,12 @@ export function HabitsProvider({
     const todayStr = getTodayStr();
     const habitsToComplete = habits.filter(h => !h.archived && isHabitDueToday(h) && !h.completedDates.includes(todayStr));
     if (habitsToComplete.length === 0) return;
+
+    try {
+      Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
+    } catch {
+      // Fallback silently in web or non-Capacitor environment
+    }
 
     const previousHabits = [...habits];
     const updatedHabitsMap = new Map<string, Partial<Habit>>();

@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useHabits } from "@/hooks/use-habits";
 import { ambientSound } from "@/lib/ambient-sound";
 import { toast } from "sonner";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
 
 export type TimerMode = "pomodoro" | "shortBreak" | "longBreak" | "custom";
 
@@ -303,6 +304,11 @@ export function FocusTimerProvider({
     }
 
     setShowFlowExtend(true);
+
+    // Native Haptic feedback
+    try {
+      Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
+    } catch {}
 
     // ── Vayu Autonomous Real-Time Flow Notification ──
     if (typeof window !== "undefined") {

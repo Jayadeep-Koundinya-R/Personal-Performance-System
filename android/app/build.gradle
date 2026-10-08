@@ -4,7 +4,7 @@ android {
     namespace = "com.upalakshya.pps"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.upalakshya.pps"
+        applicationId "com.personalperformancesystem.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -21,6 +21,10 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 }
 

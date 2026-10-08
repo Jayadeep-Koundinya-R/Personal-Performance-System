@@ -16,6 +16,7 @@ import { useHabits } from "@/hooks/use-habits";
 import { useProfile } from "@/hooks/use-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import {
   VayuDailyPlan,
   VayuTimeBlock,
@@ -224,6 +225,11 @@ export function useVayu() {
       // Award XP
       try {
         addXP(percentage >= 100 ? 15 : 10);
+      } catch {}
+
+      // Native Haptics
+      try {
+        Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
       } catch {}
 
       const msg = `🌬️ Vayu Auto-Completed: "${blockTitle}" (+15 XP). Vital day rate is now ${rate}%.`;

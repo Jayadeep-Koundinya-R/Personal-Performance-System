@@ -5,7 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { App as CapApp } from "@capacitor/app";
 import { FEATURE_FLAGS } from "@/config/features";
 import { ThemeProvider } from "@/hooks/use-theme";
 import HomePage from "./pages/Home";
@@ -24,6 +25,65 @@ import PwaUpdatePrompt from "@/components/ui/PwaUpdatePrompt";
 import { initNativeNotifications, sendWelcomeNotification } from "@/lib/native-notifications";
 
 const queryClient = new QueryClient();
+
+const NativeAppController = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    let removeListener: (() => void) | undefined;
+
+    const setupListener = async () => {
+      try {
+        const handle = await CapApp.addListener("backButton", ({ canGoBack }) => {
+          // 1. If an open modal / sheet / popover exists, close it via Escape key
+          const openDialog = document.querySelector(
+            '[role="dialog"], [role="alertdialog"], [data-state="open"][data-radix-portal]'
+          );
+          if (openDialog) {
+            document.dispatchEvent(
+              new KeyboardEvent("keydown", {
+                key: "Escape",
+                code: "Escape",
+                keyCode: 27,
+                which: 27,
+                bubbles: true,
+                cancelable: true,
+              })
+            );
+            return;
+          }
+
+          // 2. If on a nested route (not home / dashboard), navigate back
+          const isRoot = location.pathname === "/" || location.pathname === "/dashboard";
+          if (!isRoot && (canGoBack || window.history.length > 1)) {
+            navigate(-1);
+            return;
+          }
+
+          // 3. If on root route, exit or minimize app
+          CapApp.exitApp();
+        });
+
+        removeListener = () => {
+          handle.remove();
+        };
+      } catch {
+        // Fallback silently if not running in native Capacitor environment
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      if (removeListener) {
+        removeListener();
+      }
+    };
+  }, [location.pathname, navigate]);
+
+  return null;
+};
 
 const App = () => {
   useEffect(() => {
@@ -44,6 +104,7 @@ const App = () => {
             <Toaster />
             <Sonner />
             <HashRouter>
+              <NativeAppController />
               <PerformanceMonitor />
               <PwaUpdatePrompt />
               <Routes>

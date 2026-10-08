@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.upalakshya.pps',
+  appId: 'com.personalperformancesystem.app',
   appName: 'Personal Performance System',
   webDir: 'dist',
   server: {

@@ -180,8 +180,9 @@
   .safe-pt {
     padding-top: env(safe-area-inset-top);
   }
-  .safe-pb {
-    padding-bottom: env(safe-area-inset-bottom);
+  .safe-pb,
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 
   /* 🌌 Ultra-Premium 3D Ambient Background (Theme-Adaptive) */
