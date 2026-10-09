@@ -7,9 +7,13 @@ import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { useAuth, User } from "@/hooks/use-auth";
+import { DashboardProviders } from "@/providers/AppProviders";
 import HomePage from "./pages/Home";
 import LoginPage from "./pages/Login";
 import DashboardPage from "./pages/Dashboard";
+import OnboardingPage from "./pages/Onboarding";
+import { OnboardingGuard } from "./routes/OnboardingGuard";
 import ResetPasswordPage from "./pages/ResetPassword";
 import PricingPage from "./pages/Pricing";
 import PrivacyPage from "./pages/Privacy";
@@ -23,6 +27,62 @@ import PwaUpdatePrompt from "@/components/ui/PwaUpdatePrompt";
 import { initNativeNotifications, sendWelcomeNotification } from "@/lib/native-notifications";
 
 const queryClient = new QueryClient();
+
+function AppRoutes() {
+  const { user } = useAuth();
+  const currentUser: User = user || { email: null, isGuest: true };
+
+  return (
+    <DashboardProviders user={currentUser}>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/onboarding"
+          element={
+            <OnboardingGuard>
+              <OnboardingPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <OnboardingGuard>
+              <DashboardPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route
+          path="/focus-rooms"
+          element={
+            <OnboardingGuard>
+              <DashboardPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route
+          path="/social"
+          element={
+            <OnboardingGuard>
+              <DashboardPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/classes" element={<MarketplacePage />} />
+        <Route path="/roadmap" element={<RoadmapPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/focus-call/:groupId" element={<FocusCallWindow />} />
+        <Route path="/meet/:roomId" element={<MeetingRoom />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </DashboardProviders>
+  );
+}
 
 const App = () => {
   useEffect(() => {
@@ -45,24 +105,7 @@ const App = () => {
             <HashRouter>
               <PerformanceMonitor />
               <PwaUpdatePrompt />
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/focus-rooms" element={<DashboardPage />} />
-                <Route path="/social" element={<DashboardPage />} />
-                <Route path="/pricing" element={<PricingPage />} />
-                <Route path="/marketplace" element={<MarketplacePage />} />
-                <Route path="/classes" element={<MarketplacePage />} />
-                <Route path="/roadmap" element={<RoadmapPage />} />
-                <Route path="/privacy" element={<PrivacyPage />} />
-                <Route path="/terms" element={<TermsPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/focus-call/:groupId" element={<FocusCallWindow />} />
-                <Route path="/meet/:roomId" element={<MeetingRoom />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-
+              <AppRoutes />
             </HashRouter>
           </TooltipProvider>
         </ThemeProvider>
