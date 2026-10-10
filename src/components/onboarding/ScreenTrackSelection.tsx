@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Flame, CheckCircle2, ArrowRight, Compass, ShieldAlert, Award, Dumbbell, Code2, GraduationCap } from 'lucide-react';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 interface Props {
   state: OnboardingWizardState;
@@ -24,6 +25,7 @@ export const ScreenTrackSelection: React.FC<Props> = ({ state, updateState, onNe
   const tracks = Object.values(TRACK_PRESETS);
 
   const handleSelectTrack = (trackId: PrimaryTrackId) => {
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     const preset = TRACK_PRESETS[trackId];
     updateState({
       selectedPrimaryTrack: trackId,
@@ -110,7 +112,10 @@ export const ScreenTrackSelection: React.FC<Props> = ({ state, updateState, onNe
               <Switch
                 id="track5-toggle"
                 checked={state.enableTrack5Challenge}
-                onCheckedChange={(checked) => updateState({ enableTrack5Challenge: checked })}
+                onCheckedChange={(checked) => {
+                  Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+                  updateState({ enableTrack5Challenge: checked });
+                }}
               />
             </div>
           </div>
@@ -136,7 +141,10 @@ export const ScreenTrackSelection: React.FC<Props> = ({ state, updateState, onNe
       {/* Primary CTA */}
       <div className="flex justify-end pt-2">
         <Button
-          onClick={onNext}
+          onClick={() => {
+            Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+            onNext();
+          }}
           disabled={!state.selectedPrimaryTrack}
           size="lg"
           className="gap-2 font-bold px-8 shadow-md"

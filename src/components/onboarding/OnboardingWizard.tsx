@@ -1,4 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { Capacitor } from '@capacitor/core';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+import { App } from '@capacitor/app';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { OnboardingWizardState } from '@/types/onboarding';
 import { TRACK_PRESETS } from '@/constants/onboardingPresets';
 import { ScreenTrackSelection } from './ScreenTrackSelection';
@@ -11,7 +18,7 @@ import { Check } from 'lucide-react';
 
 interface Props {
   initialState?: Partial<OnboardingWizardState>;
-  onComplete: (payload: OnboardingWizardState) => void;
+  onComplete?: (payload: OnboardingWizardState) => void;
 }
 
 const STEP_TITLES = [
@@ -23,6 +30,20 @@ const STEP_TITLES = [
 
 export const OnboardingWizard: React.FC<Props> = ({ initialState, onComplete }) => {
   const [step, setStep] = useState<number>(1);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  let navigate: ReturnType<typeof useNavigate>;
+  try {
+    navigate = useNavigate();
+  } catch {
+    navigate = (() => {}) as any;
+  }
+
+  let queryClient: any = null;
+  try {
+    queryClient = useQueryClient();
+  } catch {}
+
   const [wizardState, setWizardState] = useState<OnboardingWizardState>({
     selectedPrimaryTrack: initialState?.selectedPrimaryTrack || 'placements',
     enableTrack5Challenge: initialState?.enableTrack5Challenge ?? true,
@@ -33,16 +54,75 @@ export const OnboardingWizard: React.FC<Props> = ({ initialState, onComplete }) 
     joinSquadCode: initialState?.joinSquadCode || '',
   });
 
+  // Capacitor hardware back button handling
+  useEffect(() => {
+    let listenerHandle: { remove: () => Promise<void> } | undefined;
+
+    App.addListener('backButton', () => {
+      setStep((prev) => {
+        if (prev > 1) {
+          return prev - 1;
+        } else {
+          App.exitApp().catch(() => {});
+          return prev;
+        }
+      });
+    }).then((handle) => {
+      listenerHandle = handle;
+    }).catch(() => {});
+
+    return () => {
+      if (listenerHandle) {
+        listenerHandle.remove().catch(() => {});
+      }
+    };
+  }, []);
+
   const updateState = (updates: Partial<OnboardingWizardState>) => {
     setWizardState((prev) => ({ ...prev, ...updates }));
   };
 
   const handleNextStep = () => {
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     setStep((prev) => Math.min(prev + 1, 4));
   };
 
   const handleBackStep = () => {
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     setStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleCompleteOnboarding = async (state: OnboardingWizardState) => {
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await supabase.rpc('complete_onboarding', {
+        p_payload: state,
+      });
+      if (error) throw error;
+
+      // Trigger success haptic
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.notification({ type: NotificationType.Success }).catch(() => {});
+      }
+
+      // Invalidate active user profile query and navigate to dashboard
+      if (queryClient) {
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+      }
+
+      if (onComplete) {
+        onComplete(state);
+      }
+
+      navigate('/dashboard', { replace: true });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to complete onboarding');
+      if (onComplete) {
+        onComplete(state);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const progressPercentage = (step / 4) * 100;
@@ -70,7 +150,10 @@ export const OnboardingWizard: React.FC<Props> = ({ initialState, onComplete }) 
                 key={title}
                 onClick={() => {
                   // Only allow jumping back to completed steps
-                  if (stepNum < step) setStep(stepNum);
+                  if (stepNum < step) {
+                    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+                    setStep(stepNum);
+                  }
                 }}
                 className={`flex items-center gap-2 p-2 rounded-lg text-xs font-semibold transition-all ${
                   stepNum < step ? 'cursor-pointer hover:bg-accent' : 'cursor-default'
@@ -129,7 +212,8 @@ export const OnboardingWizard: React.FC<Props> = ({ initialState, onComplete }) 
             state={wizardState}
             updateState={updateState}
             onBack={handleBackStep}
-            onComplete={onComplete}
+            onComplete={handleCompleteOnboarding}
+            isSubmitting={isSubmitting}
           />
         )}
       </Card>

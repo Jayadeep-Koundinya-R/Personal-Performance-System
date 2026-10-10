@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { GraduationCap, Award, Code2, Dumbbell, Flame, CheckCircle2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export type AllTrackId = PrimaryTrackId | 'track_5_agni';
 
@@ -78,12 +79,26 @@ export const TrackPreferenceSelector: React.FC = () => {
     setPendingTrack(track);
   };
 
-  const handleConfirmSwitch = () => {
+  const handleConfirmSwitch = async () => {
     if (!pendingTrack) return;
 
     const newTrackId = pendingTrack.id;
     setActiveTrack(newTrackId);
     localStorage.setItem('pps_active_track', newTrackId);
+
+    try {
+      if (newTrackId === 'track_5_agni') {
+        await supabase
+          .from('profiles')
+          .update({ track_5_challenge_active: true } as any);
+      } else {
+        await supabase
+          .from('profiles')
+          .update({ primary_track: newTrackId } as any);
+      }
+    } catch (err) {
+      console.error('Failed to sync track update with profiles table:', err);
+    }
 
     toast.success(`Active focus track switched to ${pendingTrack.title}`, {
       description: 'Reloading dashboard layout to adapt context...',

@@ -6,16 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Rocket, CheckCircle2, Flame, Edit3, Shield, Users, Clock, Sparkles } from 'lucide-react';
+import { ArrowLeft, Rocket, CheckCircle2, Flame, Edit3, Shield, Users, Clock, Sparkles, Loader2 } from 'lucide-react';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 interface Props {
   state: OnboardingWizardState;
   updateState: (updates: Partial<OnboardingWizardState>) => void;
   onBack: () => void;
   onComplete: (payload: OnboardingWizardState) => void;
+  isSubmitting?: boolean;
 }
 
-export const ScreenFinalReview: React.FC<Props> = ({ state, updateState, onBack, onComplete }) => {
+export const ScreenFinalReview: React.FC<Props> = ({ state, updateState, onBack, onComplete, isSubmitting }) => {
   const currentTrack = TRACK_PRESETS[state.selectedPrimaryTrack];
 
   // Compile initial habit list if customHabits is empty
@@ -49,10 +51,12 @@ export const ScreenFinalReview: React.FC<Props> = ({ state, updateState, onBack,
   };
 
   const handleToggleHabit = (id: string, checked: boolean) => {
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     setEnabledHabits((prev) => ({ ...prev, [id]: checked }));
   };
 
   const handleLaunch = () => {
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     const activeHabits = habits.filter((h) => enabledHabits[h.id]);
     const finalState: OnboardingWizardState = {
       ...state,
@@ -178,11 +182,21 @@ export const ScreenFinalReview: React.FC<Props> = ({ state, updateState, onBack,
 
         <Button
           onClick={handleLaunch}
+          disabled={isSubmitting}
           size="lg"
           className="gap-2 font-extrabold px-8 shadow-lg bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white"
         >
-          <Rocket className="h-5 w-5 animate-bounce" />
-          Launch Personal Performance System
+          {isSubmitting ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Initializing System...
+            </>
+          ) : (
+            <>
+              <Rocket className="h-5 w-5 animate-bounce" />
+              Launch Personal Performance System
+            </>
+          )}
         </Button>
       </div>
     </div>

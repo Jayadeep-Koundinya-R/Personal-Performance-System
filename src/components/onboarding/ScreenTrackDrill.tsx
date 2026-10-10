@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ArrowRight, Clock, Target, TrendingUp, Zap } from 'lucide-react';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 interface Props {
   state: OnboardingWizardState;
@@ -57,7 +58,10 @@ export const ScreenTrackDrill: React.FC<Props> = ({ state, updateState, onBack, 
                 <button
                   key={hours}
                   type="button"
-                  onClick={() => updateState({ dailyFocusHours: hours })}
+                  onClick={() => {
+                    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+                    updateState({ dailyFocusHours: hours });
+                  }}
                   className={`px-5 py-3 rounded-xl border-2 font-bold text-sm sm:text-base transition-all duration-150 flex items-center gap-2 ${
                     isSelected
                       ? 'border-primary bg-primary text-primary-foreground shadow-md scale-105'
@@ -112,7 +116,10 @@ export const ScreenTrackDrill: React.FC<Props> = ({ state, updateState, onBack, 
             return (
               <div
                 key={bottleneck.id}
-                onClick={() => updateState({ selectedBottleneckId: bottleneck.id })}
+                onClick={() => {
+                  Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+                  updateState({ selectedBottleneckId: bottleneck.id });
+                }}
                 className={`cursor-pointer p-4 rounded-xl border-2 transition-all ${
                   isSelected
                     ? 'border-primary bg-primary/5 ring-1 ring-primary'
@@ -124,7 +131,10 @@ export const ScreenTrackDrill: React.FC<Props> = ({ state, updateState, onBack, 
                     type="radio"
                     name="bottleneck"
                     checked={isSelected}
-                    onChange={() => updateState({ selectedBottleneckId: bottleneck.id })}
+                    onChange={() => {
+                      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+                      updateState({ selectedBottleneckId: bottleneck.id });
+                    }}
                     className="mt-1 h-4 w-4 text-primary focus:ring-primary"
                   />
                   <div>
@@ -145,7 +155,10 @@ export const ScreenTrackDrill: React.FC<Props> = ({ state, updateState, onBack, 
           Back
         </Button>
         <Button
-          onClick={onNext}
+          onClick={() => {
+            Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+            onNext();
+          }}
           disabled={!state.selectedBottleneckId}
           size="lg"
           className="gap-2 font-bold px-8 shadow-md"

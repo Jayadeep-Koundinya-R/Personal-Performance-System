@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ArrowRight, User, Users, UserPlus, GraduationCap, Copy, Check, Sparkles, Lock } from 'lucide-react';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 interface Props {
   state: OnboardingWizardState;
@@ -26,6 +27,7 @@ export const ScreenSocialBridge: React.FC<Props> = ({ state, updateState, onBack
   const [copied, setCopied] = React.useState(false);
 
   const handleSelectSocialChoice = (choice: 'solo' | 'create_squad' | 'join_squad') => {
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     let squadCode = state.joinSquadCode;
     if (choice === 'create_squad' && !squadCode) {
       squadCode = generateSquadCode();
@@ -207,7 +209,10 @@ export const ScreenSocialBridge: React.FC<Props> = ({ state, updateState, onBack
           Back
         </Button>
         <Button
-          onClick={onNext}
+          onClick={() => {
+            Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+            onNext();
+          }}
           disabled={isNextDisabled}
           size="lg"
           className="gap-2 font-bold px-8 shadow-md"

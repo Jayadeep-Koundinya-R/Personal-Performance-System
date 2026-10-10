@@ -6,9 +6,10 @@ import { Loader2 } from 'lucide-react';
 
 interface Props {
   children: React.ReactNode;
+  profile?: { onboarding_completed?: boolean; onboardingCompleted?: boolean } | null;
 }
 
-export const OnboardingGuard: React.FC<Props> = ({ children }) => {
+export const OnboardingGuard: React.FC<Props> = ({ children, profile }) => {
   const { user, isLoggedIn, loading: authLoading } = useAuth();
   const { settings, loading: settingsLoading } = useUserSettings();
   const location = useLocation();
@@ -31,7 +32,12 @@ export const OnboardingGuard: React.FC<Props> = ({ children }) => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  const onboardingCompleted = settings?.onboardingCompleted ?? false;
+  const onboardingCompleted =
+    profile?.onboarding_completed ??
+    profile?.onboardingCompleted ??
+    settings?.onboardingCompleted ??
+    (user as any)?.onboarding_completed ??
+    false;
   const isOnboardingRoute = location.pathname === '/onboarding';
 
   // Rule 2: If authenticated and onboarding_completed === false, redirect to /onboarding

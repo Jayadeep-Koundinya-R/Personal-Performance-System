@@ -13,6 +13,7 @@ import HomePage from "./pages/Home";
 import LoginPage from "./pages/Login";
 import DashboardPage from "./pages/Dashboard";
 import OnboardingPage from "./pages/Onboarding";
+import SettingsPage from "./pages/Settings";
 import { OnboardingGuard } from "./routes/OnboardingGuard";
 import ResetPasswordPage from "./pages/ResetPassword";
 import PricingPage from "./pages/Pricing";
@@ -66,6 +67,14 @@ function AppRoutes() {
           element={
             <OnboardingGuard>
               <DashboardPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <OnboardingGuard>
+              <SettingsPage />
             </OnboardingGuard>
           }
         />
