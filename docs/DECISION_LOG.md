@@ -9,6 +9,7 @@
 
 ## 📌 Decision Log Index
 
+- [Entry 2026-10-10: Sprint 4 — Jules' Onboarding Wizard Audit, Supabase complete_onboarding RPC & Native Polish](#entry-2026-10-10-sprint-4--jules-onboarding-wizard-audit-supabase-complete_onboarding-rpc--native-polish)
 - [Entry 2026-10-08: Sprint 3 — Capacitor Android Native Build, Safe Areas & Native Haptics](#entry-2026-10-08-sprint-3--capacitor-android-native-build-safe-areas--native-haptics)
 - [Entry 2026-10-08: Sprint 2 — Monetization Wiring & Database Performance Indexing](#entry-2026-10-08-sprint-2--monetization-wiring--database-performance-indexing)
 - [Entry 2026-10-08: Sprint 1 — Security Remediation & Navigation Pruning](#entry-2026-10-08-sprint-1--security-remediation--navigation-pruning)
@@ -16,6 +17,52 @@
 - [Entry 2026-10-05: Strict Architectural Audit & Roadmap Commitment](#entry-2026-10-05-strict-architectural-audit--roadmap-commitment)
 - [Entry 2026-10-04: Vayu Launch Elevation & DOMPurify Security Hardening](#entry-2026-10-04-vayu-launch-elevation--dompurify-security-hardening)
 - [Entry 2026-08-24: Agni Launch Stabilization & Truth-in-Features Audit](#entry-2026-08-24-agni-launch-stabilization--truth-in-features-audit)
+
+---
+
+## [Entry 2026-10-10: Sprint 4 — Jules' Onboarding Wizard Audit, Supabase complete_onboarding RPC & Native Polish]
+
+### 1. Context & Objectives
+- Audit and integrate Jules' UI branch (`feat/onboarding-wizard-ui`).
+- Extend Supabase schema with onboarding attributes, AI personalization telemetry table, and atomic `complete_onboarding` PostgreSQL RPC.
+- Wire frontend wizard submit handler to invoke `supabase.rpc('complete_onboarding')`.
+- Polish native UX with Capacitor light haptics on card/chip/step interactions, success haptic on launch, and hardware back-button listener.
+- Protect application routes using `OnboardingGuard` and mount `TrackPreferenceSelector` under `Settings`.
+- Create comprehensive automated integration tests in Vitest and verify 100% test passing before merging into `main`.
+
+### 2. Architectural Decisions
+- **Database Schema & AI Telemetry:** Created migration `supabase/migrations/20261010100000_onboarding_wizard_backend.sql` (and synced `COMPLETE_BACKEND_SETUP.sql`). Added `onboarding_completed`, `primary_track`, `track_5_challenge_active`, `daily_focus_target_minutes`, `selected_bottleneck`, `social_mode`, and `onboarding_metadata` to `public.profiles`. Created `public.onboarding_telemetry` audit log with RLS for AI fine-tuning.
+- **Atomic RPC (`complete_onboarding`):** Implemented PostgreSQL SECURITY DEFINER RPC that validates track choice, updates profiles & user_settings, logs AI telemetry, seeds starter habits with Track 5 challenge layers, and provisions random 6-character squad invite codes for `create_squad` mode in a single ACID transaction.
+- **Frontend Submission & Query Invalidation:** Wired `OnboardingWizard` submit handler to execute `supabase.rpc('complete_onboarding')`, trigger `NotificationType.Success` haptics on native Capacitor, invalidate React Query cache (`['profile']`), and navigate to `/dashboard`.
+- **Native Haptics & Back Button:** Bound `@capacitor/haptics` with `ImpactStyle.Light` across track selection, drill chips, bottleneck options, and next/back buttons with web-safe `.catch(() => {})`. Bound `@capacitor/app` back-button listener to step back if `step > 1` and call `App.exitApp()` on `step === 1`.
+- **Route Guarding & Settings:** Wired `OnboardingGuard` in `App.tsx` guarding `/onboarding`, `/dashboard`, `/focus-rooms`, `/social`, and `/settings`. Created `src/pages/Settings.tsx` housing the "Active Track & Discipline" section with `TrackPreferenceSelector` updating Supabase `profiles`.
+- **Integration Test Suite:** Built `src/components/onboarding/__tests__/OnboardingWizardIntegration.test.tsx` testing the 4-step wizard transitions, Track 5 habit additions, RPC contract verification, and guard redirection across authenticated/unauthenticated states.
+
+### 3. Shipped Files
+- `src/types/onboarding.ts`
+- `src/constants/onboardingPresets.ts`
+- `src/components/onboarding/OnboardingWizard.tsx`
+- `src/components/onboarding/ScreenTrackSelection.tsx`
+- `src/components/onboarding/ScreenTrackDrill.tsx`
+- `src/components/onboarding/ScreenSocialBridge.tsx`
+- `src/components/onboarding/ScreenFinalReview.tsx`
+- `src/components/onboarding/__tests__/onboarding.test.tsx`
+- `src/components/onboarding/__tests__/OnboardingWizardIntegration.test.tsx`
+- `src/routes/OnboardingGuard.tsx`
+- `src/components/settings/TrackPreferenceSelector.tsx`
+- `src/pages/Onboarding.tsx`
+- `src/pages/Settings.tsx`
+- `src/App.tsx`
+- `package.json`
+- `supabase/migrations/20261010100000_onboarding_wizard_backend.sql`
+- `supabase/COMPLETE_BACKEND_SETUP.sql`
+- `docs/DASHBOARD_UX_PROPOSAL.md`
+- `docs/DECISION_LOG.md`
+
+### 4. Verification
+- **Vite Production Build:** `npm run build` completed in 4.69s with zero errors.
+- **Automated Test Suite:** 32/32 suites passing (175/175 tests passing with zero errors).
+- **Git Branch Status:** Merged `feat/onboarding-wizard-ui` cleanly into `main`.
 
 ---
 
