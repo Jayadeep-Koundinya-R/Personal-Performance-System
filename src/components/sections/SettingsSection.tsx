@@ -2,7 +2,7 @@
   ⚙️ Multi-Tenant Workspace & Role-Aware Settings Studio
   
   Architecture:
-  - Tab 1: 👤 Profile & Personal Identity (Avatar, Handle, Archetype, Timezone)
+  - Tab 1: 👤 Profile & Personal Identity (Avatar, Handle, Archetype, Timezone, Track Selector)
   - Tab 2: 🏢 Workspace & Role Tenant (Member, Pro Student, Teacher/Mentor, Campus Admin)
   - Tab 3: 👑 Intelligent Plan Upgrades (Role-aware; NEVER displays lower/downgrade tiers)
   - Tab 4: 🔔 Automation, Alarms & Shields (Circadian triggers, auto streak freeze, sound preview)
@@ -26,6 +26,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { AutomationTab } from "@/components/settings/AutomationTab";
 import { SecurityTab } from "@/components/settings/SecurityTab";
 import { DataVaultTab } from "@/components/settings/DataVaultTab";
+import { TrackPreferenceSelector } from "@/components/settings/TrackPreferenceSelector";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 import {
   User as UserIcon,
@@ -123,7 +124,7 @@ const SettingsSection = ({ user }: { user: User }) => {
   // Checkout trigger
   const handleCheckout = async (targetPlan: "pro" | "teacher" | "campus") => {
     if (targetPlan === "campus") {
-      const mailtoUrl = "mailto:enterprise@upalakshya.com?subject=PPS%20Campus%20Institutional%20License%20Negotiation&body=Hello%20UpaLakshya%20PPS%20Enterprise%20Team%2C%0A%0AWe%20would%20like%20to%20negotiate%20and%20deploy%20the%20Campus%20Institutional%20License%20for%20our%20organization.%0A%0AInstitution%20Name%3A%0AEstimated%20Students%2FFaculty%20Seats%3A%0AContact%20Person%3A%0APreferred%20Timeline%3A%0A%0AThank%20you!";
+      const mailtoUrl = "mailto:enterprise@upalakshya.com?subject=PPS%20Campus%20Institutional%20License%20Negotiation&body=Hello%20UpaLakshya%20PPS%20Enterprise%20Team%2C%0A%0AWe%20would%20like%20to%20negotiate%20and%20deploy%20the%20Campus%20Institutional%20License%20for%20our%20organization.%0A%0AInstitution%20Name%3A%0AEstimated%20Students%2FFaculty%20Seats%3A%0AContact%20Person%3A%0APpreferred%20Timeline%3A%0A%0AThank%20you!";
       window.location.href = mailtoUrl;
       toast.success("🏛️ Campus License Negotiation Opened", {
         description: "Email client launched for enterprise@upalakshya.com. Our campus director will review and provide custom pricing."
@@ -238,171 +239,176 @@ const SettingsSection = ({ user }: { user: User }) => {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-5"
+            className="space-y-6"
           >
-            {/* Avatar & Summary Card */}
-            <div className="bg-card border border-border p-6 rounded-3xl shadow-xl flex flex-col items-center text-center space-y-4">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-3xl bg-primary/15 border-2 border-primary/40 flex items-center justify-center text-5xl shadow-xl">
-                  {selectedAvatar}
-                </div>
-                <div className="absolute -bottom-2 -right-2 bg-pps-green text-white p-1 rounded-full border-2 border-card text-xs">
-                  ✓
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-base font-black text-foreground">{displayName || "Performance Pioneer"}</h3>
-                <div className="text-xs font-mono font-bold text-primary mt-0.5">@{username || "username"}</div>
-                <div className="text-[11px] font-mono text-muted-foreground mt-1">
-                  {user.email || "Guest Session Mode"}
-                </div>
-              </div>
-
-              <div className="w-full pt-2 border-t border-border/40 space-y-2">
-                <label className="text-[11px] font-extrabold uppercase font-mono tracking-wider text-muted-foreground block text-left">
-                  Choose Avatar Emoji
-                </label>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {AVATAR_OPTIONS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => setSelectedAvatar(emoji)}
-                      className={`text-xl p-2 rounded-xl border transition-all cursor-pointer ${
-                        selectedAvatar === emoji
-                          ? "bg-primary/20 border-primary scale-110 shadow-xs"
-                          : "bg-surface/60 border-border/60 hover:border-primary/40"
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Profile Fields Card */}
-            <div className="bg-card border border-border p-6 rounded-3xl shadow-xl lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between border-b border-border/40 pb-3">
-                <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-                  <UserIcon className="w-4 h-4 text-primary" />
-                  <span>Personal Identity Architecture</span>
-                </h3>
-                <span className="text-xs font-mono font-bold text-muted-foreground">Level {profile?.level || 1} • {profile?.totalXp || 0} XP</span>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-extrabold text-foreground font-mono">Display Name</label>
-                    <input
-                      type="text"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="e.g. Alex Morgan"
-                      className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary mt-1"
-                    />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* Avatar & Summary Card */}
+              <div className="bg-card border border-border p-6 rounded-3xl shadow-xl flex flex-col items-center text-center space-y-4">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-3xl bg-primary/15 border-2 border-primary/40 flex items-center justify-center text-5xl shadow-xl">
+                    {selectedAvatar}
                   </div>
-
-                  <div>
-                    <label className="text-xs font-extrabold text-foreground font-mono">Username (@handle)</label>
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="e.g. alex_m"
-                      className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary mt-1"
-                    />
+                  <div className="absolute -bottom-2 -right-2 bg-pps-green text-white p-1 rounded-full border-2 border-card text-xs">
+                    ✓
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-extrabold text-foreground font-mono">Identity Archetype</label>
-                    <div className="mt-1">
-                      <CustomSelect value={identityClass} onChange={setIdentityClass} options={IDENTITY_OPTIONS} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-extrabold text-foreground font-mono">Timezone</label>
-                    <div className="text-xs font-mono font-bold text-muted-foreground bg-surface border border-border/80 rounded-xl px-3.5 py-2.5 mt-1">
-                      {profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
-                    </div>
+                <div>
+                  <h3 className="text-base font-black text-foreground">{displayName || "Performance Pioneer"}</h3>
+                  <div className="text-xs font-mono font-bold text-primary mt-0.5">@{username || "username"}</div>
+                  <div className="text-[11px] font-mono text-muted-foreground mt-1">
+                    {user.email || "Guest Session Mode"}
                   </div>
                 </div>
 
-                {/* Account-Wide Theme Preference */}
-                <div className="pt-3 border-t border-border/40 space-y-2">
-                  <div className="flex items-center justify-between">
+                <div className="w-full pt-2 border-t border-border/40 space-y-2">
+                  <label className="text-[11px] font-extrabold uppercase font-mono tracking-wider text-muted-foreground block text-left">
+                    Choose Avatar Emoji
+                  </label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {AVATAR_OPTIONS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => setSelectedAvatar(emoji)}
+                        className={`text-xl p-2 rounded-xl border transition-all cursor-pointer ${
+                          selectedAvatar === emoji
+                            ? "bg-primary/20 border-primary scale-110 shadow-xs"
+                            : "bg-surface/60 border-border/60 hover:border-primary/40"
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Profile Fields Card */}
+              <div className="bg-card border border-border p-6 rounded-3xl shadow-xl lg:col-span-2 space-y-4">
+                <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                  <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
+                    <UserIcon className="w-4 h-4 text-primary" />
+                    <span>Personal Identity Architecture</span>
+                  </h3>
+                  <span className="text-xs font-mono font-bold text-muted-foreground">Level {profile?.level || 1} • {profile?.totalXp || 0} XP</span>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-extrabold text-foreground font-mono flex items-center gap-1.5">
-                        <span>🌓 Account-Wide Theme Preference</span>
-                      </label>
-                      <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
-                        Syncs across all your devices, browsers, and incognito sessions in real-time.
-                      </p>
+                      <label className="text-xs font-extrabold text-foreground font-mono">Display Name</label>
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="e.g. Alex Morgan"
+                        className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-extrabold text-foreground font-mono">Username (@handle)</label>
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="e.g. alex_m"
+                        className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary mt-1"
+                      />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTheme("dark");
-                        toast.success("Theme preference set to Dark Mode (synced to cloud) 🌙");
-                      }}
-                      className={`p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${
-                        theme === "dark"
-                          ? "bg-primary/20 border-primary shadow-sm ring-1 ring-primary/40"
-                          : "bg-surface border-border/80 hover:border-primary/40 text-muted-foreground"
-                      }`}
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-lg shadow-xs">
-                        🌙
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-extrabold text-foreground font-mono">Identity Archetype</label>
+                      <div className="mt-1">
+                        <CustomSelect value={identityClass} onChange={setIdentityClass} options={IDENTITY_OPTIONS} />
                       </div>
-                      <div className="text-left">
-                        <div className="text-xs font-bold text-foreground">Dark Obsidian</div>
-                        <div className="text-[10px] text-muted-foreground">Deep focus contrast</div>
-                      </div>
-                      {theme === "dark" && <Check className="w-4 h-4 text-primary ml-auto" />}
-                    </button>
+                    </div>
 
+                    <div>
+                      <label className="text-xs font-extrabold text-foreground font-mono">Timezone</label>
+                      <div className="text-xs font-mono font-bold text-muted-foreground bg-surface border border-border/80 rounded-xl px-3.5 py-2.5 mt-1">
+                        {profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Account-Wide Theme Preference */}
+                  <div className="pt-3 border-t border-border/40 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-xs font-extrabold text-foreground font-mono flex items-center gap-1.5">
+                          <span>🌓 Account-Wide Theme Preference</span>
+                        </label>
+                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                          Syncs across all your devices, browsers, and incognito sessions in real-time.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTheme("dark");
+                          toast.success("Theme preference set to Dark Mode (synced to cloud) 🌙");
+                        }}
+                        className={`p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${
+                          theme === "dark"
+                            ? "bg-primary/20 border-primary shadow-sm ring-1 ring-primary/40"
+                            : "bg-surface border-border/80 hover:border-primary/40 text-muted-foreground"
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-lg shadow-xs">
+                          🌙
+                        </div>
+                        <div className="text-left">
+                          <div className="text-xs font-bold text-foreground">Dark Obsidian</div>
+                          <div className="text-[10px] text-muted-foreground">Deep focus contrast</div>
+                        </div>
+                        {theme === "dark" && <Check className="w-4 h-4 text-primary ml-auto" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTheme("light");
+                          toast.success("Theme preference set to Light Mode (synced to cloud) ☀️");
+                        }}
+                        className={`p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${
+                          theme === "light"
+                            ? "bg-primary/20 border-primary shadow-sm ring-1 ring-primary/40"
+                            : "bg-surface border-border/80 hover:border-primary/40 text-muted-foreground"
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-lg shadow-xs">
+                          ☀️
+                        </div>
+                        <div className="text-left">
+                          <div className="text-xs font-bold text-foreground">Light Platinum</div>
+                          <div className="text-[10px] text-muted-foreground">Clean daylight clarity</div>
+                        </div>
+                        {theme === "light" && <Check className="w-4 h-4 text-primary ml-auto" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
                     <button
-                      type="button"
-                      onClick={() => {
-                        setTheme("light");
-                        toast.success("Theme preference set to Light Mode (synced to cloud) ☀️");
-                      }}
-                      className={`p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${
-                        theme === "light"
-                          ? "bg-primary/20 border-primary shadow-sm ring-1 ring-primary/40"
-                          : "bg-surface border-border/80 hover:border-primary/40 text-muted-foreground"
-                      }`}
+                      onClick={saveProfile}
+                      className="text-xs bg-primary text-primary-foreground font-extrabold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-md flex items-center gap-1.5"
                     >
-                      <div className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-lg shadow-xs">
-                        ☀️
-                      </div>
-                      <div className="text-left">
-                        <div className="text-xs font-bold text-foreground">Light Platinum</div>
-                        <div className="text-[10px] text-muted-foreground">Clean daylight clarity</div>
-                      </div>
-                      {theme === "light" && <Check className="w-4 h-4 text-primary ml-auto" />}
+                      <Check className="w-4 h-4" />
+                      <span>Save Profile Changes</span>
                     </button>
                   </div>
                 </div>
-
-                <div className="pt-2 flex justify-end">
-                  <button
-                    onClick={saveProfile}
-                    className="text-xs bg-primary text-primary-foreground font-extrabold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-md flex items-center gap-1.5"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Save Profile Changes</span>
-                  </button>
-                </div>
               </div>
             </div>
+
+            {/* Track Switcher Card Grid */}
+            <TrackPreferenceSelector />
           </motion.div>
         )}
 

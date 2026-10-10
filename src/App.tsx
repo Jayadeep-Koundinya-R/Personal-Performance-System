@@ -9,9 +9,14 @@ import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from "r
 import { App as CapApp } from "@capacitor/app";
 import { FEATURE_FLAGS } from "@/config/features";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { useAuth, User } from "@/hooks/use-auth";
+import { DashboardProviders } from "@/providers/AppProviders";
 import HomePage from "./pages/Home";
 import LoginPage from "./pages/Login";
 import DashboardPage from "./pages/Dashboard";
+import OnboardingPage from "./pages/Onboarding";
+import SettingsPage from "./pages/Settings";
+import { OnboardingGuard } from "./routes/OnboardingGuard";
 import ResetPasswordPage from "./pages/ResetPassword";
 import PricingPage from "./pages/Pricing";
 import PrivacyPage from "./pages/Privacy";
@@ -85,6 +90,88 @@ const NativeAppController = () => {
   return null;
 };
 
+function AppRoutes() {
+  const { user } = useAuth();
+  const currentUser: User = user || { email: null, isGuest: true };
+
+  return (
+    <DashboardProviders user={currentUser}>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/onboarding"
+          element={
+            <OnboardingGuard>
+              <OnboardingPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <OnboardingGuard>
+              <DashboardPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route
+          path="/focus-rooms"
+          element={
+            <OnboardingGuard>
+              <DashboardPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route
+          path="/social"
+          element={
+            <OnboardingGuard>
+              <DashboardPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <OnboardingGuard>
+              <SettingsPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route path="/pricing" element={<PricingPage />} />
+        {FEATURE_FLAGS.ENABLE_TEACHER_MARKETPLACE ? (
+          <>
+            <Route path="/marketplace" element={<MarketplacePage />} />
+            <Route path="/classes" element={<MarketplacePage />} />
+          </>
+        ) : (
+          <>
+            <Route path="/marketplace" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/classes" element={<Navigate to="/dashboard" replace />} />
+          </>
+        )}
+        <Route path="/roadmap" element={<RoadmapPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        {FEATURE_FLAGS.ENABLE_VIDEO_ROOMS ? (
+          <>
+            <Route path="/focus-call/:groupId" element={<FocusCallWindow />} />
+            <Route path="/meet/:roomId" element={<MeetingRoom />} />
+          </>
+        ) : (
+          <>
+            <Route path="/focus-call/:groupId" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/meet/:roomId" element={<Navigate to="/dashboard" replace />} />
+          </>
+        )}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </DashboardProviders>
+  );
+}
+
 const App = () => {
   useEffect(() => {
     // Initialize native notification channel & prompt permissions on install
@@ -107,42 +194,7 @@ const App = () => {
               <NativeAppController />
               <PerformanceMonitor />
               <PwaUpdatePrompt />
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/focus-rooms" element={<DashboardPage />} />
-                <Route path="/social" element={<DashboardPage />} />
-                <Route path="/pricing" element={<PricingPage />} />
-                {FEATURE_FLAGS.ENABLE_TEACHER_MARKETPLACE ? (
-                  <>
-                    <Route path="/marketplace" element={<MarketplacePage />} />
-                    <Route path="/classes" element={<MarketplacePage />} />
-                  </>
-                ) : (
-                  <>
-                    <Route path="/marketplace" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/classes" element={<Navigate to="/dashboard" replace />} />
-                  </>
-                )}
-                <Route path="/roadmap" element={<RoadmapPage />} />
-                <Route path="/privacy" element={<PrivacyPage />} />
-                <Route path="/terms" element={<TermsPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                {FEATURE_FLAGS.ENABLE_VIDEO_ROOMS ? (
-                  <>
-                    <Route path="/focus-call/:groupId" element={<FocusCallWindow />} />
-                    <Route path="/meet/:roomId" element={<MeetingRoom />} />
-                  </>
-                ) : (
-                  <>
-                    <Route path="/focus-call/:groupId" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/meet/:roomId" element={<Navigate to="/dashboard" replace />} />
-                  </>
-                )}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-
+              <AppRoutes />
             </HashRouter>
           </TooltipProvider>
         </ThemeProvider>
