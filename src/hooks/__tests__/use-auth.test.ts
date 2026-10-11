@@ -83,6 +83,15 @@ describe("useAuth Hook & Auth Flows", () => {
     expect(result.current.user?.isGuest).toBe(true);
     expect(localStorage.getItem("pps_guest")).toBe("true");
 
+    // Seed session data to ensure comprehensive wipe
+    localStorage.setItem("pps_focus_minutes_2026-10-11", "90");
+    localStorage.setItem("pps_ai_chat_user-123", JSON.stringify([{ msg: "hello" }]));
+    localStorage.setItem("pps_active_track", "placements");
+    localStorage.setItem("habits_user-123", JSON.stringify([{ id: "1" }]));
+    // Set device preference that should be preserved
+    localStorage.setItem("theme", "dark");
+    localStorage.setItem("pps_billing_region", "IN");
+
     await act(async () => {
       result.current.logout();
     });
@@ -90,6 +99,14 @@ describe("useAuth Hook & Auth Flows", () => {
     expect(localStorage.getItem("pps_guest")).toBeNull();
     expect(localStorage.getItem("pps_guest_name")).toBeNull();
     expect(localStorage.getItem("pps_guest_created_at")).toBeNull();
+    expect(localStorage.getItem("pps_focus_minutes_2026-10-11")).toBeNull();
+    expect(localStorage.getItem("pps_ai_chat_user-123")).toBeNull();
+    expect(localStorage.getItem("pps_active_track")).toBeNull();
+    expect(localStorage.getItem("habits_user-123")).toBeNull();
+    // Device preference preserved
+    expect(localStorage.getItem("theme")).toBe("dark");
+    expect(localStorage.getItem("pps_billing_region")).toBe("IN");
+
     expect(result.current.user).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
   });

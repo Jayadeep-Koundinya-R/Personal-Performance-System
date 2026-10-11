@@ -52,9 +52,9 @@ Object.defineProperty(window, "scrollTo", {
 });
 
 
-// Mock Supabase Auth storage
+// Mock Supabase Auth storage & Browser Web Storage with independent stores
 if (typeof window !== "undefined") {
-  const localStorageMock = (function () {
+  const createStorageMock = () => {
     let store: Record<string, string> = {};
     return {
       getItem: (key: string) => store[key] || null,
@@ -72,13 +72,13 @@ if (typeof window !== "undefined") {
         return Object.keys(store).length;
       },
     };
-  })();
+  };
 
   Object.defineProperty(window, "localStorage", {
-    value: localStorageMock,
+    value: createStorageMock(),
   });
 
   Object.defineProperty(window, "sessionStorage", {
-    value: localStorageMock,
+    value: createStorageMock(),
   });
 }

@@ -10,7 +10,7 @@ interface Props {
 }
 
 export const OnboardingGuard: React.FC<Props> = ({ children, profile }) => {
-  const { user, isLoggedIn, loading: authLoading } = useAuth();
+  const { user, isLoggedIn, loading: authLoading, isGuestTrialExpired } = useAuth();
   const { settings, loading: settingsLoading } = useUserSettings();
   const location = useLocation();
 
@@ -30,6 +30,11 @@ export const OnboardingGuard: React.FC<Props> = ({ children, profile }) => {
   // Rule 1: If unauthenticated, redirect to /login
   if (!isLoggedIn || !user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Rule 1b: If guest trial has expired, redirect to /pricing
+  if (user.isGuest && isGuestTrialExpired) {
+    return <Navigate to="/pricing" replace state={{ trialExpired: true }} />;
   }
 
   const onboardingCompleted =

@@ -4,7 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PerformanceMonitor } from "@/components/PerformanceMonitor";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { App as CapApp } from "@capacitor/app";
 import { FEATURE_FLAGS } from "@/config/features";
@@ -28,8 +29,6 @@ import RoadmapPage from "./pages/Roadmap";
 import NotFound from "./pages/NotFound";
 import PwaUpdatePrompt from "@/components/ui/PwaUpdatePrompt";
 import { initNativeNotifications, sendWelcomeNotification } from "@/lib/native-notifications";
-
-const queryClient = new QueryClient();
 
 const NativeAppController = () => {
   const navigate = useNavigate();
@@ -157,8 +156,22 @@ function AppRoutes() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         {FEATURE_FLAGS.ENABLE_VIDEO_ROOMS ? (
           <>
-            <Route path="/focus-call/:groupId" element={<FocusCallWindow />} />
-            <Route path="/meet/:roomId" element={<MeetingRoom />} />
+            <Route
+              path="/focus-call/:groupId"
+              element={
+                <OnboardingGuard>
+                  <FocusCallWindow />
+                </OnboardingGuard>
+              }
+            />
+            <Route
+              path="/meet/:roomId"
+              element={
+                <OnboardingGuard>
+                  <MeetingRoom />
+                </OnboardingGuard>
+              }
+            />
           </>
         ) : (
           <>

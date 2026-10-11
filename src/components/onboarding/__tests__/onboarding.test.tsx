@@ -18,6 +18,7 @@ vi.mock('@/hooks/use-auth', () => ({
     user: { email: 'test@example.com', isGuest: false, id: 'user-123' },
     isLoggedIn: true,
     loading: false,
+    isGuestTrialExpired: false,
   })),
 }));
 
@@ -217,6 +218,34 @@ describe('Onboarding Domain & UI Catalog Tests', () => {
       );
 
       expect(screen.getByText('Onboarding Route')).toBeInTheDocument();
+    });
+
+    it('redirects expired guest trial user to /pricing', async () => {
+      const { useAuth } = await import('@/hooks/use-auth');
+      (useAuth as any).mockReturnValueOnce({
+        user: { email: null, isGuest: true },
+        isLoggedIn: true,
+        loading: false,
+        isGuestTrialExpired: true,
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Routes>
+            <Route
+              path="/dashboard"
+              element={
+                <OnboardingGuard>
+                  <div>Dashboard Page</div>
+                </OnboardingGuard>
+              }
+            />
+            <Route path="/pricing" element={<div>Pricing Page</div>} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText('Pricing Page')).toBeInTheDocument();
     });
   });
 });

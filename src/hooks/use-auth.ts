@@ -3,6 +3,51 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { sendLoginNotification, sendFreeTrialNotification } from "@/lib/native-notifications";
+import { queryClient } from "@/lib/queryClient";
+
+/**
+ * P1 Security Remediation: Centralized session storage purge routine.
+ * Removes all active user credentials, guest cache, habit/reflection/reminder stores,
+ * chat histories, and squad/track keys while preserving device configurations (theme, audio mute, regional pricing).
+ */
+export function clearUserSessionStorage(): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    const keysToRemove: string[] = [];
+    const totalKeys = localStorage.length;
+    for (let i = 0; i < totalKeys; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (
+        key.startsWith("pps_guest") ||
+        key.startsWith("pps_settings_") ||
+        key.startsWith("pps_focus_") ||
+        key.startsWith("pps_ai_chat_") ||
+        key.startsWith("pps_onboarded_") ||
+        key.startsWith("pps_active_track") ||
+        key.startsWith("pps_track5_") ||
+        key.startsWith("pps_daily_focus_") ||
+        key.startsWith("pps_bottleneck_") ||
+        key.startsWith("pps_social_") ||
+        key.startsWith("pps_squad_code") ||
+        key.startsWith("pps_groups_") ||
+        key.startsWith("pps_members_") ||
+        key.startsWith("pps_active_group_") ||
+        key.startsWith("pps_my_class_tickets") ||
+        key.startsWith("habits_") ||
+        key.startsWith("reflections_") ||
+        key.startsWith("reminders_") ||
+        key.startsWith("notifications_")
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    sessionStorage.clear();
+  } catch (err) {
+    console.warn("Storage cleanup notice:", err);
+  }
+}
 
 export interface User {
   email: string | null;
@@ -210,6 +255,9 @@ async function migrateGuestData(userId: string): Promise<void> {
     localStorage.removeItem("pps_ai_chat_guest");
     localStorage.removeItem("pps_ai_chat_history");
     try { sessionStorage.removeItem("pps_guest"); } catch {}
+
+    // P0: Invalidate React Query cache so newly migrated database records refetch immediately
+    queryClient.invalidateQueries();
     console.log("Guest data successfully migrated to database.");
   } catch (err) {
     console.error("Failed to complete guest data migration:", err);
@@ -245,6 +293,22 @@ function useProvideAuth(): AuthReturn {
         setLoading(false);
       }
     }, 800);
+
+    // P1: Handle OAuth hash tokens if present before HashRouter navigation
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hash = window.location.hash;
+      if (hash.includes("access_token=") || hash.includes("error_description=")) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            setUser(mapUser(session.user));
+            migrateGuestData(session.user.id);
+            window.location.hash = "#/dashboard";
+          }
+        }).catch((err) => {
+          console.warn("OAuth hash token parse notice:", err);
+        });
+      }
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       resolved = true;
@@ -403,13 +467,12 @@ function useProvideAuth(): AuthReturn {
     } catch (err) {
       console.warn("Supabase sign out notice:", err);
     }
-    localStorage.removeItem("pps_guest");
-    localStorage.removeItem("pps_guest_name");
-    localStorage.removeItem("pps_guest_created_at");
-    localStorage.removeItem("pps_guest_avatar");
-    localStorage.removeItem("pps_onboarded_guest");
-    localStorage.removeItem("pps_active_track");
-    try { sessionStorage.removeItem("pps_guest"); } catch {}
+
+    // P1 Security Remediation: Comprehensive storage wipe
+    clearUserSessionStorage();
+
+    // P0 Security Remediation: Purge React Query cache
+    queryClient.clear();
 
     setUser(null);
     if (typeof window !== "undefined") {
@@ -450,10 +513,12 @@ function useProvideAuth(): AuthReturn {
 
   const loginWithGoogle = useCallback(async (): Promise<string | null> => {
     try {
-      // Use clean base URL to prevent 404 on GitHub Pages or invalid paths on Android
-      const redirectUrl = `${window.location.origin}${window.location.pathname}`;
+      // P1: Sanitize redirect URL avoiding trailing hashes that break OAuth callback parsing
+      const origin = window.location.origin.replace(/\/+$/, "");
+      const basePath = (import.meta.env.BASE_URL || "").replace(/\/+$/, "");
+      const redirectUrl = `${origin}${basePath}/`;
 
-      console.log("🌐 Initiating Google OAuth with redirect URL:", redirectUrl);
+      console.log("🌐 Initiating Google OAuth with sanitized redirect URL:", redirectUrl);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",

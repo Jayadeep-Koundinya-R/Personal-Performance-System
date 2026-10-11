@@ -9,6 +9,7 @@
 
 ## 📌 Decision Log Index
 
+- [Entry 2026-10-11: Jules Audit Merge & P0/P1 Security Remediation Patches](#entry-2026-10-11-jules-audit-merge--p0p1-security-remediation-patches)
 - [Entry 2026-10-10: Authentication Resilience, Demo Mode Routing & Pricing Uniformity Hardening](#entry-2026-10-10-authentication-resilience-demo-mode-routing--pricing-uniformity-hardening)
 - [Entry 2026-10-10: Sprint 4 — Jules' Onboarding Wizard Audit, Supabase complete_onboarding RPC & Native Polish](#entry-2026-10-10-sprint-4--jules-onboarding-wizard-audit-supabase-complete_onboarding-rpc--native-polish)
 - [Entry 2026-10-08: Sprint 3 — Capacitor Android Native Build, Safe Areas & Native Haptics](#entry-2026-10-08-sprint-3--capacitor-android-native-build-safe-areas--native-haptics)
@@ -18,6 +19,36 @@
 - [Entry 2026-10-05: Strict Architectural Audit & Roadmap Commitment](#entry-2026-10-05-strict-architectural-audit--roadmap-commitment)
 - [Entry 2026-10-04: Vayu Launch Elevation & DOMPurify Security Hardening](#entry-2026-10-04-vayu-launch-elevation--dompurify-security-hardening)
 - [Entry 2026-08-24: Agni Launch Stabilization & Truth-in-Features Audit](#entry-2026-08-24-agni-launch-stabilization--truth-in-features-audit)
+
+---
+
+## [Entry 2026-10-11: Jules Audit Merge & P0/P1 Security Remediation Patches]
+
+### 1. Context & Objectives
+- Merge Jules' documentation PR branch (`origin/docs/ux-security-audit-v2-15775860961250705551`, file `docs/AUDIT_UX_AND_SECURITY_V2.md`) into `main`.
+- Implement all P0 and P1 security and access control remediation items highlighted in the audit report.
+- Verify 100% test passing across the entire Vitest suite (182 tests) and clean production compilation.
+
+### 2. Architectural Decisions & Remediation Actions
+- **Singleton QueryClient & Cache Lifecycle (P0):**
+  - Created `src/lib/queryClient.ts` housing the shared singleton `QueryClient`.
+  - In `migrateGuestData(userId)`, hooked `queryClient.invalidateQueries()` so that newly migrated Supabase records immediately refetch.
+  - In `logout()`, hooked `queryClient.clear()` to prevent data leakage across user sessions on shared machines.
+- **Centralized Session Storage Wipe (P1):**
+  - Implemented `clearUserSessionStorage()` in `src/hooks/use-auth.ts`.
+  - Thoroughly cleans all user habits, reflections, reminders, focus history, AI chat history, squad codes, and active track data while preserving non-sensitive device configurations (`pps_theme`, `pps_billing_region`, `pps_sound_muted`).
+- **OAuth Redirect Sanitization & Hash Token Handling (P1):**
+  - Sanitized Google OAuth redirect URL in `loginWithGoogle()` to `${origin}${basePath}/`.
+  - Added hash fragment interceptor in `useProvideAuth()` to parse tokens via `supabase.auth.getSession()` and route cleanly to `#/dashboard` without HashRouter collisions.
+- **Access Control & Expired Guest Trial Enforcement (P1):**
+  - Updated `OnboardingGuard.tsx` to inspect `isGuestTrialExpired`. If a demo trial has expired (>7 days), the user is forcefully redirected to `/pricing` with zero access to protected dashboard routes.
+  - Wrapped `/focus-call/:groupId` and `/meet/:roomId` inside `<OnboardingGuard>` in `src/App.tsx`, preventing unauthenticated visitors from accessing video room interfaces directly.
+- **Test Setup Disentanglement:**
+  - Fixed a latent mock defect in `src/test/setup.ts` where `window.localStorage` and `window.sessionStorage` referenced the exact same mock store closure. Separated them into independent store instances.
+
+### 3. Automated Validation & Verification
+- **Vitest Suite:** 33 test files passed, 182 tests passed, 0 failures.
+- **Build Verification:** `npm run build` compiled 26 PWA assets and 0 errors in 19.25s.
 
 ---
 
