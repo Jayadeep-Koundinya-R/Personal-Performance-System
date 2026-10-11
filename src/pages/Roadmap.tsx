@@ -10,7 +10,8 @@ import { ScrollToTop } from "@/components/ui/ScrollToTop";
 
 export const RoadmapPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
-  const { isLoggedIn } = useAuth();
+  const { user, isLoggedIn } = useAuth();
+  const hasActiveAccount = isLoggedIn && !user?.isGuest;
 
   return (
     <div className="min-h-screen bg-background text-foreground relative selection:bg-primary selection:text-white transition-colors duration-500 overflow-x-hidden flex flex-col justify-between">
@@ -64,7 +65,7 @@ export const RoadmapPage: React.FC = () => {
               {theme === "dark" ? "☀️" : "🌙"}
             </button>
 
-            {isLoggedIn ? (
+            {hasActiveAccount ? (
               <Link to="/dashboard" className="text-xs bg-primary text-primary-foreground px-4 py-2 rounded-xl font-black hover:opacity-90 transition-all shadow-md shadow-primary/25">
                 Dashboard →
               </Link>

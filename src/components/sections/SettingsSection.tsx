@@ -18,6 +18,7 @@ import { useHabits } from "@/hooks/use-habits";
 import { useProfile } from "@/hooks/use-profile";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Link } from "react-router-dom";
+import { REGIONAL_PRICING, CurrencyRegion, detectUserRegion } from "@/lib/plans";
 import { useReflections } from "@/hooks/use-reflections";
 import { exportToCSV, exportToJSON, exportReflectionsToCSV, prepareFullExport, parseAndValidateBackup } from "@/lib/dataExport";
 import { toast } from "sonner";
@@ -80,6 +81,12 @@ const SettingsSection = ({ user }: { user: User }) => {
   const [selectedAvatar, setSelectedAvatar] = useState(profile?.avatarEmoji || "🌟");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [isUpgrading, setIsUpgrading] = useState(false);
+  const [region] = useState<CurrencyRegion>(() => {
+    const saved = localStorage.getItem("pps_billing_region");
+    return saved === "IN" || saved === "GLOBAL" ? (saved as CurrencyRegion) : detectUserRegion();
+  });
+  const pricingConfig = REGIONAL_PRICING[region];
+  const symbol = pricingConfig.currencySymbol;
 
   // Role and Tier determination
   const planTier = profile?.planTier || (isPro ? "pro" : "free");
@@ -539,20 +546,20 @@ const SettingsSection = ({ user }: { user: User }) => {
                   <tbody className="divide-y divide-border/40 font-medium">
                     <tr>
                       <td className="py-2.5 text-foreground font-bold">Habit Capacity</td>
-                      <td className="py-2.5 text-muted-foreground">3 Active Habits</td>
+                      <td className="py-2.5 text-muted-foreground">Up to 15 Active Habits</td>
                       <td className="py-2.5 text-primary font-bold">Unlimited Habits</td>
                       <td className="py-2.5 text-secondary font-bold">Unlimited + Student Hub</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 text-foreground font-bold">AI Performance Engine</td>
-                      <td className="py-2.5 text-muted-foreground">Basic Mode</td>
+                      <td className="py-2.5 text-muted-foreground">10 Messages / day</td>
                       <td className="py-2.5 text-primary font-bold">Deep Velocity Forecast</td>
                       <td className="py-2.5 text-secondary font-bold">Cohort Analytics</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 text-foreground font-bold">Focus Rooms</td>
-                      <td className="py-2.5 text-muted-foreground">1 Room (25 min)</td>
-                      <td className="py-2.5 text-primary font-bold">50 Focus Rooms</td>
+                      <td className="py-2.5 text-muted-foreground">60 min/day Focus Rooms</td>
+                      <td className="py-2.5 text-primary font-bold">24/7 Unlimited (50 peers)</td>
                       <td className="py-2.5 text-secondary font-bold">Unlimited Multi-User</td>
                     </tr>
                     <tr>
@@ -635,7 +642,7 @@ const SettingsSection = ({ user }: { user: User }) => {
                   >
                     <span>Annual Billing</span>
                     <span className="text-[10px] font-mono bg-pps-green text-white px-1.5 py-0.2 rounded-full font-bold">
-                      Save 20%
+                      {pricingConfig.savingsBadge}
                     </span>
                   </button>
                 </div>
@@ -656,11 +663,20 @@ const SettingsSection = ({ user }: { user: User }) => {
                       <Crown className="w-5 h-5 text-pps-yellow" />
                       <h4 className="text-base font-black text-foreground">Student Pro Tier</h4>
                     </div>
-                    <div className="flex items-baseline gap-1 font-mono">
-                      <span className="text-3xl font-black text-foreground">
-                        {billingCycle === "monthly" ? "$9" : "$89"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">/{billingCycle === "monthly" ? "month" : "year"}</span>
+                    <div>
+                      <div className="flex items-baseline gap-1 font-mono">
+                        <span className="text-3xl font-black text-foreground">
+                          {symbol}{billingCycle === "monthly" ? pricingConfig.proMonthly : Math.round(pricingConfig.proYearly / 12)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          /{billingCycle === "monthly" ? "month" : "month (billed annually)"}
+                        </span>
+                      </div>
+                      {billingCycle === "yearly" && (
+                        <div className="text-[11px] font-mono text-pps-green font-bold mt-1">
+                          Billed as {symbol}{pricingConfig.proYearly}/year • {pricingConfig.savingsBadge}
+                        </div>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground font-medium">
                       Built for high performers, students, and professionals aiming for peak productivity.
@@ -670,9 +686,9 @@ const SettingsSection = ({ user }: { user: User }) => {
                       {[
                         "Unlimited Habits & Streak Shields",
                         "Deep AI Velocity Forecast Engine",
-                        "50 WebRTC Pomodoro Focus Rooms",
+                        "24/7 Drop-In Live WebRTC Focus Rooms",
                         "Executive PDF Reports & CSV Data Exports",
-                        "10 Circadian Habit-Linked Alarms",
+                        "3 Streak Freezes + Auto-Shield Protection",
                       ].map((item) => (
                         <div key={item} className="flex items-center gap-2 text-foreground font-medium">
                           <CheckCircle2 className="w-4 h-4 text-pps-green flex-shrink-0" />
@@ -694,45 +710,48 @@ const SettingsSection = ({ user }: { user: User }) => {
 
               {/* Card 2: Teacher / Mentor Studio (Shown to Free and Pro Users) */}
               {userRole !== "teacher" && (
-                <div className="bg-gradient-to-b from-secondary/15 via-card to-card border border-secondary/40 p-6 rounded-3xl shadow-xl flex flex-col justify-between space-y-5">
+                <div className="bg-gradient-to-b from-amber-500/10 via-card to-card border border-amber-500/30 p-6 rounded-3xl shadow-xl flex flex-col justify-between space-y-5">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <GraduationCap className="w-5 h-5 text-secondary" />
+                      <GraduationCap className="w-5 h-5 text-amber-400" />
                       <h4 className="text-base font-black text-foreground">Teacher & Mentor Studio</h4>
                     </div>
-                    <div className="flex items-baseline gap-1 font-mono">
-                      <span className="text-3xl font-black text-foreground">
-                        {billingCycle === "monthly" ? "$29" : "$279"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">/{billingCycle === "monthly" ? "month" : "year"}</span>
+                    <div>
+                      <div className="flex items-baseline gap-1 font-mono">
+                        <span className="text-3xl font-black text-amber-400">10%</span>
+                        <span className="text-xs text-muted-foreground">commission / class ticket</span>
+                      </div>
+                      <div className="text-[11px] font-mono text-emerald-400 font-bold mt-1">
+                        ₹0 / $0 Upfront Platform Cost • First 5 Classes/Mo Free
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground font-medium">
-                      Empower students, monetize habit cohorts, and lead live study rooms with 10% commission.
+                      Empower students, monetize habit cohorts, and lead live study rooms with automated attendance logs.
                     </p>
 
                     <div className="space-y-2 pt-2 border-t border-border/40 text-xs">
                       {[
                         "Everything in Student Pro Included",
                         "Host Paid Classroom Cohorts & Bundles",
-                        "10% Monthly Student Revenue Share",
+                        "1-Click Ticket Booking (UPI & Cards)",
+                        "Automated Class Attendance Logs & Rosters",
+                        "Assign Habits to Classroom Roster",
                         "Verified Educator Badge on Leaderboards",
-                        "Unlimited Multi-Student Focus Rooms",
                       ].map((item) => (
                         <div key={item} className="flex items-center gap-2 text-foreground font-medium">
-                          <CheckCircle2 className="w-4 h-4 text-secondary flex-shrink-0" />
+                          <CheckCircle2 className="w-4 h-4 text-amber-400 flex-shrink-0" />
                           <span>{item}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleCheckout("teacher")}
-                    disabled={isUpgrading}
-                    className="w-full text-xs bg-secondary text-secondary-foreground font-black py-3 rounded-xl hover:opacity-90 transition-all cursor-pointer shadow-md text-center"
+                  <Link
+                    to="/pricing#teacher-calculator"
+                    className="w-full text-xs bg-amber-500 text-black font-black py-3 rounded-xl hover:bg-amber-400 transition-all cursor-pointer shadow-md text-center block"
                   >
                     Launch Teacher Studio 🎓
-                  </button>
+                  </Link>
                 </div>
               )}
 
@@ -743,21 +762,29 @@ const SettingsSection = ({ user }: { user: User }) => {
                     <Building2 className="w-5 h-5 text-sky-400" />
                     <h4 className="text-base font-black text-foreground">Campus Institutional License</h4>
                   </div>
-                  <div className="flex items-baseline gap-1 font-mono">
-                    <span className="text-3xl font-black text-foreground">$199</span>
-                    <span className="text-xs text-muted-foreground">/annual license</span>
+                  <div>
+                    <div className="flex items-baseline gap-1 font-mono">
+                      <span className="text-3xl font-black text-foreground">
+                        {symbol}{region === "IN" ? "2,000" : "49"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">/ student / semester</span>
+                    </div>
+                    <div className="text-[11px] font-mono text-sky-400 font-bold mt-1">
+                      Bulk Department Deployment • Institutional PO & Demo
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground font-medium">
-                    Department-wide deployment for universities, high schools, and institutional teams.
+                    Department-wide deployment for universities, high schools, and coaching academies with campus leaderboards.
                   </p>
 
                   <div className="space-y-2 pt-2 border-t border-border/40 text-xs">
                     {[
-                      "Unlimited Student & Faculty Accounts",
-                      "Campus Analytics & Department Insights",
+                      "Bulk 1-Click CSV Student Rosters",
+                      "Multi-Faculty Portals & Department Logs",
+                      "Campus & Department-Wide Leaderboards",
+                      "Single Sign-On (Google & Edu SSO / SAML)",
                       "FERPA & GDPR Compliance Architecture",
                       "Dedicated Customer Success Manager",
-                      "Custom University Subdomain Sync",
                     ].map((item) => (
                       <div key={item} className="flex items-center gap-2 text-foreground font-medium">
                         <CheckCircle2 className="w-4 h-4 text-sky-400 flex-shrink-0" />
@@ -771,7 +798,7 @@ const SettingsSection = ({ user }: { user: User }) => {
                   onClick={() => handleCheckout("campus")}
                   className="w-full text-xs bg-surface border border-border/80 text-foreground font-black py-3 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs text-center"
                 >
-                  Contact Campus Enterprise 🏛️
+                  Request Institutional PO & Demo 🏛️
                 </button>
               </div>
             </div>

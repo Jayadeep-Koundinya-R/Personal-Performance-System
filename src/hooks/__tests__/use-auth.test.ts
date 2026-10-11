@@ -73,4 +73,24 @@ describe("useAuth Hook & Auth Flows", () => {
     expect(result.current.guestDaysRemaining).toBe(7);
     expect(result.current.isGuestTrialExpired).toBe(false);
   });
+
+  it("logout cleans all guest storage tokens and resets user state", async () => {
+    const { result } = renderHook(() => useAuth());
+
+    act(() => {
+      result.current.loginAsGuest("Demo User", true);
+    });
+    expect(result.current.user?.isGuest).toBe(true);
+    expect(localStorage.getItem("pps_guest")).toBe("true");
+
+    await act(async () => {
+      result.current.logout();
+    });
+
+    expect(localStorage.getItem("pps_guest")).toBeNull();
+    expect(localStorage.getItem("pps_guest_name")).toBeNull();
+    expect(localStorage.getItem("pps_guest_created_at")).toBeNull();
+    expect(result.current.user).toBeNull();
+    expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
+  });
 });

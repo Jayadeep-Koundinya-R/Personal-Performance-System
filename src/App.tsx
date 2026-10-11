@@ -9,7 +9,7 @@ import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from "r
 import { App as CapApp } from "@capacitor/app";
 import { FEATURE_FLAGS } from "@/config/features";
 import { ThemeProvider } from "@/hooks/use-theme";
-import { useAuth, User } from "@/hooks/use-auth";
+import { useAuth, AuthProvider, User } from "@/hooks/use-auth";
 import { DashboardProviders } from "@/providers/AppProviders";
 import HomePage from "./pages/Home";
 import LoginPage from "./pages/Login";
@@ -191,10 +191,12 @@ const App = () => {
             <Toaster />
             <Sonner />
             <HashRouter>
-              <NativeAppController />
-              <PerformanceMonitor />
-              <PwaUpdatePrompt />
-              <AppRoutes />
+              <AuthProvider>
+                <NativeAppController />
+                <PerformanceMonitor />
+                <PwaUpdatePrompt />
+                <AppRoutes />
+              </AuthProvider>
             </HashRouter>
           </TooltipProvider>
         </ThemeProvider>

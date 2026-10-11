@@ -108,7 +108,8 @@ const fadeUp = {
 export const HomePage: React.FC = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isLoggedIn } = useAuth();
+  const { user, isLoggedIn } = useAuth();
+  const hasActiveAccount = isLoggedIn && !user?.isGuest;
   const { theme, toggleTheme } = useTheme();
 
   // ── Simulator Tab State ──
@@ -300,16 +301,16 @@ export const HomePage: React.FC = () => {
               {theme === "dark" ? "☀️" : "🌙"}
             </button>
 
-            {isLoggedIn ? (
+            {hasActiveAccount ? (
               <Link to="/dashboard" className="text-xs bg-primary text-primary-foreground px-4 py-2 rounded-xl font-bold hover:opacity-90 transition-all shadow-md shadow-primary/20">
                 Dashboard →
               </Link>
             ) : (
-              <div className="hidden sm:flex items-center gap-2">
-                <Link to="/login?tab=signin" className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-surface font-semibold">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Link to="/login?tab=signin" className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl hover:bg-surface font-semibold">
                   Sign In
                 </Link>
-                <Link to="/login?tab=signup" className="text-xs bg-primary text-primary-foreground px-4 py-2 rounded-xl font-black hover:opacity-90 transition-all shadow-md shadow-primary/20">
+                <Link to="/login?tab=signup" className="text-xs bg-primary text-primary-foreground px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black hover:opacity-90 transition-all shadow-md shadow-primary/20 whitespace-nowrap">
                   Start Free
                 </Link>
               </div>
@@ -362,9 +363,20 @@ export const HomePage: React.FC = () => {
                 💳 Pricing & Plans
               </Link>
               <div className="pt-2 border-t border-border/50 flex gap-2">
-                <Link to="/login?tab=signup" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center py-2.5 rounded-xl bg-primary text-primary-foreground font-black">
-                  Start Free (No CC)
-                </Link>
+                {hasActiveAccount ? (
+                  <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center py-2.5 rounded-xl bg-primary text-primary-foreground font-black">
+                    Open Dashboard →
+                  </Link>
+                ) : (
+                  <>
+                    <Link to="/login?tab=signin" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center py-2.5 rounded-xl bg-surface border border-border/80 text-foreground font-bold">
+                      Sign In
+                    </Link>
+                    <Link to="/login?tab=signup" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center py-2.5 rounded-xl bg-primary text-primary-foreground font-black">
+                      Start Free
+                    </Link>
+                  </>
+                )}
               </div>
             </motion.div>
           )}
@@ -392,10 +404,10 @@ export const HomePage: React.FC = () => {
 
           <div className="flex items-center justify-center gap-3.5 flex-wrap pt-2">
             <Link
-              to={isLoggedIn ? "/dashboard" : "/login?tab=signup"}
+              to={hasActiveAccount ? "/dashboard" : "/login?tab=signup"}
               className="bg-gradient-to-r from-primary via-secondary to-accent text-white py-3.5 px-8 rounded-2xl text-xs sm:text-sm font-black hover:opacity-95 hover:scale-[1.02] transition-all shadow-xl shadow-primary/25 flex items-center gap-2 cursor-pointer"
             >
-              <span>{isLoggedIn ? "Launch Your Dashboard →" : "🚀 Start Free Study Sprint"}</span>
+              <span>{hasActiveAccount ? "Launch Your Dashboard →" : "🚀 Start Free Study Sprint"}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
 
@@ -1199,10 +1211,10 @@ export const HomePage: React.FC = () => {
           </p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <Link
-              to={isLoggedIn ? "/dashboard" : "/login?tab=signup"}
+              to={hasActiveAccount ? "/dashboard" : "/login?tab=signup"}
               className="px-8 py-4 rounded-2xl bg-white text-black font-black text-xs sm:text-sm hover:opacity-95 transition-all shadow-xl hover:scale-105"
             >
-              {isLoggedIn ? "Open Dashboard →" : "Get Started Free (No CC Required)"}
+              {hasActiveAccount ? "Open Dashboard →" : "Get Started Free (No CC Required)"}
             </Link>
           </div>
         </div>

@@ -68,7 +68,8 @@ const FAQS = [
 ];
 
 function PricingContent() {
-  const { isLoggedIn } = useAuth();
+  const { user, isLoggedIn } = useAuth();
+  const hasActiveAccount = isLoggedIn && !user?.isGuest;
   const { isPro, startCheckout, loading } = useSubscription();
   const { theme, toggleTheme } = useTheme();
   const [interval, setInterval] = useState<"monthly" | "yearly">("yearly");
@@ -169,7 +170,7 @@ function PricingContent() {
 
       {/* ── Top Navigation Bar ── */}
       <header className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between border-b border-border/40 backdrop-blur-md">
-        <Link to="/dashboard" className="flex items-center gap-2.5 font-mono text-xl font-black text-primary tracking-wider">
+        <Link to="/" className="flex items-center gap-2.5 font-mono text-xl font-black text-primary tracking-wider">
           <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
           <span>PPS<span className="text-secondary">.</span></span>
           <span className="text-xs font-mono font-normal text-muted-foreground ml-1">/ Pricing</span>
@@ -196,10 +197,10 @@ function PricingContent() {
           </button>
 
           <Link
-            to="/dashboard"
+            to={hasActiveAccount ? "/dashboard" : "/login?tab=signin"}
             className="px-4 py-1.5 rounded-xl bg-primary text-primary-foreground font-extrabold text-xs hover:bg-primary/90 transition-all shadow-sm"
           >
-            {isLoggedIn ? "Open Dashboard" : "Sign In"}
+            {hasActiveAccount ? "Open Dashboard" : "Sign In"}
           </Link>
         </div>
       </header>
@@ -280,10 +281,10 @@ function PricingContent() {
             </div>
 
             <Link
-              to="/dashboard"
+              to={hasActiveAccount ? "/dashboard" : "/login?tab=signup"}
               className="w-full py-3 rounded-2xl bg-surface hover:bg-card border border-border text-foreground font-bold text-xs text-center transition-all block shadow-xs"
             >
-              Start Free Today
+              {hasActiveAccount ? "Go to Dashboard →" : "Start Free Today"}
             </Link>
           </div>
 

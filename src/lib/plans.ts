@@ -114,8 +114,8 @@ export const REGIONAL_PRICING = {
 
 // Legacy fallback
 export const PRICING = {
-  proMonthly: 8.99,
-  proYearly: 59.99,
+  proMonthly: 9.99,
+  proYearly: 99.99,
   currency: "USD",
 } as const;
 

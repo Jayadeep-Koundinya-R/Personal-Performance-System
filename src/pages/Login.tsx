@@ -73,7 +73,7 @@ const LoginPage = () => {
   const [tab, setTab] = useState<"signin" | "signup" | "forgot" | "demo">(initialTab);
 
   const { theme, toggleTheme } = useTheme();
-  const { login, signup, loginAsGuest, resetPassword, isLoggedIn, loading, loginWithGoogle } = useAuth();
+  const { user, login, signup, loginAsGuest, logout, resetPassword, isLoggedIn, loading, loginWithGoogle } = useAuth();
 
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -134,7 +134,9 @@ const LoginPage = () => {
     return elapsed >= 7 * 24 * 60 * 60 * 1000;
   })();
 
-  if (!loading && isLoggedIn) {
+  // Only auto-redirect to /dashboard if user has a REAL registered account (not temporary demo mode).
+  // A user in 7-day demo mode who visits /login MUST be able to enter their credentials to sign in or register!
+  if (!loading && isLoggedIn && !user?.isGuest) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -362,6 +364,28 @@ const LoginPage = () => {
                     : "Sign in to access your habits, focus rooms, and streaks"}
                 </p>
               </div>
+
+              {/* ── Active Demo Session Notice Banner ── */}
+              {user?.isGuest && (
+                <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-between gap-3 text-xs shadow-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-foreground text-[11px] leading-snug">
+                      Browsing in <strong>7-Day Demo Mode</strong>. Sign in or register below to save and sync your habits to the cloud!
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      logout();
+                      toast.info("Demo session ended. Please sign in or register.");
+                    }}
+                    className="text-[11px] font-bold text-muted-foreground hover:text-foreground underline cursor-pointer shrink-0"
+                  >
+                    Exit Demo
+                  </button>
+                </div>
+              )}
 
               {/* ── 3-WAY TAB SELECTOR PILLS ── */}
               {tab !== "forgot" && (

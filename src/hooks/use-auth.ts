@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, createContext, useContext, ReactNode, createElement } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -10,7 +10,7 @@ export interface User {
   id?: string;
 }
 
-interface AuthReturn {
+export interface AuthReturn {
   user: User | null;
   login: (email: string, password: string) => Promise<string | null>;
   signup: (email: string, password: string, confirm: string) => Promise<string | null>;
@@ -24,6 +24,8 @@ interface AuthReturn {
   guestDaysRemaining: number;
   isGuestTrialExpired: boolean;
 }
+
+const AuthContext = createContext<AuthReturn | null>(null);
 
 const TRIAL_DURATION_DAYS = 7;
 
@@ -216,7 +218,7 @@ async function migrateGuestData(userId: string): Promise<void> {
   }
 }
 
-export function useAuth(): AuthReturn {
+function useProvideAuth(): AuthReturn {
   const isGuestInitial = typeof window !== "undefined" && (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true");
 
   const [user, setUser] = useState<User | null>(() => {
@@ -290,9 +292,30 @@ export function useAuth(): AuthReturn {
         }
       });
 
+    // Instant local and cross-tab reactive synchronization
+    const handleAuthChange = () => {
+      const isGuest = localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true";
+      if (!isGuest) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            setUser(mapUser(session.user));
+          } else {
+            setUser(null);
+          }
+        });
+      } else {
+        setUser({ email: null, isGuest: true });
+      }
+    };
+
+    window.addEventListener("storage", handleAuthChange);
+    window.addEventListener("pps_auth_change", handleAuthChange);
+
     return () => {
       clearTimeout(safetyTimer);
       subscription.unsubscribe();
+      window.removeEventListener("storage", handleAuthChange);
+      window.removeEventListener("pps_auth_change", handleAuthChange);
     };
   }, []);
 
@@ -314,6 +337,9 @@ export function useAuth(): AuthReturn {
         return error.message;
       }
       sendLoginNotification(email);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("pps_auth_change"));
+      }
       navigate("/dashboard");
       return null;
     } catch (err: any) {
@@ -339,6 +365,9 @@ export function useAuth(): AuthReturn {
       }
 
       sendLoginNotification(email);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("pps_auth_change"));
+      }
       navigate("/dashboard");
       return null;
     } catch (err: any) {
@@ -362,15 +391,31 @@ export function useAuth(): AuthReturn {
     }
     sendFreeTrialNotification(name || localStorage.getItem("pps_guest_name") || "Explorer");
     setUser(guestUser);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("pps_auth_change"));
+    }
     navigate("/dashboard");
   }, [navigate]);
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("Supabase sign out notice:", err);
+    }
     localStorage.removeItem("pps_guest");
+    localStorage.removeItem("pps_guest_name");
+    localStorage.removeItem("pps_guest_created_at");
+    localStorage.removeItem("pps_guest_avatar");
+    localStorage.removeItem("pps_onboarded_guest");
+    localStorage.removeItem("pps_active_track");
     try { sessionStorage.removeItem("pps_guest"); } catch {}
+
     setUser(null);
-    navigate("/login");
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("pps_auth_change"));
+    }
+    navigate("/login", { replace: true });
   }, [navigate]);
 
   const resetPassword = useCallback(async (email: string): Promise<string | null> => {
@@ -459,4 +504,15 @@ export function useAuth(): AuthReturn {
     guestDaysRemaining: daysRemaining,
     isGuestTrialExpired: isExpired,
   };
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const auth = useProvideAuth();
+  return createElement(AuthContext.Provider, { value: auth }, children);
+}
+
+export function useAuth(): AuthReturn {
+  const context = useContext(AuthContext);
+  if (context) return context;
+  return useProvideAuth();
 }

@@ -9,6 +9,7 @@
 
 ## 📌 Decision Log Index
 
+- [Entry 2026-10-10: Authentication Resilience, Demo Mode Routing & Pricing Uniformity Hardening](#entry-2026-10-10-authentication-resilience-demo-mode-routing--pricing-uniformity-hardening)
 - [Entry 2026-10-10: Sprint 4 — Jules' Onboarding Wizard Audit, Supabase complete_onboarding RPC & Native Polish](#entry-2026-10-10-sprint-4--jules-onboarding-wizard-audit-supabase-complete_onboarding-rpc--native-polish)
 - [Entry 2026-10-08: Sprint 3 — Capacitor Android Native Build, Safe Areas & Native Haptics](#entry-2026-10-08-sprint-3--capacitor-android-native-build-safe-areas--native-haptics)
 - [Entry 2026-10-08: Sprint 2 — Monetization Wiring & Database Performance Indexing](#entry-2026-10-08-sprint-2--monetization-wiring--database-performance-indexing)
@@ -17,6 +18,47 @@
 - [Entry 2026-10-05: Strict Architectural Audit & Roadmap Commitment](#entry-2026-10-05-strict-architectural-audit--roadmap-commitment)
 - [Entry 2026-10-04: Vayu Launch Elevation & DOMPurify Security Hardening](#entry-2026-10-04-vayu-launch-elevation--dompurify-security-hardening)
 - [Entry 2026-08-24: Agni Launch Stabilization & Truth-in-Features Audit](#entry-2026-08-24-agni-launch-stabilization--truth-in-features-audit)
+
+---
+
+## [Entry 2026-10-10: Authentication Resilience, Demo Mode Routing & Pricing Uniformity Hardening]
+
+### 1. Context & Objectives
+- Eradicate 3 critical user-reported friction bugs:
+  1. **Logout & Stale Navbar / Error Page:** After logging out, the navbar still displayed a single "Dashboard" button. Clicking it navigated to an Error Boundary crash instead of cleanly routing to `/login` with unauthenticated actions.
+  2. **Demo Mode -> Login Form Lockout:** Users exploring in 7-day Demo Mode trying to sign in or register with real credentials were instantly bounced back to `/dashboard` without ever displaying the login/registration form.
+  3. **Subscription Pricing Discrepancies:** Settings subscription panel had hardcoded, conflicting prices ($9/$89, $29/$279, $199) and mismatched quotas compared to the public `/pricing` page and `src/lib/plans.ts` (India PPP ₹199/mo, ₹1,999/yr, Global $9.99/mo, $99.99/yr, 10% commission on Teacher Studio with ₹0 upfront, and ₹2,000 / $49 per student semester for Campus).
+
+### 2. Architectural Decisions
+- **Shared Singleton `AuthProvider` & Reactive Synchronization:**
+  - Introduced `AuthContext` and `AuthProvider` in `src/hooks/use-auth.ts`, wrapped around `<HashRouter>` inside `src/App.tsx`.
+  - Added cross-tab and local reactive synchronization via custom `pps_auth_change` window event and storage event listeners.
+  - Rewrote `logout()` with comprehensive cleanup: signs out from Supabase with safe try/catch fallback, removes all guest session keys (`pps_guest`, `pps_guest_name`, `pps_guest_created_at`, `pps_guest_avatar`, `pps_onboarded_guest`, `pps_active_track`), resets user state to `null`, and navigates cleanly to `/login`.
+- **Demo Mode to Login Route Decoupling:**
+  - In `src/pages/Login.tsx`, updated the auto-redirect gate from `if (!loading && isLoggedIn)` to `if (!loading && isLoggedIn && !user?.isGuest) return <Navigate to="/dashboard" replace />;`.
+  - Added active demo session banner on `/login` alerting users they are in 7-day demo mode with an instant "Exit Demo" action.
+  - Retained automatic guest data migration (`migrateGuestData(userId)`) upon signing in or registering with real credentials.
+- **Navbar Logged-Out State & Clean Routing:**
+  - In `src/pages/Home.tsx`, decoupled button rendering using `hasActiveAccount = isLoggedIn && !user?.isGuest`.
+  - When logged out, the navbar always renders "Sign In" and "Start Free" (with mobile visibility preserved), completely hiding "Dashboard".
+  - In `src/pages/Pricing.tsx` and `src/pages/Roadmap.tsx`, updated hero CTAs and headers to route cleanly to `/` and `/login?tab=signin` when unauthenticated.
+- **Subscription Pricing Alignment:**
+  - In `src/lib/plans.ts`, synchronized the fallback legacy `PRICING` dictionary to match `REGIONAL_PRICING` ($9.99/mo, $99.99/yr).
+  - In `src/components/sections/SettingsSection.tsx`, imported `REGIONAL_PRICING`, `detectUserRegion`, and dynamic billing calculation.
+  - Updated Pro Tier to `{symbol}{billingCycle === "monthly" ? pricingConfig.proMonthly : Math.round(pricingConfig.proYearly / 12)} / month` with dynamic yearly savings badge.
+  - Updated Teacher Studio to 10% commission, ₹0 upfront, first 5 classes/mo free, linked directly to `/pricing#teacher-calculator`.
+  - Updated Campus license to `{symbol}{region === "IN" ? "2,000" : "49"} / student / semester`.
+  - Aligned Workspace Role Matrix and quotas (15 habits, 60m focus rooms, 10 AI msgs/day on free tier).
+
+### 3. Automated Validation & Verification
+- **Vitest Unit & Integration Test Suites:**
+  - 33 test files passed, 181 tests passed, 0 failures.
+  - Added `src/test/auth-and-pricing-bugfixes.test.tsx` (5/5 tests passed).
+- **Playwright E2E Browser Testing:**
+  - 3 spec files (`basic.spec.ts`, `pps.spec.ts`, `auth-and-pricing-bugfixes.spec.ts`), 12 tests passed, 0 failures in Chromium.
+  - Verified clean logout flow, demo-to-login form accessibility, navbar link states, and pricing uniformity.
+- **Production Bundle:**
+  - `npm run build` compiled cleanly into `dist/` with 26 PWA assets precached and zero TypeScript errors.
 
 ---
 
