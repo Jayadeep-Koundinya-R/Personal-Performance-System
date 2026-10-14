@@ -18,6 +18,7 @@ export interface Profile {
   longestStreak: number;
   streak?: number;
   timezone: string | null;
+  onboarding_completed?: boolean;
 }
 
 interface ProfileContextType {
@@ -47,6 +48,7 @@ function mapProfile(row: Record<string, unknown>): Profile {
     longestStreak: (row.longest_streak as number) || 0,
     streak: (row.longest_streak as number) || 0,
     timezone: (row.timezone as string) || "UTC",
+    onboarding_completed: Boolean(row.onboarding_completed),
   };
 }
 
@@ -59,6 +61,10 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
     if (isGuestUser) {
       // Build a synthetic guest profile from localStorage
       const guestName = localStorage.getItem("pps_guest_name") || "Guest";
+      const isOnboarded =
+        localStorage.getItem("pps_onboarded_guest") === "true" ||
+        localStorage.getItem("pps_guest_onboarded") === "true";
+
       setProfile({
         id: "guest",
         userId: "guest",
@@ -75,6 +81,7 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
         longestStreak: 0,
         streak: 0,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        onboarding_completed: isOnboarded,
       });
       setLoading(false);
       return;
@@ -108,8 +115,9 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
     refresh();
 
     if (!isGuestUser && userId) {
+      const channelId = `realtime-profile-${userId}-${Math.random().toString(36).slice(2, 7)}`;
       const channel = supabase
-        .channel("profile-changes")
+        .channel(channelId)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "profiles", filter: `user_id=eq.${userId}` },
@@ -120,7 +128,9 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
         .subscribe();
 
       return () => {
-        supabase.removeChannel(channel);
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
       };
     }
   }, [refresh, isGuestUser, userId]);

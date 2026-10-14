@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Screenshots and Test Artifacts
+screenshots/
+test-results/
+playwright-report/
+blob-report/
+

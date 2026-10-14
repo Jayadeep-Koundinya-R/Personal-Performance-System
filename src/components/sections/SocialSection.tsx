@@ -200,8 +200,9 @@ export default function SocialSection() {
     loadLeaderboardProfiles();
 
     // Realtime postgres_changes listener for community profiles (Task 11)
+    const channelId = `public:profiles:leaderboard-${Math.random().toString(36).slice(2, 7)}`;
     const profileChannel = supabase
-      .channel("public:profiles:leaderboard")
+      .channel(channelId)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "profiles" },
@@ -229,7 +230,9 @@ export default function SocialSection() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(profileChannel);
+      try {
+        supabase.removeChannel(profileChannel);
+      } catch {}
     };
   }, [loadLeaderboardProfiles]);
 

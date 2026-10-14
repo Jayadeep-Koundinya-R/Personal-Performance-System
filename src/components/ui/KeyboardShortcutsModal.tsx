@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Keyboard, X, Command } from "lucide-react";
+import { canFireGlobalShortcut } from "@/lib/utils/keyboard";
 
 interface ShortcutItem {
   keys: string[];
@@ -9,13 +10,16 @@ interface ShortcutItem {
 }
 
 const SHORTCUTS: ShortcutItem[] = [
-  { keys: ["1" , "D"], description: "Jump to Dashboard", category: "Navigation" },
+  { keys: ["1", "D"], description: "Jump to Dashboard", category: "Navigation" },
   { keys: ["2", "F"], description: "Jump to Focus Studio", category: "Navigation" },
   { keys: ["3", "S"], description: "Jump to Social Hub & Quests", category: "Navigation" },
   { keys: ["4", "A"], description: "Jump to Deep Analytics", category: "Navigation" },
   { keys: ["5", "C"], description: "Jump to Calendar & Planner", category: "Navigation" },
-  { keys: ["Space"], description: "Start / Pause Focus Timer", category: "Focus & Timer" },
+  { keys: ["Space"], description: "Start / Pause Focus Timer / Launch Sprint", category: "Focus & Timer" },
   { keys: ["R"], description: "Reset Focus Sprint", category: "Focus & Timer" },
+  { keys: ["V"], description: "Cycle Dashboard View (Priority / Timeblock / Zen)", category: "Habits & Actions" },
+  { keys: ["Z"], description: "Toggle Zen Spotlight Mode", category: "Habits & Actions" },
+  { keys: ["M"], description: "Mark All Pending Habits Done", category: "Habits & Actions" },
   { keys: ["N"], description: "Create New Habit", category: "Habits & Actions" },
   { keys: ["?"], description: "Open / Close Shortcuts Guide", category: "Habits & Actions" },
   { keys: ["Esc"], description: "Close Modals / Clear Search", category: "Habits & Actions" },
@@ -31,31 +35,21 @@ export const KeyboardShortcutsModal: React.FC<Props> = ({ onNavigate, onOpenNewH
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in input / textarea
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
-        if (e.key === "Escape") {
-          target.blur();
-        }
-        return;
-      }
-
-      if (e.key === "?" || (e.key === "/" && (e.metaKey || e.ctrlKey))) {
-        e.preventDefault();
-        setIsOpen((prev) => !prev);
-        return;
-      }
-
       if (e.key === "Escape") {
         setIsOpen(false);
         return;
       }
 
-      // Navigation shortcuts
+      if (e.key === "?" || (e.key === "/" && (e.metaKey || e.ctrlKey))) {
+        if (!isOpen && !canFireGlobalShortcut(e)) return;
+        e.preventDefault();
+        setIsOpen((prev) => !prev);
+        return;
+      }
+
+      if (!canFireGlobalShortcut(e) || isOpen) return;
+
+      // Navigation shortcuts (1-5 strictly for sections)
       if ((e.key === "1" || e.key === "d" || e.key === "D") && onNavigate) {
         onNavigate("dashboard");
       } else if ((e.key === "2" || e.key === "f" || e.key === "F") && onNavigate) {
@@ -74,7 +68,7 @@ export const KeyboardShortcutsModal: React.FC<Props> = ({ onNavigate, onOpenNewH
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onNavigate, onOpenNewHabit]);
+  }, [isOpen, onNavigate, onOpenNewHabit]);
 
   return (
     <>

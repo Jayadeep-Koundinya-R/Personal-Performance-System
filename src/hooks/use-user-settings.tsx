@@ -98,8 +98,9 @@ export function UserSettingsProvider({
     load();
 
     if (!isGuestUser && userId) {
+      const channelId = `realtime-settings-${userId}-${Math.random().toString(36).slice(2, 7)}`;
       const channel = supabase
-        .channel("user-settings-changes")
+        .channel(channelId)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "user_settings", filter: `user_id=eq.${userId}` },
@@ -110,7 +111,9 @@ export function UserSettingsProvider({
         .subscribe();
 
       return () => {
-        supabase.removeChannel(channel);
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
       };
     }
   }, [load, isGuestUser, userId]);
@@ -142,16 +145,26 @@ export function UserSettingsProvider({
       const { error } = await supabase.from("user_settings").upsert({ user_id: userId, ...payload }, { onConflict: "user_id" });
       if (error) throw error;
     } catch (err) {
-      console.error("Failed to update user settings:", err);
-      setSettings(previousSettings);
-      toast.error("Failed to sync settings with database. Reverting.");
+      console.warn("User settings database sync notice:", err);
+      if (updates.onboardingCompleted !== undefined) {
+        // P0 Resilience: NEVER revert onboardingCompleted state locally so users are not trapped in onboarding loops
+        setSettings((prev) => (prev ? { ...prev, onboardingCompleted: updates.onboardingCompleted! } : null));
+      } else {
+        setSettings(previousSettings);
+        toast.error("Failed to sync settings with database. Reverting.");
+      }
     }
   }, [userId, isGuestUser, settings, userEmail]);
 
   const completeOnboarding = useCallback(async () => {
     // Always persist to localStorage as a reliable same-device fallback,
     // so even if the DB write fails, onboarding won't re-appear on refresh
-    try { localStorage.setItem(ONBOARD_LOCAL_KEY(userEmail), "true"); } catch {}
+    try {
+      localStorage.setItem(ONBOARD_LOCAL_KEY(userEmail), "true");
+      localStorage.setItem("pps_onboarding_completed", "true");
+      localStorage.setItem("pps_onboarded_guest", "true");
+      localStorage.setItem("pps_guest_onboarded", "true");
+    } catch {}
     await updateSettings({ onboardingCompleted: true });
   }, [userEmail, updateSettings]);
 

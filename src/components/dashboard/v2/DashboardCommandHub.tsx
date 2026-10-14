@@ -22,6 +22,7 @@ import { MotivationalQuoteWidget } from "@/components/dashboard/MotivationalQuot
 import { StickyNotesWidget } from "@/components/dashboard/StickyNotesWidget";
 import { Reminder } from "@/hooks/use-reminders";
 import { toast } from "sonner";
+import { isMicroCompleted } from "@/lib/dashboard/microHabits";
 
 export interface DashboardCommandHubProps {
   completionRate: number;
@@ -98,7 +99,7 @@ export const DashboardCommandHub: React.FC<DashboardCommandHubProps> = ({
     return { diff: weeklyPoints - lastWeekPoints };
   }, [habits, weeklyPoints]);
 
-  // 2. 30-Day Activity Heatmap Days
+  // 2. 30-Day Activity Heatmap Days (Distinguishes full vs lighter partial micro completions)
   const heatmapDays = useMemo(() => {
     const list = [];
     const endOffset = heatmapOffset * 30;
@@ -106,11 +107,26 @@ export const DashboardCommandHub: React.FC<DashboardCommandHubProps> = ({
       const d = new Date();
       d.setDate(d.getDate() - i);
       const ds = d.toISOString().split("T")[0];
-      let done = 0;
+      let fullDone = 0;
+      let microDone = 0;
       habits.forEach((h) => {
-        if ((h.completedDates || []).includes(ds)) done++;
+        if ((h.completedDates || []).includes(ds)) {
+          if (isMicroCompleted(h.id, ds)) {
+            microDone++;
+          } else {
+            fullDone++;
+          }
+        }
       });
-      list.push({ dateStr: ds, dayNum: d.getDate(), count: done, isToday: i === 0 });
+      list.push({
+        dateStr: ds,
+        dayNum: d.getDate(),
+        count: fullDone + microDone,
+        fullDone,
+        microDone,
+        isMicroOnly: microDone > 0 && fullDone === 0,
+        isToday: i === 0,
+      });
     }
     return list;
   }, [habits, heatmapOffset]);
@@ -302,12 +318,19 @@ export const DashboardCommandHub: React.FC<DashboardCommandHubProps> = ({
               <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5 mt-3">
                 {heatmapDays.map((d, i) => {
                   let bgClass = "bg-surface/50 border border-border/40 text-muted-foreground";
-                  if (d.count >= 4)
+                  if (d.isMicroOnly) {
+                    bgClass = "bg-primary/15 text-primary/80 border border-dashed border-primary/35 font-normal";
+                  } else if (d.count >= 4) {
                     bgClass = "bg-primary text-primary-foreground font-bold border border-primary/50 shadow-xs";
-                  else if (d.count >= 2)
+                  } else if (d.count >= 2) {
                     bgClass = "bg-primary/80 text-white border border-primary/40 font-semibold";
-                  else if (d.count >= 1)
+                  } else if (d.count >= 1) {
                     bgClass = "bg-primary/30 text-foreground border border-primary/30 font-medium";
+                  }
+
+                  const titleText = d.isMicroOnly
+                    ? `${d.dateStr}: ${d.microDone} 2-min micro completion${d.microDone !== 1 ? "s" : ""} (streak protected, lighter state)`
+                    : `${d.dateStr}: ${d.count} completion${d.count !== 1 ? "s" : ""}${d.microDone > 0 ? ` (${d.microDone} micro)` : ""}`;
 
                   return (
                     <motion.div
@@ -316,7 +339,7 @@ export const DashboardCommandHub: React.FC<DashboardCommandHubProps> = ({
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: i * 0.008 }}
                       whileHover={{ scale: 1.15 }}
-                      title={`${d.dateStr}: ${d.count} completion${d.count !== 1 ? "s" : ""}`}
+                      title={titleText}
                       className={`aspect-square rounded-lg flex flex-col items-center justify-center text-[10px] font-mono cursor-pointer transition-all ${bgClass} ${
                         d.isToday ? "ring-2 ring-secondary" : ""
                       }`}

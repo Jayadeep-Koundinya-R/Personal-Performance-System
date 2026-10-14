@@ -37,21 +37,33 @@ export const OnboardingGuard: React.FC<Props> = ({ children, profile }) => {
     return <Navigate to="/pricing" replace state={{ trialExpired: true }} />;
   }
 
-  const onboardingCompleted =
-    profile?.onboarding_completed ??
-    profile?.onboardingCompleted ??
-    settings?.onboardingCompleted ??
-    (user as any)?.onboarding_completed ??
-    false;
+  // Check all possible onboarding keys in localStorage
+  const userEmail = user?.email || "guest";
+  const localOnboarded =
+    typeof window !== "undefined" &&
+    (localStorage.getItem("pps_onboarding_completed") === "true" ||
+      localStorage.getItem("pps_skip_onboarding") === "true" ||
+      localStorage.getItem("pps_onboarded_guest") === "true" ||
+      localStorage.getItem("pps_guest_onboarded") === "true" ||
+      localStorage.getItem(`pps_onboarded_${userEmail}`) === "true");
+
+  const isGuestUser = Boolean(user.isGuest);
+  const onboardingCompleted = Boolean(
+    profile?.onboarding_completed ||
+    profile?.onboardingCompleted ||
+    settings?.onboardingCompleted ||
+    (user as any)?.onboarding_completed ||
+    localOnboarded
+  );
   const isOnboardingRoute = location.pathname === '/onboarding';
 
-  // Rule 2: If authenticated and onboarding_completed === false, redirect to /onboarding
-  if (!onboardingCompleted && !isOnboardingRoute) {
+  // Rule 2: If authenticated (and not a guest exploring the demo) and onboarding_completed === false, redirect to /onboarding
+  if (!onboardingCompleted && !isGuestUser && !isOnboardingRoute) {
     return <Navigate to="/onboarding" replace />;
   }
 
   // Rule 3: If route is /onboarding and onboarding_completed === true, redirect to /dashboard
-  if (onboardingCompleted && isOnboardingRoute) {
+  if (onboardingCompleted && isOnboardingRoute && !location.search.includes('reconfigure')) {
     return <Navigate to="/dashboard" replace />;
   }
 

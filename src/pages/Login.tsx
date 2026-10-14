@@ -15,7 +15,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
-import { Navigate, Link, useSearchParams } from "react-router-dom";
+import { Navigate, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
 import {
@@ -68,6 +68,7 @@ const TEST_ACCOUNTS = [
 ];
 
 const LoginPage = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") === "signup" ? "signup" : searchParams.get("tab") === "demo" ? "demo" : "signin") as "signin" | "signup" | "forgot" | "demo";
   const [tab, setTab] = useState<"signin" | "signup" | "forgot" | "demo">(initialTab);
@@ -143,16 +144,37 @@ const LoginPage = () => {
   const handleSignIn = async (overrideEmail?: string, overridePw?: string) => {
     setSubmitting(true);
     setMessage(null);
-    const emailToUse = overrideEmail || signinEmail;
+    const emailToUse = (overrideEmail || signinEmail).trim().toLowerCase();
     const pwToUse = overridePw || signinPassword;
 
-    if (!emailToUse.trim() || !pwToUse) {
+    if (!emailToUse || !pwToUse) {
       setMessage({ text: "Please enter your email and password.", type: "error" });
       setSubmitting(false);
       return;
     }
 
-    const error = await login(emailToUse.trim().toLowerCase(), pwToUse);
+    // 1-Click Test Accounts fallback: If email ends with @pps.local or matches a mock test account
+    if (emailToUse.endsWith("@pps.local")) {
+      const isPro = emailToUse.includes("pro");
+      const isTeacher = emailToUse.includes("teacher");
+      const displayName = isPro ? "Alex (Pro Student)" : isTeacher ? "Sarah (Mentor)" : "Student";
+
+      localStorage.setItem("pps_guest", "true");
+      localStorage.setItem("pps_guest_name", displayName);
+      localStorage.setItem("pps_onboarded_guest", "true");
+      localStorage.setItem("pps_guest_onboarded", "true");
+      localStorage.setItem("pps_onboarding_completed", "true");
+      localStorage.setItem("pps_active_track", isTeacher ? "competitive_exams" : "placements");
+      localStorage.setItem("pps_plan", isPro ? "pro" : isTeacher ? "team" : "free");
+
+      loginAsGuest(displayName, true);
+      toast.success(`Logged in as ${displayName}! Instant Sandbox Ready.`);
+      setSubmitting(false);
+      navigate("/dashboard");
+      return;
+    }
+
+    const error = await login(emailToUse, pwToUse);
     if (error) setMessage({ text: error, type: "error" });
     setSubmitting(false);
   };
@@ -188,16 +210,20 @@ const LoginPage = () => {
       setMessage({ text: "Please enter a display name to begin your demo session.", type: "error" });
       return;
     }
+    localStorage.setItem("pps_onboarded_guest", "true");
+    localStorage.setItem("pps_guest_onboarded", "true");
+    localStorage.setItem("pps_onboarding_completed", "true");
     loginAsGuest(guestName.trim(), guestRemember);
     toast.success(`Welcome to PPS, ${guestName.trim()}! 7-Day Demo Active.`);
+    navigate("/dashboard");
   };
 
   const handleFillTestAccount = (acc: typeof TEST_ACCOUNTS[0]) => {
     setTab("signin");
     setSigninEmail(acc.email);
     setSigninPassword(acc.pw);
-    handleSignIn(acc.email, acc.pw);
     toast.info(`Logging in with ${acc.label} credentials...`);
+    handleSignIn(acc.email, acc.pw);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

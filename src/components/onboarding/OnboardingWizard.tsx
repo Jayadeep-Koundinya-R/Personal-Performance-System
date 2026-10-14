@@ -56,6 +56,8 @@ export const OnboardingWizard: React.FC<Props> = ({ initialState, onComplete }) 
 
   // Capacitor hardware back button handling
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
     let listenerHandle: { remove: () => Promise<void> } | undefined;
 
     App.addListener('backButton', () => {
@@ -83,43 +85,95 @@ export const OnboardingWizard: React.FC<Props> = ({ initialState, onComplete }) 
   };
 
   const handleNextStep = () => {
-    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+    if (Capacitor.isNativePlatform()) {
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+    }
     setStep((prev) => Math.min(prev + 1, 4));
   };
 
   const handleBackStep = () => {
-    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+    if (Capacitor.isNativePlatform()) {
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+    }
     setStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleSkipToDashboard = () => {
+    try {
+      localStorage.setItem('pps_onboarding_completed', 'true');
+      localStorage.setItem('pps_onboarded_guest', 'true');
+      localStorage.setItem('pps_guest_onboarded', 'true');
+      localStorage.setItem('pps_skip_onboarding', 'true');
+      localStorage.setItem('pps_active_track', wizardState.selectedPrimaryTrack);
+    } catch {}
+
+    if (onComplete) {
+      try {
+        onComplete(wizardState);
+      } catch {}
+    }
+    navigate('/dashboard', { replace: true });
   };
 
   const handleCompleteOnboarding = async (state: OnboardingWizardState) => {
     setIsSubmitting(true);
     try {
-      const { data, error } = await supabase.rpc('complete_onboarding', {
-        p_payload: state,
-      });
-      if (error) throw error;
+      // 1. Immediately persist configuration in localStorage so the user is never trapped
+      localStorage.setItem('pps_onboarding_completed', 'true');
+      localStorage.setItem('pps_onboarded_guest', 'true');
+      localStorage.setItem('pps_guest_onboarded', 'true');
+      localStorage.setItem('pps_active_track', state.selectedPrimaryTrack);
+      localStorage.setItem('pps_track5_enabled', String(state.enableTrack5Challenge));
+      localStorage.setItem('pps_daily_focus_hours', String(state.dailyFocusHours));
+      localStorage.setItem('pps_bottleneck_id', state.selectedBottleneckId);
+      localStorage.setItem('pps_social_choice', state.socialChoice);
+      if (state.joinSquadCode) {
+        localStorage.setItem('pps_squad_code', state.joinSquadCode);
+      }
 
-      // Trigger success haptic
+      // 2. Defensively attempt backend RPC if present in Supabase
+      try {
+        const { error } = await supabase.rpc('complete_onboarding', {
+          p_payload: state,
+        });
+        if (error) {
+          console.warn('Backend complete_onboarding RPC unavailable (falling back to client persistence):', error.message);
+        }
+      } catch (rpcErr) {
+        console.warn('Backend complete_onboarding RPC call skipped:', rpcErr);
+      }
+
+      // 3. Trigger success haptic on mobile
       if (Capacitor.isNativePlatform()) {
         await Haptics.notification({ type: NotificationType.Success }).catch(() => {});
       }
 
-      // Invalidate active user profile query and navigate to dashboard
+      // 4. Invalidate active user profile query
       if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: ['profile'] });
+        try {
+          queryClient.invalidateQueries({ queryKey: ['profile'] });
+        } catch {}
       }
 
+      // 5. Invoke parent onComplete callback
       if (onComplete) {
-        onComplete(state);
+        try {
+          await onComplete(state);
+        } catch (onCompleteErr) {
+          console.warn('onComplete callback notice:', onCompleteErr);
+        }
       }
 
+      // 6. Navigate to dashboard
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
-      toast.error(err.message || 'Failed to complete onboarding');
+      console.warn('Onboarding completion fallback:', err);
       if (onComplete) {
-        onComplete(state);
+        try {
+          await onComplete(state);
+        } catch {}
       }
+      navigate('/dashboard', { replace: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -132,8 +186,19 @@ export const OnboardingWizard: React.FC<Props> = ({ initialState, onComplete }) 
       {/* Top Header & Step Progress Bar */}
       <div className="space-y-4">
         <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-muted-foreground">
-          <span>Step {step} of 4</span>
-          <span className="text-primary font-bold">{STEP_TITLES[step - 1]}</span>
+          <div className="flex items-center gap-2">
+            <span>Step {step} of 4</span>
+            <span className="text-muted-foreground/40">•</span>
+            <span className="text-primary font-bold">{STEP_TITLES[step - 1]}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleSkipToDashboard}
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline transition-colors cursor-pointer flex items-center gap-1 font-medium"
+          >
+            <span>Skip to Dashboard</span>
+            <span>→</span>
+          </button>
         </div>
 
         <Progress value={progressPercentage} className="h-2.5 transition-all duration-300" />

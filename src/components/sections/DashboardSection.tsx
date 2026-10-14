@@ -12,7 +12,8 @@ import { TaskSection } from "@/components/dashboard/TaskSection";
 import { VayuPulseBanner } from "@/components/vayu/VayuPulseBanner";
 import { VayuFlowStudioModal } from "@/components/vayu/VayuFlowStudioModal";
 import { MiniPomodoroCard } from "@/components/dashboard/MiniPomodoroCard";
-import { TrackCommandStrip } from "@/components/dashboard/v2/TrackCommandStrip";
+import { UnifiedHeroDeck } from "@/components/dashboard/v2/UnifiedHeroDeck";
+import { DashboardHubTiles } from "@/components/dashboard/v2/DashboardHubTiles";
 import { ImmediateRemindersStrip } from "@/components/dashboard/v2/ImmediateRemindersStrip";
 import { QuickAddHabitCard } from "@/components/dashboard/v2/QuickAddHabitCard";
 import { DashboardCommandHub } from "@/components/dashboard/v2/DashboardCommandHub";
@@ -20,6 +21,9 @@ import { Link } from "react-router-dom";
 import { Search, X, Volume2, VolumeX } from "lucide-react";
 import { feedbackSounds } from "@/lib/audio/clickFeedback";
 import { toast } from "sonner";
+import { canFireGlobalShortcut } from "@/lib/utils/keyboard";
+import { canClaimRecoveryXP, claimRecoveryXP } from "@/lib/dashboard/microHabits";
+import { getNextBestAction, getCurrentTimeHHMM, STARTER_HABIT_STACK } from "@/lib/dashboard/recommendations";
 
 function getUrgencyLevel(habit: any): "normal" | "urgent" | "overdue" {
   if (!habit.endTime || (habit.completedDates || []).includes(new Date().toISOString().split("T")[0])) {
@@ -100,7 +104,8 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
 
   const { profile } = useProfile();
   const { user } = useAuth();
-  const { todayFocusMinutes } = useFocusTimer();
+  const focusTimer = useFocusTimer();
+  const { todayFocusMinutes } = focusTimer;
   const { reminders: allReminders } = useReminders();
   const reminders = allReminders.filter((r) => r.enabled);
   const nudge = useLifecycleNudges();
@@ -155,7 +160,24 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     try {
       localStorage.setItem(`pps_skipped_${todayStr}`, JSON.stringify(next));
     } catch {}
-    toast.info(`Habit marked as ${reason}`, { description: "Streak protected for today! 🧊" });
+
+    if (reason === "Rest 💤" || reason === "Sick 🤒") {
+      const check = canClaimRecoveryXP(todayStr);
+      if (check.allowed) {
+        claimRecoveryXP(todayStr);
+        toast.info(`Habit marked as ${reason} 🛡️`, {
+          description: "Rest Day Honored! Recovery fuels high performance. +5 Recovery XP! 🌿",
+        });
+      } else {
+        toast.info(`Habit marked as ${reason} 🛡️`, {
+          description: check.reason || "Rest Day noted.",
+        });
+      }
+    } else {
+      toast.info(`Habit marked as ${reason} 🛡️`, {
+        description: "Schedule adjusted with zero guilt.",
+      });
+    }
   };
 
   const handleToggleHabit = async (habitId: string) => {
@@ -335,19 +357,62 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     } catch {}
   };
 
-  // Keyboard shortcuts (M: Mark All Done)
+  const handleInstallStarterStack = useCallback(async () => {
+    for (const s of STARTER_HABIT_STACK) {
+      await addHabit(s.name, s.category, s.period, s.priority, todayStr, s.time, null, s.color);
+    }
+    toast.success("Starter Habit Stack installed! 🚀");
+  }, [addHabit, todayStr]);
+
+  // Keyboard shortcuts (Space: Launch Sprint, M: Mark All Done, Z: Toggle Zen, V: Cycle Views)
+  // Preserves 1-5 strictly for section navigation; prevents firing in interactive elements & modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const activeTag = document.activeElement?.tagName.toLowerCase();
-      if (activeTag === "input" || activeTag === "textarea" || activeTag === "select") return;
+      if (!canFireGlobalShortcut(e)) return;
+
       if ((e.key === "m" || e.key === "M") && dueToday.length > 0 && doneToday.length < dueToday.length) {
         e.preventDefault();
         markAllDone();
+        return;
+      }
+
+      if (e.key === " " || e.code === "Space") {
+        if (focusTimer.isRunning) {
+          e.preventDefault();
+          focusTimer.toggleTimer();
+          return;
+        }
+        const nba = getNextBestAction({
+          habits,
+          todayStr,
+          currentTimeStr: getCurrentTimeHHMM(),
+          skippedHabits,
+        });
+        if (nba) {
+          e.preventDefault();
+          focusTimer.startHabitFocus(nba, 25);
+          toast.success(`⏱️ 25m Deep Work Sprint launched for "${nba.name}"!`);
+        }
+        return;
+      }
+
+      if (e.key === "z" || e.key === "Z") {
+        e.preventDefault();
+        handleViewModeChange(viewMode === "zen" ? "priority" : "zen");
+        return;
+      }
+
+      if (e.key === "v" || e.key === "V") {
+        e.preventDefault();
+        handleViewModeChange(
+          viewMode === "priority" ? "timeblock" : viewMode === "timeblock" ? "zen" : "priority"
+        );
+        return;
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dueToday.length, doneToday.length, markAllDone]);
+  }, [dueToday, doneToday.length, markAllDone, todayStr, skippedHabits, focusTimer, viewMode]);
 
   // Sorting habits helper
   const priorityWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1, Optional: 0 };
@@ -496,19 +561,33 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {!isCompletedToday && !isSkipped && (
-              <select
-                onChange={(e) => {
-                  if (e.target.value) handleSkipHabit(habit.id, e.target.value);
-                }}
-                defaultValue=""
-                className="text-[10px] bg-surface border border-border px-1 py-0.5 rounded text-muted-foreground outline-none cursor-pointer hover:border-primary"
-                title="Skip today with reason"
-              >
-                <option value="" disabled>Skip...</option>
-                <option value="Rest">Rest Day 💤</option>
-                <option value="Sick">Sick 🤒</option>
-                <option value="Busy">Busy 💼</option>
-              </select>
+              <>
+                <button
+                  onClick={() => {
+                    handleToggleHabit(habit.id);
+                    toast.success(`🪜 Micro-step done: "${habit.name}"!`, {
+                      description: "Small daily consistency compounds. +5 Micro XP!",
+                    });
+                  }}
+                  className="text-[9.5px] bg-surface hover:bg-muted border border-border px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground transition-all cursor-pointer font-mono"
+                  title="Scale down to a 2m micro-habit when energy is low"
+                >
+                  🪜 2m
+                </button>
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) handleSkipHabit(habit.id, e.target.value);
+                  }}
+                  defaultValue=""
+                  className="text-[10px] bg-surface border border-border px-1 py-0.5 rounded text-muted-foreground outline-none cursor-pointer hover:border-primary"
+                  title="Skip today with reason"
+                >
+                  <option value="" disabled>Skip...</option>
+                  <option value="Rest">Rest Day 💤</option>
+                  <option value="Sick">Sick 🤒</option>
+                  <option value="Busy">Busy 💼</option>
+                </select>
+              </>
             )}
             <span className={`text-[10px] px-2 py-0.2 rounded-full font-semibold font-mono whitespace-nowrap ${tagClass}`}>
               {tagText}
@@ -569,21 +648,45 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {!isCompletedToday && !isSkipped && (
-            <select
-              onChange={(e) => {
-                if (e.target.value) handleSkipHabit(habit.id, e.target.value);
-              }}
-              defaultValue=""
-              className="text-[11px] bg-surface border border-border px-1.5 py-0.5 rounded text-muted-foreground outline-none cursor-pointer hover:border-primary"
-              title="Skip today with reason"
-            >
-              <option value="" disabled>Skip...</option>
-              <option value="Rest">Rest Day 💤</option>
-              <option value="Sick">Sick 🤒</option>
-              <option value="Busy">Busy 💼</option>
-            </select>
+            <>
+              <button
+                onClick={() => {
+                  focusTimer.startHabitFocus(habit, 25);
+                  toast.success(`⏱️ 25m Focus Sprint launched for "${habit.name}"!`);
+                }}
+                className="text-[10px] bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-lg transition-all cursor-pointer font-mono font-bold flex items-center gap-0.5"
+                title="Launch 25m Pomodoro Focus Session for this habit"
+              >
+                <span>⚡ 25m</span>
+              </button>
+              <button
+                onClick={() => {
+                  handleToggleHabit(habit.id);
+                  toast.success(`🪜 Micro-Habit Logged: "${habit.name}"!`, {
+                    description: "Consistency preserved with zero burnout. +5 Micro XP! 🌿",
+                  });
+                }}
+                className="text-[10px] bg-surface hover:bg-muted border border-border px-1.5 py-0.5 rounded-lg text-muted-foreground hover:text-foreground transition-all cursor-pointer font-mono"
+                title="Scale to 2m micro-habit when tired to preserve momentum"
+              >
+                🪜 2m Micro
+              </button>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) handleSkipHabit(habit.id, e.target.value);
+                }}
+                defaultValue=""
+                className="text-[11px] bg-surface border border-border px-1.5 py-0.5 rounded text-muted-foreground outline-none cursor-pointer hover:border-primary"
+                title="Skip today with reason"
+              >
+                <option value="" disabled>Skip...</option>
+                <option value="Rest">Rest Day 💤</option>
+                <option value="Sick">Sick 🤒</option>
+                <option value="Busy">Busy 💼</option>
+              </select>
+            </>
           )}
           <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold font-mono whitespace-nowrap ${tagClass}`}>
             {tagText}
@@ -656,12 +759,27 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         </motion.div>
       )}
 
-      {/* Track Command Strip Header */}
-      <TrackCommandStrip
+      {/* ── Unified Hero Command Deck ── */}
+      <UnifiedHeroDeck
         profile={profile}
-        todayMinutesCompleted={todayFocusMinutes}
         completionRate={completionRate}
         maxStreak={maxStreak}
+        freezeCredits={freezeCredits}
+        todayFocusMinutes={todayFocusMinutes}
+        habits={habits}
+        todayStr={todayStr}
+        onToggleHabit={handleToggleHabit}
+        onSkipHabit={handleSkipHabit}
+        onNavigate={onNavigate}
+        skippedHabits={skippedHabits}
+        onInstallStarterStack={handleInstallStarterStack}
+      />
+
+      {/* ── Dashboard Hub Tiles (Live Module Radar) ── */}
+      <DashboardHubTiles
+        habits={habits}
+        todayStr={todayStr}
+        onNavigate={onNavigate}
       />
 
       {/* ── ZONE 2: PRIMARY ACTION CORE (Above the Fold) ── */}
@@ -681,17 +799,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             </div>
             <div className="sm:ml-auto">
               <button
-                onClick={async () => {
-                  const starters = [
-                    { name: "💻 20-min Deep Work Sprint", cat: "Productivity", period: "Daily", priority: "High", time: "09:00", color: "indigo" },
-                    { name: "💧 Morning Sunlight & Hydration", cat: "Health", period: "Daily", priority: "High", time: "07:30", color: "sky" },
-                    { name: "📚 Read 10 Pages of Growth", cat: "Mindset", period: "Daily", priority: "Medium", time: "20:30", color: "emerald" },
-                  ];
-                  for (const s of starters) {
-                    await addHabit(s.name, s.cat, s.period, s.priority, todayStr, s.time, null, s.color);
-                  }
-                  toast.success("Starter Habit Stack installed! 🚀");
-                }}
+                onClick={handleInstallStarterStack}
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground text-xs font-black transition-all hover:scale-105 shadow-md shadow-primary/20 cursor-pointer flex items-center gap-2"
               >
                 <span>⚡</span>
@@ -819,38 +927,6 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 </select>
               </div>
             </div>
-
-            {/* Recommended Next Action Banner */}
-            {dueToday.some((h) => !h.completedDates.includes(todayStr) && !skippedHabits[h.id]) && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 px-4 rounded-2xl bg-gradient-to-r from-primary/15 via-card to-accent/15 border border-primary/35 flex items-center justify-between flex-wrap gap-2 text-xs shadow-xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold shadow-2xs">
-                    ⚡
-                  </div>
-                  <div>
-                    <span className="font-mono text-[9.5px] uppercase font-bold text-primary tracking-wider">
-                      Recommended Next Action
-                    </span>
-                    <strong className="text-xs sm:text-sm text-foreground font-bold block">
-                      {dueToday.find((h) => !h.completedDates.includes(todayStr) && !skippedHabits[h.id])?.name}
-                    </strong>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    const target = dueToday.find((h) => !h.completedDates.includes(todayStr) && !skippedHabits[h.id]);
-                    if (target) handleToggleHabit(target.id);
-                  }}
-                  className="px-3 py-1.5 bg-gradient-to-r from-primary to-accent hover:opacity-95 text-primary-foreground text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
-                >
-                  ✓ Complete Now (+10 XP)
-                </button>
-              </motion.div>
-            )}
 
             {/* Active Habit List */}
             <AnimatePresence mode="wait">

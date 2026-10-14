@@ -138,8 +138,9 @@ export function RemindersProvider({
     refresh();
 
     if (!isGuestUser && userId && isValidUUID(userId)) {
+      const channelId = `realtime-reminders-${userId}-${Math.random().toString(36).slice(2, 7)}`;
       const channel = supabase
-        .channel(`reminders-changes-${userId}`)
+        .channel(channelId)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "reminders", filter: `user_id=eq.${userId}` },
@@ -150,7 +151,9 @@ export function RemindersProvider({
         .subscribe();
 
       return () => {
-        supabase.removeChannel(channel);
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
       };
     }
   }, [refresh, isGuestUser, userId]);

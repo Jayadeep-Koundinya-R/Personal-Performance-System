@@ -453,6 +453,14 @@ function useProvideAuth(): AuthReturn {
     if (!localStorage.getItem("pps_guest_created_at")) {
       localStorage.setItem("pps_guest_created_at", new Date().toISOString());
     }
+    // Set onboarded keys so demo mode loads the dashboard instantly without blocking errors
+    localStorage.setItem("pps_onboarded_guest", "true");
+    localStorage.setItem("pps_guest_onboarded", "true");
+    localStorage.setItem("pps_onboarding_completed", "true");
+    if (!localStorage.getItem("pps_active_track")) {
+      localStorage.setItem("pps_active_track", "placements");
+    }
+
     sendFreeTrialNotification(name || localStorage.getItem("pps_guest_name") || "Explorer");
     setUser(guestUser);
     if (typeof window !== "undefined") {

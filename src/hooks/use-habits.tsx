@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserSettings } from "@/hooks/use-user-settings";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
+import { isMicroCompleted } from "@/lib/dashboard/microHabits";
 
 export const CONFIG = {
   XP_PER_COMPLETION: 10,
@@ -218,8 +219,9 @@ export function HabitsProvider({
     fetchHabits();
 
     // Subscribe to realtime changes
+    const channelId = `realtime-habits-${userId}-${Math.random().toString(36).slice(2, 7)}`;
     const channel = supabase
-      .channel('habits-changes')
+      .channel(channelId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'habits', filter: `user_id=eq.${userId}` }, () => {
         fetchHabits();
       })
@@ -228,7 +230,11 @@ export function HabitsProvider({
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch {}
+    };
   }, [userId, isGuest, userEmail, fetchHabits]);
 
   // Guest mode: save to localStorage
@@ -667,7 +673,10 @@ export function HabitsProvider({
   }, [habits, isGuest, userId, fetchHabits, isHabitDueToday]);
 
   const calculateTotalXP = useCallback((): number => {
-    return habits.reduce((sum, h) => sum + h.completedDates.length * CONFIG.XP_PER_COMPLETION, 0);
+    return habits.reduce((sum, h) => {
+      const fullCompletions = (h.completedDates || []).filter((d) => !isMicroCompleted(h.id, d));
+      return sum + fullCompletions.length * CONFIG.XP_PER_COMPLETION;
+    }, 0);
   }, [habits]);
 
   const calculateLevel = useCallback((): number => {
@@ -678,7 +687,10 @@ export function HabitsProvider({
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
     return habits.reduce((sum, h) => {
-      return sum + h.completedDates.filter(d => new Date(d) >= weekAgo).length * CONFIG.XP_PER_COMPLETION;
+      const fullWeekCompletions = (h.completedDates || []).filter(
+        (d) => !isMicroCompleted(h.id, d) && new Date(d) >= weekAgo
+      );
+      return sum + fullWeekCompletions.length * CONFIG.XP_PER_COMPLETION;
     }, 0);
   }, [habits]);
 

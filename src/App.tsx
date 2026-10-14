@@ -131,6 +131,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/analytics"
+          element={
+            <OnboardingGuard>
+              <DashboardPage />
+            </OnboardingGuard>
+          }
+        />
+        <Route
           path="/settings"
           element={
             <OnboardingGuard>

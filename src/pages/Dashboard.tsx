@@ -22,7 +22,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { useReminderScheduler } from "@/hooks/use-reminder-scheduler";
 import { DashboardProviders } from "@/providers/AppProviders";
 import RitualOverlay from "@/components/RitualOverlay";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useLocation } from "react-router-dom";
 import AiChatWidget from "@/components/ui/AiChatWidget";
 import VoiceControlModal from "@/components/ui/VoiceControlModal";
 import { Mic, ChevronDown, MoreHorizontal, Sparkles, X, Flame, Layers, Bell, Trash2 } from "lucide-react";
@@ -138,7 +138,31 @@ function AlarmOverlay({ alarm, onDismiss, onSnooze, onComplete }: {
 
 function DashboardInner({ user }: { user: User }) {
   const { logout } = useAuth();
-  const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
+  const location = useLocation();
+  const [activeSection, setActiveSection] = useState<SectionKey>(() => {
+    try {
+      const path = location.pathname.toLowerCase();
+      if (path === "/analytics" || path.endsWith("/analytics")) return "analytics";
+      if (path === "/social" || path.endsWith("/social") || path === "/focus-rooms") return "social";
+      const hash = window.location.hash;
+      const searchIdx = hash.indexOf("?");
+      if (searchIdx !== -1) {
+        const params = new URLSearchParams(hash.slice(searchIdx));
+        const sec = params.get("section");
+        if (sec && NAV_ITEMS.some((n) => n.key === sec)) return sec;
+      }
+    } catch {}
+    return "dashboard";
+  });
+
+  useEffect(() => {
+    const path = location.pathname.toLowerCase();
+    if (path === "/analytics" || path.endsWith("/analytics")) {
+      setActiveSection("analytics");
+    } else if (path === "/social" || path.endsWith("/social") || path === "/focus-rooms") {
+      setActiveSection("social");
+    }
+  }, [location.pathname]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);

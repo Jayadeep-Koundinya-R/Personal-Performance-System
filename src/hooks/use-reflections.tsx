@@ -93,8 +93,9 @@ export function ReflectionsProvider({
 
     if (!isGuestUser && userId) {
       try {
+        const channelId = `realtime-reflections-${userId}-${Math.random().toString(36).slice(2, 7)}`;
         const channel = supabase
-          .channel("reflections-realtime")
+          .channel(channelId)
           .on(
             "postgres_changes",
             { event: "*", schema: "public", table: "reflections", filter: `user_id=eq.${userId}` },
@@ -105,7 +106,9 @@ export function ReflectionsProvider({
           .subscribe();
 
         return () => {
-          supabase.removeChannel(channel);
+          try {
+            supabase.removeChannel(channel);
+          } catch {}
         };
       } catch (err) {
         console.error("Failed to subscribe to reflections realtime:", err);

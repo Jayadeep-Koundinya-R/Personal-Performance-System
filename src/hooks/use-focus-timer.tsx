@@ -18,6 +18,7 @@ import { useHabits } from "@/hooks/use-habits";
 import { ambientSound } from "@/lib/ambient-sound";
 import { toast } from "sonner";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
+import { canFireGlobalShortcut } from "@/lib/utils/keyboard";
 
 export type TimerMode = "pomodoro" | "shortBreak" | "longBreak" | "custom";
 
@@ -695,11 +696,10 @@ export function FocusTimerProvider({
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   }, []);
 
-  // Global Keyboard Shortcuts
+  // Global Keyboard Shortcuts (Protected against input/button focus and open modals)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable) {
+      if (!canFireGlobalShortcut(e)) {
         return;
       }
 
