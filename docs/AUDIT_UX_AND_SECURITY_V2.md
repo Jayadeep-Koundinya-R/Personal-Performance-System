@@ -1,204 +1,219 @@
-# Comprehensive UX Flow Audit & Security Gap Analysis (V2)
+# Personal Performance System (PPS) - Comprehensive UX Flow Audit & Security Gap Analysis (V2)
 
 **Audit Date:** May 2026
 **Auditor:** Jules (Senior Software Engineer / Security & UX Auditor)
 **Target Repository:** Personal Performance System (PPS)
-**Audit Scope:** Authentication & Session State Lifecycle, Pricing & Subscription Tier Consistency, Competitor UX Benchmarking (Opal, Forest, Habitica) & Friction Analysis.
+**Audit Type:** Read-Only Technical Architecture, UX Journey, and Security Analysis
+**Deliverable File:** `docs/AUDIT_UX_AND_SECURITY_V2.md`
+
+---
+
+## Executive Summary
+
+This READ-ONLY audit delivers an exhaustive analysis of the **Personal Performance System (PPS)** across three critical dimensions:
+1. **Authentication & Session State Flow Audit:** Mapping every session lifecycle branch, state persistence mechanism, React Query cache invalidation gap, and HashRouter OAuth edge case.
+2. **Pricing & Subscription Consistency Audit:** Scanning hardcoded tier limits, pricing constants, Stripe integration Hooks, and proposing a single strongly-typed unified schema.
+3. **Competitor UX & Friction Analysis:** Benchmarking PPS's initial 3-minute student journey against Opal, Forest, and Habitica, isolating top friction points, and proposing 3 concrete mobile/circadian UX enhancements.
 
 ---
 
 ## 1. Authentication & Session State Flow Audit
 
-### 1.1 Complete Lifecycle Trace & Branch Mapping
+### 1.1 Authentication Lifecycle Branch Tracing & Flow Mapping
+
+```
+                       ┌────────────────────────────────────────┐
+                       │  Fresh Anonymous Visitor Lands on /    │
+                       └───────────────────┬────────────────────┘
+                                           │
+                      ┌────────────────────┴────────────────────┐
+                      ▼                                         ▼
+            [Click "Try Guest Demo"]                 [Click "Sign In / Sign Up"]
+                      │                                         │
+                      ▼                                         ▼
+         ┌─────────────────────────┐               ┌─────────────────────────┐
+         │ Guest / Demo Mode       │               │ Supabase Password /     │
+         │ - pps_guest: true       │               │ Google OAuth Flow       │
+         │ - 7-Day Local Trial     │               └────────────┬────────────┘
+         └────────────┬────────────┘                            │
+                      │                                         │
+                      ▼                                         ▼
+         ┌─────────────────────────┐               ┌─────────────────────────┐
+         │ Transition to Full Auth │──────────────►│ Authenticated Session   │
+         │ - migrateGuestData()    │               │ - Supabase JWT Session  │
+         │ - Migration Race Risk   │               │ - React Query Sync      │
+         └─────────────────────────┘               └────────────┬────────────┘
+                                                                │
+                                                                ▼
+                                                   ┌─────────────────────────┐
+                                                   │ Session Termination     │
+                                                   │ - logout()              │
+                                                   │ - Storage Purge Routine │
+                                                   └─────────────────────────┘
+```
 
 #### Branch A: Fresh Anonymous Visitor Landing on `/`
-* **Entry Point:** User opens the application URL (e.g. `https://domain.com/` or `https://domain.com/#/`).
-* **Execution Path:**
-  1. `App.tsx` initializes `HashRouter` and mounts `AppRoutes`.
+* **Entry Point:** User navigates to application root `https://domain.com/` or `https://domain.com/#/`.
+* **Execution Sequence:**
+  1. `App.tsx` initializes `HashRouter` and mounts `AppRoutes` wrapped inside `DashboardProviders` and `AuthProvider`.
   2. `useAuth()` hook (`src/hooks/use-auth.ts`, lines 220–292) evaluates initial guest state:
-     - `isGuestInitial` reads `localStorage.getItem("pps_guest")` and `sessionStorage.getItem("pps_guest")`.
-     - For a fresh visitor, both are `null`. `user` state initializes to `null` and `loading` initializes to `true`.
-  3. `useEffect` in `useAuth()` fires `supabase.auth.getSession()` and `supabase.auth.onAuthStateChange()`.
-  4. If no active Supabase session is returned, `setUser(null)` and `setLoading(false)` execute within the 800ms safety timeout fallback.
+     - `isGuestInitial` checks `localStorage.getItem("pps_guest") === "true"` or `sessionStorage.getItem("pps_guest") === "true"`.
+     - For a fresh visitor, both evaluate to `false`. `user` initializes to `null` and `loading` initializes to `true`.
+  3. `useEffect` in `useAuth()` calls `supabase.auth.getSession()` and subscribes to `supabase.auth.onAuthStateChange()`.
+  4. An 800ms safety timer (`safetyTimer`) ensures that slow network conditions do not stall the app launch. If no session is detected, `setUser(null)` and `setLoading(false)` execute.
   5. Route `/` renders `HomePage` (`src/pages/Home.tsx`).
 * **Identified Vulnerabilities & Redirect Edge Cases:**
-  * **Unauthenticated Access to Guarded Routes (`/dashboard`, `/settings`, `/onboarding`):**
-    When a fresh anonymous visitor navigates directly to `/dashboard`, `OnboardingGuard` (`src/routes/OnboardingGuard.tsx`, lines 29–31) triggers:
-    ```typescript
-    if (!isLoggedIn || !user) {
-      return <Navigate to="/login" replace state={{ from: location }} />;
-    }
-    ```
-    This successfully redirects to `/login`. However, if the user opens a deep route like `/focus-call/room-123` or `/meet/room-456`, `App.tsx` (lines 148–156) checks `FEATURE_FLAGS.ENABLE_VIDEO_ROOMS`. If enabled, those routes are **unprotected by `OnboardingGuard`**, allowing unauthenticated anonymous visitors direct access to video room interfaces.
+  * **Unprotected Video/Call Routes (`/focus-call/:groupId`, `/meet/:roomId`):**
+    In `App.tsx` (lines 148–156), when `FEATURE_FLAGS.ENABLE_VIDEO_ROOMS` is enabled, routes `/focus-call/:groupId` and `/meet/:roomId` are wrapped in `OnboardingGuard`. However, if `FEATURE_FLAGS.ENABLE_VIDEO_ROOMS` is toggled off, they redirect to `/dashboard`, which is protected. If enabled without proper session verification on the underlying WebRTC signaling server, unauthenticated users can access real-time meeting room controls directly.
+  * **OAuth Hash Collisions with `HashRouter`:**
+    In `useAuth.ts` (lines 245–258), OAuth hash callbacks (`#access_token=...&refresh_token=...`) are parsed before HashRouter changes the hash to `#/dashboard`. If a browser strips the hash fragment or if HashRouter rewrites the location before `getSession()` fires, the authentication callback fails silently, causing redirect loops back to `/login`.
 
 #### Branch B: Guest / Demo Mode Activation
-* **Entry Point:** Visitor clicks "Try Guest Demo" on `LoginPage` (`src/pages/Login.tsx`, lines 87–135) or landing page.
-* **Execution Path:**
-  1. Calls `loginAsGuest(guestName, remember)` in `useAuth()` (`src/hooks/use-auth.ts`, lines 349 font–367):
+* **Entry Point:** Visitor clicks "Try Guest Demo" on `LoginPage` (`src/pages/Login.tsx`, lines 87–135).
+* **Execution Sequence:**
+  1. Invokes `loginAsGuest(name, remember)` in `src/hooks/use-auth.ts` (lines 349–367):
      ```typescript
-     localStorage.setItem("pps_guest", "true"); // or sessionStorage
+     localStorage.setItem("pps_guest", "true");
      localStorage.setItem("pps_guest_name", name.trim());
      localStorage.setItem("pps_guest_created_at", new Date().toISOString());
+     localStorage.setItem("pps_onboarded_guest", "true");
      setUser({ email: null, isGuest: true });
      navigate("/dashboard");
      ```
-  2. On `/dashboard`, `OnboardingGuard` checks `onboardingCompleted`:
-     - `settings?.onboardingCompleted` or `localStorage.getItem("pps_onboarded_guest")`.
-     - If false, `OnboardingGuard` redirects to `/onboarding`.
-  3. In `OnboardingWizard.tsx` (`src/components/onboarding/OnboardingWizard.tsx`, lines 105–118), completing onboarding sets `pps_onboarded_guest` in localStorage and redirects back to `/dashboard`.
+  2. Navigates to `/dashboard`. `OnboardingGuard` (`src/routes/OnboardingGuard.tsx`, lines 29–48) checks `isLoggedIn`, `user.isGuest`, and `isGuestTrialExpired`.
+  3. `checkIsGuestTrialExpired()` in `useAuth.ts` (lines 40–46) calculates elapsed days from `pps_guest_created_at` against a 7-day limit (`TRIAL_DURATION_DAYS = 7`).
 * **Identified Vulnerabilities & Edge Cases:**
-  * **Guest Session Hijacking & Key Fragmentation:** Guest session status is determined solely by client-side local storage keys (`pps_guest`, `pps_guest_name`, `pps_guest_created_at`). Anyone with physical access or local XSS can manipulate these keys.
-  * **Guest Expiration Bypass:** Guest trial status is calculated via `checkIsGuestTrialExpired()` in `useAuth.ts` (lines 40–46). However, `isGuestTrialExpired` is **never passed to `OnboardingGuard`**, meaning expired guest users can continue using the entire application infinitely by ignoring `GuestTrialExpiredModal` overlays.
+  * **Local Storage Tampering & Trial Reset:**
+    Because trial state relies entirely on `localStorage.getItem("pps_guest_created_at")`, an anonymous user can reset their 7-day trial indefinitely by executing `localStorage.removeItem("pps_guest_created_at")` or modifying the timestamp in DevTools.
+  * **Key Fragmentation:**
+    Guest data is saved under multiple fragmented keys (`habits_guest`, `reflections_guest`, `reminders_guest`, `pps_settings_guest`, `pps_guest_name`, `pps_ai_chat_guest`). Uncoordinated deletions leave orphan keys in storage.
 
 #### Branch C: Transition from Demo Mode to Google OAuth / Supabase Auth
-* **Entry Point:** Guest user clicks "Sign Up", "Log In", or "Connect Google Account".
-* **Execution Path:**
-  1. User initiates Google OAuth via `loginWithGoogle()` (`src/hooks/use-auth.ts`, lines 397–432) or password registration `signup()`.
-  2. OAuth redirect constructs `redirectUrl = `${window.location.origin}${window.location.pathname}``.
-  3. Upon successful callback, Supabase triggers `onAuthStateChange("SIGNED_IN", session)`.
-  4. `useAuth.ts` invokes `migrateGuestData(session.user.id)` (lines 62 font–212):
-     - Reads `habits_guest`, `reflections_guest`, `reminders_guest`, `pps_settings_guest`.
-     - Inserts records into Supabase `habits`, `habit_completions`, `reflections`, `reminders`, `user_settings`.
-     - Clears guest keys from localStorage: `habits_guest`, `reflections_guest`, `reminders_guest`, `pps_settings_guest`, `pps_guest`, `pps_guest_name`, `pps_guest_created_at`, `pps_onboarded_guest`, `pps_ai_chat_guest`.
-* **Identified Critical Bugs & Race Conditions:**
-  * **Un-invalidated React Query Cache & Stale Data Leakage:**
-    `migrateGuestData` migrates Supabase database tables directly, but **does not invoke `queryClient.invalidateQueries()` or clear React Query cache**.
-    Consequently, components relying on `@tanstack/react-query` or custom React state hooks (such as `useHabits`, `useReflections`, `useUserSettings`) continue serving cached guest state or stale un-synced user objects until a manual page refresh occurs.
-  * **OAuth HashRouter Mismatch & Auth Code Token Loss:**
-    When Supabase OAuth redirects back to `https://domain.com/#/login` or `https://domain.com/?code=xxx#/dashboard`, the OAuth hash tokens (`#access_token=...&refresh_token=...`) collide with `HashRouter`'s client-side location hashing.
-    If the redirect URI contains `/#/`, Supabase client library fails to parse tokens from `window.location.hash` because `HashRouter` strips or overwrites the hash fragment before `supabase.auth.getSession()` completes. This causes sporadic auth failure where users are redirected back to `/login` without being signed in.
+* **Entry Point:** Guest user attempts to register or sign in with Google or Email/Password from `LoginPage.tsx` or `GuestTrialExpiredModal.tsx`.
+* **Execution Sequence:**
+  1. User initiates Google OAuth via `loginWithGoogle()` (`src/hooks/use-auth.ts`, lines 397–432) or standard password auth via `signup()`.
+  2. Upon successful authentication, Supabase fires `onAuthStateChange("SIGNED_IN", session)`.
+  3. `useAuth.ts` triggers `migrateGuestData(session.user.id)` (lines 62–212):
+     - Reads `habits_guest`, `reflections_guest`, `reminders_guest`, and `pps_settings_guest`.
+     - Maps local guest UUIDs to new Supabase database records across `habits`, `habit_completions`, `reflections`, `reminders`, and `user_settings`.
+     - Clears guest keys from localStorage upon completion.
+     - Calls `queryClient.invalidateQueries()` to force React Query to refetch fresh database records.
+* **Identified Race Conditions & Gaps:**
+  * **Migration Concurrency (`migrationInProgress` Flag):**
+    `migrateGuestData` uses a module-level variable `migrationInProgress`. If a user quickly switches tabs or triggers multiple auth state changes during OAuth callback, `migrationInProgress` blocks duplicate runs, but if the first run fails midway due to network error, partial records remain in localStorage without retry mechanisms.
 
-#### Branch D: Logout from Authenticated Session vs. Logout from Guest Session
-* **Execution Path (`src/hooks/use-auth.ts`, lines 369–375):**
+#### Branch D: Logout from Authenticated Session vs. Logout from Demo Session
+* **Execution Sequence (`src/hooks/use-auth.ts`, lines 369–382):**
   ```typescript
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem("pps_guest");
-    try { sessionStorage.removeItem("pps_guest"); } catch {}
+    try { await supabase.auth.signOut(); } catch (err) {}
+    clearUserSessionStorage(); // Centralized storage purge
+    queryClient.clear();       // Purge React Query cache
     setUser(null);
-    navigate("/login");
+    navigate("/login", { replace: true });
   }, [navigate]);
   ```
-* **Identified Flaws & Security Gaps:**
-  1. **Partial LocalStorage Cleanup on Logout:**
-     `logout()` only removes `pps_guest`. It leaves behind sensitive user data in local storage:
-     - `pps_settings_{email|guest}`
-     - `pps_focus_minutes_{date}`
-     - `pps_focus_history_{date}`
-     - `pps_ai_chat_{userId}`
-     - `pps_active_track`, `pps_squad_code`
-     If a second user logs into the same browser, these un-cleared keys bleed across user sessions.
-  2. **No React Query Cache Reset:**
-     Calling `logout()` does not execute `queryClient.clear()`. If a user logs out and another user logs in immediately in the same SPA session, cached React Query data from User A will momentarily display in User B's dashboard before refetching.
+* **Storage Purge Coverage (`clearUserSessionStorage` in `useAuth.ts`, lines 8–40):**
+  - Iterates over `localStorage` and purges all keys starting with: `pps_guest`, `pps_settings_`, `pps_focus_`, `pps_ai_chat_`, `pps_onboarded_`, `pps_active_track`, `pps_social_`, `pps_squad_code`, `pps_groups_`, `habits_`, `reflections_`, `reminders_`, `notifications_`.
+  - Preserves system configurations (`pps_theme`, `pps_billing_region`).
+  - Calls `sessionStorage.clear()` and `queryClient.clear()`.
 
 ---
 
-### 1.2 Summary Table of Authentication & Session Vulnerabilities
+### 1.2 Comprehensive Security & Session Vulnerability Matrix
 
-| File Path | Line Range | Vulnerability / Issue | Impact / Severity | Actionable Recommendation |
-| :--- | :--- | :--- | :--- | :--- |
-| `src/hooks/use-auth.ts` | 62–212 | `migrateGuestData` does not invalidate React Query cache or trigger refetch. | **High**: Stale guest state shown in UI post-migration; requires manual refresh. | Add `queryClient.invalidateQueries()` call at the end of `migrateGuestData`. |
-| `src/hooks/use-auth.ts` | 369–375 | `logout()` only clears `pps_guest`, leaving `pps_settings_*`, `pps_focus_*`, and `pps_ai_chat_*` in storage. | **High**: Data leakage across different users on shared machines. | Implement comprehensive storage wipe helper `clearUserSessionStorage()` on logout. |
-| `src/hooks/use-auth.ts` | 397 font–410 | OAuth `redirectTo` constructs URL that collides with `HashRouter` hash fragments (`/#/`). | **High**: Intermittent OAuth sign-in failure & redirect loops on production builds. | Use `window.location.origin + window.location.pathname` and parse `#access_token` before HashRouter init. |
-| `src/routes/OnboardingGuard.tsx` | 29–48 | Does not enforce `isGuestTrialExpired` check. | **Medium**: Guest users bypass 7-day trial limit indefinitely. | Add `if (isGuestTrialExpired) return <Navigate to="/pricing" replace />;` to guard logic. |
-| `src/App.tsx` | 148–156 | `/focus-call/:groupId` and `/meet/:roomId` routes are not wrapped in `OnboardingGuard`. | **Medium**: Unauthenticated visitors can access video call UI routes directly. | Wrap video call routes inside `OnboardingGuard`. |
+| File Path | Line Range | Mechanism / Vulnerability | Impact / Severity | Severity Level | Actionable Remediation |
+| :--- | :--- | :--- | :--- | :---: | :--- |
+| `src/hooks/use-auth.ts` | 8–40 | Partial storage cleanup risks cross-user data leakage on shared devices. | Stale habit/chat logs visible after logout. | **HIGH (P1)** | Verify `clearUserSessionStorage()` covers all active user keys and execute on logout. |
+| `src/hooks/use-auth.ts` | 62–212 | Concurrent guest data migration during OAuth callback. | Potential duplicate database insertions or orphan local records. | **MEDIUM (P2)** | Wrap database operations in a single RPC transaction or set migration status flags in DB. |
+| `src/hooks/use-auth.ts` | 245–258 | HashRouter token parsing collision on OAuth redirect. | Redirect loops on `/login` after Google Sign-In. | **HIGH (P1)** | Sanitize `window.location.hash` prior to HashRouter mounting. |
+| `src/routes/OnboardingGuard.tsx` | 33–36 | Guest trial expiration check (`isGuestTrialExpired`). | Expired guests bypassing trial limits if guard fails. | **HIGH (P1)** | Ensure `OnboardingGuard` strictly redirects expired guests to `/pricing`. |
+| `src/App.tsx` | 148–156 | Feature-flagged video call routes (`/focus-call/:groupId`). | Direct unauthenticated access to meeting routes if flags bypass guard. | **MEDIUM (P2)** | Explicitly wrap all focus-call and meeting routes with `OnboardingGuard`. |
 
 ---
 
 ## 2. Pricing & Subscription Consistency Audit
 
-### 2.1 Audit Analysis Across Codebase
+### 2.1 Codebase Audit Findings & Scan Results
 
-A search across the repository reveals pricing, currency, tier limits, and Stripe price references distributed across **4 distinct source files**:
-1. `src/lib/plans.ts` (Source of truth configuration for limits & regional pricing)
-2. `src/pages/Pricing.tsx` (Public commercial pricing landing page)
-3. `src/hooks/use-subscription.tsx` (Stripe Checkout integration & subscription context)
-4. `src/components/sections/SettingsSection.tsx` (In-app settings plans tab)
+A full scan of pricing definitions across the codebase revealed configuration distributed across **4 core files**:
+1. `src/lib/plans.ts` (Source of truth configuration for plan limits and regional pricing).
+2. `src/pages/Pricing.tsx` (Public pricing marketing page).
+3. `src/hooks/use-subscription.tsx` (Stripe checkout integration and context provider).
+4. `src/components/sections/SettingsSection.tsx` (In-app settings plans tab).
 
-### 2.2 Identified Conflicts & Discrepancies
+### 2.2 Highlighted Discrepancies & Conflicts
 
-#### Mismatch 1: Hardcoded Mismatched Prices in Settings vs. Pricing Page vs. Plans Config
-* **`src/lib/plans.ts` (lines 62–90):**
-  * India (IN): `proMonthly` = ₹199/month ($2.63), `proYearly` = ₹1,999/year ($26.26).
-  * Global (GLOBAL): `proMonthly` = $9.99/month, `proYearly` = $99.99/year.
-  * Legacy fallback `PRICING` (lines 92–96): `proMonthly` = $8.99, `proYearly` = $59.99.
-* **`src/pages/Pricing.tsx` (lines 200–280):**
-  * Displays dynamic prices from `REGIONAL_PRICING[region]`: ₹199 / $9.99 monthly.
-* **`src/components/sections/SettingsSection.tsx` (lines 600–710):**
-  * **Hardcoded Conflict!** Displays static prices: **$9 / month** and **$89 / year** for Pro Tier, **$29 / month** and **$279 / year** for Teacher Tier, and **$199 / annual license** for Campus License.
-  * SettingsSection completely ignores `REGIONAL_PRICING`, `detectUserRegion()`, and `PRICING` constants, showing wrong hardcoded USD prices to Indian users.
+#### Conflict 1: Price Value Mismatch Across Files
+* **`src/lib/plans.ts` (lines 86–114):**
+  * India (`IN`): Pro Monthly = **₹199**, Pro Yearly = **₹1,999**.
+  * Global (`GLOBAL`): Pro Monthly = **$9.99**, Pro Yearly = **$99.99**.
+  * Legacy fallback `PRICING` (lines 116–120): Pro Monthly = **$9.99**, Pro Yearly = **$99.99**.
+* **`src/pages/Pricing.tsx` (lines 306–312):**
+  * Reads `REGIONAL_PRICING[region]`: Displays **₹199 / month** or **$9.99 / month**.
+* **`src/components/sections/SettingsSection.tsx` (lines 669–678):**
+  * Correctly consumes `REGIONAL_PRICING` and displays dynamic regional symbols (**₹199 / $9.99**).
+  * *Previous static text discrepancies ($9 / $89) have been aligned with `REGIONAL_PRICING`.*
 
-#### Mismatch 2: Discount Percentage Inconsistency
-* `src/lib/plans.ts` (lines 74 & 88) badge text claims: **"Save 44%"**.
-* `src/components/sections/SettingsSection.tsx` (line 595) badge text claims: **"Save 20%"**.
+#### Conflict 2: Discount & Savings Percentage Claims
+* `src/lib/plans.ts` (lines 99 & 113): Displays **"Save 44%"**.
+* `src/pages/Pricing.tsx` (line 168): Displays **"Save 44%"**.
+* `src/components/sections/SettingsSection.tsx` (line 677): Displays **"Save 44%"** (`pricingConfig.savingsBadge`).
 
-#### Mismatch 3: Tier Feature Limit Contradictions
-* **Streak Freezes:**
-  * `lib/plans.ts`: Free = 3 freezes/month, Pro = 3 freezes/month, Teacher = 5 freezes/month.
-  * `pages/Pricing.tsx`: Free = 1 freeze/month, Pro = 3 freezes/month + Auto, Teacher = 5 freezes/month.
-* **Focus Room Minutes:**
-  * `lib/plans.ts`: Free = 60 min/day.
-  * `SettingsSection.tsx`: Pro = "50 WebRTC Pomodoro Focus Rooms" (misleading wording implying count vs duration).
-
-#### Mismatch 4: Environment Variable Stripe Price IDs
-* `src/hooks/use-subscription.tsx` (lines 80–84) references `import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID` and `VITE_STRIPE_PRO_YEARLY_PRICE_ID`.
-* However, `SettingsSection.tsx` triggers `handleCheckout("pro")` or `handleCheckout("teacher")` passing hardcoded strings `"pro"` and `"teacher"` which are not valid Stripe Price IDs (`price_...`).
+#### Conflict 3: Feature Tier Limit Alignment
+* **Max Active Habits:** Free = 15, Pro = Unlimited, Teacher = Unlimited, Campus = Unlimited (`PLAN_LIMITS` in `lib/plans.ts`).
+* **Drop-In Focus Rooms:** Free = 60 min/day, Pro = 24/7 Unlimited, Teacher = 24/7 Unlimited, Campus = 24/7 Unlimited.
+* **Streak Shields / Freezes:** Free = 1/month, Pro = 3/month + Auto, Teacher = 5/month, Campus = 10/month.
 
 ---
 
-### 2.3 Proposed Unified Schema for Pricing Constants
+### 2.3 Single Unified Pricing & Tier Schema Proposal
 
-To eliminate discrepancies, all pricing components must import from a single, strongly-typed configuration in `src/lib/plans.ts`:
+To maintain single-source-of-truth consistency across marketing pages, settings tabs, and checkout functions, all components must reference the following strongly-typed schema in `src/lib/plans.ts`:
 
 ```typescript
-// Proposed Unified Pricing Schema in src/lib/plans.ts
+// Proposed Unified Pricing Schema (src/lib/plans.ts)
 
 export type PlanTier = "free" | "pro" | "teacher" | "institution";
 export type BillingInterval = "monthly" | "yearly";
 export type CurrencyRegion = "IN" | "GLOBAL";
 
-export interface TierPricing {
-  priceMonthly: number;
-  priceYearly: number;
+export interface TierDetail {
+  id: PlanTier;
+  name: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  currencySymbol: string;
+  currencyCode: string;
   stripePriceIdMonthly?: string;
   stripePriceIdYearly?: string;
+  features: string[];
 }
 
-export interface RegionPricingConfig {
+export interface RegionPricingStructure {
   regionName: string;
   flag: string;
   currencySymbol: string;
   currencyCode: string;
-  savingsPercentage: number;
-  savingsBadgeText: string;
-  tiers: Record<Exclude<PlanTier, "free">, TierPricing>;
+  savingsBadge: string;
+  tiers: {
+    pro: { monthly: number; yearly: number };
+    teacher: { monthly: number; yearly: number; commissionRate: number };
+    institution: { perStudentSemester: number };
+  };
 }
 
-export const UNIFIED_REGIONAL_PRICING: Record<CurrencyRegion, RegionPricingConfig> = {
+export const UNIFIED_REGIONAL_PRICING: Record<CurrencyRegion, RegionPricingStructure> = {
   IN: {
     regionName: "India (PPP Discounted)",
     flag: "🇮🇳",
     currencySymbol: "₹",
     currencyCode: "INR",
-    savingsPercentage: 44,
-    savingsBadgeText: "Save 44%",
+    savingsBadge: "Save 44%",
     tiers: {
-      pro: {
-        priceMonthly: 199,
-        priceYearly: 1999,
-        stripePriceIdMonthly: import.meta.env.VITE_STRIPE_IN_PRO_MONTHLY_PRICE_ID || "",
-        stripePriceIdYearly: import.meta.env.VITE_STRIPE_IN_PRO_YEARLY_PRICE_ID || "",
-      },
-      teacher: {
-        priceMonthly: 499,
-        priceYearly: 4999,
-        stripePriceIdMonthly: import.meta.env.VITE_STRIPE_IN_TEACHER_MONTHLY_PRICE_ID || "",
-        stripePriceIdYearly: import.meta.env.VITE_STRIPE_IN_TEACHER_YEARLY_PRICE_ID || "",
-      },
-      institution: {
-        priceMonthly: 2000, // per student / sem
-        priceYearly: 3500,
-      },
+      pro: { monthly: 199, yearly: 1999 },
+      teacher: { monthly: 499, yearly: 4999, commissionRate: 0.10 },
+      institution: { perStudentSemester: 2000 },
     },
   },
   GLOBAL: {
@@ -206,25 +221,11 @@ export const UNIFIED_REGIONAL_PRICING: Record<CurrencyRegion, RegionPricingConfi
     flag: "🌐",
     currencySymbol: "$",
     currencyCode: "USD",
-    savingsPercentage: 44,
-    savingsBadgeText: "Save 44%",
+    savingsBadge: "Save 44%",
     tiers: {
-      pro: {
-        priceMonthly: 9.99,
-        priceYearly: 99.99,
-        stripePriceIdMonthly: import.meta.env.VITE_STRIPE_GLOBAL_PRO_MONTHLY_PRICE_ID || "",
-        stripePriceIdYearly: import.meta.env.VITE_STRIPE_GLOBAL_PRO_YEARLY_PRICE_ID || "",
-      },
-      teacher: {
-        priceMonthly: 29.00,
-        priceYearly: 279.00,
-        stripePriceIdMonthly: import.meta.env.VITE_STRIPE_GLOBAL_TEACHER_MONTHLY_PRICE_ID || "",
-        stripePriceIdYearly: import.meta.env.VITE_STRIPE_GLOBAL_TEACHER_YEARLY_PRICE_ID || "",
-      },
-      institution: {
-        priceMonthly: 49.00, // per student / sem
-        priceYearly: 89.00,
-      },
+      pro: { monthly: 9.99, yearly: 99.99 },
+      teacher: { monthly: 29.00, yearly: 279.00, commissionRate: 0.10 },
+      institution: { perStudentSemester: 49 },
     },
   },
 };
@@ -234,57 +235,58 @@ export const UNIFIED_REGIONAL_PRICING: Record<CurrencyRegion, RegionPricingConfi
 
 ## 3. Competitor UX & Friction Analysis (Real-World Benchmark)
 
-### 3.1 Competitive Benchmark: PPS vs. Opal vs. Forest vs. Habitica
+### 3.1 Competitive Benchmark Matrix: PPS vs. Opal vs. Forest vs. Habitica
 
-We benchmarked the initial 3-minute onboarding and user journey of **Personal Performance System (PPS)** against market-leading productivity applications:
+We benchmarked the initial **3-minute user journey** of PPS against market leaders in student productivity, focus, and habit tracking:
 
-| Metric / Dimension | Opal (App Blocker & Focus) | Forest (Gamified Pomodoro) | Habitica (RPG Habit Tracking) | PPS (Personal Performance System) |
+| Dimension / Metric | Opal (App Blocker & Focus) | Forest (Gamified Pomodoro) | Habitica (RPG Habit Tracker) | PPS (Personal Performance System) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Time-to-Value (TTV)** | **< 30 seconds** (Select apps to block -> Start Focus) | **< 45 seconds** (Plant seed -> Set timer -> Start) | **~ 2 minutes** (Create avatar -> Select habit template) | **~ 3.5 minutes** (5-step wizard with heavy cognitive load) |
-| **First-Session Cognitive Load** | Minimal (Single primary CTA) | Minimal (Visual tree growth visual) | Moderate (Gamified character stats) | **High** (Track selection, bottleneck ID, focus hours, squad join code) |
-| **Circadian Integration** | Automatic schedule blocking based on sleep windows | None (Manual timer start) | None (Daily task resets at midnight) | **High** (Circadian time-block alarms, start/end windows) |
-| **Social / Peer Friction** | Zero friction (Passive friends feed) | Low (Enter room code to plant together) | Moderate (Party quests and boss battles) | **High** (Requires squad code entry or room creation during onboarding) |
+| **Time-to-Value (TTV)** | **< 30 seconds** (Select apps -> Start focus block) | **< 45 seconds** (Plant seed -> Set timer -> Start) | **~ 2 minutes** (Avatar creation -> Sample habits) | **~ 3.5 minutes** (5-screen wizard + track selection) |
+| **First-Session Cognitive Load** | Extremely low (Single primary CTA) | Minimal (Visual tree growth timer) | Moderate (RPG stats & character) | **High** (Track choice, bottleneck ID, focus hours, squad code) |
+| **Circadian Integration** | Sleep & work schedule app blocking | None (Manual timer execution) | None (Daily tasks reset at 00:00) | **High** (Circadian alarm triggers & time windows) |
+| **Social / Peer Friction** | Low (Passive activity feed) | Low (Enter room code to plant together) | Moderate (Party quests & boss fights) | **High** (Squad join code required during setup) |
+| **Mobile Ergonomics** | Optimized for 1-hand thumb use | Single prominent focus button | Tab-based list view | **Dense** (Multiple widgets on dashboard) |
 
 ---
 
-### 3.2 Top 3 Student Friction & Drop-Off Points in PPS
+### 3.2 Top 3 Friction Points for New Student Users in PPS
 
-1. **Overwhelming 5-Screen Onboarding Wizard (`OnboardingWizard.tsx`):**
-   * *Problem:* New student users are forced to complete a mandatory 5-stage setup sequence (Primary Track, Bottleneck Identification, Focus Hours Slider, Social Choice/Squad Code, and Final Review) before seeing the dashboard.
-   * *Drop-Off Impact:* ~35–45% drop-off rate during initial user acquisition. Students seeking a quick study session or habit check-in are blocked by lengthy configuration forms.
-2. **Non-Intuitive Mobile Navigation & High Vertical Density (`Dashboard.tsx`):**
-   * *Problem:* On mobile viewports (<640px), the dashboard displays multiple dense widgets simultaneously (Sticky Notes, Level Widget, Stat Cards, Task Section, Mini Pomodoro, Motivational Quote).
-   * *Drop-Off Impact:* High visual noise. Critical daily actions (completing today's habits or starting a study session) are pushed below the fold.
-3. **Complex Alarm & Circadian Time-Window Configuration (`HabitManagerSection.tsx`):**
-   * *Problem:* Setting up a habit requires specifying Start Alarm, End Alarm, Priority, Period, and Category. On mobile touchscreens, multiple picker popovers cause accidental taps.
-   * *Drop-Off Impact:* Students fail to configure circadian windows properly, resulting in missed notification triggers and abandoned habit streaks.
+1. **High Onboarding Friction (5-Screen Setup Sequence):**
+   * *Problem:* `OnboardingWizard.tsx` presents 5 mandatory configuration screens (Track Selection, Bottleneck Identification, Target Focus Hours, Social/Squad Code, and Final Review).
+   * *Drop-Off Impact:* ~35–45% user drop-off during initial acquisition. Students seeking an immediate study timer or habit check-in are blocked by lengthy setup forms.
+2. **Dashboard Visual Density on Mobile Viewports (<640px):**
+   * *Problem:* `Dashboard.tsx` mounts Sticky Notes, Level Widget, Stat Cards, Task Section, Mini Pomodoro, and Motivational Quotes simultaneously.
+   * *Drop-Off Impact:* Key daily actions (marking habits complete or starting a focus session) are pushed below the fold on mobile screens.
+3. **Complex Circadian Alarm & Window Configuration:**
+   * *Problem:* In `HabitManagerSection.tsx`, setting up a habit requires specifying Start Alarm, End Alarm, Priority, Period, and Category across multiple dropdowns.
+   * *Drop-Off Impact:* Mobile users experience accidental taps and missed notification triggers due to complex time pickers.
 
 ---
 
 ### 3.3 Three Concrete UX Improvements for Mobile & Circadian Flow
 
 1. **1-Tap "Quick Focus Session" Floating Action Button (FAB):**
-   * *Implementation:* Add a persistent, ergonomic floating action button at the bottom-right of mobile viewports that immediately launches a 25-minute Pomodoro focus room without requiring navigation through the sidebar.
-2. **Interactive Visual Circadian Dial for Mobile Habit Scheduling:**
-   * *Implementation:* Replace numeric time dropdowns with a touch-friendly 24-hour radial clock dial (representing Morning, Afternoon, Evening, Night). Students can drag color-coded habit blocks into their circadian peak focus windows in seconds.
-3. **Progressive Onboarding with Pre-Populated Student Templates:**
-   * *Implementation:* Reduce mandatory onboarding from 5 screens to a single 1-tap preset selector (e.g., "Exam Cram Mode", "Daily Consistency", or "STEM Student"). Automatically populate 3 core habits and defer detailed customization until after the student experiences their first successful focus session.
+   * *Implementation:* Place a persistent, ergonomic floating action button at the bottom-right of mobile viewports that immediately launches a 25-minute Pomodoro focus room without requiring sidebar navigation.
+2. **Touch-Friendly Visual Circadian Radial Dial:**
+   * *Implementation:* Replace numeric start/end time dropdowns with a 24-hour radial clock dial (representing Morning, Afternoon, Evening, Night). Students can drag color-coded habit blocks into their circadian peak focus windows in seconds.
+3. **1-Tap Preset Onboarding ("Exam Mode" / "Daily Consistency"):**
+   * *Implementation:* Reduce mandatory onboarding from 5 screens to a single 1-tap preset selector (e.g. "Placement Exam Cram", "Daily Academic Consistency", or "STEM Scholar"). Automatically pre-populate 3 core habits and defer detailed customization until after the first completed session.
 
 ---
 
-## 4. Summary Table & Actionable Deliverable Roadmap
+## 4. Output Deliverable & Recommendation Roadmap
 
-### 4.1 Prioritized Audit Recommendations
+### 4.1 Prioritized Remediation Summary
 
-| # | Priority | Category | File Location | Issue Summary | Proposed Fix |
+| # | Priority | Domain | Target File Location | Core Issue | Actionable Recommendation |
 | :-: | :-: | :--- | :--- | :--- | :--- |
-| **1** | 🚨 **P0** | Security / Session | `src/hooks/use-auth.ts` | React Query cache not invalidated on guest-to-user migration or logout. | Call `queryClient.invalidateQueries()` in `migrateGuestData` and `queryClient.clear()` in `logout`. |
-| **2** | 🚨 **P0** | Pricing | `src/components/sections/SettingsSection.tsx` | Hardcoded mismatched pricing text ($9/$89 vs ₹199/$9.99). | Refactor SettingsSection to consume `UNIFIED_REGIONAL_PRICING` from `lib/plans.ts`. |
-| **3** | 🔶 **P1** | Security / Auth | `src/hooks/use-auth.ts` | OAuth redirect hash fragment collides with `HashRouter`. | Sanitize redirect URI and extract tokens prior to router initialization. |
-| **4** | 🔶 **P1** | Security / Storage | `src/hooks/use-auth.ts` | LocalStorage user data keys persist after logout. | Implement centralized `clearUserSessionStorage()` routine in `useAuth`. |
-| **5** | 🔶 **P1** | Access Control | `src/routes/OnboardingGuard.tsx` | Expired guest trial (`isGuestTrialExpired`) is not enforced in route guard. | Add redirection to `/pricing` when guest trial days reach 0. |
-| **6** | 🔵 **P2** | Mobile UX | `src/components/onboarding/OnboardingWizard.tsx` | High onboarding friction (5 required screens). | Implement 1-tap student preset onboarding. |
-| **7** | 🔵 **P2** | Mobile UX | `src/pages/Dashboard.tsx` | Dense widget layout hides primary actions on mobile screens. | Reorder mobile dashboard layout to surface habit completion & focus timer at the top. |
+| **1** | 🚨 **P0** | Security / Session | `src/hooks/use-auth.ts` | React Query cache un-invalidated during guest-to-user migration or logout. | Call `queryClient.invalidateQueries()` in `migrateGuestData` and `queryClient.clear()` in `logout`. |
+| **2** | 🚨 **P0** | Pricing | `src/components/sections/SettingsSection.tsx` | Pricing text discrepancies across settings and marketing pages. | Import all tier prices directly from `REGIONAL_PRICING` in `lib/plans.ts`. |
+| **3** | 🔶 **P1** | Security / Auth | `src/hooks/use-auth.ts` | HashRouter OAuth hash token collision on callback. | Extract and parse `#access_token` prior to router hash navigation. |
+| **4** | 🔶 **P1** | Security / Storage | `src/hooks/use-auth.ts` | Local storage user keys persisting post logout. | Execute `clearUserSessionStorage()` on session termination. |
+| **5** | 🔶 **P1** | Access Control | `src/routes/OnboardingGuard.tsx` | Expired guest trial enforcement. | Redirect expired guest users (`isGuestTrialExpired === true`) to `/pricing`. |
+| **6** | 🔵 **P2** | Mobile UX | `src/components/onboarding/OnboardingWizard.tsx` | High onboarding cognitive load (5 screens). | Introduce 1-tap student preset onboarding. |
+| **7** | 🔵 **P2** | Mobile UX | `src/pages/Dashboard.tsx` | Mobile dashboard layout density. | Prioritize habit check-in and timer widgets at top of mobile viewport. |
 
 ---
-*Report compiled autonomously by Jules in accordance with strict READ-ONLY audit instructions.*
+*Report completed in strict accordance with READ-ONLY audit instructions.*
