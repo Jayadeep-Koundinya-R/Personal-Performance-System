@@ -31,6 +31,12 @@ import {
   type ChatMessage,
 } from "@/lib/ai/aiChatService";
 import type { AgentActionPayload } from "@/lib/ai/agentTools";
+import {
+  COACH_PERSONAS,
+  getActivePersonaId,
+  setActivePersonaId,
+  type CoachPersonaId,
+} from "@/lib/ai/coachPersonas";
 import { Sparkles, Trash2, X, Send, Zap, Plus, Shield, Bell, Clock, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -54,6 +60,7 @@ export default function AiChatWidget() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [currentPersona, setCurrentPersona] = useState<CoachPersonaId>(() => getActivePersonaId());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { isLoggedIn, user } = useAuth();
@@ -308,6 +315,41 @@ export default function AiChatWidget() {
                 >
                   <X className="w-4 h-4" />
                 </button>
+              </div>
+            </div>
+
+            {/* Coach Persona Mode Selector Ribbon */}
+            <div className="px-3.5 py-1.5 bg-surface/80 border-b border-border/50 flex items-center justify-between gap-1">
+              <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <span>Tone:</span>
+              </span>
+              <div className="flex items-center gap-1">
+                {(['agni_fire', 'vayu_flow', 'prana_calm'] as CoachPersonaId[]).map((pId) => {
+                  const p = COACH_PERSONAS[pId];
+                  const isActive = currentPersona === pId;
+                  return (
+                    <button
+                      key={pId}
+                      type="button"
+                      onClick={() => {
+                        setCurrentPersona(pId);
+                        setActivePersonaId(pId);
+                        toast.success(`AI Coach tone set to ${p.name}`, {
+                          description: p.tagline,
+                        });
+                      }}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-card'
+                      }`}
+                      title={p.tagline}
+                    >
+                      <span>{p.avatar}</span>
+                      <span>{p.name.split(' ')[0]}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

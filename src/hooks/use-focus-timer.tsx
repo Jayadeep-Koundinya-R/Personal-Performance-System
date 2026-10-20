@@ -346,7 +346,8 @@ export function FocusTimerProvider({
       if (!payload) return;
 
       setTimerMode(payload.timerMode || "pomodoro");
-      setActiveTaskName(payload.activeTaskName || "Deep Work Session");
+      const normalizedTaskName = (payload.activeTaskName || "Deep Work Session").replace(/20-min/i, "25-Min");
+      setActiveTaskName(normalizedTaskName);
       setLinkedHabitId(payload.linkedHabitId || null);
       setCustomMinutes(payload.customMinutes || 25);
       setTotalSec(payload.totalSec || 25 * 60);

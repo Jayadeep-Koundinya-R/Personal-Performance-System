@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function TermsPage() {
   return (
@@ -8,8 +9,8 @@ export default function TermsPage() {
       <ScrollProgressBar />
 
       <nav className="px-6 py-4 border-b border-border max-w-4xl mx-auto flex items-center justify-between">
-        <Link to="/" className="font-mono text-xl font-extrabold text-primary">
-          PPS<span className="text-secondary">.</span>
+        <Link to="/" className="group">
+          <BrandLogo size="md" variant="square" />
         </Link>
         <Link to="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
           ← Back to Home

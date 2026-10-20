@@ -28,6 +28,7 @@ import {
   Crown,
 } from "lucide-react";
 import { toast } from "sonner";
+import { shareViaWhatsApp } from "@/lib/social/whatsappInvite";
 
 export const GroupView: React.FC = () => {
   const {
@@ -42,6 +43,7 @@ export const GroupView: React.FC = () => {
     loadSampleSquad,
     toggleStudyingStatus,
     nudgeMember,
+    presenceSummary,
   } = useGroups();
 
   const {
@@ -83,6 +85,17 @@ export const GroupView: React.FC = () => {
     toast.success(`Invite Code "${activeGroup.inviteCode}" copied to clipboard! 📋`, {
       description: "Share this code with your classmates or study partners.",
     });
+    setShowOverflowMenu(false);
+  };
+
+  const handleWhatsAppInvite = () => {
+    if (!activeGroup) return;
+    shareViaWhatsApp({
+      squadCode: activeGroup.inviteCode,
+      squadName: activeGroup.name,
+      studyTopic: activeGroup.studyTopic,
+    });
+    toast.success(`Opening WhatsApp to invite study buddies to "${activeGroup.name}"! 📲`);
     setShowOverflowMenu(false);
   };
 
@@ -426,6 +439,16 @@ export const GroupView: React.FC = () => {
                   <span className="hidden sm:inline">Focus Room</span>
                 </button>
 
+                {/* WhatsApp Quick Share Button */}
+                <button
+                  onClick={handleWhatsAppInvite}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold rounded-xl transition-all cursor-pointer bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 shadow-xs"
+                  title="Invite classmates directly via WhatsApp"
+                >
+                  <span>📲</span>
+                  <span className="hidden md:inline">WhatsApp</span>
+                </button>
+
                 {/* Members Toggle */}
                 <button
                   onClick={() => setShowMembersPanel(!showMembersPanel)}
@@ -459,6 +482,13 @@ export const GroupView: React.FC = () => {
                       />
                       <div className="absolute right-0 top-full mt-1 w-52 bg-card border border-border/80 rounded-2xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
                         <button
+                          onClick={handleWhatsAppInvite}
+                          className="w-full text-left px-4 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2.5 cursor-pointer"
+                        >
+                          <span className="text-sm">📲</span>
+                          <span>WhatsApp Study Invite</span>
+                        </button>
+                        <button
                           onClick={handleCopyInviteCode}
                           className="w-full text-left px-4 py-2 text-xs font-bold text-foreground hover:bg-surface flex items-center gap-2.5 cursor-pointer"
                         >
@@ -491,6 +521,48 @@ export const GroupView: React.FC = () => {
                     </>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Zero-Mock Live Presence Radar Banner */}
+          {!isStudyingInRoom && (
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-surface/40 text-xs font-mono backdrop-blur-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                {presenceSummary && presenceSummary.sprintingCount > 0 ? (
+                  <>
+                    <span className="relative flex h-2 w-2 flex-shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                    <span className="text-emerald-400 font-bold truncate">
+                      🟢 {presenceSummary.sprintingCount} Sprinting Now
+                    </span>
+                    {presenceSummary.onlineCount > 0 && (
+                      <span className="text-muted-foreground text-[10px] hidden sm:inline">
+                        ({presenceSummary.onlineCount} online)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 flex-shrink-0" />
+                    <span className="text-muted-foreground truncate">
+                      Radar Quiet — Start a sprint to signal your squad
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={handleWhatsAppInvite}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 text-[11px] font-bold transition-all cursor-pointer shadow-xs"
+                  title="Invite classmates directly via WhatsApp"
+                >
+                  <span>📲</span>
+                  <span className="hidden sm:inline">Invite Study Partner</span>
+                  <span className="sm:hidden">Invite</span>
+                </button>
               </div>
             </div>
           )}

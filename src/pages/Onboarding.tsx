@@ -5,6 +5,7 @@ import { OnboardingWizardState } from '@/types/onboarding';
 import { useUserSettings } from '@/hooks/use-user-settings';
 import { useHabits } from '@/hooks/use-habits';
 import { toast } from 'sonner';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -73,10 +74,8 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-background text-foreground py-10 px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
       <div className="max-w-4xl mx-auto w-full space-y-8">
         {/* Brand Logo Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-black tracking-widest uppercase">
-            ⚡ Personal Performance System
-          </div>
+        <div className="text-center space-y-3 flex flex-col items-center">
+          <BrandLogo size="lg" variant="square" />
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Onboarding Engine</h1>
         </div>
 

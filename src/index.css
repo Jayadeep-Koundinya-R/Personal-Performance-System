@@ -144,11 +144,14 @@
     scrollbar-color: hsl(var(--border)) transparent;
   }
 
+  html,
   body {
     @apply bg-background text-foreground;
     font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
     font-size: 14px;
     line-height: 1.5;
+    overflow-x: hidden;
+    max-width: 100vw;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
@@ -258,4 +261,24 @@
     filter: blur(50px);
     pointer-events: none;
   }
+
+  /* 📱 Native Mobile Safe Area Insets & Keyboard Support */
+  .safe-area-top {
+    padding-top: max(env(safe-area-inset-top, 0px), 8px);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+  }
+
+  .safe-area-x {
+    padding-left: max(env(safe-area-inset-left, 0px), 12px);
+    padding-right: max(env(safe-area-inset-right, 0px), 12px);
+  }
+
+  /* When virtual keyboard is open on mobile devices */
+  body.keyboard-open .hide-on-keyboard {
+    display: none !important;
+  }
 }
+

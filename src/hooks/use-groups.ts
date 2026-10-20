@@ -3,6 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { toast } from "sonner";
+import { resolvePresenceState, PeerPresence, PresenceSummary } from "@/lib/social/presenceResolver";
+
+export { resolvePresenceState };
+export type { PeerPresence, PresenceSummary };
 
 export interface GroupMember {
   id: string;
@@ -306,6 +310,74 @@ export function useGroups() {
     if (!activeGroup) return [];
     return membersMap[activeGroup.id] || [];
   }, [membersMap, activeGroup]);
+
+  // Realtime Presence tracking for active group
+  const [realtimePeers, setRealtimePeers] = useState<PeerPresence[]>([]);
+
+  useEffect(() => {
+    if (!activeGroupId) {
+      setRealtimePeers([]);
+      return;
+    }
+
+    // If authenticated user with UUID group, connect Supabase Presence
+    if (!isGuestUser && user?.id && isUuid(activeGroupId)) {
+      const presenceChannel = supabase.channel(`squad-presence-${activeGroupId}`, {
+        config: { presence: { key: user.id } },
+      });
+
+      presenceChannel
+        .on("presence", { event: "sync" }, () => {
+          const state = presenceChannel.presenceState();
+          const flatPeers: PeerPresence[] = [];
+          Object.values(state).forEach((presences: any) => {
+            if (Array.isArray(presences)) {
+              presences.forEach((p: any) => {
+                if (p && p.userId) flatPeers.push(p as PeerPresence);
+              });
+            }
+          });
+          setRealtimePeers(flatPeers);
+        })
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED") {
+            await presenceChannel.track({
+              userId: user.id,
+              displayName: profile?.displayName || "You",
+              avatar: profile?.avatarEmoji || "🌟",
+              isStudying: Boolean(activeGroupMembers.find((m) => m.userId === user.id)?.isStudying),
+              streak: profile?.streak || 0,
+              onlineAt: new Date().toISOString(),
+              groupId: activeGroupId,
+              groupName: activeGroup?.name,
+            });
+          }
+        });
+
+      return () => {
+        try {
+          supabase.removeChannel(presenceChannel);
+        } catch {}
+      };
+    } else {
+      // Local / Guest / Template squad presence derived from active members
+      const localPeers: PeerPresence[] = activeGroupMembers.map((m) => ({
+        userId: m.userId,
+        displayName: m.displayName,
+        avatar: m.avatar,
+        isStudying: Boolean(m.isStudying),
+        streak: m.currentStreak,
+        onlineAt: m.joinedAt,
+        groupId: activeGroupId,
+        groupName: activeGroup?.name,
+      }));
+      setRealtimePeers(localPeers);
+    }
+  }, [activeGroupId, isGuestUser, user?.id, profile?.displayName, profile?.avatarEmoji, profile?.streak, activeGroupMembers, activeGroup?.name]);
+
+  const presenceSummary = useMemo(() => {
+    return resolvePresenceState(realtimePeers, user?.id);
+  }, [realtimePeers, user?.id]);
 
   // Create Group
   const createGroup = useCallback(
@@ -675,6 +747,8 @@ export function useGroups() {
     toggleStudyingStatus,
     nudgeMember,
     refreshGroups: fetchCloudGroups,
+    presenceSummary,
+    peers: realtimePeers,
   };
 }
 

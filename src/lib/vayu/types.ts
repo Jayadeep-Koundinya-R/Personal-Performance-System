@@ -17,10 +17,13 @@ export type VayuBlockCategory =
 
 export type VayuBlockStatus =
   | "pending"
+  | "in_progress"
   | "active"
   | "completed"
   | "delayed"
   | "skipped";
+
+export type VayuEnergyLevel = "peak" | "medium" | "recharge";
 
 export interface VayuTimeBlock {
   id: string;
@@ -28,11 +31,13 @@ export interface VayuTimeBlock {
   description?: string;
   category: VayuBlockCategory;
   habitId?: string;
+  linkedHabitId?: string;
   habitName?: string;
   startTime: string; // HH:MM in 24hr format, e.g. "09:00"
-  endTime: string;   // HH:MM in 24hr format, e.g. "10:00"
+  endTime: string;   // HH:MM in 24hr format, e.g. "09:45"
   durationMinutes: number;
   status: VayuBlockStatus;
+  energyLevel: VayuEnergyLevel;
   completionPercentage: number; // 0 - 100
   completionSource?: "autonomous_timer" | "natural_language" | "proactive_check" | "manual";
   completedAt?: string;
@@ -52,6 +57,9 @@ export interface VayuDailyPlan {
   currentVitalFocus: string;
   lastRecalibratedAt: string;
   createdAt: string;
+  needsRebalance?: boolean;
+  rebalanceExplanation?: string;
+  minutesPushedForward?: number;
 }
 
 export interface VayuAutonomousState {
@@ -64,13 +72,16 @@ export interface VayuAutonomousState {
   todayTotalMinutesPlanned: number;
   todayTotalMinutesCompleted: number;
   lastActionMessage: string | null;
+  needsRebalance: boolean;
 }
 
 export interface VayuNaturalInputResult {
   matchedBlockId?: string;
   matchedHabitId?: string;
-  action: "completed_block" | "completed_habit" | "plan_created" | "schedule_rebalanced" | "clarification_needed";
+  action: "completed_block" | "completed_habit" | "plan_created" | "schedule_rebalanced" | "start_sprint" | "clarification_needed";
   completionPercentage: number;
   feedback: string;
   xpAwarded: number;
+  suggestedDurationMinutes?: number;
 }
+

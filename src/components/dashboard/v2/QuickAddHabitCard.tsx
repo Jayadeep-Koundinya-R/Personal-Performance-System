@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Sparkles, Clock, Calendar, Zap, Check } from "lucide-react";
+import { Plus, Sparkles, Clock, Calendar, Zap, Check, Target } from "lucide-react";
 import { TRACK_PRESETS } from "@/constants/onboardingPresets";
 import { PrimaryTrackId } from "@/types/onboarding";
 import { toast } from "sonner";
@@ -18,6 +18,13 @@ interface QuickAddHabitCardProps {
   primaryTrack?: string | null;
 }
 
+const AVAILABLE_TRACKS: { id: PrimaryTrackId; label: string; icon: string }[] = [
+  { id: "placements", label: "Placements", icon: "💻" },
+  { id: "competitive_exams", label: "Exams", icon: "📚" },
+  { id: "core_coding", label: "Coding", icon: "⚡" },
+  { id: "fitness", label: "Fitness", icon: "🏃" },
+];
+
 export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
   onAddHabit,
   primaryTrack,
@@ -29,12 +36,16 @@ export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addedChipId, setAddedChipId] = useState<string | null>(null);
 
-  // Resolve track presets for 1-tap adaptive recommendations
-  const activeTrackId = (primaryTrack ||
+  // Active track selection with fallback to profile / storage
+  const defaultTrackId = (primaryTrack ||
     (typeof window !== "undefined" ? localStorage.getItem("pps_active_track") : null) ||
     "placements") as PrimaryTrackId;
 
-  const trackConfig = TRACK_PRESETS[activeTrackId] || TRACK_PRESETS.placements;
+  const [selectedTrackId, setSelectedTrackId] = useState<PrimaryTrackId>(
+    TRACK_PRESETS[defaultTrackId] ? defaultTrackId : "placements"
+  );
+
+  const trackConfig = TRACK_PRESETS[selectedTrackId] || TRACK_PRESETS.placements;
   const recommendedHabits = trackConfig?.anchorHabits || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,18 +183,42 @@ export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
         </button>
       </form>
 
-      {/* Track-Adaptive 1-Tap Habit Chips */}
-      {recommendedHabits.length > 0 && (
-        <div className="pt-2.5 border-t border-border/50 space-y-1.5">
-          <div className="flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
-            <span className="flex items-center gap-1 text-primary">
-              <Zap className="w-3 h-3 text-primary fill-current" />
-              <span>1-Tap {trackConfig.badge || "Track"} Habits</span>
-            </span>
-            <span className="text-[9px] font-normal lowercase text-muted-foreground">1-tap add</span>
-          </div>
+      {/* Task 4.2: Track-Adaptive 1-Tap Habit Chips */}
+      <div className="pt-2.5 border-t border-border/50 space-y-2">
+        <div className="flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="flex items-center gap-1 text-primary">
+            <Zap className="w-3 h-3 text-primary fill-current" />
+            <span>1-Tap Track Anchor Habits</span>
+          </span>
+          <span className="text-[9px] font-normal lowercase text-muted-foreground">1-tap add</span>
+        </div>
 
-          <div className="flex flex-wrap gap-1.5">
+        {/* Track Selection Switcher Pills */}
+        <div className="grid grid-cols-4 gap-1 p-1 bg-surface/60 rounded-xl border border-border/60">
+          {AVAILABLE_TRACKS.map((t) => {
+            const isSelected = selectedTrackId === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setSelectedTrackId(t.id)}
+                className={`py-1 px-1.5 rounded-lg text-[9.5px] font-mono font-bold transition-all cursor-pointer truncate text-center ${
+                  isSelected
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+                title={`View ${t.label} recommendations`}
+              >
+                <span>{t.icon}</span>{" "}
+                <span className="hidden sm:inline">{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tailored Anchor Habit Chips */}
+        {recommendedHabits.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
             {recommendedHabits.map((habit) => {
               const isAdded = addedChipId === habit.id;
               return (
@@ -197,20 +232,24 @@ export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
                       ? "bg-pps-green/15 text-pps-green border-pps-green/40"
                       : "bg-surface/80 hover:bg-primary/10 border-border/80 hover:border-primary/40 text-foreground"
                   }`}
-                  title={`1-tap add "${habit.title}"`}
+                  title={`1-tap add "${habit.title}" for ${trackConfig.title}`}
                 >
                   {isAdded ? (
                     <Check className="w-3 h-3 text-pps-green" />
                   ) : (
-                    <span className="text-primary font-black group-hover:scale-110 transition-transform">+</span>
+                    <span className="text-primary font-black group-hover:scale-110 transition-transform">
+                      +
+                    </span>
                   )}
                   <span className="truncate max-w-[190px]">{habit.title}</span>
                 </button>
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
+
+export default QuickAddHabitCard;

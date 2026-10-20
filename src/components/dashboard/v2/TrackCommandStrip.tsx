@@ -56,10 +56,10 @@ const MomentumTrinityRings: React.FC<{
 
   return (
     <div
-      className="relative flex items-center justify-center cursor-pointer group"
+      className="relative flex items-center justify-center cursor-pointer group shrink-0 aspect-square w-[68px] h-[68px]"
       title={`Momentum Trinity:\n• Focus Target: ${focusRatio}%\n• Habit Velocity: ${habitRatio}%\n• Consistency Score: ${consistencyRatio}%`}
     >
-      <svg width={size} height={size} className="rotate-[-90deg]">
+      <svg width={size} height={size} className="rotate-[-90deg] shrink-0 aspect-square">
         {/* Track backgrounds */}
         <circle cx={center} cy={center} r={r1} stroke="currentColor" strokeWidth={strokeWidth} className="text-primary/15" fill="none" />
         <circle cx={center} cy={center} r={r2} stroke="currentColor" strokeWidth={strokeWidth} className="text-emerald-500/15" fill="none" />
@@ -181,9 +181,9 @@ export const TrackCommandStrip: React.FC<TrackCommandStripProps> = ({
       <div className="pointer-events-none absolute -right-20 -top-20 w-52 h-52 bg-primary/10 rounded-full blur-3xl" />
       <div className="pointer-events-none absolute -left-20 -bottom-20 w-52 h-52 bg-secondary/10 rounded-full blur-3xl" />
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-        {/* Left Column (5 Cols): Greeting, Track Badge & Streak */}
-        <div className="lg:col-span-5 flex flex-col justify-center space-y-1.5">
+      <div className="relative z-10 flex flex-col md:flex-row flex-wrap justify-between items-center gap-3">
+        {/* Left Section: Greeting, Track Badge & Streak */}
+        <div className="flex-1 min-w-[270px] max-w-full flex flex-col justify-center space-y-1.5">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight flex items-center gap-1.5">
               <span>{getGreeting()}, <span className="text-primary">{displayName}</span></span>
@@ -226,8 +226,8 @@ export const TrackCommandStrip: React.FC<TrackCommandStripProps> = ({
           </div>
         </div>
 
-        {/* Center Column (4 Cols): Concentric Momentum Trinity & Target Bar */}
-        <div className="lg:col-span-4 flex items-center gap-3 bg-surface/50 border border-border/60 p-3 rounded-xl shadow-2xs">
+        {/* Center Section: Concentric Momentum Trinity & Target Bar */}
+        <div className="flex-1 min-w-[270px] max-w-full flex items-center gap-3 bg-surface/50 border border-border/60 p-3 rounded-xl shadow-2xs">
           {/* 🌀 Concentric Activity Rings */}
           <MomentumTrinityRings
             focusRatio={progressRatio}
@@ -269,13 +269,13 @@ export const TrackCommandStrip: React.FC<TrackCommandStripProps> = ({
           </div>
         </div>
 
-        {/* Right Column (3 Cols): Agni Challenge Protocol & Habit Momentum */}
-        <div className="lg:col-span-3 flex flex-col sm:flex-row lg:flex-col justify-center items-start lg:items-end gap-2">
+        {/* Right Section: Agni Challenge Protocol & Habit Momentum */}
+        <div className="flex flex-row sm:flex-nowrap flex-wrap md:flex-col justify-start md:justify-center items-start md:items-end gap-2 shrink-0">
           {/* Agni Protocol Badge */}
           {isAgniActive ? (
             <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500/15 to-orange-500/15 text-orange-400 border border-orange-500/30 px-3 py-1.5 rounded-xl text-xs font-mono font-bold shadow-2xs animate-pulse">
               <Flame className="w-4 h-4 text-orange-400 fill-orange-400 flex-shrink-0" />
-              <div className="text-left lg:text-right">
+              <div className="text-left md:text-right">
                 <div className="text-[11px] font-black uppercase tracking-wider text-orange-300 leading-tight">
                   Agni Protocol Active
                 </div>

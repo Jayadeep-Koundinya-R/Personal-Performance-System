@@ -2,11 +2,12 @@
  * 🌬️ useVayu Hook — The Autonomous Operating System for Personal Performance
  * 
  * Provides continuous real-time orchestration:
- * - Dynamic daily flow planning (VayuDailyPlan)
- * - Real-time heartbeat that detects the active block according to real clock time
+ * - Dynamic daily flow planning (VayuDailyPlan) with 45/15 Ultradian rhythms
+ * - 60-second ambient heartbeat comparing local device time against scheduled blocks
+ * - Delay detection (>20m) flagging `needsRebalance: true` with zero guilt / no failure marks
+ * - Pure Zero-Guilt Schedule Rebalancer protecting 22:00 Agni Curfew
  * - Automated session completion when focus timers end (no manual clicks needed)
- * - Natural language input intake ("finished algorithms", "completed workout 50%")
- * - Fluid schedule auto-rebalancing
+ * - Natural language input intake ("finished algorithms", "completed workout 50%", "start sprint")
  * - Offline-first caching with Supabase cloud persistence
  */
 
@@ -24,10 +25,13 @@ import {
   VayuNaturalInputResult,
 } from "@/lib/vayu/types";
 import {
+  generateCircadianPlan,
   generateVayuPlan,
+  rebalanceSchedule,
   rebalanceVayuSchedule,
   parseVayuNaturalInput,
   timeToMinutes,
+  minutesToTime,
 } from "@/lib/vayu/vayuPlanner";
 import { sanitizeWithDOMPurify } from "@/lib/security";
 
@@ -35,8 +39,8 @@ const VAYU_CACHE_KEY_PREFIX = "pps_vayu_daily_plan_";
 
 export function useVayu() {
   const { user, isGuest } = useAuth();
-  const { habits, toggleHabit } = useHabits();
-  const { addXP } = useProfile();
+  const { habits, toggleCompletion, isHabitDueToday } = useHabits();
+  const { profile, addXP } = useProfile();
 
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
   const cacheKey = `${VAYU_CACHE_KEY_PREFIX}${user?.id || "guest"}_${todayStr}`;
@@ -63,6 +67,7 @@ export function useVayu() {
         ...updatedPlan,
         aiStrategySummary: sanitizeWithDOMPurify(updatedPlan.aiStrategySummary || ""),
         currentVitalFocus: sanitizeWithDOMPurify(updatedPlan.currentVitalFocus || ""),
+        rebalanceExplanation: updatedPlan.rebalanceExplanation ? sanitizeWithDOMPurify(updatedPlan.rebalanceExplanation) : undefined,
         blocks: updatedPlan.blocks.map((b) => ({
           ...b,
           title: sanitizeWithDOMPurify(b.title),
@@ -102,30 +107,74 @@ export function useVayu() {
   // ── 3. Initial Plan Generation if None Exists ──
   useEffect(() => {
     if (!plan && habits.length > 0) {
-      const freshPlan = generateVayuPlan({
+      const dueHabits = habits.filter((h) => (typeof isHabitDueToday === "function" ? isHabitDueToday(h) : true));
+      const freshPlan = generateCircadianPlan({
         userId: user?.id || "guest",
-        habits,
+        habits: dueHabits.length > 0 ? dueHabits : habits,
+        activeTrack: profile?.primary_track,
         targetDate: todayStr,
       });
       persistPlan(freshPlan);
     }
-  }, [plan, habits, user, todayStr, persistPlan]);
+  }, [plan, habits, user, todayStr, profile?.primary_track, isHabitDueToday, persistPlan]);
 
-  // ── 4. Real-Time Heartbeat: Find Active Block ──
+  // ── 4. Ambient Heartbeat (60s timer) & Delay Detection (>20m) ──
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState<number>(() => {
     const now = new Date();
     return now.getHours() * 60 + now.getMinutes();
   });
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    const checkScheduleHeartbeat = () => {
       const now = new Date();
-      setCurrentTimeMinutes(now.getHours() * 60 + now.getMinutes());
-    }, 15000); // 15-second heartbeat
+      const currentMins = now.getHours() * 60 + now.getMinutes();
+      setCurrentTimeMinutes(currentMins);
 
-    return () => clearInterval(timer);
-  }, []);
+      // Check for delays in active plan (>20m behind)
+      setPlan((currentPlan) => {
+        if (!currentPlan || !currentPlan.blocks || currentPlan.blocks.length === 0) {
+          return currentPlan;
+        }
 
+        // If schedule already flagged as needing rebalance, skip
+        if (currentPlan.needsRebalance) {
+          return currentPlan;
+        }
+
+        const isDelayed = currentPlan.blocks.some((b) => {
+          if (b.status === "completed" || b.completionPercentage === 100 || b.status === "skipped") {
+            return false;
+          }
+          const startMins = timeToMinutes(b.startTime);
+          // If current time exceeds start time by more than 20 minutes without completion
+          return currentMins - startMins > 20;
+        });
+
+        if (isDelayed) {
+          const updated: VayuDailyPlan = {
+            ...currentPlan,
+            needsRebalance: true,
+            rebalanceExplanation: "Schedule has slipped more than 20 minutes behind local time. Fluid rebalance ready with zero guilt.",
+          };
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        }
+
+        return currentPlan;
+      });
+    };
+
+    // Run check immediately
+    checkScheduleHeartbeat();
+
+    // Run every 60 seconds
+    const interval = setInterval(checkScheduleHeartbeat, 60000);
+    return () => clearInterval(interval);
+  }, [cacheKey]);
+
+  // Derive active and next blocks based on current time
   const { currentBlock, nextBlock } = useMemo(() => {
     if (!plan || plan.blocks.length === 0) {
       return { currentBlock: null, nextBlock: null };
@@ -152,7 +201,7 @@ export function useVayu() {
 
     // If no block currently active, pick next upcoming or first pending
     if (!active) {
-      active = plan.blocks.find((b) => b.status === "pending" || b.status === "delayed") || null;
+      active = plan.blocks.find((b) => b.status === "pending" || b.status === "delayed" || b.status === "in_progress") || null;
     }
 
     return { currentBlock: active, nextBlock: next };
@@ -187,7 +236,7 @@ export function useVayu() {
       const updatedBlocks = plan.blocks.map((b) => {
         if (b.id === blockId) {
           blockTitle = b.title;
-          habitToToggleId = b.habitId;
+          habitToToggleId = b.habitId || b.linkedHabitId;
           const xp = percentage >= 100 ? 15 : 10;
           return {
             ...b,
@@ -217,8 +266,10 @@ export function useVayu() {
       // Auto-complete corresponding habit if linked and not already completed
       if (habitToToggleId) {
         const targetHabit = habits.find((h) => h.id === habitToToggleId);
-        if (targetHabit && !targetHabit.completed) {
-          toggleHabit(habitToToggleId);
+        if (targetHabit && !targetHabit.completed && !targetHabit.completedDates?.includes(todayStr)) {
+          if (typeof toggleCompletion === "function") {
+            toggleCompletion(habitToToggleId, todayStr);
+          }
         }
       }
 
@@ -236,37 +287,44 @@ export function useVayu() {
       setLastActionMessage(msg);
       toast.success(msg);
     },
-    [plan, recalculateStats, persistPlan, habits, toggleHabit, addXP]
+    [plan, recalculateStats, persistPlan, habits, toggleCompletion, todayStr, addXP]
   );
 
   // ── 7. Generate Fresh Plan with Optional Directive ──
   const generateNewPlan = useCallback(
     (directive?: string) => {
       const sanitized = sanitizeWithDOMPurify(directive || "");
-      const freshPlan = generateVayuPlan({
+      const dueHabits = habits.filter((h) => (typeof isHabitDueToday === "function" ? isHabitDueToday(h) : true));
+      const freshPlan = generateCircadianPlan({
         userId: user?.id || "guest",
-        habits,
+        habits: dueHabits.length > 0 ? dueHabits : habits,
+        activeTrack: profile?.primary_track,
         userDirective: sanitized,
         targetDate: todayStr,
       });
 
       persistPlan(freshPlan);
-      toast.success("🌬️ Vayu Plan Generated", {
-        description: sanitized ? `Directive: "${sanitized}"` : "Dynamic daily flow aligned with your habits.",
+      toast.success("🌬️ Vayu Circadian Plan Generated", {
+        description: sanitized ? `Directive: "${sanitized}"` : "45/15 Ultradian rhythm aligned with your biological windows.",
       });
     },
-    [user, habits, todayStr, persistPlan]
+    [user, habits, profile?.primary_track, isHabitDueToday, todayStr, persistPlan]
   );
 
-  // ── 8. Fluid Auto-Rebalance ──
-  const rebalance = useCallback(() => {
-    if (!plan) return;
-    const rebalanced = rebalanceVayuSchedule(plan);
-    persistPlan(rebalanced);
-    toast.info("🌬️ Vayu Schedule Fluidly Rebalanced", {
-      description: "Remaining uncompleted blocks shifted forward seamlessly.",
-    });
-  }, [plan, persistPlan]);
+  // ── 8. Fluid Zero-Guilt Auto-Rebalance ──
+  const rebalance = useCallback(
+    (curfewTimeStr: string = "22:00") => {
+      if (!plan) return;
+      const now = new Date();
+      const currentTimeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+      const rebalanced = rebalanceSchedule(plan, currentTimeStr, curfewTimeStr);
+      persistPlan(rebalanced);
+      toast.info("🌬️ Vayu Flow Fluidly Rebalanced", {
+        description: rebalanced.rebalanceExplanation || "Schedule shifted forward seamlessly with zero guilt.",
+      });
+    },
+    [plan, persistPlan]
+  );
 
   // ── 9. Natural Language Input Intake (Voice / Text) ──
   const processNaturalInput = useCallback(
@@ -278,8 +336,10 @@ export function useVayu() {
         await completeBlock(result.matchedBlockId, result.completionPercentage, "natural_language");
       } else if (result.action === "completed_habit" && result.matchedHabitId) {
         const targetHabit = habits.find((h) => h.id === result.matchedHabitId);
-        if (targetHabit && !targetHabit.completed) {
-          toggleHabit(targetHabit.id);
+        if (targetHabit && !targetHabit.completed && !targetHabit.completedDates?.includes(todayStr)) {
+          if (typeof toggleCompletion === "function") {
+            toggleCompletion(targetHabit.id, todayStr);
+          }
         }
         try {
           addXP(result.xpAwarded);
@@ -287,7 +347,9 @@ export function useVayu() {
 
         // Check if there is an uncompleted block matching this habit
         if (plan) {
-          const matchingBlock = plan.blocks.find((b) => b.habitId === result.matchedHabitId && b.status !== "completed");
+          const matchingBlock = plan.blocks.find(
+            (b) => (b.habitId === result.matchedHabitId || b.linkedHabitId === result.matchedHabitId) && b.status !== "completed"
+          );
           if (matchingBlock) {
             await completeBlock(matchingBlock.id, 100, "natural_language");
           }
@@ -295,6 +357,26 @@ export function useVayu() {
         toast.success(result.feedback);
       } else if (result.action === "schedule_rebalanced") {
         rebalance();
+      } else if (result.action === "plan_created") {
+        generateNewPlan();
+      } else if (result.action === "start_sprint") {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("pps_start_focus_timer", {
+              detail: {
+                durationMins: result.suggestedDurationMinutes || 45,
+                taskName: currentBlock?.title || "Vayu Focus Sprint",
+                linkedHabitId: currentBlock?.habitId || currentBlock?.linkedHabitId,
+              },
+            })
+          );
+        }
+        toast.success(result.feedback);
+      } else if (result.action === "task_completed") {
+        try {
+          addXP(result.xpAwarded);
+        } catch {}
+        toast.success(result.feedback);
       } else {
         toast.info(result.feedback);
       }
@@ -302,7 +384,7 @@ export function useVayu() {
       setLastActionMessage(result.feedback);
       return result;
     },
-    [plan, habits, completeBlock, toggleHabit, addXP, rebalance]
+    [plan, habits, completeBlock, toggleCompletion, todayStr, addXP, rebalance, generateNewPlan, currentBlock]
   );
 
   // ── 10. Automated Focus Timer Session Integration ──
@@ -312,7 +394,7 @@ export function useVayu() {
 
       // Find matching block for this habit or current active block
       let targetBlock = habitId
-        ? plan.blocks.find((b) => b.habitId === habitId && b.status !== "completed")
+        ? plan.blocks.find((b) => (b.habitId === habitId || b.linkedHabitId === habitId) && b.status !== "completed")
         : null;
 
       if (!targetBlock) {
@@ -356,6 +438,7 @@ export function useVayu() {
     todayTotalMinutesPlanned: plan?.totalTargetMinutes || 0,
     todayTotalMinutesCompleted: plan?.completedMinutes || 0,
     lastActionMessage,
+    needsRebalance: Boolean(plan?.needsRebalance),
   };
 
   return {

@@ -25,7 +25,7 @@ import RitualOverlay from "@/components/RitualOverlay";
 import { Navigate, Link, useLocation } from "react-router-dom";
 import AiChatWidget from "@/components/ui/AiChatWidget";
 import VoiceControlModal from "@/components/ui/VoiceControlModal";
-import { Mic, ChevronDown, MoreHorizontal, Sparkles, X, Flame, Layers, Bell, Trash2 } from "lucide-react";
+import { Mic, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, X, Flame, Layers, Bell, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { HABIT_TEMPLATES } from "@/lib/habitTemplates";
@@ -41,6 +41,7 @@ import { FloatingCallPiP } from "@/components/focus-rooms/FloatingCallPiP";
 import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
 import { KeyboardShortcutsModal } from "@/components/ui/KeyboardShortcutsModal";
 import { InteractiveOnboardingModal } from "@/components/onboarding/InteractiveOnboardingModal";
+import { BrandLogo } from "@/components/BrandLogo";
 
 
 
@@ -163,6 +164,17 @@ function DashboardInner({ user }: { user: User }) {
       setActiveSection("social");
     }
   }, [location.pathname]);
+
+  // Hardware Back-Button hierarchical navigation from internal sub-sections
+  useEffect(() => {
+    const handleSubSectionBack = () => {
+      if (activeSection !== "dashboard") {
+        setActiveSection("dashboard");
+      }
+    };
+    window.addEventListener("pps_sub_section_back", handleSubSectionBack);
+    return () => window.removeEventListener("pps_sub_section_back", handleSubSectionBack);
+  }, [activeSection]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -546,6 +558,10 @@ function DashboardInner({ user }: { user: User }) {
             <span className="text-base leading-none">{sidebarOpen ? "✕" : "☰"}</span>
           </button>
 
+          <Link to="/" title="PPS Home" className="flex items-center">
+            <BrandLogo size="xs" showText={false} variant="square" iconClassName="w-6 h-6" />
+          </Link>
+
           {/* 🎯 Interactive Native Module Dropdown Selector */}
           <div className="relative">
             <button
@@ -820,47 +836,48 @@ function DashboardInner({ user }: { user: User }) {
             bg-card/90 backdrop-blur-xl border-r border-border/80 flex flex-col flex-shrink-0
             md:relative md:translate-x-0
             fixed top-0 bottom-0 left-0 z-[1001] transition-all duration-300
-            ${sidebarCollapsed ? "md:w-[72px]" : "md:w-[235px]"}
-            ${sidebarOpen ? "w-[235px] translate-x-0" : "-translate-x-full md:translate-x-0"}
+            ${sidebarCollapsed ? "md:w-[72px]" : "md:w-[240px]"}
+            ${sidebarOpen ? "w-[240px] translate-x-0" : "-translate-x-full md:translate-x-0"}
           `}
           style={{ boxShadow: "var(--card-shadow)" }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-5 border-b border-border/80">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <span className="w-3 h-3 rounded-full bg-primary animate-pulse flex-shrink-0" />
-              {!sidebarCollapsed && (
-                <span className="font-mono text-lg font-black text-primary tracking-[1.5px] truncate">
-                  PPS<span className="text-secondary">.</span>
-                </span>
-              )}
-            </div>
+          <div className="flex items-center justify-between px-3.5 py-3 border-b border-border/80 min-h-[57px]">
+            <Link to="/" className="flex items-center gap-2 overflow-hidden group">
+              <BrandLogo
+                size="sm"
+                variant="square"
+                showText={!sidebarCollapsed}
+                iconClassName="w-6 h-6 flex-shrink-0"
+                textClassName="text-base font-bold text-primary"
+              />
+            </Link>
             {/* Desktop Collapse Toggle */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden md:flex p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer text-xs"
+              className="hidden md:flex p-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:bg-surface/80 transition-all cursor-pointer shadow-2xs"
               title={sidebarCollapsed ? "Expand Sidebar (Ctrl+B)" : "Collapse Sidebar (Ctrl+B)"}
             >
-              {sidebarCollapsed ? "→" : "←"}
+              {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
             </button>
             {/* Mobile Close Button */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface cursor-pointer text-xs"
+              className="md:hidden p-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:bg-surface cursor-pointer text-xs"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {/* Nav List with Categorized Group Headers */}
-          <nav className="py-2 flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="space-y-3 px-2">
+          <nav className="py-3 flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="space-y-3 px-3">
               {(["Core Workspace", "Focus & Social", "Growth & Stats", "System"] as const).map((categoryName) => {
                 const categoryItems = NAV_ITEMS.filter((item) => item.category === categoryName);
                 return (
-                  <div key={categoryName} className="space-y-0.5">
+                  <div key={categoryName} className="space-y-1">
                     {!sidebarCollapsed && (
-                      <div className="px-3 py-1 text-[9.5px] font-mono font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center justify-between">
+                      <div className="px-2.5 py-1 text-[9.5px] font-mono font-bold uppercase tracking-wider text-muted-foreground/70 flex items-center justify-between">
                         <span>{categoryName}</span>
                       </div>
                     )}
@@ -882,23 +899,23 @@ function DashboardInner({ user }: { user: User }) {
                             }}
                             title={sidebarCollapsed ? item.label : undefined}
                             className={`
-                              px-3 py-2 rounded-xl cursor-pointer text-xs flex items-center gap-2.5 transition-all relative group
+                              px-2.5 py-2 rounded-lg cursor-pointer text-xs flex items-center gap-2.5 transition-all relative group
                               ${
                                 isActive
-                                  ? "bg-primary text-primary-foreground font-black shadow-xs"
-                                  : "text-muted-foreground hover:text-foreground hover:bg-surface"
+                                  ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-surface/70 font-medium"
                               }
                               ${sidebarCollapsed ? "justify-center px-0" : ""}
                             `}
                           >
                             <span className="text-base flex-shrink-0">{item.icon}</span>
                             {!sidebarCollapsed && (
-                              <span className="truncate flex-1 font-medium">{item.label}</span>
+                              <span className="truncate flex-1">{item.label}</span>
                             )}
                             {/* Active Dot Indicator */}
                             {isActive && (
                               <span
-                                className={`w-1.5 h-1.5 rounded-full bg-primary-foreground flex-shrink-0 animate-pulse ${
+                                className={`w-1.5 h-1.5 rounded-full bg-primary-foreground flex-shrink-0 opacity-90 ${
                                   sidebarCollapsed ? "absolute top-1.5 right-1.5" : ""
                                 }`}
                               />
@@ -1186,7 +1203,7 @@ function DashboardInner({ user }: { user: User }) {
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-4 pb-24 md:px-8 md:py-7 md:pb-7 overflow-y-auto">
+          <main className="flex-1 px-4 py-4 pb-28 md:px-8 md:py-7 md:pb-8 overflow-y-auto overflow-x-hidden max-w-full">
             <AnimatedSection sectionKey={activeSection}>
               {renderSection()}
             </AnimatedSection>

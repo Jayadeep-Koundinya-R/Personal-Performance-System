@@ -7,7 +7,10 @@ import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
+import { Keyboard } from "@capacitor/keyboard";
+import { handleHardwareBackDecision } from "@/lib/mobile/backButtonHandler";
 import { FEATURE_FLAGS } from "@/config/features";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { useAuth, AuthProvider, User } from "@/hooks/use-auth";
@@ -34,17 +37,52 @@ const NativeAppController = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // 1. Keyboard Lifecycle Management
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    try {
+      const showPromise = Keyboard.addListener("keyboardWillShow", (info) => {
+        document.body.classList.add("keyboard-open");
+        document.documentElement.style.setProperty("--keyboard-height", `${info.keyboardHeight}px`);
+      });
+      const hidePromise = Keyboard.addListener("keyboardWillHide", () => {
+        document.body.classList.remove("keyboard-open");
+        document.documentElement.style.removeProperty("--keyboard-height");
+      });
+
+      return () => {
+        showPromise.then((h) => h?.remove()).catch(() => {});
+        hidePromise.then((h) => h?.remove()).catch(() => {});
+      };
+    } catch {
+      // Graceful fallback for non-native browsers
+    }
+  }, []);
+
+  // 2. Hardware Back Button Hierarchical Dismissal
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
     let removeListener: (() => void) | undefined;
 
     const setupListener = async () => {
       try {
-        const handle = await CapApp.addListener("backButton", ({ canGoBack }) => {
-          // 1. If an open modal / sheet / popover exists, close it via Escape key
-          const openDialog = document.querySelector(
-            '[role="dialog"], [role="alertdialog"], [data-state="open"][data-radix-portal]'
+        const handle = await CapApp.addListener("backButton", async ({ canGoBack }) => {
+          const hasOpenModal = Boolean(
+            document.querySelector(
+              '[role="dialog"], [role="alertdialog"], [data-state="open"][data-radix-portal], .pps-modal-open'
+            )
           );
-          if (openDialog) {
+
+          const decision = handleHardwareBackDecision({
+            hasOpenModal,
+            currentPath: location.pathname,
+            canGoBack,
+          });
+
+          // Level 1: Close active modal or sheet
+          if (decision.type === "close_modal") {
             document.dispatchEvent(
               new KeyboardEvent("keydown", {
                 key: "Escape",
@@ -55,18 +93,25 @@ const NativeAppController = () => {
                 cancelable: true,
               })
             );
+            window.dispatchEvent(new CustomEvent("pps_close_modals"));
             return;
           }
 
-          // 2. If on a nested route (not home / dashboard), navigate back
-          const isRoot = location.pathname === "/" || location.pathname === "/dashboard";
-          if (!isRoot && (canGoBack || window.history.length > 1)) {
-            navigate(-1);
+          // Level 2: Navigate back to root dashboard from sub-sections or sub-routes
+          if (decision.type === "navigate_dashboard") {
+            window.dispatchEvent(new CustomEvent("pps_sub_section_back"));
+            if (location.pathname !== "/dashboard" && location.pathname !== "/") {
+              navigate("/dashboard");
+            }
             return;
           }
 
-          // 3. If on root route, exit or minimize app
-          CapApp.exitApp();
+          // Level 3: Root Dashboard — Minimize Native App
+          try {
+            await CapApp.minimizeApp();
+          } catch {
+            CapApp.exitApp();
+          }
         });
 
         removeListener = () => {

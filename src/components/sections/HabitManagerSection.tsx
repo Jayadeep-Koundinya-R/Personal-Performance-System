@@ -484,6 +484,16 @@ const HabitManagerSection = () => {
                     <span className="bg-surface border border-border/80 px-2 py-0.5 rounded-lg">
                       ⏰ {h.period}
                     </span>
+                    {h.requires_focus_timer && (
+                      <span className="bg-amber-500/15 text-amber-500 border border-amber-500/30 px-2 py-0.5 rounded-lg">
+                        ⚡ Sprint ({h.focus_duration_minutes || 25}m)
+                      </span>
+                    )}
+                    {(h.window_start || h.window_end) && (
+                      <span className="bg-blue-500/15 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-lg">
+                        ⏳ {h.window_start || "00:00"} – {h.window_end || "23:59"}
+                      </span>
+                    )}
                   </div>
                 </div>
 

@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useHabits } from "@/hooks/use-habits";
+import { useHabits, Habit } from "@/hooks/use-habits";
 import { useProfile } from "@/hooks/use-profile";
 import { useReminders } from "@/hooks/use-reminders";
 import { useLifecycleNudges } from "@/hooks/use-lifecycle-nudges";
@@ -12,14 +12,26 @@ import { TaskSection } from "@/components/dashboard/TaskSection";
 import { VayuPulseBanner } from "@/components/vayu/VayuPulseBanner";
 import { VayuFlowStudioModal } from "@/components/vayu/VayuFlowStudioModal";
 import { MiniPomodoroCard } from "@/components/dashboard/MiniPomodoroCard";
-import { UnifiedHeroDeck } from "@/components/dashboard/v2/UnifiedHeroDeck";
-import { DashboardHubTiles } from "@/components/dashboard/v2/DashboardHubTiles";
+import { MomentumCommandDeck } from "@/components/dashboard/v2/MomentumCommandDeck";
 import { ImmediateRemindersStrip } from "@/components/dashboard/v2/ImmediateRemindersStrip";
 import { QuickAddHabitCard } from "@/components/dashboard/v2/QuickAddHabitCard";
 import { DashboardCommandHub } from "@/components/dashboard/v2/DashboardCommandHub";
+import { EmergencyTriageModal } from "@/components/dashboard/EmergencyTriageModal";
+import { TriageActiveBanner } from "@/components/dashboard/TriageActiveBanner";
+import { ParkinsonsLawInverterModal } from "@/components/habits/ParkinsonsLawInverterModal";
+import { SyllabusDecomposerModal } from "@/components/syllabus/SyllabusDecomposerModal";
 import { Link } from "react-router-dom";
-import { Search, X, Volume2, VolumeX } from "lucide-react";
+import { Search, X, Volume2, VolumeX, Zap, MoreHorizontal, Headphones, Battery, BatteryCharging, Sparkles, Activity, Clock, Shield, Flame } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { feedbackSounds } from "@/lib/audio/clickFeedback";
+import { ambientAudio, AmbienceType } from "@/lib/audio/ambientSynthesizer";
+import { calculateVitalityScore, calculateRolling7DayConsistency } from "@/lib/dashboard/vitality";
 import { toast } from "sonner";
 import { canFireGlobalShortcut } from "@/lib/utils/keyboard";
 import { canClaimRecoveryXP, claimRecoveryXP } from "@/lib/dashboard/microHabits";
@@ -94,13 +106,18 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     habits,
     addHabit,
     toggleCompletion,
+    completeHabit,
     markAllDone,
     isHabitDueToday,
     getTodayStr,
     calculateWeeklyPoints,
     getMaxStreak,
     getTotalFreezeCredits,
+    isWithinCircadianWindow,
   } = useHabits();
+
+  const [timerLockModalHabit, setTimerLockModalHabit] = useState<Habit | null>(null);
+  const [circadianModalHabit, setCircadianModalHabit] = useState<{ habit: Habit; label: string } | null>(null);
 
   const { profile } = useProfile();
   const { user } = useAuth();
@@ -145,6 +162,29 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
   } = useVayu();
   const [isVayuStudioOpen, setIsVayuStudioOpen] = useState(false);
 
+  // Global listener for Vayu Sprint Launch events
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleStartTimer = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      const duration = detail.durationMins || 45;
+      focusTimer.changeTimerMode("custom", duration);
+      if (detail.taskName) focusTimer.setActiveTaskName(detail.taskName);
+      if (detail.linkedHabitId) focusTimer.setLinkedHabitId(detail.linkedHabitId);
+      focusTimer.startTimer();
+      toast.success(`⚡ Focus Sprint Launched (${duration}m)`);
+    };
+
+    window.addEventListener("pps_start_focus_timer", handleStartTimer);
+    return () => window.removeEventListener("pps_start_focus_timer", handleStartTimer);
+  }, [focusTimer]);
+
+  // ── 🎯 Phase 3: Dopamine & Motivation Engine States ──
+  const [triageModalOpen, setTriageModalOpen] = useState(false);
+  const [parkinsonsModalOpen, setParkinsonsModalOpen] = useState(false);
+  const [targetHabitForSlicing, setTargetHabitForSlicing] = useState<any>(null);
+  const [syllabusModalOpen, setSyllabusModalOpen] = useState(false);
+
   // Skipped habits state for forgiving rest-day system
   const [skippedHabits, setSkippedHabits] = useState<Record<string, string>>(() => {
     try {
@@ -180,9 +220,10 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     }
   };
 
-  const handleToggleHabit = async (habitId: string) => {
+  const handleToggleHabit = async (habitId: string, forceBypass = false) => {
     const habit = habits.find((h) => h.id === habitId);
-    const wasCompleted = habit?.completedDates.includes(todayStr);
+    if (!habit) return;
+    const wasCompleted = habit.completedDates.includes(todayStr);
 
     if (skippedHabits[habitId]) {
       const next = { ...skippedHabits };
@@ -193,13 +234,28 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
       } catch {}
     }
 
-    if (!wasCompleted) {
+    if (!wasCompleted && !forceBypass) {
+      // 1. Proof of Focus Anti-Cheat Lock Check
+      if (habit.requires_focus_timer) {
+        setTimerLockModalHabit(habit);
+        return;
+      }
+
+      // 2. Circadian Window Time Gating Check
+      if (habit.window_start || habit.window_end) {
+        const cCheck = isWithinCircadianWindow(habit.window_start, habit.window_end);
+        if (!cCheck.isOpen) {
+          setCircadianModalHabit({ habit, label: cCheck.label });
+          return;
+        }
+      }
+
       feedbackSounds.playSuccessChime();
     } else {
       feedbackSounds.playClick();
     }
 
-    await toggleCompletion(habitId);
+    await toggleCompletion(habitId, todayStr, forceBypass);
   };
 
   const handleViewModeChange = (mode: "priority" | "timeblock" | "zen") => {
@@ -233,6 +289,25 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     toast.success(`Energy logged: ${mLabel}`, { description: "Your energy state is updated for today!" });
   };
 
+  // 🎧 Ambient procedural soundscape state
+  const [soundscape, setSoundscape] = useState<AmbienceType>("none");
+  const handleToggleSoundscape = (type: AmbienceType) => {
+    const next = soundscape === type ? "none" : type;
+    setSoundscape(next);
+    ambientAudio.play(next);
+    if (next !== "none") {
+      toast.success(`🎧 Ambient Soundscape: ${next.toUpperCase()}`, {
+        description: "Native Web Audio procedural focus soundscape.",
+      });
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      ambientAudio.stop();
+    };
+  }, []);
+
   // Habit search & category filtering state
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -251,6 +326,46 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
   const maxStreak = getMaxStreak();
   const freezeCredits = getTotalFreezeCredits();
   const weeklyPoints = calculateWeeklyPoints();
+
+  // Rolling 7-day consistency & Vitality score
+  const rollingConsistency = useMemo(() => {
+    return calculateRolling7DayConsistency(habits, todayStr, completionRate);
+  }, [habits, todayStr, completionRate]);
+
+  const vitality = useMemo(() => {
+    return calculateVitalityScore({
+      completionRate,
+      todayFocusMinutes,
+      targetFocusMinutes: profile?.daily_focus_target_minutes || 60,
+      rolling7DayConsistency: rollingConsistency,
+    });
+  }, [completionRate, todayFocusMinutes, profile, rollingConsistency]);
+
+  // Rolling 7-day mini-dots for glanceable weekly rhythm
+  const rolling7Days = useMemo(() => {
+    const days = [];
+    const dayLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().split("T")[0];
+      const completedCount = habits.filter((h) => (h.completedDates || []).includes(ds)).length;
+      days.push({
+        dateStr: ds,
+        label: dayLabels[d.getDay()],
+        isToday: i === 0,
+        isCompleted: completedCount > 0,
+        count: completedCount,
+      });
+    }
+    return days;
+  }, [habits, todayStr]);
+
+  // Estimated time remaining today
+  const remainingEstimatedMinutes = useMemo(() => {
+    const uncompleted = dueToday.filter((h) => !h.completedDates.includes(todayStr));
+    return uncompleted.reduce((acc, h) => acc + (h.focus_duration_minutes || 15), 0);
+  }, [dueToday, todayStr]);
 
   // Audio FX Mute State
   const [isAudioMuted, setIsAudioMuted] = useState(() => feedbackSounds.getIsMuted());
@@ -359,7 +474,22 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
 
   const handleInstallStarterStack = useCallback(async () => {
     for (const s of STARTER_HABIT_STACK) {
-      await addHabit(s.name, s.category, s.period, s.priority, todayStr, s.time, null, s.color);
+      await addHabit(
+        s.name,
+        s.category,
+        s.period,
+        s.priority,
+        todayStr,
+        s.time,
+        null,
+        s.color,
+        false,
+        false,
+        s.requires_focus_timer,
+        s.focus_duration_minutes,
+        s.window_start,
+        s.window_end
+      );
     }
     toast.success("Starter Habit Stack installed! 🚀");
   }, [addHabit, todayStr]);
@@ -473,6 +603,34 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
   const eveningHabits = sortHabits(filteredHabits.filter((h) => getTimeBlock(h) === "evening"));
   const anytimeHabits = sortHabits(filteredHabits.filter((h) => getTimeBlock(h) === "anytime"));
 
+  function getCategoryColor(category?: string | null): { bg: string; text: string; border: string; dot: string } {
+    const cat = (category || "").toLowerCase();
+    if (cat.includes("health") || cat.includes("fit") || cat.includes("water") || cat.includes("sleep")) {
+      return { bg: "bg-emerald-500/15", text: "text-emerald-400", border: "border-emerald-500/30", dot: "bg-emerald-400" };
+    }
+    if (cat.includes("prod") || cat.includes("work") || cat.includes("code") || cat.includes("deep")) {
+      return { bg: "bg-blue-500/15", text: "text-blue-400", border: "border-blue-500/30", dot: "bg-blue-400" };
+    }
+    if (cat.includes("learn") || cat.includes("study") || cat.includes("read") || cat.includes("book")) {
+      return { bg: "bg-cyan-500/15", text: "text-cyan-400", border: "border-cyan-500/30", dot: "bg-cyan-400" };
+    }
+    if (cat.includes("mindful") || cat.includes("meditat") || cat.includes("peace")) {
+      return { bg: "bg-purple-500/15", text: "text-purple-400", border: "border-purple-500/30", dot: "bg-purple-400" };
+    }
+    if (cat.includes("mindset") || cat.includes("gratitude") || cat.includes("journal")) {
+      return { bg: "bg-amber-500/15", text: "text-amber-400", border: "border-amber-500/30", dot: "bg-amber-400" };
+    }
+    return { bg: "bg-indigo-500/15", text: "text-indigo-400", border: "border-indigo-500/30", dot: "bg-indigo-400" };
+  }
+
+  function getGreeting(): string {
+    const h = new Date().getHours();
+    if (h < 5) return "Good Night";
+    if (h < 12) return "Good Morning";
+    if (h < 17) return "Good Afternoon";
+    return "Good Evening";
+  }
+
   const renderTask = (habit: typeof habits[0], index: number) => {
     const dueDate = new Date(habit.dueDate);
     dueDate.setHours(0, 0, 0, 0);
@@ -481,32 +639,32 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     const skipReason = skippedHabits[habit.id];
     const isSkipped = !!skipReason;
 
-    let tagClass = "bg-primary/10 text-primary";
+    let tagClass = "bg-primary/15 text-primary border border-primary/30";
     let tagText = "Due " + dueDate.toLocaleDateString(undefined, { weekday: "long" });
 
     if (isSkipped) {
-      tagClass = "bg-muted text-muted-foreground border border-border/80 font-mono";
+      tagClass = "bg-surface/80 text-muted-foreground border border-border/80 font-mono";
       tagText = `Skipped (${skipReason})`;
     } else if (diffDays < 0) {
-      tagClass = "bg-destructive/10 text-destructive";
-      tagText = "Overdue";
+      tagClass = "bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold";
+      tagText = "Overdue 🚨";
     } else if (diffDays === 0 && isCompletedToday) {
-      tagClass = "bg-pps-green/10 text-pps-green";
+      tagClass = "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold";
       tagText = "Done ✓";
     } else if (diffDays === 0) {
       const urgency = getUrgencyLevel(habit);
       if (urgency === "overdue") {
-        tagClass = "bg-destructive/10 text-destructive border border-destructive/20 font-bold animate-pulse";
+        tagClass = "bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold animate-pulse shadow-sm shadow-rose-500/20";
         tagText = "Overdue 🚨";
       } else if (urgency === "urgent") {
-        tagClass = "bg-pps-orange/10 text-pps-orange border border-pps-orange/20 font-bold animate-pulse";
+        tagClass = "bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold animate-pulse shadow-sm shadow-amber-500/20";
         tagText = "Urgent ⏳";
       } else {
-        tagClass = "bg-pps-orange/10 text-pps-orange";
+        tagClass = "bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold";
         tagText = "Due Today";
       }
     } else if (diffDays === 1) {
-      tagClass = "bg-pps-yellow/10 text-pps-yellow";
+      tagClass = "bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 font-semibold";
       tagText = "Tomorrow";
     }
 
@@ -539,17 +697,53 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               {habit.name}
             </span>
             {habit.category && (
-              <span className="text-[9px] bg-muted/70 text-muted-foreground px-1.5 py-0.2 rounded font-mono flex-shrink-0">
+              <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold border flex-shrink-0 ${getCategoryColor(habit.category).bg} ${getCategoryColor(habit.category).text} ${getCategoryColor(habit.category).border}`}>
                 {habit.category}
               </span>
             )}
+            {/* Task 1.2: Amber Timer-Locked Badge */}
+            {habit.requires_focus_timer && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTimerLockModalHabit(habit);
+                }}
+                className="text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-0.5 flex-shrink-0 cursor-pointer hover:bg-amber-500/25 transition-all"
+                title={`⚡ Timer-Locked: Requires ${habit.focus_duration_minutes || 25}m focus session`}
+              >
+                ⚡ Timer-Locked
+              </span>
+            )}
+            {/* Task 1.3: Circadian Status Badge */}
+            {(habit.window_start || habit.window_end) && (() => {
+              const c = isWithinCircadianWindow(habit.window_start, habit.window_end);
+              if (c.status === "upcoming") {
+                return (
+                  <span className="text-[9px] bg-blue-500/15 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
+                    {c.label}
+                  </span>
+                );
+              }
+              if (c.status === "closed") {
+                return (
+                  <span className="text-[9px] bg-zinc-500/15 text-zinc-400 border border-zinc-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
+                    {c.label}
+                  </span>
+                );
+              }
+              return (
+                <span className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
+                  🟢 In Window
+                </span>
+              );
+            })()}
             {habit.streak > 0 && (
               <span className="text-[10px] text-pps-orange font-mono font-bold flex-shrink-0" title={`Streak: ${habit.streak}d`}>
                 🔥{habit.streak}
               </span>
             )}
             {isSkipped && (
-              <span className="text-[10px] bg-muted px-1.5 py-0.2 rounded font-mono text-muted-foreground flex-shrink-0">
+              <span className="text-[10px] bg-surface/80 border border-border/60 px-1.5 py-0.2 rounded font-mono text-muted-foreground flex-shrink-0">
                 ⏸️ {skipReason}
               </span>
             )}
@@ -563,33 +757,73 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             {!isCompletedToday && !isSkipped && (
               <>
                 <button
+                  type="button"
                   onClick={() => {
-                    handleToggleHabit(habit.id);
-                    toast.success(`🪜 Micro-step done: "${habit.name}"!`, {
-                      description: "Small daily consistency compounds. +5 Micro XP!",
-                    });
+                    focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
+                    toast.success(`⏱️ ${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
                   }}
-                  className="text-[9.5px] bg-surface hover:bg-muted border border-border px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground transition-all cursor-pointer font-mono"
-                  title="Scale down to a 2m micro-habit when energy is low"
+                  className="px-2 py-0.5 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-0.5 shadow-xs shrink-0"
+                  title="Launch Pomodoro Focus Session"
                 >
-                  🪜 2m
+                  <Zap className="w-2.5 h-2.5 fill-primary/30" />
+                  <span>{habit.focus_duration_minutes || 25}m</span>
                 </button>
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) handleSkipHabit(habit.id, e.target.value);
-                  }}
-                  defaultValue=""
-                  className="text-[10px] bg-surface border border-border px-1 py-0.5 rounded text-muted-foreground outline-none cursor-pointer hover:border-primary"
-                  title="Skip today with reason"
-                >
-                  <option value="" disabled>Skip...</option>
-                  <option value="Rest">Rest Day 💤</option>
-                  <option value="Sick">Sick 🤒</option>
-                  <option value="Busy">Busy 💼</option>
-                </select>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="p-1 rounded-md bg-surface/80 hover:bg-muted/40 border border-border/80 text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0 shadow-xs"
+                      title="More actions"
+                      aria-label="Habit actions"
+                    >
+                      <MoreHorizontal className="w-3 h-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48 z-[2000] bg-card/95 backdrop-blur-xl border-border/80 shadow-xl p-1 rounded-xl">
+                    <DropdownMenuItem
+                      onClick={() => completeHabit(habit.id, "micro")}
+                      className="cursor-pointer text-xs flex items-center gap-2 p-1.5 rounded-lg hover:bg-amber-500/10"
+                    >
+                      <span>🪜</span>
+                      <span>2m Micro-Habit (+2 XP)</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setTargetHabitForSlicing(habit);
+                        setParkinsonsModalOpen(true);
+                      }}
+                      className="cursor-pointer text-xs flex items-center gap-2 p-1.5 rounded-lg hover:bg-indigo-500/10"
+                    >
+                      <span>⏳</span>
+                      <span>Parkinson's Slicer</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="my-1 border-border/60" />
+                    <DropdownMenuItem
+                      onClick={() => completeHabit(habit.id, "rest")}
+                      className="cursor-pointer text-xs flex items-center gap-2 p-1.5 rounded-lg hover:bg-emerald-500/10"
+                    >
+                      <span>💤</span>
+                      <span>Rest Day (+5 XP)</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleSkipHabit(habit.id, "Sick")}
+                      className="cursor-pointer text-xs flex items-center gap-2 p-1.5 rounded-lg hover:bg-rose-500/10"
+                    >
+                      <span>🤒</span>
+                      <span>Sick Day</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleSkipHabit(habit.id, "Busy")}
+                      className="cursor-pointer text-xs flex items-center gap-2 p-1.5 rounded-lg"
+                    >
+                      <span>💼</span>
+                      <span>Busy Day</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
-            <span className={`text-[10px] px-2 py-0.2 rounded-full font-semibold font-mono whitespace-nowrap ${tagClass}`}>
+            <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold font-mono whitespace-nowrap shrink-0 shadow-xs ${tagClass}`}>
               {tagText}
             </span>
           </div>
@@ -627,10 +861,46 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           />
           <span className={`truncate font-medium ${isCompletedToday ? "line-through opacity-45" : ""}`}>{habit.name}</span>
           {habit.category && (
-            <span className="text-[10px] bg-surface border border-border/60 text-muted-foreground px-2 py-0.5 rounded-md font-mono flex-shrink-0">
+            <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold border flex-shrink-0 ${getCategoryColor(habit.category).bg} ${getCategoryColor(habit.category).text} ${getCategoryColor(habit.category).border}`}>
               {habit.category}
             </span>
           )}
+          {/* Task 1.2: Amber Timer-Locked Badge */}
+          {habit.requires_focus_timer && (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                setTimerLockModalHabit(habit);
+              }}
+              className="text-[10px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-2 py-0.5 rounded-md font-mono font-bold flex items-center gap-1 flex-shrink-0 cursor-pointer hover:bg-amber-500/25 transition-all"
+              title={`⚡ Timer-Locked: Requires ${habit.focus_duration_minutes || 25}m focus sprint`}
+            >
+              ⚡ Timer-Locked
+            </span>
+          )}
+          {/* Task 1.3: Circadian Status Badge */}
+          {(habit.window_start || habit.window_end) && (() => {
+            const c = isWithinCircadianWindow(habit.window_start, habit.window_end);
+            if (c.status === "upcoming") {
+              return (
+                <span className="text-[10px] bg-blue-500/15 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
+                  {c.label}
+                </span>
+              );
+            }
+            if (c.status === "closed") {
+              return (
+                <span className="text-[10px] bg-zinc-500/15 text-zinc-400 border border-zinc-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
+                  {c.label}
+                </span>
+              );
+            }
+            return (
+              <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
+                🟢 In Window
+              </span>
+            );
+          })()}
           {habit.streak > 0 && (
             <span className="text-[11px] text-pps-orange font-mono font-bold flex items-center gap-0.5 flex-shrink-0" title={`Current Streak: ${habit.streak} days`}>
               <span>🔥</span>
@@ -638,57 +908,104 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             </span>
           )}
           {isSkipped && (
-            <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground flex-shrink-0">
+            <span className="text-[10px] bg-surface/80 border border-border/60 px-2 py-0.5 rounded font-mono text-muted-foreground flex-shrink-0">
               ⏸️ {skipReason}
             </span>
           )}
           {habit.startTime && (
-            <span className="text-[11px] font-mono text-muted-foreground bg-surface border border-border/40 px-1.5 py-0.5 rounded flex-shrink-0">
+            <span className="text-[11px] font-mono text-muted-foreground bg-surface border border-border/40 px-2 py-0.5 rounded flex-shrink-0">
               {formatTime12(habit.startTime)}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {!isCompletedToday && !isSkipped && (
             <>
+              {/* Primary 1-Tap Focus Sprint Button */}
               <button
+                type="button"
                 onClick={() => {
-                  focusTimer.startHabitFocus(habit, 25);
-                  toast.success(`⏱️ 25m Focus Sprint launched for "${habit.name}"!`);
+                  focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
+                  toast.success(`⏱️ ${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
                 }}
-                className="text-[10px] bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-lg transition-all cursor-pointer font-mono font-bold flex items-center gap-0.5"
-                title="Launch 25m Pomodoro Focus Session for this habit"
+                className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs hover:scale-105 shrink-0"
+                title="Launch Pomodoro Focus Session"
               >
-                <span>⚡ 25m</span>
+                <Zap className="w-3 h-3 fill-primary/30" />
+                <span>{habit.focus_duration_minutes || 25}m</span>
               </button>
-              <button
-                onClick={() => {
-                  handleToggleHabit(habit.id);
-                  toast.success(`🪜 Micro-Habit Logged: "${habit.name}"!`, {
-                    description: "Consistency preserved with zero burnout. +5 Micro XP! 🌿",
-                  });
-                }}
-                className="text-[10px] bg-surface hover:bg-muted border border-border px-1.5 py-0.5 rounded-lg text-muted-foreground hover:text-foreground transition-all cursor-pointer font-mono"
-                title="Scale to 2m micro-habit when tired to preserve momentum"
-              >
-                🪜 2m Micro
-              </button>
-              <select
-                onChange={(e) => {
-                  if (e.target.value) handleSkipHabit(habit.id, e.target.value);
-                }}
-                defaultValue=""
-                className="text-[11px] bg-surface border border-border px-1.5 py-0.5 rounded text-muted-foreground outline-none cursor-pointer hover:border-primary"
-                title="Skip today with reason"
-              >
-                <option value="" disabled>Skip...</option>
-                <option value="Rest">Rest Day 💤</option>
-                <option value="Sick">Sick 🤒</option>
-                <option value="Busy">Busy 💼</option>
-              </select>
+
+              {/* Advanced Actions Dropdown (2m Micro, Parkinson's Slice, Rest / Sick / Busy) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="p-1.5 rounded-lg bg-surface/80 hover:bg-muted/40 border border-border/80 text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0 shadow-xs"
+                    title="Advanced options"
+                    aria-label="Habit options"
+                  >
+                    <MoreHorizontal className="w-3.5 h-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52 z-[2000] bg-card/95 backdrop-blur-xl border-border/80 shadow-2xl p-1.5 rounded-xl">
+                  <DropdownMenuItem
+                    onClick={() => completeHabit(habit.id, "micro")}
+                    className="cursor-pointer text-xs flex items-center gap-2.5 p-2 rounded-lg hover:bg-amber-500/10"
+                  >
+                    <span className="p-1 rounded-md bg-amber-500/15 text-amber-400">🪜</span>
+                    <div>
+                      <div className="font-bold text-foreground">2m Micro-Habit</div>
+                      <div className="text-[10px] text-muted-foreground">Low energy fallback (+2 XP)</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setTargetHabitForSlicing(habit);
+                      setParkinsonsModalOpen(true);
+                    }}
+                    className="cursor-pointer text-xs flex items-center gap-2.5 p-2 rounded-lg hover:bg-indigo-500/10"
+                  >
+                    <span className="p-1 rounded-md bg-indigo-500/15 text-indigo-400">⏳</span>
+                    <div>
+                      <div className="font-bold text-foreground">Parkinson's Slicer</div>
+                      <div className="text-[10px] text-muted-foreground">Slice into a 15m sprint</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1 border-border/60" />
+                  <DropdownMenuItem
+                    onClick={() => completeHabit(habit.id, "rest")}
+                    className="cursor-pointer text-xs flex items-center gap-2.5 p-2 rounded-lg hover:bg-emerald-500/10"
+                  >
+                    <span className="p-1 rounded-md bg-emerald-500/15 text-emerald-400">💤</span>
+                    <div>
+                      <div className="font-bold text-foreground">Rest Day</div>
+                      <div className="text-[10px] text-muted-foreground">Honored recovery (+5 XP)</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleSkipHabit(habit.id, "Sick")}
+                    className="cursor-pointer text-xs flex items-center gap-2.5 p-2 rounded-lg hover:bg-rose-500/10"
+                  >
+                    <span className="p-1 rounded-md bg-rose-500/15 text-rose-400">🤒</span>
+                    <div>
+                      <div className="font-bold text-foreground">Sick Day</div>
+                      <div className="text-[10px] text-muted-foreground">Pause streak with shield</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleSkipHabit(habit.id, "Busy")}
+                    className="cursor-pointer text-xs flex items-center gap-2.5 p-2 rounded-lg hover:bg-surface"
+                  >
+                    <span className="p-1 rounded-md bg-muted text-muted-foreground">💼</span>
+                    <div>
+                      <div className="font-bold text-foreground">Busy Day</div>
+                      <div className="text-[10px] text-muted-foreground">Reschedule without guilt</div>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           )}
-          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold font-mono whitespace-nowrap ${tagClass}`}>
+          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold font-mono whitespace-nowrap shrink-0 shadow-xs ${tagClass}`}>
             {tagText}
           </span>
         </div>
@@ -703,8 +1020,18 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     </div>
   );
 
+  const nextBestAction = getNextBestAction({
+    habits,
+    todayStr,
+    currentTimeStr: getCurrentTimeHHMM(),
+    skippedHabits,
+  });
+
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-3 sm:space-y-4">
+      {/* ── 🚨 Active Emergency Triage Banner ── */}
+      <TriageActiveBanner onOpenModal={() => setTriageModalOpen(true)} />
+
       {/* ── ZONE 1: Context & Nudges ── */}
       {nudge && (
         <motion.div
@@ -728,61 +1055,341 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         </motion.div>
       )}
 
-      {!nudge && maxStreak === 0 && habits.some((h) => (h.completedDates || []).length > 0) && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-primary/10 via-surface to-pps-green/10 border border-primary/25 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary border border-primary/30 flex items-center justify-center text-lg flex-shrink-0">
-              🌱
+      {/* ── LAYER 1: UNIFIED COCKPIT HEADER (Status, Energy State, Ambient Audio) ── */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-3.5 rounded-2xl bg-card/85 backdrop-blur-xl border border-border/80 shadow-sm"
+      >
+        {/* Left: Greeting, Date & System Pulse */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/25 via-accent/20 to-primary/10 border border-primary/30 flex items-center justify-center text-lg shadow-inner flex-shrink-0">
+            ⚡
+          </div>
+          <div>
+            <div className="text-sm font-black text-foreground flex items-center gap-2">
+              <span>{getGreeting()}, {profile?.displayName?.split(" ")[0] || "Champion"}</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400/50" title="System Live" />
             </div>
-            <div>
-              <div className="text-xs font-black text-foreground flex items-center gap-1.5">
-                <span>Welcome Back! Fresh Day Momentum</span>
-                <span className="text-[10px] font-mono text-pps-green bg-pps-green/15 px-2 py-0.2 rounded-full font-bold">
-                  Zero Guilt • Data, Not Failure
-                </span>
+            <div className="text-[11px] text-muted-foreground font-mono">
+              {new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
+              {vayuCurrentBlock?.title ? ` · Focus: ${vayuCurrentBlock.title}` : " · Daily Flow"}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: 1-Tap Energy State & Procedural Soundscape */}
+        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-between md:justify-end">
+          {/* Energy State Quick Toggles */}
+          <div className="flex items-center gap-1 bg-surface/90 border border-border/80 p-0.5 rounded-xl">
+            <span className="text-[10px] font-mono text-muted-foreground px-2 uppercase font-bold flex items-center gap-1">
+              <Activity className="w-3 h-3 text-primary" /> State:
+            </span>
+            {[
+              { id: "high", icon: "⚡", label: "Peak", color: "bg-amber-500/20 text-amber-300 border-amber-500/40" },
+              { id: "flow", icon: "🎯", label: "Flow", color: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40" },
+              { id: "steady", icon: "☕", label: "Steady", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" },
+              { id: "low", icon: "🔋", label: "Low", color: "bg-rose-500/20 text-rose-300 border-rose-500/40" },
+            ].map((m) => {
+              const isActive = mood === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => handleMoodSelect(m.id, m.label)}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    isActive
+                      ? `${m.color} border font-bold shadow-xs scale-105`
+                      : "text-muted-foreground hover:text-foreground hover:bg-surface"
+                  }`}
+                >
+                  <span>{m.icon}</span>
+                  <span className="text-[11px]">{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Procedural Ambient Soundscape */}
+          <div className="flex items-center gap-1 bg-surface/90 border border-border/80 p-0.5 rounded-xl">
+            <span className="text-[10px] font-mono text-muted-foreground px-2 flex items-center gap-1 font-bold">
+              <Headphones className="w-3 h-3 text-primary" /> Audio:
+            </span>
+            {(["none", "rain", "lofi", "coffee", "library"] as AmbienceType[]).map((type) => {
+              const isPlaying = soundscape === type;
+              const labels: Record<AmbienceType, { icon: string; label: string }> = {
+                none: { icon: "Off", label: "Off" },
+                rain: { icon: "🌧️", label: "Rain" },
+                lofi: { icon: "🎵", label: "Lo-Fi" },
+                coffee: { icon: "☕", label: "Cafe" },
+                library: { icon: "📖", label: "Library" },
+              };
+              return (
+                <button
+                  key={type}
+                  onClick={() => handleToggleSoundscape(type)}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                    isPlaying
+                      ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  title={`Procedural ${type} focus soundscape`}
+                >
+                  <span>{labels[type].icon}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sound FX Toggle */}
+          <button
+            onClick={toggleAudioMute}
+            className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+              isAudioMuted
+                ? "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
+                : "bg-primary/15 border-primary/30 text-primary hover:bg-primary/25"
+            }`}
+            title={isAudioMuted ? "Unmute Sound Effects" : "Mute Sound Effects"}
+          >
+            {isAudioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      </motion.div>
+
+      {/* ── LAYER 2: THE VITALITY COMMAND DECK (4 High-Contrast Cohesive Cards) ── */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+      >
+        {/* Card 1: Today's Momentum + High-Contrast 7-Day Sparkline */}
+        <div className="col-span-2 sm:col-span-1 flex flex-col justify-between p-3.5 rounded-2xl bg-card border border-border/80 shadow-sm group hover:border-primary/40 transition-all">
+          <div className="flex items-center gap-3">
+            <div className="relative w-12 h-12 flex-shrink-0">
+              <svg viewBox="0 0 36 36" className="w-12 h-12 -rotate-90">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="hsl(var(--border))" strokeWidth="2.5" />
+                <circle
+                  cx="18" cy="18" r="15.5" fill="none"
+                  stroke={completionRate >= 100 ? "#10b981" : "hsl(var(--primary))"}
+                  strokeWidth="2.5"
+                  strokeDasharray={`${(completionRate / 100) * 97.4} 97.4`}
+                  strokeLinecap="round"
+                  className="transition-all duration-700 ease-out"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-xs font-black text-foreground">
+                {completionRate}<span className="text-[9px]">%</span>
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-base font-black text-foreground leading-tight">{doneToday.length}/{dueToday.length}</div>
+              <div className="text-[11px] text-muted-foreground font-mono">Today's Habits</div>
+            </div>
+          </div>
+          {/* High-Contrast 7-Day Sparkline */}
+          <div className="flex items-center justify-between gap-1 mt-2.5 pt-2 border-t border-border/60">
+            {rolling7Days.map((d) => (
+              <div
+                key={d.dateStr}
+                className={`flex flex-col items-center justify-center w-6 h-6 rounded-lg text-[9px] font-mono font-bold transition-all shadow-xs ${
+                  d.isToday
+                    ? "ring-2 ring-primary bg-primary/25 text-primary font-black scale-105"
+                    : d.isCompleted
+                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-emerald-500/10"
+                    : "bg-surface/80 text-foreground/50 border border-border/80"
+                }`}
+                title={`${d.dateStr}: ${d.count} completed`}
+              >
+                {d.isCompleted ? "✓" : d.label.slice(0, 1)}
               </div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">
-                Consistency is built over months, not single days. Check off your first habit today to start a fresh streak.
+            ))}
+          </div>
+        </div>
+
+        {/* Card 2: Streak & Shield Vault + Vitality Badge */}
+        <div className="flex flex-col justify-between p-3.5 rounded-2xl bg-card border border-border/80 shadow-sm hover:border-amber-500/40 transition-all cursor-default">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg flex-shrink-0 shadow-sm">
+              🔥
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-base font-black text-foreground leading-tight">
+                {maxStreak}<span className="text-xs text-muted-foreground font-normal ml-0.5">d streak</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground font-mono truncate mt-0.5">
+                {freezeCredits > 0 ? `${freezeCredits} 🛡️ shields` : "Streak Active"}
               </div>
             </div>
           </div>
-          <button
-            onClick={() => onNavigate?.("habits")}
-            className="text-xs bg-surface border border-border/80 hover:border-primary text-foreground font-extrabold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap shadow-2xs"
-          >
-            View Habit Stack →
-          </button>
-        </motion.div>
-      )}
+          {/* Vitality Indicator */}
+          <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/60">
+            <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1 font-bold">
+              <Activity className="w-3 h-3 text-emerald-400" /> Vitality
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md font-bold bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-300 border border-emerald-500/30">
+              {vitality.score} · {vitality.tier}
+            </span>
+          </div>
+        </div>
 
-      {/* ── Unified Hero Command Deck ── */}
-      <UnifiedHeroDeck
-        profile={profile}
-        completionRate={completionRate}
-        maxStreak={maxStreak}
-        freezeCredits={freezeCredits}
-        todayFocusMinutes={todayFocusMinutes}
-        habits={habits}
-        todayStr={todayStr}
-        onToggleHabit={handleToggleHabit}
-        onSkipHabit={handleSkipHabit}
-        onNavigate={onNavigate}
-        skippedHabits={skippedHabits}
-        onInstallStarterStack={handleInstallStarterStack}
-      />
+        {/* Card 3: Deep Work Studio + Quick 25m Pomodoro Trigger */}
+        <div className="flex flex-col justify-between p-3.5 rounded-2xl bg-card border border-border/80 shadow-sm hover:border-primary/40 transition-all">
+          <div className="flex items-center justify-between gap-1">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-lg flex-shrink-0 shadow-sm">
+                ⚡
+              </div>
+              <div className="min-w-0">
+                <div className="text-base font-black text-foreground leading-tight">
+                  {todayFocusMinutes}<span className="text-xs text-muted-foreground font-normal ml-0.5">m</span>
+                </div>
+                <div className="text-[11px] text-muted-foreground font-mono">Deep Work</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (focusTimer.isRunning) {
+                  focusTimer.pauseTimer();
+                  toast.info("Timer paused");
+                } else {
+                  focusTimer.changeTimerMode("pomodoro", 25);
+                  focusTimer.startTimer();
+                  toast.success("⚡ 25m Focus Sprint started!");
+                }
+              }}
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-xs ${
+                focusTimer.isRunning
+                  ? "bg-rose-500/15 text-rose-300 border-rose-500/40 animate-pulse"
+                  : "bg-primary/15 text-primary border-primary/30 hover:bg-primary/25 hover:scale-105"
+              }`}
+            >
+              {focusTimer.isRunning ? "Pause" : "+25m"}
+            </button>
+          </div>
+          <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/60 text-[10px] text-muted-foreground font-mono">
+            <span>Goal: {profile?.daily_focus_target_minutes || 60}m</span>
+            <span className="text-primary font-bold">{Math.min(100, Math.round((todayFocusMinutes / (profile?.daily_focus_target_minutes || 60)) * 100))}%</span>
+          </div>
+        </div>
 
-      {/* ── Dashboard Hub Tiles (Live Module Radar) ── */}
-      <DashboardHubTiles
-        habits={habits}
-        todayStr={todayStr}
-        onNavigate={onNavigate}
-      />
+        {/* Card 4: Next Best Action Recommendation */}
+        <div className="col-span-2 sm:col-span-1 p-3.5 rounded-2xl bg-gradient-to-br from-primary/10 via-card to-accent/10 border border-primary/30 shadow-sm flex flex-col justify-between">
+          {nextBestAction ? (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[9px] uppercase font-mono text-primary font-black tracking-wider">Next Target</div>
+                  <div className="text-xs font-black text-foreground truncate mt-0.5">{nextBestAction.name}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    focusTimer.startHabitFocus(nextBestAction, nextBestAction.focus_duration_minutes || 25);
+                    toast.success(`⚡ Sprint launched for "${nextBestAction.name}"!`);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:bg-primary/90 transition-all cursor-pointer shadow-md shadow-primary/25 flex-shrink-0 flex items-center gap-1 hover:scale-105"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-current" />
+                  <span>Go</span>
+                </button>
+              </div>
+              <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/60 text-[10px] text-muted-foreground font-mono">
+                <span>Est: {nextBestAction.focus_duration_minutes || 15}m</span>
+                <span className="text-amber-400 font-bold">{nextBestAction.priority || "Normal"}</span>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-2 my-auto">
+              <div className="text-xs font-black text-emerald-400">✓ All Caught Up!</div>
+              <div className="text-[10px] text-muted-foreground font-mono mt-0.5">No pending tasks for today</div>
+            </div>
+          )}
+        </div>
+      </motion.div>
 
-      {/* ── ZONE 2: PRIMARY ACTION CORE (Above the Fold) ── */}
+      {/* ── LAYER 3: COMPACT POWER TOOLS ACTION DOCK ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        {/* Tool 1: Emergency Triage */}
+        <button
+          type="button"
+          onClick={() => setTriageModalOpen(true)}
+          className="p-3 rounded-2xl bg-gradient-to-r from-rose-500/15 via-card to-rose-500/5 border border-rose-500/35 hover:border-rose-500/70 transition-all text-left flex items-center justify-between group shadow-xs cursor-pointer hover:scale-[1.01]"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-lg p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
+              🚨
+            </span>
+            <div className="min-w-0">
+              <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
+                <span>Emergency Triage</span>
+                <span className="text-[9px] font-mono uppercase bg-rose-500/25 text-rose-300 px-1.5 py-0.2 rounded-md font-bold">
+                  Panic Mode
+                </span>
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                Mute noise, shield streaks, isolate 1 target
+              </div>
+            </div>
+          </div>
+          <span className="text-xs text-rose-400 font-bold group-hover:translate-x-1 transition-transform ml-2">→</span>
+        </button>
+
+        {/* Tool 2: Parkinson's Slicer */}
+        <button
+          type="button"
+          onClick={() => {
+            setTargetHabitForSlicing(null);
+            setParkinsonsModalOpen(true);
+          }}
+          className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-card to-amber-500/5 border border-amber-500/35 hover:border-amber-500/70 transition-all text-left flex items-center justify-between group shadow-xs cursor-pointer hover:scale-[1.01]"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-lg p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
+              ⏳
+            </span>
+            <div className="min-w-0">
+              <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
+                <span>Parkinson’s Slicer</span>
+                <span className="text-[9px] font-mono uppercase bg-amber-500/25 text-amber-300 px-1.5 py-0.2 rounded-md font-bold">
+                  Anti-Procrastinate
+                </span>
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                Slice distant deadlines into 15m micro-bites
+              </div>
+            </div>
+          </div>
+          <span className="text-xs text-amber-400 font-bold group-hover:translate-x-1 transition-transform ml-2">→</span>
+        </button>
+
+        {/* Tool 3: Syllabus Decomposer */}
+        <button
+          type="button"
+          onClick={() => setSyllabusModalOpen(true)}
+          className="p-3 rounded-2xl bg-gradient-to-r from-cyan-500/15 via-card to-cyan-500/5 border border-cyan-500/35 hover:border-cyan-500/70 transition-all text-left flex items-center justify-between group shadow-xs cursor-pointer hover:scale-[1.01]"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-lg p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
+              📚
+            </span>
+            <div className="min-w-0">
+              <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
+                <span>Syllabus Decomposer</span>
+                <span className="text-[9px] font-mono uppercase bg-cyan-500/25 text-cyan-300 px-1.5 py-0.2 rounded-md font-bold">
+                  30-Day Track
+                </span>
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                Deconstruct exams & roadmaps into habits
+              </div>
+            </div>
+          </div>
+          <span className="text-xs text-cyan-400 font-bold group-hover:translate-x-1 transition-transform ml-2">→</span>
+        </button>
+      </div>
+
+      {/* ── LAYER 4: DAILY HABITS CORE & COMPANION RAIL (8:4 Responsive Grid) ── */}
       {habits.length === 0 ? (
         <div className="p-6 sm:p-8 rounded-3xl border border-primary/30 bg-gradient-to-br from-card via-surface/60 to-primary/10 shadow-2xl space-y-6 text-left">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-4 border-b border-border/50">
@@ -809,17 +1416,60 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          {/* Left 7 Columns: Today's Habits & Immediate Alarms */}
-          <div className="lg:col-span-7 flex flex-col gap-4">
-            {/* Immediate Reminders Alert Strip */}
-            <ImmediateRemindersStrip reminders={reminders} />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+          {/* Left 8 Columns: Habits Canvas & Unified Toolbar */}
+          <div className="lg:col-span-8 flex flex-col gap-3">
 
-            {/* View Switcher, Search, and Category Chips Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-2xl bg-surface/60 border border-border/70 shadow-xs">
-              {/* Density & View Mode Selectors */}
+            {/* Quick 1-Tap Category Filter Chips & Time Estimate Bar */}
+            <div className="flex items-center justify-between gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+              <div className="flex items-center gap-2 flex-nowrap sm:flex-wrap overflow-x-auto">
+                {categories.map((c) => {
+                  const isSelected = categoryFilter === c;
+                  const count =
+                    c === "All"
+                      ? dueToday.length
+                      : dueToday.filter((h) => (h.category || "").trim() === c).length;
+                  const color = getCategoryColor(c);
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => setCategoryFilter(c)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 border ${
+                        isSelected
+                          ? "bg-primary text-white border-primary shadow-md shadow-primary/25 font-bold scale-105"
+                          : "bg-card hover:bg-card/90 text-foreground/80 hover:text-foreground border-border/80 shadow-xs"
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-white" : color.dot}`} />
+                      <span>{c}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                          isSelected
+                            ? "bg-white/20 text-white"
+                            : `${color.bg} ${color.text} border ${color.border}`
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {dueToday.length > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card border border-border/80 text-xs font-mono text-muted-foreground whitespace-nowrap flex-shrink-0 shadow-xs">
+                  <Clock className="w-3.5 h-3.5 text-primary" />
+                  <span>~{remainingEstimatedMinutes}m left</span>
+                </div>
+              )}
+            </div>
+
+            {/* View Switcher, Density, Bulk Done & Search Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-2xl bg-card/85 backdrop-blur-md border border-border/80 shadow-xs">
+              {/* Left controls: Density, View Mode, Bulk All Done */}
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1 bg-surface border border-border p-0.5 rounded-xl text-xs font-semibold">
+                {/* Density Switcher */}
+                <div className="flex items-center gap-1 bg-surface border border-border/80 p-0.5 rounded-xl text-xs font-semibold">
                   <button
                     onClick={() => handleDensityModeChange("comfortable")}
                     className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
@@ -840,7 +1490,8 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1 bg-surface border border-border p-0.5 rounded-xl text-xs font-semibold">
+                {/* View Mode Switcher */}
+                <div className="flex items-center gap-1 bg-surface border border-border/80 p-0.5 rounded-xl text-xs font-semibold">
                   <button
                     onClick={() => handleViewModeChange("priority")}
                     className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
@@ -870,23 +1521,11 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                   </button>
                 </div>
 
-                {/* Sound FX Mute Toggle */}
-                <button
-                  onClick={toggleAudioMute}
-                  className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                    isAudioMuted
-                      ? "bg-surface border-border text-muted-foreground hover:text-foreground"
-                      : "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
-                  }`}
-                  title={isAudioMuted ? "Unmute Sound Effects" : "Mute Sound Effects"}
-                >
-                  {isAudioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                </button>
-
+                {/* ⚡ All Done Button */}
                 {dueToday.length > 0 && doneToday.length < dueToday.length && (
                   <button
                     onClick={markAllDone}
-                    className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground text-xs font-semibold py-1 px-2.5 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                    className="bg-primary/15 text-primary border border-primary/30 hover:bg-primary hover:text-primary-foreground text-xs font-semibold py-1 px-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                     title="Press 'M' on keyboard"
                   >
                     <span>⚡ All Done</span>
@@ -895,36 +1534,24 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 )}
               </div>
 
-              {/* Search & Category Filter */}
-              <div className="flex items-center gap-2 flex-1 justify-end min-w-[200px]">
-                <div className="relative flex-1 max-w-[220px]">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search habits..."
-                    className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-card border border-border/80 text-xs text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none transition-colors"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="bg-card border border-border/80 rounded-xl px-2.5 py-1.5 text-xs text-muted-foreground focus:text-foreground outline-none focus:border-primary"
-                >
-                  {categories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+              {/* Right: Search Input */}
+              <div className="relative flex-1 max-w-[240px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search habits..."
+                  className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-surface border border-border/80 text-xs text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -991,8 +1618,11 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             </AnimatePresence>
           </div>
 
-          {/* Right 5 Columns: Focus Studio & Vayu Autonomous Engine */}
-          <div className="lg:col-span-5 flex flex-col gap-4">
+          {/* Right 4 Columns: Quick Access Panel */}
+          <div className="lg:col-span-4 flex flex-col gap-3">
+            {/* Immediate Reminders Alert Strip */}
+            <ImmediateRemindersStrip reminders={reminders} />
+
             {/* 🌬️ Vayu Real-Time Autonomous Flow Banner */}
             <VayuPulseBanner
               plan={vayuPlan}
@@ -1003,6 +1633,15 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               onRebalance={rebalanceVayuSchedule}
               onOpenStudio={() => setIsVayuStudioOpen(true)}
               onCompleteCurrent={(blockId) => completeVayuBlock(blockId, 100, "manual")}
+              onStartSprint={(block) => {
+                focusTimer.changeTimerMode("custom", block.durationMinutes);
+                focusTimer.setActiveTaskName(block.title);
+                if (block.linkedHabitId || block.habitId) {
+                  focusTimer.setLinkedHabitId(block.linkedHabitId || block.habitId || null);
+                }
+                focusTimer.startTimer();
+                toast.success(`⚡ Launched ${block.durationMinutes}m focus sprint for "${block.title}"`);
+              }}
             />
 
             {/* Embedded Mini Pomodoro Timer */}
@@ -1038,7 +1677,17 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         onGenerateNewPlan={generateVayuPlan}
         onRebalance={rebalanceVayuSchedule}
         onCompleteBlock={(blockId, pct) => completeVayuBlock(blockId, pct || 100, "manual")}
+        onStartSprint={(block) => {
+          focusTimer.changeTimerMode("custom", block.durationMinutes);
+          focusTimer.setActiveTaskName(block.title);
+          if (block.linkedHabitId || block.habitId) {
+            focusTimer.setLinkedHabitId(block.linkedHabitId || block.habitId || null);
+          }
+          focusTimer.startTimer();
+          toast.success(`⚡ Launched ${block.durationMinutes}m focus sprint for "${block.title}"`);
+        }}
       />
+
 
       <CelebrationOverlay
         show={showCelebration}
@@ -1048,6 +1697,132 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         subtitle="You crushed every single habit today. Keep this momentum going!"
         icon="🎉"
       />
+
+      {/* ── 🎯 Phase 3: Dopamine & Motivation Modals ── */}
+      <EmergencyTriageModal
+        isOpen={triageModalOpen}
+        onClose={() => setTriageModalOpen(false)}
+      />
+
+      <ParkinsonsLawInverterModal
+        isOpen={parkinsonsModalOpen}
+        onClose={() => setParkinsonsModalOpen(false)}
+        targetHabit={targetHabitForSlicing}
+      />
+
+      <SyllabusDecomposerModal
+        isOpen={syllabusModalOpen}
+        onClose={() => setSyllabusModalOpen(false)}
+      />
+
+      {/* ── ⚡ Task 1.2: Proof-of-Focus Anti-Cheat Modal ── */}
+      {timerLockModalHabit && (
+        <div className="fixed inset-0 z-[3000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card border border-amber-500/30 rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-xl shrink-0">
+                ⚡
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Verified Focus Sprint Required</h3>
+                <p className="text-xs text-muted-foreground">Mechanical Anti-Cheat Protection</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-foreground/90 leading-relaxed">
+              This anchor habit <span className="font-semibold text-amber-400">"{timerLockModalHabit.name}"</span> requires a verified focus sprint ({timerLockModalHabit.focus_duration_minutes || 25}m). Start Sprint now?
+            </p>
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const habit = timerLockModalHabit;
+                  setTimerLockModalHabit(null);
+                  handleToggleHabit(habit.id, true);
+                }}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline cursor-pointer"
+              >
+                Bypass (Grace Mode)
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTimerLockModalHabit(null)}
+                  className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const habit = timerLockModalHabit;
+                    setTimerLockModalHabit(null);
+                    focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
+                    toast.success(`⏱️ Focus Sprint started for "${habit.name}"!`);
+                  }}
+                  className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20"
+                >
+                  <span>⚡</span>
+                  <span>Start Sprint ({timerLockModalHabit.focus_duration_minutes || 25}m)</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ── ⏳ Task 1.3: Circadian Window Warning Modal ── */}
+      {circadianModalHabit && (
+        <div className="fixed inset-0 z-[3000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card border border-blue-500/30 rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-xl shrink-0">
+                ⏳
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Circadian Time-Window Gating</h3>
+                <p className="text-xs text-muted-foreground">Biological Rhythm Alignment</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-foreground/90 leading-relaxed">
+              <span className="font-semibold text-blue-400">"{circadianModalHabit.habit.name}"</span> is currently outside its scheduled circadian window: <span className="font-mono text-foreground font-semibold">{circadianModalHabit.label}</span>.
+              <br /><br />
+              Do you want to log it anyway using Grace Mode, or wait for the biological window?
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setCircadianModalHabit(null)}
+                className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted cursor-pointer"
+              >
+                Wait for Window
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const habit = circadianModalHabit.habit;
+                  setCircadianModalHabit(null);
+                  handleToggleHabit(habit.id, true);
+                }}
+                className="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs cursor-pointer shadow-md"
+              >
+                Complete (Grace Mode)
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

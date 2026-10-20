@@ -30,6 +30,12 @@ import { DataVaultTab } from "@/components/settings/DataVaultTab";
 import { TrackPreferenceSelector } from "@/components/settings/TrackPreferenceSelector";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 import {
+  COACH_PERSONAS,
+  getActivePersonaId,
+  setActivePersonaId,
+  type CoachPersonaId,
+} from "@/lib/ai/coachPersonas";
+import {
   User as UserIcon,
   Lock,
   Bell,
@@ -101,6 +107,8 @@ const SettingsSection = ({ user }: { user: User }) => {
     }
   }, [profile]);
 
+  const [selectedPersona, setSelectedPersona] = useState<CoachPersonaId>(() => getActivePersonaId());
+
   if (profileLoading || settingsLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 min-h-[300px]">
@@ -112,6 +120,7 @@ const SettingsSection = ({ user }: { user: User }) => {
 
   // Save Profile Handler
   const saveProfile = async () => {
+    setActivePersonaId(selectedPersona);
     const err = await updateProfile({
       displayName: displayName.trim(),
       username: username.trim(),
@@ -119,7 +128,7 @@ const SettingsSection = ({ user }: { user: User }) => {
       avatarEmoji: selectedAvatar,
     });
     if (err) toast.error(err);
-    else toast.success("Profile updated successfully!");
+    else toast.success(`Profile & Coach Persona (${COACH_PERSONAS[selectedPersona].name}) updated successfully!`);
   };
 
   // Billing portal
@@ -411,6 +420,70 @@ const SettingsSection = ({ user }: { user: User }) => {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* AI Coaching Persona Architecture Card */}
+            <div className="bg-card border border-border p-6 rounded-3xl shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-3">
+                <div>
+                  <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span>AI Coaching Persona & Tone Architecture</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                    Select your motivational archetype: adjusts the psychological tone of AI nudges, reminders, and triage sprints.
+                  </p>
+                </div>
+                <span className="text-[11px] font-mono font-bold bg-primary/10 text-primary border border-primary/25 px-2.5 py-0.5 rounded-full w-fit">
+                  Active: {COACH_PERSONAS[selectedPersona].name}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(Object.keys(COACH_PERSONAS) as CoachPersonaId[]).map((personaKey) => {
+                  const p = COACH_PERSONAS[personaKey];
+                  const isSelected = selectedPersona === personaKey;
+                  return (
+                    <button
+                      key={personaKey}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPersona(personaKey);
+                        setActivePersonaId(personaKey);
+                        toast.success(`Coach persona switched to ${p.name}!`);
+                      }}
+                      className={`text-left p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between relative ${
+                        isSelected
+                          ? "bg-primary/10 border-primary shadow-md ring-2 ring-primary/40"
+                          : "bg-surface/70 border-border/70 hover:border-primary/40 hover:bg-surface"
+                      }`}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-2xl">{p.symbol}</span>
+                          {isSelected && (
+                            <span className="text-[10px] font-mono font-black uppercase bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-sm font-black text-foreground">{p.name}</div>
+                          <div className="text-[11px] font-bold text-primary">{p.tagline}</div>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {p.strategy}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-border/40">
+                        <div className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Motto:</div>
+                        <div className="text-[11px] italic text-foreground font-medium">"{p.motto}"</div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

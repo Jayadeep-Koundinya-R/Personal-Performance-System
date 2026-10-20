@@ -32,17 +32,8 @@ export const OnboardingWizard: React.FC<Props> = ({ initialState, onComplete }) 
   const [step, setStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  let navigate: ReturnType<typeof useNavigate>;
-  try {
-    navigate = useNavigate();
-  } catch {
-    navigate = (() => {}) as any;
-  }
-
-  let queryClient: any = null;
-  try {
-    queryClient = useQueryClient();
-  } catch {}
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [wizardState, setWizardState] = useState<OnboardingWizardState>({
     selectedPrimaryTrack: initialState?.selectedPrimaryTrack || 'placements',

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useNavigate } from "react-router-dom";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const ResetPasswordPage = () => {
   const { updatePassword } = useAuth();
@@ -43,10 +44,8 @@ const ResetPasswordPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background" onKeyDown={handleKeyDown}>
       <div className="bg-card border border-border rounded-2xl p-8 w-[380px] max-w-[95vw]">
-        <Link to="/" className="block">
-          <div className="font-mono text-[30px] font-bold text-primary tracking-[3px] mb-1">
-            PPS<span className="text-secondary">.</span>
-          </div>
+        <Link to="/" className="block mb-2 group">
+          <BrandLogo size="lg" variant="square" />
         </Link>
         <div className="text-[13px] text-muted-foreground mb-6">Set your new password</div>
 

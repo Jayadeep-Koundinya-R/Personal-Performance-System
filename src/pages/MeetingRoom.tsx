@@ -557,7 +557,7 @@ const MeetingRoomInner: React.FC = () => {
                             id: `ai_${Date.now()}`,
                             sender: "PPS AI Coach",
                             avatar: "🤖",
-                            text: "💡 Pro Tip: When studying complex topics, use the 20-min Pomodoro sprint + 5-min active recall technique for maximum retention!",
+                            text: "💡 Pro Tip: When studying complex topics, use the 25-min Pomodoro sprint + 5-min active recall technique for maximum retention!",
                             time: "Just now",
                           },
                         ]);

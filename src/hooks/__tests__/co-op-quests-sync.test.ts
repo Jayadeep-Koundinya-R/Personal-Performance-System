@@ -55,7 +55,7 @@ export class SimulatedQuestManager {
 
       // Update or add participant
       const existingIdx = q.participants.findIndex((p) => p.name === participant.name);
-      let updatedParticipants = [...q.participants];
+      const updatedParticipants = [...q.participants];
 
       if (existingIdx >= 0) {
         updatedParticipants[existingIdx] = {

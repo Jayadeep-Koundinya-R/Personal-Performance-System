@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ArrowRight, User, Users, UserPlus, GraduationCap, Copy, Check, Sparkles, Lock } from 'lucide-react';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { shareViaWhatsApp } from '@/lib/social/whatsappInvite';
 
 interface Props {
   state: OnboardingWizardState;
@@ -137,13 +138,34 @@ export const ScreenSocialBridge: React.FC<Props> = ({ state, updateState, onBack
               <div className="font-mono text-2xl font-black tracking-widest px-4 py-2 bg-background border rounded-lg text-foreground">
                 {state.joinSquadCode || 'SQUAD6'}
               </div>
-              <Button onClick={handleCopyCode} variant="outline" size="sm" className="gap-2">
+              <Button
+                onClick={handleCopyCode}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
                 {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                 {copied ? 'Copied!' : 'Copy Code'}
               </Button>
+              <Button
+                onClick={() => {
+                  Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+                  shareViaWhatsApp({
+                    squadName: 'Study Mastery Squad',
+                    squadCode: state.joinSquadCode || 'SQUAD6',
+                    targetRoleOrGoal: state.targetRole,
+                  });
+                }}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 bg-emerald-600/10 border-emerald-500/40 text-emerald-500 hover:bg-emerald-600/20 font-bold"
+              >
+                <span>📲</span>
+                <span>WhatsApp Invite</span>
+              </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Share this code with your peer group. They can enter this during onboarding or in Squad settings.
+              Share this code with your peer group. They can enter this during onboarding or in Squad settings to sync timers and streaks.
             </p>
           </CardContent>
         </Card>

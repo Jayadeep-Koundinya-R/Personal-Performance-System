@@ -143,17 +143,25 @@ export interface StarterHabitItem {
   time: string;
   color: string;
   description?: string;
+  requires_focus_timer?: boolean;
+  focus_duration_minutes?: number;
+  window_start?: string;
+  window_end?: string;
 }
 
 export const STARTER_HABIT_STACK: StarterHabitItem[] = [
   {
-    name: "💻 20-min Deep Work Sprint",
+    name: "💻 25-min Deep Work Sprint",
     category: "Productivity",
     period: "Daily",
     priority: "High",
     time: "09:00",
     color: "indigo",
     description: "Focused single-task sprint on your #1 objective.",
+    requires_focus_timer: true,
+    focus_duration_minutes: 25,
+    window_start: "08:00",
+    window_end: "12:00",
   },
   {
     name: "💧 Morning Sunlight & Hydration",
@@ -163,6 +171,8 @@ export const STARTER_HABIT_STACK: StarterHabitItem[] = [
     time: "07:30",
     color: "sky",
     description: "Anchor circadian rhythm and replenish water.",
+    window_start: "06:30",
+    window_end: "09:30",
   },
   {
     name: "📚 Read 10 Pages of Growth",
@@ -172,5 +182,7 @@ export const STARTER_HABIT_STACK: StarterHabitItem[] = [
     time: "20:30",
     color: "emerald",
     description: "Consistent compounding knowledge before evening wind-down.",
+    window_start: "19:00",
+    window_end: "22:30",
   },
 ];

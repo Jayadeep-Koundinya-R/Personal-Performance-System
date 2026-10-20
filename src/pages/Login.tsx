@@ -18,6 +18,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { Navigate, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
   Eye,
   EyeOff,
@@ -254,12 +255,8 @@ const LoginPage = () => {
         </Link>
 
         <div className="flex items-center gap-3">
-          <Link to="/" className="font-mono text-xl font-black text-foreground tracking-[3px] flex items-center gap-1.5">
-            <span>PPS</span>
-            <span className="text-primary font-black">.</span>
-            <span className="text-[10px] font-mono bg-primary/15 text-primary border border-primary/30 px-2 py-0.2 rounded-full font-bold uppercase hidden sm:inline">
-              v2.0 OS
-            </span>
+          <Link to="/" className="flex items-center group">
+            <BrandLogo size="md" variant="square" badge="v2.0 OS" />
           </Link>
         </div>
 

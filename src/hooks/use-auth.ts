@@ -17,23 +17,9 @@ export function clearUserSessionStorage(): void {
     const totalKeys = localStorage.length;
     for (let i = 0; i < totalKeys; i++) {
       const key = localStorage.key(i);
-      if (!key) continue;
+      if (!key || key === "pps_billing_region") continue;
       if (
-        key.startsWith("pps_guest") ||
-        key.startsWith("pps_settings_") ||
-        key.startsWith("pps_focus_") ||
-        key.startsWith("pps_ai_chat_") ||
-        key.startsWith("pps_onboarded_") ||
-        key.startsWith("pps_active_track") ||
-        key.startsWith("pps_track5_") ||
-        key.startsWith("pps_daily_focus_") ||
-        key.startsWith("pps_bottleneck_") ||
-        key.startsWith("pps_social_") ||
-        key.startsWith("pps_squad_code") ||
-        key.startsWith("pps_groups_") ||
-        key.startsWith("pps_members_") ||
-        key.startsWith("pps_active_group_") ||
-        key.startsWith("pps_my_class_tickets") ||
+        key.startsWith("pps_") ||
         key.startsWith("habits_") ||
         key.startsWith("reflections_") ||
         key.startsWith("reminders_") ||
@@ -586,6 +572,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthReturn {
   const context = useContext(AuthContext);
-  if (context) return context;
-  return useProvideAuth();
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 }

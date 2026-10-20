@@ -3,7 +3,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserSettings } from "@/hooks/use-user-settings";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
-import { isMicroCompleted } from "@/lib/dashboard/microHabits";
+import {
+  isMicroCompleted,
+  getRecoveryXPClaimedDates,
+  saveRecoveryXPClaimedDates,
+  getMicroCompletionsMap,
+  logMicroCompletion,
+  removeMicroCompletion,
+} from "@/lib/dashboard/microHabits";
+import {
+  canLogRestDay,
+  canLogMicroHabit,
+  isWithinCircadianWindow,
+  CircadianWindowResult,
+  RestDayValidationResult,
+  MicroHabitValidationResult,
+} from "@/lib/habits/agniEngine";
+import { playHabitCompletionSound, audioEngine } from "@/lib/audio";
+
+export { canLogRestDay, canLogMicroHabit, isWithinCircadianWindow };
 
 export const CONFIG = {
   XP_PER_COMPLETION: 10,
@@ -28,15 +46,35 @@ export interface Habit {
   archived?: boolean;
   startAlarm?: boolean;
   endAlarm?: boolean;
+  requires_focus_timer?: boolean;
+  focus_duration_minutes?: number;
+  window_start?: string;
+  window_end?: string;
 }
 
 interface HabitsContextType {
   habits: Habit[];
   loading: boolean;
-  addHabit: (name: string, category: string, period: string, priority: string, startDate?: string | null, startTime?: string | null, endTime?: string | null, color?: string, startAlarm?: boolean, endAlarm?: boolean) => Promise<string | null>;
+  addHabit: (
+    name: string,
+    category: string,
+    period: string,
+    priority: string,
+    startDate?: string | null,
+    startTime?: string | null,
+    endTime?: string | null,
+    color?: string,
+    startAlarm?: boolean,
+    endAlarm?: boolean,
+    requires_focus_timer?: boolean,
+    focus_duration_minutes?: number,
+    window_start?: string,
+    window_end?: string
+  ) => Promise<string | null>;
   deleteHabit: (id: string) => Promise<void>;
   updateHabit: (id: string, updates: Partial<Habit>) => Promise<void>;
-  toggleCompletion: (id: string, targetDateStr?: string) => Promise<void>;
+  toggleCompletion: (id: string, targetDateStr?: string, forceBypass?: boolean) => Promise<void>;
+  completeHabit: (id: string, completionType?: "full" | "micro" | "rest", targetDateStr?: string) => Promise<void>;
   markAllDone: () => Promise<void>;
   useStreakFreeze: (habitId: string) => Promise<string | null>;
   applyStreakFreeze: (habitId: string) => Promise<string | null>;
@@ -48,6 +86,9 @@ interface HabitsContextType {
   getMaxStreak: () => number;
   getTotalFreezeCredits: () => number;
   resetAllData: () => Promise<void>;
+  canLogRestDay: typeof canLogRestDay;
+  canLogMicroHabit: typeof canLogMicroHabit;
+  isWithinCircadianWindow: typeof isWithinCircadianWindow;
 }
 
 function getTodayStr(): string {
@@ -151,6 +192,10 @@ export function HabitsProvider({
         archived: h.archived || false,
         startAlarm: h.start_alarm || false,
         endAlarm: h.end_alarm || false,
+        requires_focus_timer: h.requires_focus_timer || false,
+        focus_duration_minutes: h.focus_duration_minutes || 25,
+        window_start: h.window_start || undefined,
+        window_end: h.window_end || undefined,
       };
     });
     setHabits(mapped);
@@ -175,11 +220,11 @@ export function HabitsProvider({
               streak: 3,
               lastCompletedDate: null,
               freezeCredits: 2,
-              color: "indigo"
+              color: "indigo",
             },
             {
               id: "demo-2",
-              name: "20-Min Deep Work Sprint 💻",
+              name: "25-Min Deep Work Sprint 💻",
               category: "Productivity",
               priority: "High",
               period: "Daily",
@@ -188,7 +233,11 @@ export function HabitsProvider({
               streak: 5,
               lastCompletedDate: null,
               freezeCredits: 2,
-              color: "sky"
+              color: "sky",
+              requires_focus_timer: true,
+              focus_duration_minutes: 25,
+              window_start: "08:00",
+              window_end: "18:00",
             },
             {
               id: "demo-3",
@@ -201,13 +250,33 @@ export function HabitsProvider({
               streak: 2,
               lastCompletedDate: null,
               freezeCredits: 2,
-              color: "emerald"
+              color: "emerald",
+              window_start: "18:00",
+              window_end: "23:00",
             }
           ];
           localStorage.setItem(`habits_${userEmail || "guest"}`, JSON.stringify(defaultHabits));
           setHabits(defaultHabits);
         } else {
-          setHabits(JSON.parse(saved));
+          const parsed = JSON.parse(saved);
+          let hasDiff = false;
+          const normalized = (parsed || []).map((h: any) => {
+            if (h.name && /20-min/i.test(h.name)) {
+              hasDiff = true;
+              return {
+                ...h,
+                name: h.name.replace(/20-min/i, "25-Min"),
+                focus_duration_minutes: 25,
+              };
+            }
+            return h;
+          });
+          if (hasDiff) {
+            try {
+              localStorage.setItem(`habits_${userEmail || "guest"}`, JSON.stringify(normalized));
+            } catch {}
+          }
+          setHabits(normalized);
         }
       } catch (err) {
         setHabits([]);
@@ -237,12 +306,12 @@ export function HabitsProvider({
     };
   }, [userId, isGuest, userEmail, fetchHabits]);
 
-  // Guest mode: save to localStorage
+  // Guest mode: save to localStorage (guarded by !loading to prevent overwriting on mount)
   useEffect(() => {
-    if (isGuest) {
+    if (isGuest && !loading) {
       localStorage.setItem(`habits_${userEmail || "guest"}`, JSON.stringify(habits));
     }
-  }, [habits, isGuest, userEmail]);
+  }, [habits, isGuest, userEmail, loading]);
 
 
   const isHabitDueToday = useCallback((habit: Habit): boolean => {
@@ -266,7 +335,11 @@ export function HabitsProvider({
     endTime?: string | null,
     color: string = "indigo",
     startAlarm?: boolean,
-    endAlarm?: boolean
+    endAlarm?: boolean,
+    requires_focus_timer?: boolean,
+    focus_duration_minutes?: number,
+    window_start?: string,
+    window_end?: string
   ): Promise<string | null> => {
     if (habits.length >= maxHabits && maxHabits !== Infinity) {
       return "Habit limit reached. Please upgrade.";
@@ -286,7 +359,11 @@ export function HabitsProvider({
         lastCompletedDate: null, freezeCredits: CONFIG.MAX_FREEZE_CREDITS,
         startTime, endTime, color, archived: false,
         startAlarm: startAlarm || false,
-        endAlarm: endAlarm || false
+        endAlarm: endAlarm || false,
+        requires_focus_timer: requires_focus_timer || false,
+        focus_duration_minutes: focus_duration_minutes || 25,
+        window_start: window_start || undefined,
+        window_end: window_end || undefined,
       };
       setHabits(prev => [...prev, newHabit]);
       return null;
@@ -306,7 +383,11 @@ export function HabitsProvider({
       color,
       archived: false,
       start_alarm: startAlarm || false,
-      end_alarm: endAlarm || false
+      end_alarm: endAlarm || false,
+      requires_focus_timer: requires_focus_timer || false,
+      focus_duration_minutes: focus_duration_minutes || 25,
+      window_start: window_start || null,
+      window_end: window_end || null,
     };
 
     let { error } = await supabase.from("habits").insert(payload);
@@ -463,6 +544,10 @@ export function HabitsProvider({
     if (updates.archived !== undefined) dbUpdates.archived = updates.archived;
     if (updates.startAlarm !== undefined) dbUpdates.start_alarm = updates.startAlarm;
     if (updates.endAlarm !== undefined) dbUpdates.end_alarm = updates.endAlarm;
+    if (updates.requires_focus_timer !== undefined) dbUpdates.requires_focus_timer = updates.requires_focus_timer;
+    if (updates.focus_duration_minutes !== undefined) dbUpdates.focus_duration_minutes = updates.focus_duration_minutes;
+    if (updates.window_start !== undefined) dbUpdates.window_start = updates.window_start;
+    if (updates.window_end !== undefined) dbUpdates.window_end = updates.window_end;
 
     try {
       const { error } = await supabase.from("habits").update(dbUpdates).eq("id", id);
@@ -475,13 +560,54 @@ export function HabitsProvider({
     }
   }, [habits, isGuest, fetchHabits]);
 
-  const toggleCompletion = useCallback(async (id: string, targetDateStr?: string) => {
+  const toggleCompletion = useCallback(async (id: string, targetDateStr?: string, forceBypass?: boolean) => {
     const habit = habits.find(h => h.id === id);
     if (!habit) return;
 
     const dateToToggle = targetDateStr || getTodayStr();
     const isCompleted = habit.completedDates.includes(dateToToggle);
     const previousHabits = [...habits];
+
+    // ── Task 1.2: Anti-Cheat Proof-of-Focus Mechanical Lock ──
+    if (!isCompleted && habit.requires_focus_timer && !forceBypass) {
+      toast.warning(`⚡ "${habit.name}" is Timer-Locked!`, {
+        description: `This anchor habit requires a verified focus sprint (${habit.focus_duration_minutes || 25}m).`,
+        action: {
+          label: "Start Sprint",
+          onClick: () => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(
+                new CustomEvent("pps_start_focus_timer", {
+                  detail: {
+                    habitId: habit.id,
+                    habitName: habit.name,
+                    durationMinutes: habit.focus_duration_minutes || 25,
+                  },
+                })
+              );
+            }
+          },
+        },
+      });
+      return;
+    }
+
+    // ── Task 1.3: Circadian Time-Window Gating ──
+    if (!isCompleted && (habit.window_start || habit.window_end) && !forceBypass) {
+      const windowCheck = isWithinCircadianWindow(habit.window_start, habit.window_end);
+      if (!windowCheck.isOpen) {
+        toast.warning(`⏳ Outside Circadian Window for "${habit.name}"`, {
+          description: `${windowCheck.label}. Tap to log anyway with Grace Mode.`,
+          action: {
+            label: "Bypass (Grace)",
+            onClick: () => {
+              toggleCompletion(id, targetDateStr, true);
+            },
+          },
+        });
+        return;
+      }
+    }
 
     // Deduplicate and compute updated values
     let updatedCompletedDates = [...habit.completedDates];
@@ -591,6 +717,90 @@ export function HabitsProvider({
     }
   }, [habits, isGuest, userId, fetchHabits, getTodayStr]);
 
+  // ── Task 1.1: Multi-Tier Habit Completion Engine ──
+  const completeHabit = useCallback(
+    async (
+      id: string,
+      completionType: "full" | "micro" | "rest" = "full",
+      targetDateStr?: string
+    ) => {
+      const habit = habits.find((h) => h.id === id);
+      if (!habit && completionType !== "rest") return;
+
+      const dateToLog = targetDateStr || getTodayStr();
+      const habitCategory = habit?.category || "General";
+
+      if (completionType === "rest") {
+        const recoveryDates = getRecoveryXPClaimedDates();
+        const check = canLogRestDay(dateToLog, recoveryDates);
+        if (!check.allowed) {
+          toast.warning(check.reason || "Maximum 2 rest days per week reached. Time to rebuild momentum!");
+          return;
+        }
+        saveRecoveryXPClaimedDates([...recoveryDates, dateToLog]);
+        playHabitCompletionSound("rest", habitCategory);
+        toast.success("🌿 Rest Day verified! (+5 Recovery XP)", {
+          description: "Streak protected. Recovery fuels long-term consistency.",
+        });
+        return;
+      }
+
+      if (completionType === "micro") {
+        const microMap = getMicroCompletionsMap();
+        const check = canLogMicroHabit(id, dateToLog, microMap);
+        if (!check.allowed) {
+          toast.warning(check.reason || "Weekly micro-habit limit (3/3) reached for this task.");
+          return;
+        }
+        logMicroCompletion(id, dateToLog);
+        playHabitCompletionSound("micro", habitCategory);
+        toast.success(`⚡ 2-Minute Micro-Habit logged: "${habit?.name}"!`, {
+          description: "+2 XP awarded. Streak protected!",
+        });
+        if (habit && !habit.completedDates.includes(dateToLog)) {
+          await toggleCompletion(id, dateToLog, true);
+        }
+        return;
+      }
+
+      // 'full' completion
+      if (habit) {
+        removeMicroCompletion(id, dateToLog);
+        playHabitCompletionSound("full", habitCategory);
+        if (!habit.completedDates.includes(dateToLog)) {
+          await toggleCompletion(id, dateToLog, true);
+        }
+        toast.success(`🎉 Habit completed: "${habit.name}"! (+10 XP)`);
+      }
+    },
+    [habits, getTodayStr, toggleCompletion]
+  );
+
+  // ── Task 1.2: Window listener for pps_focus_session_completed ──
+  useEffect(() => {
+    const handleFocusCompleted = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const targetHabitId = detail?.habitId || detail?.linkedHabitId;
+      if (!targetHabitId) return;
+
+      const targetHabit = habits.find((h) => h.id === targetHabitId);
+      if (!targetHabit) return;
+
+      const today = getTodayStr();
+      if (!targetHabit.completedDates.includes(today)) {
+        completeHabit(targetHabitId, "full", today);
+        toast.success(`⚡ Verified Focus Proof Accepted! (+10 XP)`, {
+          description: `Sprint completed for "${targetHabit.name}". Anti-cheat unlocked!`,
+        });
+      }
+    };
+
+    window.addEventListener("pps_focus_session_completed", handleFocusCompleted);
+    return () => {
+      window.removeEventListener("pps_focus_session_completed", handleFocusCompleted);
+    };
+  }, [habits, completeHabit, getTodayStr]);
+
   const markAllDone = useCallback(async (): Promise<void> => {
     const todayStr = getTodayStr();
     const habitsToComplete = habits.filter(h => !h.archived && isHabitDueToday(h) && !h.completedDates.includes(todayStr));
@@ -673,10 +883,20 @@ export function HabitsProvider({
   }, [habits, isGuest, userId, fetchHabits, isHabitDueToday]);
 
   const calculateTotalXP = useCallback((): number => {
-    return habits.reduce((sum, h) => {
-      const fullCompletions = (h.completedDates || []).filter((d) => !isMicroCompleted(h.id, d));
+    const microMap = getMicroCompletionsMap();
+    let microXP = 0;
+    Object.values(microMap).forEach((dates) => {
+      microXP += (dates || []).length * 2;
+    });
+    const recoveryDates = getRecoveryXPClaimedDates();
+    const recoveryXP = (recoveryDates || []).length * 5;
+
+    const fullXP = habits.reduce((sum, h) => {
+      const fullCompletions = (h.completedDates || []).filter((d) => !isMicroCompleted(h.id, d, microMap));
       return sum + fullCompletions.length * CONFIG.XP_PER_COMPLETION;
     }, 0);
+
+    return fullXP + microXP + recoveryXP;
   }, [habits]);
 
   const calculateLevel = useCallback((): number => {
@@ -686,12 +906,22 @@ export function HabitsProvider({
   const calculateWeeklyPoints = useCallback((): number => {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    return habits.reduce((sum, h) => {
+    const microMap = getMicroCompletionsMap();
+    let microWeeklyXP = 0;
+    Object.values(microMap).forEach((dates) => {
+      microWeeklyXP += (dates || []).filter((d) => new Date(d) >= weekAgo).length * 2;
+    });
+    const recoveryDates = getRecoveryXPClaimedDates();
+    const recoveryWeeklyXP = (recoveryDates || []).filter((d) => new Date(d) >= weekAgo).length * 5;
+
+    const fullWeeklyXP = habits.reduce((sum, h) => {
       const fullWeekCompletions = (h.completedDates || []).filter(
-        (d) => !isMicroCompleted(h.id, d) && new Date(d) >= weekAgo
+        (d) => !isMicroCompleted(h.id, d, microMap) && new Date(d) >= weekAgo
       );
       return sum + fullWeekCompletions.length * CONFIG.XP_PER_COMPLETION;
     }, 0);
+
+    return fullWeeklyXP + microWeeklyXP + recoveryWeeklyXP;
   }, [habits]);
 
   const getMaxStreak = useCallback((): number => {
@@ -712,11 +942,12 @@ export function HabitsProvider({
   return (
     <HabitsContext.Provider
       value={{
-        habits, loading, addHabit, deleteHabit, updateHabit, toggleCompletion, markAllDone,
+        habits, loading, addHabit, deleteHabit, updateHabit, toggleCompletion, completeHabit, markAllDone,
         useStreakFreeze: applyStreakFreeze,
         applyStreakFreeze,
         isHabitDueToday, getTodayStr, calculateTotalXP, calculateLevel,
         calculateWeeklyPoints, getMaxStreak, getTotalFreezeCredits, resetAllData,
+        canLogRestDay, canLogMicroHabit, isWithinCircadianWindow,
       }}
     >
       {children}

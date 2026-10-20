@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export const RoadmapPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
@@ -25,12 +26,8 @@ export const RoadmapPage: React.FC = () => {
       {/* Top Global Nav */}
       <nav className="sticky top-0 z-50 backdrop-blur-2xl bg-card/80 border-b border-border/40 transition-colors duration-500">
         <div className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
-          <Link to="/" className="flex items-center gap-2.5 font-mono text-xl font-black text-primary tracking-wider">
-            <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
-            <span>PPS<span className="text-secondary">.</span></span>
-            <span className="text-[10px] font-mono bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-2.5 py-0.5 rounded-full font-bold uppercase hidden sm:inline">
-              Roadmap Hub
-            </span>
+          <Link to="/" className="flex items-center group">
+            <BrandLogo size="md" variant="square" badge="Roadmap Hub" />
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">

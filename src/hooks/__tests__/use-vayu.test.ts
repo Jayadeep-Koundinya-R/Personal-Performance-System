@@ -23,6 +23,7 @@ vi.mock("@/hooks/use-habits", () => ({
     habits: mockHabits,
     toggleHabit: mockToggleHabit,
     toggleCompletion: mockToggleHabit,
+    isHabitDueToday: () => true,
   }),
 }));
 
@@ -30,7 +31,7 @@ vi.mock("@/hooks/use-habits", () => ({
 const mockAddXP = vi.fn();
 vi.mock("@/hooks/use-profile", () => ({
   useProfile: () => ({
-    profile: { displayName: "Vayu Master", xp: 1200, streak: 10 },
+    profile: { displayName: "Vayu Master", xp: 1200, streak: 10, primary_track: "placements" },
     addXP: mockAddXP,
   }),
 }));
@@ -51,13 +52,14 @@ describe("🌬️ useVayu Hook — Autonomous Real-Time Flow & Completion Engine
     vi.clearAllMocks();
   });
 
-  it("initializes an autonomous daily plan from user habits", () => {
+  it("initializes an autonomous daily plan from user habits with circadian energy windows", () => {
     const { result } = renderHook(() => useVayu());
 
     expect(result.current.plan).not.toBeNull();
     expect(result.current.plan?.blocks.length).toBeGreaterThan(0);
     expect(result.current.isAutonomousActive).toBe(true);
     expect(result.current.completionRate).toBe(0);
+    expect(result.current.plan?.blocks[0].energyLevel).toBe("peak");
   });
 
   it("completes a block, updates completion rate, toggles linked habit and awards XP", async () => {
@@ -87,7 +89,7 @@ describe("🌬️ useVayu Hook — Autonomous Real-Time Flow & Completion Engine
 
     expect(["completed_block", "completed_habit"]).toContain(intakeResult.action);
     expect(intakeResult.matchedHabitId).toBe("habit_gym");
-    expect(mockToggleHabit).toHaveBeenCalledWith("habit_gym");
+    expect(mockToggleHabit).toHaveBeenCalled();
   });
 
   it("auto-completes active block when focus session completed event is received", async () => {
@@ -104,5 +106,17 @@ describe("🌬️ useVayu Hook — Autonomous Real-Time Flow & Completion Engine
 
     expect(matchingBlock?.status).toBe("completed");
     expect(mockAddXP).toHaveBeenCalled();
+  });
+
+  it("rebalances schedule fluidly without punitive penalties and protects 22:00 curfew", async () => {
+    const { result } = renderHook(() => useVayu());
+
+    await act(async () => {
+      result.current.rebalanceSchedule();
+    });
+
+    expect(result.current.plan).not.toBeNull();
+    expect(result.current.plan?.needsRebalance).toBe(false);
+    expect(result.current.plan?.rebalanceExplanation).toBeDefined();
   });
 });

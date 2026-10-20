@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useAuth } from "../use-auth";
+import { useAuth, AuthProvider } from "../use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
 // Mock React Router useNavigate
@@ -35,7 +35,7 @@ describe("useAuth Hook & Auth Flows", () => {
   });
 
   it("creates guest session correctly and stores creation timestamp", () => {
-    const { result } = renderHook(() => useAuth());
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
     act(() => {
       result.current.loginAsGuest("Test User", true);
@@ -53,7 +53,7 @@ describe("useAuth Hook & Auth Flows", () => {
       error: { message: "Auth provider configuration missing", status: 400 },
     });
 
-    const { result } = renderHook(() => useAuth());
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
     let errorMsg: string | null = null;
     await act(async () => {
@@ -64,7 +64,7 @@ describe("useAuth Hook & Auth Flows", () => {
   });
 
   it("calculates guest trial days remaining cleanly", () => {
-    const { result } = renderHook(() => useAuth());
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
     act(() => {
       result.current.loginAsGuest("Demo Guest", true);
@@ -75,7 +75,7 @@ describe("useAuth Hook & Auth Flows", () => {
   });
 
   it("logout cleans all guest storage tokens and resets user state", async () => {
-    const { result } = renderHook(() => useAuth());
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
     act(() => {
       result.current.loginAsGuest("Demo User", true);

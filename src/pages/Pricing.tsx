@@ -9,6 +9,7 @@ import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
 import { CampusDemoModal } from "@/components/pricing/CampusDemoModal";
 import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
+import { BrandLogo } from "@/components/BrandLogo";
 
 import {
   Globe,
@@ -170,9 +171,8 @@ function PricingContent() {
 
       {/* ── Top Navigation Bar ── */}
       <header className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between border-b border-border/40 backdrop-blur-md">
-        <Link to="/" className="flex items-center gap-2.5 font-mono text-xl font-black text-primary tracking-wider">
-          <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
-          <span>PPS<span className="text-secondary">.</span></span>
+        <Link to="/" className="flex items-center gap-2 group">
+          <BrandLogo size="md" variant="square" />
           <span className="text-xs font-mono font-normal text-muted-foreground ml-1">/ Pricing</span>
         </Link>
 

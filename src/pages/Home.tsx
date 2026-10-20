@@ -8,6 +8,7 @@ import { RoadmapSection } from "@/components/roadmap/RoadmapSection";
 import { ambientSynthesizer, AmbienceType } from "@/lib/audio/ambientSynthesizer";
 import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
   Sparkles,
   Zap,
@@ -249,9 +250,8 @@ export const HomePage: React.FC = () => {
 
       <nav className="sticky top-0 z-50 backdrop-blur-2xl bg-card/85 border-b border-border/50 transition-colors duration-500 shadow-xs">
         <div className="flex items-center justify-between px-6 py-3.5 max-w-7xl mx-auto">
-          <Link to="/" className="flex items-center gap-2.5 font-mono text-xl font-black text-primary tracking-wider group">
-            <span className="w-3 h-3 rounded-full bg-primary animate-pulse group-hover:scale-125 transition-transform" />
-            <span>PPS<span className="text-secondary">.</span></span>
+          <Link to="/" className="group flex items-center">
+            <BrandLogo size="md" variant="square" animated />
           </Link>
 
           {/* Desktop Nav Links */}
@@ -1222,8 +1222,9 @@ export const HomePage: React.FC = () => {
 
       {/* ═══════════ RICH FOOTER ═══════════ */}
       <footer className="relative z-10 border-t border-border/40 py-12 max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground font-mono">
-        <div>
-          © 2026 Personal Performance System (PPS) • All Rights Reserved
+        <div className="flex items-center gap-3">
+          <BrandLogo size="xs" showText={false} variant="square" animated={false} />
+          <span>© 2026 Personal Performance System (PPS) • All Rights Reserved</span>
         </div>
         <div className="flex items-center gap-6">
           <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
