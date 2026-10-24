@@ -14,7 +14,7 @@
 #### Branch A: Fresh Anonymous Visitor Landing on `/`
 * **Entry Point:** User opens the root application URL (`/` or `/#/`).
 * **Execution Path:**
-  1. `App.tsx` (lines 207–226) initializes `HashRouter` and mounts `AppRoutes` (lines 92–194).
+  1. `App.tsx` (lines 207–226) initializes `HashRouter`, `QueryClientProvider`, `ThemeProvider`, and mounts `AuthProvider` wrapping `AppRoutes` (lines 106–193).
   2. `useAuth()` hook (`src/hooks/use-auth.ts`, lines 269–384) evaluates initial state:
      - `isGuestInitial` reads `localStorage.getItem("pps_guest")` and `sessionStorage.getItem("pps_guest")`.
      - For a fresh visitor, both evaluate to `false`/`null`. `user` initializes to `null` and `loading` initializes to `true`.
@@ -22,7 +22,7 @@
   4. If no active Supabase session exists, `setUser(null)` and `setLoading(false)` execute within the 800ms safety timer fallback (lines 280–289).
   5. Route `/` renders `HomePage` (`src/pages/Home.tsx`).
 * **Identified Vulnerabilities & Redirect Edge Cases:**
-  * **Unauthenticated Access to Guarded Routes:** When a fresh visitor navigates directly to `/dashboard` or `/settings`, `OnboardingGuard` (`src/routes/OnboardingGuard.tsx`, lines 29–31) triggers:
+  * **Unauthenticated Access to Guarded Routes:** When a fresh visitor navigates directly to `/dashboard`, `/analytics`, or `/settings`, `OnboardingGuard` (`src/routes/OnboardingGuard.tsx`, lines 29–31) evaluates `!isLoggedIn || !user` and redirects:
     ```typescript
     if (!isLoggedIn || !user) {
       return <Navigate to="/login" replace state={{ from: location }} />;
@@ -32,7 +32,7 @@
   * **Unprotected Public Access to Marketplace Routes:** In `App.tsx` (lines 150–154), when `FEATURE_FLAGS.ENABLE_TEACHER_MARKETPLACE` is enabled, `/marketplace` and `/classes` are rendered directly without wrapping in `<OnboardingGuard>`, allowing unauthenticated visitors to view classroom listings without session validation.
 
 #### Branch B: Guest / Demo Mode Activation
-* **Entry Point:** Visitor clicks "Try Guest Demo" on `LoginPage` (`src/pages/Login.tsx`, lines 170, 216) or landing page CTA.
+* **Entry Point:** Visitor clicks "Try Guest Demo" on `LoginPage` (`src/pages/Login.tsx`) or landing page CTA.
 * **Execution Path:**
   1. Invokes `loginAsGuest(guestName, remember)` in `useAuth()` (`src/hooks/use-auth.ts`, lines 448–478):
      ```typescript
@@ -51,10 +51,10 @@
      setUser({ email: null, isGuest: true });
      navigate("/dashboard");
      ```
-  2. On `/dashboard`, `OnboardingGuard` checks `user.isGuest` and allows access.
+  2. On `/dashboard`, `OnboardingGuard` checks `user.isGuest` and allows access without requiring Supabase authentication.
 * **Identified Vulnerabilities & Edge Cases:**
   * **Client-Side Guest Session Tampering:** Guest state is entirely client-side based on `pps_guest`, `pps_guest_name`, and `pps_guest_created_at`. Anyone can bypass expiration by clearing `pps_guest_created_at` or editing local storage keys.
-  * **Guest Trial Expiration Routing:** `checkIsGuestTrialExpired()` (`src/hooks/use-auth.ts`, lines 87–94) checks if 7 days have elapsed since `pps_guest_created_at`. In `OnboardingGuard.tsx` (lines 34–36), expired guests are redirected:
+  * **Guest Trial Expiration Routing:** `checkIsGuestTrialExpired()` (`src/hooks/use-auth.ts`, lines 87–94) checks if 7 days (`TRIAL_DURATION_DAYS`) have elapsed since `pps_guest_created_at`. In `OnboardingGuard.tsx` (lines 34–36), expired guests are redirected:
     ```typescript
     if (user.isGuest && isGuestTrialExpired) {
       return <Navigate to="/pricing" replace state={{ trialExpired: true }} />;
@@ -66,17 +66,17 @@
 * **Entry Point:** Guest user decides to register or sign in via Google OAuth or Email/Password from `LoginPage.tsx`.
 * **Execution Path:**
   1. Google OAuth is triggered via `loginWithGoogle()` (`src/hooks/use-auth.ts`, lines 514–547).
-  2. OAuth redirect constructs `redirectUrl = `${origin}${basePath}/login``.
+  2. OAuth redirect constructs `redirectUrl = `${origin}${basePath}/``.
   3. Upon redirect back, Supabase fires `onAuthStateChange("SIGNED_IN", session)` (lines 313–326).
   4. `useAuth.ts` invokes `migrateGuestData(session.user.id)` (lines 114–267):
      - Reads local storage keys: `habits_guest`, `reflections_guest`, `reminders_guest`, `pps_settings_guest`.
      - Inserts records into Supabase `habits`, `habit_completions`, `reflections`, `reminders`, `user_settings`.
      - Purges local guest keys (`habits_guest`, `reflections_guest`, `reminders_guest`, `pps_settings_guest`, `pps_guest`, `pps_guest_name`, `pps_guest_created_at`, `pps_onboarded_guest`, `pps_ai_chat_guest`).
-     - Calls `queryClient.invalidateQueries()` (line 257) to refetch server data.
+     - Calls `queryClient.invalidateQueries()` (line 257) to refetch server data and clear guest caches.
 * **Identified Critical Bugs & HashRouter Collisions:**
   * **HashRouter Token Collision (`#access_token=...`):**
-    When Supabase OAuth redirects back to `https://domain.com/#/login` with hash fragments like `#access_token=...&refresh_token=...`, `HashRouter` interprets `#access_token` as a route path rather than url query/hash parameters.
-    `useAuth.ts` (lines 298–311) contains a mitigation that catches `window.location.hash.includes("access_token=")` before router initialization and invokes `supabase.auth.getSession()` to set the session and rewrite `window.location.hash = "#/dashboard"`. If network latency delays `getSession()`, `HashRouter` can route to `/#/access_token=...` resulting in `NotFound` (404) page render.
+    When Supabase OAuth redirects back to `https://domain.com/#access_token=...&refresh_token=...`, `HashRouter` interprets `#access_token` as a route path rather than URL hash parameters.
+    `useAuth.ts` (lines 298–311) contains a mitigation that catches `window.location.hash.includes("access_token=")` before router initialization and invokes `supabase.auth.getSession()` to set the session and rewrite `window.location.hash = "#/dashboard"`. If network latency delays `getSession()`, `HashRouter` can attempt to render `/#/access_token=...` resulting in `NotFound` (404) page render.
 
 #### Branch D: Logout from Authenticated Session vs. Logout from Demo Session
 * **Execution Path (`src/hooks/use-auth.ts`, lines 480–497):**
@@ -98,9 +98,9 @@
   ```
 * **Storage Wipe Routine Analysis (`src/hooks/use-auth.ts`, lines 13–48):**
   `clearUserSessionStorage()` iterates through all `localStorage` keys and removes:
-  - `pps_guest*`, `pps_settings_*`, `pps_focus_*`, `pps_ai_chat_*`, `pps_onboarded_*`, `pps_active_track*`, `pps_squad_code*`, `habits_*`, `reflections_*`, `reminders_*`, `notifications_*`.
+  - `pps_*`, `habits_*`, `reflections_*`, `reminders_*`, `notifications_*`.
   - Clears `sessionStorage`.
-  - Preserves user preferences like theme, audio mute, and detected regional pricing.
+  - Preserves user preferences like theme, audio mute, and detected regional pricing (`pps_billing_region`).
   - Calls `queryClient.clear()` to completely purge TanStack React Query cache, preventing cross-user data bleed.
 
 ---
@@ -109,10 +109,10 @@
 
 | File Path | Line Range | Vulnerability / Issue | Impact / Severity | Actionable Recommendation |
 | :--- | :--- | :--- | :--- | :--- |
-| `src/hooks/use-auth.ts` | 298–311 | OAuth `#access_token` fragment collides with `HashRouter` navigation prior to session lookup completion. | **High**: Potential intermittent redirect to 404 (`NotFound`) on OAuth callback. | Parse access token parameter from `window.location` immediately in entry script (`main.tsx`) before `HashRouter` mounts. |
+| `src/hooks/use-auth.ts` | 298–311 | OAuth `#access_token` hash fragment collides with `HashRouter` navigation prior to session lookup completion. | **High**: Intermittent redirection to 404 (`NotFound`) on OAuth callback in slow network environments. | Parse access token parameter from `window.location` immediately in entry script (`main.tsx`) before `HashRouter` mounts. |
 | `src/hooks/use-auth.ts` | 87–94 | `checkIsGuestTrialExpired()` returns `false` if `pps_guest_created_at` key is deleted from `localStorage`. | **Medium**: Guest users can manually delete local storage keys to bypass trial limits indefinitely. | Store guest creation timestamp in an encrypted or signed token cookie or validate session server-side. |
-| `src/routes/OnboardingGuard.tsx` | 34–36 | Expired guest trial redirects to `/pricing` but does not prevent access to un-guarded marketplace/public routes. | **Low**: Expired guest users can still navigate to `/marketplace` or `/classes`. | Apply route protection consistently across all application feature routes. |
-| `src/hooks/use-auth.ts` | 13–48 | Storage purge routine `clearUserSessionStorage()` relies on key prefix matching. | **Low**: Any custom key created without standard `pps_` or `habits_` prefix could survive logout. | Enforce key prefix naming convention across all local storage setters. |
+| `src/App.tsx` | 150–154 | Marketplace routes (`/marketplace`, `/classes`) are not wrapped in `OnboardingGuard`. | **Low**: Unauthenticated visitors can view classroom listings without session validation. | Wrap marketplace routes inside `<OnboardingGuard>` or explicitly document as public read-only pages. |
+| `src/hooks/use-auth.ts` | 13–48 | Storage purge routine `clearUserSessionStorage()` relies on key prefix matching (`pps_`, `habits_`, etc.). | **Low**: Any custom key created without standard prefixes could survive logout. | Enforce key prefix naming convention across all local storage setters. |
 
 ---
 
@@ -130,10 +130,10 @@ Pricing constants, regional currency symbols, tier limits, and Stripe price refe
 
 #### Findings:
 1. **Regional Pricing Synchronization:**
-   * `src/lib/plans.ts` (lines 69–95) defines `REGIONAL_PRICING`:
+   * `src/lib/plans.ts` (lines 86–112) defines `REGIONAL_PRICING`:
      - **IN (India):** Pro Monthly = ₹199/mo, Pro Yearly = ₹1,999/yr, Savings = "Save 44%".
      - **GLOBAL:** Pro Monthly = $9.99/mo, Pro Yearly = $99.99/yr, Savings = "Save 44%".
-   * Both `src/pages/Pricing.tsx` (line 306) and `src/components/sections/SettingsSection.tsx` (lines 88, 675) correctly consume `REGIONAL_PRICING[region]` via `detectUserRegion()`.
+   * Both `src/pages/Pricing.tsx` (line 100) and `src/components/sections/SettingsSection.tsx` (line 94) consume `REGIONAL_PRICING[region]` via `detectUserRegion()`.
    * Both pages display consistent savings badge text (`"Save 44%"`).
 
 2. **Feature Tier Limit Alignment:**
@@ -259,7 +259,7 @@ We benchmarked the initial 3-minute user journey of **Personal Performance Syste
 1. **Lengthy Onboarding Wizard (`OnboardingWizard.tsx`, lines 1–287):**
    * *Problem:* Requiring students to complete a 5-stage setup sequence (Primary Track, Bottleneck ID, Daily Focus Target Slider, Social Squad Selection, and Final Confirmation) before displaying the main dashboard.
    * *Drop-Off Impact:* ~35–40% user drop-off before reaching the core dashboard. Students seeking an immediate study timer or quick habit log get bogged down in configuration forms.
-2. **High Vertical Density on Mobile Viewports (`Dashboard.tsx`, lines 1–1391):**
+2. **High Vertical Density on Mobile Viewports (`Dashboard.tsx`):**
    * *Problem:* On mobile screens (<640px), the dashboard renders sticky notes, level widgets, stat cards, habit lists, and focus timers stacked sequentially in a single column.
    * *Drop-Off Impact:* Primary action targets (checking off today's habits or starting a focus room) are pushed below the fold, requiring extensive scrolling.
 3. **Complex Multi-Field Habit Time Pickers (`HabitManagerSection.tsx`):**
