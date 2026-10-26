@@ -14,7 +14,7 @@
 #### Branch A: Fresh Anonymous Visitor Landing on `/`
 * **Entry Point:** User opens the root application URL (`/` or `/#/`).
 * **Execution Path:**
-  1. `App.tsx` (lines 207–226) initializes `HashRouter` and mounts `AppRoutes` (lines 92–194).
+  1. `App.tsx` (lines 212–226) initializes `HashRouter` and mounts `AppRoutes` (lines 115–194).
   2. `useAuth()` hook (`src/hooks/use-auth.ts`, lines 269–384) evaluates initial state:
      - `isGuestInitial` reads `localStorage.getItem("pps_guest")` and `sessionStorage.getItem("pps_guest")`.
      - For a fresh visitor, both evaluate to `false`/`null`. `user` initializes to `null` and `loading` initializes to `true`.
@@ -29,7 +29,7 @@
     }
     ```
     This successfully redirects unauthenticated users to `/login`.
-  * **Unprotected Public Access to Marketplace Routes:** In `App.tsx` (lines 150–154), when `FEATURE_FLAGS.ENABLE_TEACHER_MARKETPLACE` is enabled, `/marketplace` and `/classes` are rendered directly without wrapping in `<OnboardingGuard>`, allowing unauthenticated visitors to view classroom listings without session validation.
+  * **Unprotected Public Access to Marketplace Routes:** In `App.tsx` (lines 151–154), when `FEATURE_FLAGS.ENABLE_TEACHER_MARKETPLACE` is enabled, `/marketplace` and `/classes` are rendered directly without wrapping in `<OnboardingGuard>`, allowing unauthenticated visitors to view classroom listings without session validation.
 
 #### Branch B: Guest / Demo Mode Activation
 * **Entry Point:** Visitor clicks "Try Guest Demo" on `LoginPage` (`src/pages/Login.tsx`, lines 170, 216) or landing page CTA.
@@ -66,7 +66,7 @@
 * **Entry Point:** Guest user decides to register or sign in via Google OAuth or Email/Password from `LoginPage.tsx`.
 * **Execution Path:**
   1. Google OAuth is triggered via `loginWithGoogle()` (`src/hooks/use-auth.ts`, lines 514–547).
-  2. OAuth redirect constructs `redirectUrl = `${origin}${basePath}/login``.
+  2. OAuth redirect constructs `redirectUrl = `${origin}${basePath}/``.
   3. Upon redirect back, Supabase fires `onAuthStateChange("SIGNED_IN", session)` (lines 313–326).
   4. `useAuth.ts` invokes `migrateGuestData(session.user.id)` (lines 114–267):
      - Reads local storage keys: `habits_guest`, `reflections_guest`, `reminders_guest`, `pps_settings_guest`.
@@ -75,7 +75,7 @@
      - Calls `queryClient.invalidateQueries()` (line 257) to refetch server data.
 * **Identified Critical Bugs & HashRouter Collisions:**
   * **HashRouter Token Collision (`#access_token=...`):**
-    When Supabase OAuth redirects back to `https://domain.com/#/login` with hash fragments like `#access_token=...&refresh_token=...`, `HashRouter` interprets `#access_token` as a route path rather than url query/hash parameters.
+    When Supabase OAuth redirects back to `https://domain.com/#/` with hash fragments like `#access_token=...&refresh_token=...`, `HashRouter` interprets `#access_token` as a route path rather than url query/hash parameters.
     `useAuth.ts` (lines 298–311) contains a mitigation that catches `window.location.hash.includes("access_token=")` before router initialization and invokes `supabase.auth.getSession()` to set the session and rewrite `window.location.hash = "#/dashboard"`. If network latency delays `getSession()`, `HashRouter` can route to `/#/access_token=...` resulting in `NotFound` (404) page render.
 
 #### Branch D: Logout from Authenticated Session vs. Logout from Demo Session
@@ -130,14 +130,14 @@ Pricing constants, regional currency symbols, tier limits, and Stripe price refe
 
 #### Findings:
 1. **Regional Pricing Synchronization:**
-   * `src/lib/plans.ts` (lines 69–95) defines `REGIONAL_PRICING`:
+   * `src/lib/plans.ts` (lines 86–112) defines `REGIONAL_PRICING`:
      - **IN (India):** Pro Monthly = ₹199/mo, Pro Yearly = ₹1,999/yr, Savings = "Save 44%".
      - **GLOBAL:** Pro Monthly = $9.99/mo, Pro Yearly = $99.99/yr, Savings = "Save 44%".
-   * Both `src/pages/Pricing.tsx` (line 306) and `src/components/sections/SettingsSection.tsx` (lines 88, 675) correctly consume `REGIONAL_PRICING[region]` via `detectUserRegion()`.
+   * Both `src/pages/Pricing.tsx` (line 100) and `src/components/sections/SettingsSection.tsx` (line 94) correctly consume `REGIONAL_PRICING[region]` via `detectUserRegion()`.
    * Both pages display consistent savings badge text (`"Save 44%"`).
 
 2. **Feature Tier Limit Alignment:**
-   * `src/lib/plans.ts` (`PLAN_LIMITS`, lines 4–67):
+   * `src/lib/plans.ts` (`PLAN_LIMITS`, lines 4–84):
      - **Free:** 15 Habits, 60 daily focus minutes, 7 days analytics, 3 streak freezes/mo.
      - **Pro:** Unlimited habits, unlimited focus minutes, unlimited analytics, 3 streak freezes/mo + auto shield.
      - **Teacher:** Unlimited habits, 5 streak freezes/mo, 10% class fee commission.
@@ -256,13 +256,13 @@ We benchmarked the initial 3-minute user journey of **Personal Performance Syste
 
 ### 3.2 Top 3 Student Friction & Drop-Off Points in PPS
 
-1. **Lengthy Onboarding Wizard (`OnboardingWizard.tsx`, lines 1–287):**
+1. **Lengthy Onboarding Wizard (`src/components/onboarding/OnboardingWizard.tsx`, lines 1–287):**
    * *Problem:* Requiring students to complete a 5-stage setup sequence (Primary Track, Bottleneck ID, Daily Focus Target Slider, Social Squad Selection, and Final Confirmation) before displaying the main dashboard.
    * *Drop-Off Impact:* ~35–40% user drop-off before reaching the core dashboard. Students seeking an immediate study timer or quick habit log get bogged down in configuration forms.
-2. **High Vertical Density on Mobile Viewports (`Dashboard.tsx`, lines 1–1391):**
+2. **High Vertical Density on Mobile Viewports (`src/pages/Dashboard.tsx`, lines 1–1391):**
    * *Problem:* On mobile screens (<640px), the dashboard renders sticky notes, level widgets, stat cards, habit lists, and focus timers stacked sequentially in a single column.
    * *Drop-Off Impact:* Primary action targets (checking off today's habits or starting a focus room) are pushed below the fold, requiring extensive scrolling.
-3. **Complex Multi-Field Habit Time Pickers (`HabitManagerSection.tsx`):**
+3. **Complex Multi-Field Habit Time Pickers (`src/components/sections/HabitManagerSection.tsx`):**
    * *Problem:* Setting up habit alarms requires configuring Start Time, End Time, Priority, Period, Category, and Notification Toggles via standard HTML time inputs.
    * *Drop-Off Impact:* Touchscreen input friction on mobile devices leads to improper alarm configurations and missed circadian habit notifications.
 
