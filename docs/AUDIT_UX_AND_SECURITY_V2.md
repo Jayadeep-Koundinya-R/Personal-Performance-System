@@ -262,7 +262,7 @@ We benchmarked the initial 3-minute user journey of **Personal Performance Syste
 2. **High Vertical Density on Mobile Viewports (`Dashboard.tsx`, lines 1–1391):**
    * *Problem:* On mobile screens (<640px), the dashboard renders sticky notes, level widgets, stat cards, habit lists, and focus timers stacked sequentially in a single column.
    * *Drop-Off Impact:* Primary action targets (checking off today's habits or starting a focus room) are pushed below the fold, requiring extensive scrolling.
-3. **Complex Multi-Field Habit Time Pickers (`HabitManagerSection.tsx`):**
+3. **Complex Multi-Field Habit Time Pickers (`src/components/sections/HabitManagerSection.tsx`):**
    * *Problem:* Setting up habit alarms requires configuring Start Time, End Time, Priority, Period, Category, and Notification Toggles via standard HTML time inputs.
    * *Drop-Off Impact:* Touchscreen input friction on mobile devices leads to improper alarm configurations and missed circadian habit notifications.
 
