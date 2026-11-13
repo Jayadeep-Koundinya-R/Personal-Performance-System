@@ -35,4 +35,14 @@ describe("🛡️ PPS v0.5: Auth Truth Verification", () => {
     const plan = (isGuest || !userId) ? "free" : "pro";
     expect(plan).toBe("free");
   });
+
+  it("verifies OnboardingGuard relies on single authoritative DB/profile flag without multi-key confusion", () => {
+    const guardPath = path.resolve(__dirname, "../../routes/OnboardingGuard.tsx");
+    const guardContent = fs.readFileSync(guardPath, "utf8");
+
+    expect(guardContent).not.toContain("pps_onboarding_completed");
+    expect(guardContent).not.toContain("pps_skip_onboarding");
+    expect(guardContent).not.toContain("pps_onboarded_guest");
+    expect(guardContent).toContain("pps_guest_onboarded");
+  });
 });

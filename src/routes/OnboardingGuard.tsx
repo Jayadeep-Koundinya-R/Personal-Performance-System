@@ -37,23 +37,14 @@ export const OnboardingGuard: React.FC<Props> = ({ children, profile }) => {
     return <Navigate to="/pricing" replace state={{ trialExpired: true }} />;
   }
 
-  // Check all possible onboarding keys in localStorage
-  const userEmail = user?.email || "guest";
-  const localOnboarded =
-    typeof window !== "undefined" &&
-    (localStorage.getItem("pps_onboarding_completed") === "true" ||
-      localStorage.getItem("pps_skip_onboarding") === "true" ||
-      localStorage.getItem("pps_onboarded_guest") === "true" ||
-      localStorage.getItem("pps_guest_onboarded") === "true" ||
-      localStorage.getItem(`pps_onboarded_${userEmail}`) === "true");
-
   const isGuestUser = Boolean(user.isGuest);
+  const guestOnboarded = typeof window !== "undefined" && localStorage.getItem("pps_guest_onboarded") === "true";
+
+  // Single authoritative source: DB profile/settings for signed-in users, single key for guest demo
   const onboardingCompleted = Boolean(
-    profile?.onboarding_completed ||
-    profile?.onboardingCompleted ||
-    settings?.onboardingCompleted ||
-    (user as any)?.onboarding_completed ||
-    localOnboarded
+    isGuestUser
+      ? guestOnboarded
+      : profile?.onboarding_completed ?? profile?.onboardingCompleted ?? settings?.onboardingCompleted ?? false
   );
   const isOnboardingRoute = location.pathname === '/onboarding';
 
