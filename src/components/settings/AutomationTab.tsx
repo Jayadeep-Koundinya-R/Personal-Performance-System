@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Bell, Volume2, Shield } from "lucide-react";
 import { UserSettings } from "@/hooks/use-user-settings";
+import { Button } from "@/components/ui/button";
 
 interface AutomationTabProps {
   settings: UserSettings | null;
@@ -25,16 +26,16 @@ export const AutomationTab: React.FC<AutomationTabProps> = ({
       <div className="bg-card border border-border p-6 rounded-3xl shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-border/40 pb-3">
           <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-            <Bell className="w-4 h-4 text-sky-400" />
+            <Bell className="w-4 h-4 text-secondary" />
             <span>Circadian Alerts & Automated Shield Preferences</span>
           </h3>
-          <button
+          <Button
             onClick={onTestAlarmTone}
             className="text-xs bg-surface border border-border/80 text-foreground px-3 py-1.5 rounded-xl font-bold hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5"
           >
             <Volume2 className="w-3.5 h-3.5 text-primary" />
             <span>Test Tone 🔊</span>
-          </button>
+          </Button>
         </div>
 
         <div className="space-y-3">

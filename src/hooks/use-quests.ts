@@ -22,6 +22,12 @@ function getWeekStart(): string {
   return d.toISOString().split("T")[0];
 }
 
+const DEFAULT_QUEST_DEFS = [
+  { id: "q1", quest_key: "morning_momentum", title: "Morning Momentum", description: "Complete at least 3 habits today", target: 3, quest_type: "daily", xp_reward: 50 },
+  { id: "q2", quest_key: "perfect_streak", title: "Consistency Champion", description: "Reach a 5-day active habit streak", target: 5, quest_type: "streak", xp_reward: 100 },
+  { id: "q3", quest_key: "xp_hunter", title: "XP Challenger", description: "Earn 150 XP this week from completions", target: 150, quest_type: "weekly", xp_reward: 150 },
+];
+
 export function useQuests(userId?: string, isGuest?: boolean) {
   const { habits, getTodayStr, isHabitDueToday, calculateWeeklyPoints, getMaxStreak } = useHabits();
   const [quests, setQuests] = useState<Quest[]>([]);
@@ -50,12 +56,6 @@ export function useQuests(userId?: string, isGuest?: boolean) {
 
   const isGuestUser = isGuest || !userId || userId === "guest_local" || userId.startsWith("guest");
 
-  const defaultQuestDefs = [
-    { id: "q1", quest_key: "morning_momentum", title: "Morning Momentum", description: "Complete at least 3 habits today", target: 3, quest_type: "daily", xp_reward: 50 },
-    { id: "q2", quest_key: "perfect_streak", title: "Consistency Champion", description: "Reach a 5-day active habit streak", target: 5, quest_type: "streak", xp_reward: 100 },
-    { id: "q3", quest_key: "xp_hunter", title: "XP Challenger", description: "Earn 150 XP this week from completions", target: 150, quest_type: "weekly", xp_reward: 150 },
-  ];
-
   const refresh = useCallback(async () => {
     let questDefs: any[] = [];
     if (!isGuestUser && userId) {
@@ -64,13 +64,13 @@ export function useQuests(userId?: string, isGuest?: boolean) {
         if (data && data.length > 0) {
           questDefs = data;
         } else {
-          questDefs = defaultQuestDefs;
+          questDefs = DEFAULT_QUEST_DEFS;
         }
       } catch {
-        questDefs = defaultQuestDefs;
+        questDefs = DEFAULT_QUEST_DEFS;
       }
     } else {
-      questDefs = defaultQuestDefs;
+      questDefs = DEFAULT_QUEST_DEFS;
     }
 
     if (isGuestUser || !userId) {

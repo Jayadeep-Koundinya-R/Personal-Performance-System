@@ -14,6 +14,7 @@ import {
   Coffee,
   AlertCircle,
   Play,
+  Pause,
 } from "lucide-react";
 import { formatDisplayTime } from "@/lib/vayu/vayuPlanner";
 import { VayuTimeBlock, VayuDailyPlan } from "@/lib/vayu/types";
@@ -28,6 +29,13 @@ interface VayuPulseBannerProps {
   onOpenStudio: () => void;
   onCompleteCurrent: (blockId: string) => void;
   onStartSprint?: (block: VayuTimeBlock) => void;
+  activeTimer?: {
+    isRunning: boolean;
+    remainingSec: number;
+    activeTaskName?: string;
+    linkedHabitId?: string | null;
+  };
+  onToggleTimer?: () => void;
 }
 
 export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
@@ -40,6 +48,8 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
   onOpenStudio,
   onCompleteCurrent,
   onStartSprint,
+  activeTimer,
+  onToggleTimer,
 }) => {
   const [inputText, setInputText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,14 +107,17 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold tracking-wide text-foreground uppercase">
-                  Vayu Circadian Flow
+                  Adaptive Circadian Flow
                 </h3>
-                <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] font-medium text-cyan-600 dark:text-cyan-300 border border-cyan-500/30">
+                <span
+                  className="rounded-full bg-cyan-500/15 dark:bg-cyan-500/20 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:text-cyan-300 border border-cyan-500/30"
+                  title="45 minutes deep focus sprint followed by 15 minutes restorative recharge"
+                >
                   45/15 Rhythm
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Ultradian biological alignment & zero-guilt rebalancer.
+                Natural energy alignment with zero-guilt schedule rebalancing.
               </p>
             </div>
           </div>
@@ -112,8 +125,10 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
           {/* Real-time Day Flow Rate Gauge */}
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-end">
-              <span className="text-[11px] font-medium text-muted-foreground">Vital Day Flow</span>
-              <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-emerald-400">
+              <span className="text-[11px] font-medium text-muted-foreground" title="Daily planned focus time completed">
+                Daily Focus Flow
+              </span>
+              <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-emerald-600 dark:from-cyan-400 dark:to-emerald-400">
                 {completionRate}% Achieved
               </span>
             </div>
@@ -138,7 +153,7 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
               <button
                 onClick={onOpenStudio}
                 title="Open Flow Studio"
-                className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 px-2.5 py-1.5 text-xs font-medium text-cyan-600 dark:text-cyan-300 hover:bg-cyan-500/20 transition-all border border-cyan-500/30 cursor-pointer"
+                className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 transition-all border border-cyan-500/30 cursor-pointer"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Flow Studio</span>
@@ -154,18 +169,18 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-500/40 bg-cyan-950/40 p-3 text-xs text-cyan-100 shadow-sm shadow-cyan-950/30 backdrop-blur-sm"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-500/40 bg-cyan-50/90 dark:bg-cyan-950/40 p-3 text-xs text-cyan-950 dark:text-cyan-100 shadow-sm shadow-cyan-950/20 backdrop-blur-sm"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-300">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-700 dark:text-cyan-300">
                   <Wind className="h-4 w-4 animate-pulse" />
                 </span>
                 <div className="min-w-0">
-                  <span className="font-semibold text-cyan-200">
+                  <span className="font-semibold text-cyan-900 dark:text-cyan-200">
                     Schedule running behind? Zero guilt.
                   </span>
-                  <p className="text-[11px] text-cyan-300/80 truncate">
-                    {(plan.rebalanceExplanation || "Vayu can slide remaining blocks forward to protect your 10:00 PM Agni Curfew.").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&")}
+                  <p className="text-[11px] text-cyan-800 dark:text-cyan-300/80 truncate">
+                    {(plan.rebalanceExplanation || "Adaptive Flow can slide remaining blocks forward to protect your 10:00 PM evening wind-down.").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&")}
                   </p>
                 </div>
               </div>
@@ -242,15 +257,51 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
                   <span>{currentBlock.durationMinutes} min focus session</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Task 2.4: Timeblock Sprint Launcher */}
-                  <button
-                    onClick={() => handleLaunchSprint(currentBlock)}
-                    className="flex items-center gap-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 px-3 py-1.5 text-xs font-semibold text-cyan-700 dark:text-cyan-200 transition-all cursor-pointer"
-                    title="Launch dedicated focus sprint timer"
-                  >
-                    <Play className="h-3.5 w-3.5 fill-current" />
-                    <span>Start Sprint ({currentBlock.durationMinutes}m)</span>
-                  </button>
+                  {/* Task 2.4: Timeblock Sprint Launcher / Active Countdown */}
+                  {(() => {
+                    const isBlockTimerActive = Boolean(
+                      activeTimer?.isRunning &&
+                      currentBlock &&
+                      (activeTimer.activeTaskName === currentBlock.title ||
+                       (currentBlock.habitId && activeTimer.linkedHabitId === currentBlock.habitId) ||
+                       (currentBlock.linkedHabitId && activeTimer.linkedHabitId === currentBlock.linkedHabitId))
+                    );
+                    const isRecharge = currentBlock.energyLevel === "recharge";
+
+                    if (isBlockTimerActive) {
+                      const mins = Math.floor((activeTimer?.remainingSec || 0) / 60);
+                      const secs = ((activeTimer?.remainingSec || 0) % 60).toString().padStart(2, "0");
+                      return (
+                        <button
+                          onClick={() => onToggleTimer ? onToggleTimer() : handleLaunchSprint(currentBlock)}
+                          className="flex items-center gap-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 px-3 py-1.5 text-xs font-mono font-bold text-emerald-300 transition-all cursor-pointer shadow-sm shadow-emerald-500/20 animate-pulse"
+                          title="Click to pause or resume running focus session"
+                        >
+                          <Pause className="h-3.5 w-3.5 fill-current" />
+                          <span>{mins}:{secs} Running</span>
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <button
+                        onClick={() => handleLaunchSprint(currentBlock)}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                          isRecharge
+                            ? "bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-700 dark:text-emerald-200"
+                            : "bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-700 dark:text-cyan-200"
+                        }`}
+                        title={isRecharge ? "Launch recharge rest timer" : "Launch dedicated focus sprint timer"}
+                      >
+                        {isRecharge ? (
+                          <Coffee className="h-3.5 w-3.5" />
+                        ) : (
+                          <Play className="h-3.5 w-3.5 fill-current" />
+                        )}
+                        <span>{isRecharge ? `Recharge (${currentBlock.durationMinutes}m)` : `Start Sprint (${currentBlock.durationMinutes}m)`}</span>
+                      </button>
+                    );
+                  })()}
 
                   <button
                     onClick={() => onCompleteCurrent(currentBlock.id)}
@@ -271,12 +322,12 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
                 Up Next <ArrowRight className="h-3 w-3" />
               </span>
               <p className="text-xs sm:text-sm font-medium text-foreground truncate mt-0.5">
-                {nextBlock ? nextBlock.title : "Agni Curfew & Evening Reflection"}
+                {nextBlock ? nextBlock.title : "Evening Wind-Down & Reflection"}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-[11px] text-muted-foreground">
-                {nextBlock ? `${formatDisplayTime(nextBlock.startTime)} • ${nextBlock.durationMinutes}m` : "Curfew ready at 22:00"}
+                {nextBlock ? `${formatDisplayTime(nextBlock.startTime)} • ${nextBlock.durationMinutes}m` : "Wind-down at 22:00"}
               </span>
               {nextBlock?.energyLevel === "peak" && (
                 <span className="text-[10px] text-amber-500 dark:text-amber-400 font-semibold">⚡ Peak</span>
@@ -293,8 +344,9 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
           <input
             type="text"
             value={inputText}
+            maxLength={300}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Tell Vayu: 'Finished 45m DSA', 'Done with workout 50%', 'Start sprint', 'Push schedule 30m'..."
+            placeholder="Tell Flow Engine: 'Finished 45m DSA', 'Done with workout 50%', 'Start sprint', 'Push schedule 30m'..."
             className="w-full rounded-xl border border-border/80 dark:border-cyan-500/20 bg-surface dark:bg-slate-950/70 py-2.5 pl-3.5 pr-24 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/50 transition-all"
           />
           <button

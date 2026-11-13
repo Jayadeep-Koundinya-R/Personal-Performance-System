@@ -16,12 +16,15 @@ import { MomentumCommandDeck } from "@/components/dashboard/v2/MomentumCommandDe
 import { ImmediateRemindersStrip } from "@/components/dashboard/v2/ImmediateRemindersStrip";
 import { QuickAddHabitCard } from "@/components/dashboard/v2/QuickAddHabitCard";
 import { DashboardCommandHub } from "@/components/dashboard/v2/DashboardCommandHub";
+import { ThreePerformanceCanvas } from "@/components/dashboard/v2/ThreePerformanceCanvas";
+import { InteractiveQuickDock } from "@/components/dashboard/v2/InteractiveQuickDock";
+import { ProAiPerformanceAgentBox } from "@/components/dashboard/v2/ProAiPerformanceAgentBox";
+import { InteractiveDemoExperienceBanner } from "@/components/dashboard/v2/InteractiveDemoExperienceBanner";
 import { EmergencyTriageModal } from "@/components/dashboard/EmergencyTriageModal";
 import { TriageActiveBanner } from "@/components/dashboard/TriageActiveBanner";
 import { ParkinsonsLawInverterModal } from "@/components/habits/ParkinsonsLawInverterModal";
 import { SyllabusDecomposerModal } from "@/components/syllabus/SyllabusDecomposerModal";
 import { Link } from "react-router-dom";
-import { Search, X, Volume2, VolumeX, Zap, MoreHorizontal, Headphones, Battery, BatteryCharging, Sparkles, Activity, Clock, Shield, Flame } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -104,6 +107,7 @@ interface DashboardSectionProps {
 export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   const {
     habits,
+    loading: habitsLoading,
     addHabit,
     toggleCompletion,
     completeHabit,
@@ -120,7 +124,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
   const [circadianModalHabit, setCircadianModalHabit] = useState<{ habit: Habit; label: string } | null>(null);
 
   const { profile } = useProfile();
-  const { user } = useAuth();
+  const { user, guestDaysRemaining } = useAuth();
   const focusTimer = useFocusTimer();
   const { todayFocusMinutes } = focusTimer;
   const { reminders: allReminders } = useReminders();
@@ -149,7 +153,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     }
   });
 
-  // ── 🌬️ Vayu Autonomous Real-Time Flow Subsystem ──
+  // ── 🌬️ Autonomous Adaptive Circadian Flow Subsystem ──
   const {
     plan: vayuPlan,
     currentBlock: vayuCurrentBlock,
@@ -162,7 +166,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
   } = useVayu();
   const [isVayuStudioOpen, setIsVayuStudioOpen] = useState(false);
 
-  // Global listener for Vayu Sprint Launch events
+  // Global listener for Circadian Sprint Launch events
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handleStartTimer = (e: Event) => {
@@ -185,6 +189,123 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
   const [targetHabitForSlicing, setTargetHabitForSlicing] = useState<any>(null);
   const [syllabusModalOpen, setSyllabusModalOpen] = useState(false);
 
+  // Power tools collapsed state (collapsed by default to elevate habits above fold)
+  const [powerToolsOpen, setPowerToolsOpen] = useState(() => {
+    try {
+      return localStorage.getItem("pps_power_tools_open") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const togglePowerTools = () => {
+    const next = !powerToolsOpen;
+    setPowerToolsOpen(next);
+    try {
+      localStorage.setItem("pps_power_tools_open", String(next));
+    } catch { }
+  };
+
+  // Companion right rail expanded/collapsed state (Wide mode toggle)
+  const [showCompanionRail, setShowCompanionRail] = useState(() => {
+    try {
+      return localStorage.getItem("pps_show_companion_rail") !== "false";
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleCompanionRail = () => {
+    const next = !showCompanionRail;
+    setShowCompanionRail(next);
+    try {
+      localStorage.setItem("pps_show_companion_rail", String(next));
+    } catch { }
+  };
+
+  // Pro AI Performance Agent Box state
+  const [showAiAgentBox, setShowAiAgentBox] = useState(() => {
+    try {
+      return localStorage.getItem("pps_show_ai_agent_box") !== "false";
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleAiAgentBox = () => {
+    const next = !showAiAgentBox;
+    setShowAiAgentBox(next);
+    try {
+      localStorage.setItem("pps_show_ai_agent_box", String(next));
+    } catch { }
+  };
+
+  // 🤖 Proactive AI Copilot Event Listener & Auto-Scroll
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleOpenAiCopilot = () => {
+      setShowAiAgentBox(true);
+      try {
+        localStorage.setItem("pps_show_ai_agent_box", "true");
+      } catch { }
+      setTimeout(() => {
+        const el = document.getElementById("pro-ai-copilot-box");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+    };
+
+    window.addEventListener("pps_open_ai_copilot", handleOpenAiCopilot);
+    return () => window.removeEventListener("pps_open_ai_copilot", handleOpenAiCopilot);
+  }, []);
+
+  // 🛡️ Proactive AI Guardian Check (Evening Curfew & Low Energy Nudge)
+  useEffect(() => {
+    if (typeof window === "undefined" || habits.length === 0) return;
+    const sessionKey = `pps_ai_guardian_notified_${todayStr}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+
+    const uncompleted = habits.filter((h) => !h.completedDates.includes(todayStr));
+    if (uncompleted.length === 0) return;
+
+    const currentHour = new Date().getHours();
+    // Evening curfew check (8 PM to 10 PM)
+    if (currentHour >= 20 && currentHour < 22) {
+      sessionStorage.setItem(sessionKey, "true");
+      setTimeout(() => {
+        toast("🛡️ AI Streak Guardian Alert", {
+          description: `10 PM Agni Curfew approaching! You have ${uncompleted.length} habit(s) pending. Tap to scale them to 2m micro-habits.`,
+          action: {
+            label: "Open Copilot",
+            onClick: () => {
+              window.dispatchEvent(
+                new CustomEvent("pps_open_ai_copilot", {
+                  detail: { prompt: "How should I scale down my remaining habits to protect my streak before curfew?" },
+                })
+              );
+            },
+          },
+          duration: 8000,
+        });
+      }, 1500);
+    }
+  }, [habits, todayStr]);
+
+  // Nudge banner dismissal state
+  const [dismissedNudgeId, setDismissedNudgeId] = useState(() => {
+    try {
+      return sessionStorage.getItem("pps_dismissed_nudge_id");
+    } catch {
+      return null;
+    }
+  });
+
+  const handleDismissNudge = (id: string) => {
+    setDismissedNudgeId(id);
+    try {
+      sessionStorage.setItem("pps_dismissed_nudge_id", id);
+    } catch { }
+  };
+
   // Skipped habits state for forgiving rest-day system
   const [skippedHabits, setSkippedHabits] = useState<Record<string, string>>(() => {
     try {
@@ -199,7 +320,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     setSkippedHabits(next);
     try {
       localStorage.setItem(`pps_skipped_${todayStr}`, JSON.stringify(next));
-    } catch {}
+    } catch { }
 
     if (reason === "Rest 💤" || reason === "Sick 🤒") {
       const check = canClaimRecoveryXP(todayStr);
@@ -231,7 +352,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
       setSkippedHabits(next);
       try {
         localStorage.setItem(`pps_skipped_${todayStr}`, JSON.stringify(next));
-      } catch {}
+      } catch { }
     }
 
     if (!wasCompleted && !forceBypass) {
@@ -262,14 +383,14 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     setViewMode(mode);
     try {
       localStorage.setItem("pps_dashboard_view_mode", mode);
-    } catch {}
+    } catch { }
   };
 
   const handleDensityModeChange = (mode: "comfortable" | "compact") => {
     setDensityMode(mode);
     try {
       localStorage.setItem("pps_dashboard_density", mode);
-    } catch {}
+    } catch { }
   };
 
   // Energy/Mood logger pill
@@ -285,7 +406,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     setMood(mVal);
     try {
       localStorage.setItem(`pps_today_mood_${todayStr}`, mVal);
-    } catch {}
+    } catch { }
     toast.success(`Energy logged: ${mLabel}`, { description: "Your energy state is updated for today!" });
   };
 
@@ -359,7 +480,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
       });
     }
     return days;
-  }, [habits, todayStr]);
+  }, [habits]);
 
   // Estimated time remaining today
   const remainingEstimatedMinutes = useMemo(() => {
@@ -395,7 +516,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
       try {
         if (localStorage.getItem(celebKey)) return;
         localStorage.setItem(celebKey, "1");
-      } catch {}
+      } catch { }
 
       setTimeout(() => {
         setShowCelebration(true);
@@ -421,7 +542,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           return;
         }
       }
-    } catch {}
+    } catch { }
     setSuggestions([]);
   }, [user]);
 
@@ -447,7 +568,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           const updated = list.map((item: any) => (item.id === sugg.id ? { ...item, status: "accepted" } : item));
           localStorage.setItem(cacheKey, JSON.stringify(updated));
         }
-      } catch {}
+      } catch { }
 
       setSuggestions((prev) => prev.filter((s) => s.id !== sugg.id));
     } catch {
@@ -465,11 +586,11 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           const updated = list.map((item: any) => (item.id === sugg.id ? { ...item, status: "dismissed" } : item));
           localStorage.setItem(cacheKey, JSON.stringify(updated));
         }
-      } catch {}
+      } catch { }
 
       setSuggestions((prev) => prev.filter((s) => s.id !== sugg.id));
       toast.info("Suggestion dismissed");
-    } catch {}
+    } catch { }
   };
 
   const handleInstallStarterStack = useCallback(async () => {
@@ -542,7 +663,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dueToday, doneToday.length, markAllDone, todayStr, skippedHabits, focusTimer, viewMode]);
+  }, [dueToday, doneToday.length, markAllDone, todayStr, skippedHabits, focusTimer, viewMode, habits]);
 
   // Sorting habits helper
   const priorityWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1, Optional: 0 };
@@ -606,21 +727,67 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
   function getCategoryColor(category?: string | null): { bg: string; text: string; border: string; dot: string } {
     const cat = (category || "").toLowerCase();
     if (cat.includes("health") || cat.includes("fit") || cat.includes("water") || cat.includes("sleep")) {
-      return { bg: "bg-emerald-500/15", text: "text-emerald-400", border: "border-emerald-500/30", dot: "bg-emerald-400" };
+      return {
+        bg: "bg-emerald-50 dark:bg-emerald-500/15",
+        text: "text-emerald-700 dark:text-emerald-300 font-bold",
+        border: "border-emerald-300/80 dark:border-emerald-500/30",
+        dot: "bg-emerald-500"
+      };
     }
     if (cat.includes("prod") || cat.includes("work") || cat.includes("code") || cat.includes("deep")) {
-      return { bg: "bg-blue-500/15", text: "text-blue-400", border: "border-blue-500/30", dot: "bg-blue-400" };
+      return {
+        bg: "bg-blue-50 dark:bg-blue-500/15",
+        text: "text-blue-700 dark:text-blue-300 font-bold",
+        border: "border-blue-300/80 dark:border-blue-500/30",
+        dot: "bg-blue-500"
+      };
     }
     if (cat.includes("learn") || cat.includes("study") || cat.includes("read") || cat.includes("book")) {
-      return { bg: "bg-cyan-500/15", text: "text-cyan-400", border: "border-cyan-500/30", dot: "bg-cyan-400" };
+      return {
+        bg: "bg-cyan-50 dark:bg-cyan-500/15",
+        text: "text-cyan-800 dark:text-cyan-300 font-bold",
+        border: "border-cyan-300/80 dark:border-cyan-500/30",
+        dot: "bg-cyan-500"
+      };
     }
     if (cat.includes("mindful") || cat.includes("meditat") || cat.includes("peace")) {
-      return { bg: "bg-purple-500/15", text: "text-purple-400", border: "border-purple-500/30", dot: "bg-purple-400" };
+      return {
+        bg: "bg-purple-50 dark:bg-purple-500/15",
+        text: "text-purple-700 dark:text-purple-300 font-bold",
+        border: "border-purple-300/80 dark:border-purple-500/30",
+        dot: "bg-purple-500"
+      };
     }
     if (cat.includes("mindset") || cat.includes("gratitude") || cat.includes("journal")) {
-      return { bg: "bg-amber-500/15", text: "text-amber-400", border: "border-amber-500/30", dot: "bg-amber-400" };
+      return {
+        bg: "bg-amber-50 dark:bg-amber-500/15",
+        text: "text-amber-800 dark:text-amber-300 font-bold",
+        border: "border-amber-300/80 dark:border-amber-500/30",
+        dot: "bg-amber-500"
+      };
     }
-    return { bg: "bg-indigo-500/15", text: "text-indigo-400", border: "border-indigo-500/30", dot: "bg-indigo-400" };
+    return {
+      bg: "bg-indigo-50 dark:bg-indigo-500/15",
+      text: "text-indigo-700 dark:text-indigo-300 font-bold",
+      border: "border-indigo-300/80 dark:border-indigo-500/30",
+      dot: "bg-indigo-500"
+    };
+  }
+
+  function formatCategoryName(name: string): string {
+    if (!name) return "General";
+    return name
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+
+  function formatRemainingTime(minutes: number): string {
+    if (minutes <= 0) return "All clear";
+    if (minutes < 60) return `~${minutes}m focus left`;
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (mins === 0) return `~${hrs}h focus left`;
+    return `~${hrs}h ${mins}m left`;
   }
 
   function getGreeting(): string {
@@ -640,32 +807,57 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     const isSkipped = !!skipReason;
 
     let tagClass = "bg-primary/15 text-primary border border-primary/30";
-    let tagText = "Due " + dueDate.toLocaleDateString(undefined, { weekday: "long" });
+    let tagNode: React.ReactNode = <span>Due {dueDate.toLocaleDateString(undefined, { weekday: "long" })}</span>;
 
     if (isSkipped) {
       tagClass = "bg-surface/80 text-muted-foreground border border-border/80 font-mono";
-      tagText = `Skipped (${skipReason})`;
+      tagNode = (
+        <span className="flex items-center gap-1">
+          <Shield className="w-2.5 h-2.5 inline" />
+          <span>Skipped ({skipReason})</span>
+        </span>
+      );
     } else if (diffDays < 0) {
-      tagClass = "bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold";
-      tagText = "Overdue 🚨";
+      tagClass = "bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30 font-bold";
+      tagNode = (
+        <span className="flex items-center gap-1">
+          <AlertTriangle className="w-2.5 h-2.5 inline" />
+          <span>Overdue</span>
+        </span>
+      );
     } else if (diffDays === 0 && isCompletedToday) {
-      tagClass = "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold";
-      tagText = "Done ✓";
+      tagClass = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold";
+      tagNode = (
+        <span className="flex items-center gap-1">
+          <CheckCircle2 className="w-2.5 h-2.5 inline" />
+          <span>Done</span>
+        </span>
+      );
     } else if (diffDays === 0) {
       const urgency = getUrgencyLevel(habit);
       if (urgency === "overdue") {
-        tagClass = "bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold animate-pulse shadow-sm shadow-rose-500/20";
-        tagText = "Overdue 🚨";
+        tagClass = "bg-rose-50 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-500/40 font-bold animate-pulse shadow-2xs";
+        tagNode = (
+          <span className="flex items-center gap-1">
+            <AlertTriangle className="w-2.5 h-2.5 inline" />
+            <span>Overdue</span>
+          </span>
+        );
       } else if (urgency === "urgent") {
-        tagClass = "bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold animate-pulse shadow-sm shadow-amber-500/20";
-        tagText = "Urgent ⏳";
+        tagClass = "bg-amber-50 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40 font-bold animate-pulse shadow-2xs";
+        tagNode = (
+          <span className="flex items-center gap-1">
+            <Clock className="w-2.5 h-2.5 inline" />
+            <span>Urgent</span>
+          </span>
+        );
       } else {
-        tagClass = "bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold";
-        tagText = "Due Today";
+        tagClass = "bg-slate-100 dark:bg-surface/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-border/60 font-semibold shadow-2xs";
+        tagNode = <span>Due Today</span>;
       }
     } else if (diffDays === 1) {
-      tagClass = "bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 font-semibold";
-      tagText = "Tomorrow";
+      tagClass = "bg-yellow-500/15 text-yellow-800 dark:text-yellow-400 border border-yellow-500/30 font-semibold";
+      tagNode = <span>Tomorrow</span>;
     }
 
     if (densityMode === "compact") {
@@ -676,15 +868,16 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           custom={index}
           initial="hidden"
           animate="visible"
-          className={`flex items-center justify-between px-3 py-1.5 bg-surface/60 border rounded-lg mb-1 text-xs cursor-default hover:bg-accent/[0.08] transition-all duration-150 ${
-            isCompletedToday
-              ? "border-border/60 opacity-60"
-              : isSkipped
-              ? "border-border/60 bg-muted/20"
-              : getUrgencyLevel(habit) === "overdue"
-              ? "border-destructive/40"
-              : "border-border/60 hover:border-primary/20"
-          }`}
+          className={`flex items-center justify-between px-3 py-1.5 bg-card/95 dark:bg-card/70 backdrop-blur-md border rounded-xl mb-1 text-xs cursor-default hover:bg-accent/[0.08] transition-all duration-150 shadow-2xs ${focusTimer.isRunning && (focusTimer.linkedHabitId === habit.id || focusTimer.activeTaskName === habit.name)
+              ? "border-emerald-500/60 bg-emerald-500/10 shadow-sm shadow-emerald-500/15"
+              : isCompletedToday
+                ? "border-border/60 opacity-60"
+                : isSkipped
+                  ? "border-border/60 bg-muted/20"
+                  : getUrgencyLevel(habit) === "overdue"
+                    ? "border-destructive/40"
+                    : "border-border/60 hover:border-primary/20"
+            }`}
         >
           <div className="flex items-center gap-2 overflow-hidden truncate">
             <input
@@ -698,7 +891,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             </span>
             {habit.category && (
               <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold border flex-shrink-0 ${getCategoryColor(habit.category).bg} ${getCategoryColor(habit.category).text} ${getCategoryColor(habit.category).border}`}>
-                {habit.category}
+                {formatCategoryName(habit.category)}
               </span>
             )}
             {/* Task 1.2: Amber Timer-Locked Badge */}
@@ -708,7 +901,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                   e.stopPropagation();
                   setTimerLockModalHabit(habit);
                 }}
-                className="text-[9px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-0.5 flex-shrink-0 cursor-pointer hover:bg-amber-500/25 transition-all"
+                className="text-[9px] bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-0.5 flex-shrink-0 cursor-pointer hover:bg-amber-500/25 transition-all"
                 title={`⚡ Timer-Locked: Requires ${habit.focus_duration_minutes || 25}m focus session`}
               >
                 ⚡ Timer-Locked
@@ -719,32 +912,34 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               const c = isWithinCircadianWindow(habit.window_start, habit.window_end);
               if (c.status === "upcoming") {
                 return (
-                  <span className="text-[9px] bg-blue-500/15 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
+                  <span className="text-[9px] bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
                     {c.label}
                   </span>
                 );
               }
               if (c.status === "closed") {
                 return (
-                  <span className="text-[9px] bg-zinc-500/15 text-zinc-400 border border-zinc-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
+                  <span className="text-[9px] bg-zinc-500/15 text-zinc-700 dark:text-zinc-400 border border-zinc-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
                     {c.label}
                   </span>
                 );
               }
               return (
-                <span className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
+                <span className="text-[9px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
                   🟢 In Window
                 </span>
               );
             })()}
             {habit.streak > 0 && (
-              <span className="text-[10px] text-pps-orange font-mono font-bold flex-shrink-0" title={`Streak: ${habit.streak}d`}>
-                🔥{habit.streak}
+              <span className="text-[10px] text-amber-800 dark:text-amber-400 font-mono font-bold flex items-center gap-0.5 flex-shrink-0 bg-amber-50 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/20 px-1.5 py-0.2 rounded-md shadow-2xs" title={`Streak: ${habit.streak}d`}>
+                <Flame className="w-3 h-3 text-amber-500 fill-amber-500/20 inline" />
+                <span>{habit.streak}</span>
               </span>
             )}
             {isSkipped && (
-              <span className="text-[10px] bg-surface/80 border border-border/60 px-1.5 py-0.2 rounded font-mono text-muted-foreground flex-shrink-0">
-                ⏸️ {skipReason}
+              <span className="text-[10px] bg-surface/80 border border-border/60 px-1.5 py-0.2 rounded font-mono text-muted-foreground flex items-center gap-0.5 flex-shrink-0">
+                <Shield className="w-2.5 h-2.5 inline" />
+                <span>{skipReason}</span>
               </span>
             )}
             {habit.startTime && (
@@ -756,17 +951,40 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {!isCompletedToday && !isSkipped && (
               <>
+                {focusTimer.isRunning && (focusTimer.linkedHabitId === habit.id || focusTimer.activeTaskName === habit.name) ? (
+                  <button
+                    type="button"
+                    onClick={() => focusTimer.toggleTimer()}
+                    className="px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs animate-pulse shrink-0"
+                    title="Session in progress - click to pause/resume"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span>{Math.floor(focusTimer.remainingSec / 60)}:{(focusTimer.remainingSec % 60).toString().padStart(2, "0")}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
+                      toast.success(`⏱️ ${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-primary text-indigo-700 hover:text-white border border-indigo-200/90 hover:border-primary dark:bg-primary/15 dark:hover:bg-primary/30 dark:text-primary dark:hover:text-white dark:border-primary/30 text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-0.5 shadow-2xs hover:scale-105 shrink-0"
+                    title="Launch Pomodoro Focus Session"
+                  >
+                    <Zap className="w-2.5 h-2.5 fill-primary/30" />
+                    <span>{habit.focus_duration_minutes || 25}m</span>
+                  </button>
+                )}
+
+                {/* Direct 1-Tap 2m Micro Pill */}
                 <button
                   type="button"
-                  onClick={() => {
-                    focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
-                    toast.success(`⏱️ ${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
-                  }}
-                  className="px-2 py-0.5 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-0.5 shadow-xs shrink-0"
-                  title="Launch Pomodoro Focus Session"
+                  onClick={() => completeHabit(habit.id, "micro")}
+                  className="px-1.5 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-0.5 shadow-2xs hover:scale-105 shrink-0"
+                  title="Scale down to 2-minute emergency micro-habit (+2 XP, streak protected)"
                 >
-                  <Zap className="w-2.5 h-2.5 fill-primary/30" />
-                  <span>{habit.focus_duration_minutes || 25}m</span>
+                  <Layers className="w-2.5 h-2.5 text-amber-500" />
+                  <span>2m</span>
                 </button>
 
                 <DropdownMenu>
@@ -784,7 +1002,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                       onClick={() => completeHabit(habit.id, "micro")}
                       className="cursor-pointer text-xs flex items-center gap-2 p-1.5 rounded-lg hover:bg-amber-500/10"
                     >
-                      <span>🪜</span>
+                      <Layers className="w-3.5 h-3.5 text-amber-500" />
                       <span>2m Micro-Habit (+2 XP)</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
@@ -794,7 +1012,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                       }}
                       className="cursor-pointer text-xs flex items-center gap-2 p-1.5 rounded-lg hover:bg-indigo-500/10"
                     >
-                      <span>⏳</span>
+                      <Clock className="w-3.5 h-3.5 text-indigo-400" />
                       <span>Parkinson's Slicer</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 border-border/60" />
@@ -802,21 +1020,21 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                       onClick={() => completeHabit(habit.id, "rest")}
                       className="cursor-pointer text-xs flex items-center gap-2 p-1.5 rounded-lg hover:bg-emerald-500/10"
                     >
-                      <span>💤</span>
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Rest Day (+5 XP)</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleSkipHabit(habit.id, "Sick")}
                       className="cursor-pointer text-xs flex items-center gap-2 p-1.5 rounded-lg hover:bg-rose-500/10"
                     >
-                      <span>🤒</span>
+                      <Shield className="w-3.5 h-3.5 text-rose-400" />
                       <span>Sick Day</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleSkipHabit(habit.id, "Busy")}
                       className="cursor-pointer text-xs flex items-center gap-2 p-1.5 rounded-lg"
                     >
-                      <span>💼</span>
+                      <Briefcase className="w-3.5 h-3.5 text-blue-400" />
                       <span>Busy Day</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -824,7 +1042,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               </>
             )}
             <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold font-mono whitespace-nowrap shrink-0 shadow-xs ${tagClass}`}>
-              {tagText}
+              {tagNode}
             </span>
           </div>
         </motion.div>
@@ -840,17 +1058,18 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         animate="visible"
         whileHover={{ x: 4 }}
         transition={{ duration: 0.15 }}
-        className={`flex items-center justify-between px-3.5 py-2.5 bg-surface/60 border rounded-xl mb-1.5 text-[13.5px] cursor-default hover:bg-accent/[0.08] transition-all duration-150 ${
-          isCompletedToday
-            ? "border-border/60 hover:border-primary/20"
-            : isSkipped
-            ? "border-border/60 bg-muted/20"
-            : getUrgencyLevel(habit) === "overdue"
-            ? "border-destructive/40 shadow-sm shadow-destructive/5"
-            : getUrgencyLevel(habit) === "urgent"
-            ? "border-pps-orange/40 shadow-sm shadow-pps-orange/5"
-            : "border-border/60 hover:border-primary/20"
-        }`}
+        className={`flex items-center justify-between px-3.5 py-2.5 bg-card/95 dark:bg-card/70 backdrop-blur-md border rounded-xl mb-1.5 text-[13.5px] cursor-default hover:bg-accent/[0.08] transition-all duration-150 shadow-2xs hover:shadow-xs ${focusTimer.isRunning && (focusTimer.linkedHabitId === habit.id || focusTimer.activeTaskName === habit.name)
+            ? "border-emerald-500/60 bg-emerald-500/10 shadow-sm shadow-emerald-500/15 ring-1 ring-emerald-500/30"
+            : isCompletedToday
+              ? "border-border/60 hover:border-primary/20"
+              : isSkipped
+                ? "border-border/60 bg-muted/20"
+                : getUrgencyLevel(habit) === "overdue"
+                  ? "border-destructive/40 shadow-sm shadow-destructive/5"
+                  : getUrgencyLevel(habit) === "urgent"
+                    ? "border-pps-orange/40 shadow-sm shadow-pps-orange/5"
+                    : "border-border/60 hover:border-primary/20"
+          }`}
       >
         <div className="flex items-center gap-2.5 overflow-hidden truncate">
           <input
@@ -859,7 +1078,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             onChange={() => handleToggleHabit(habit.id)}
             className="accent-primary w-4 h-4 cursor-pointer flex-shrink-0"
           />
-          <span className={`truncate font-medium ${isCompletedToday ? "line-through opacity-45" : ""}`}>{habit.name}</span>
+          <span className={`truncate font-semibold tracking-tight ${isCompletedToday ? "line-through opacity-45 text-muted-foreground" : "text-slate-900 dark:text-slate-100"}`}>{habit.name}</span>
           {habit.category && (
             <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold border flex-shrink-0 ${getCategoryColor(habit.category).bg} ${getCategoryColor(habit.category).text} ${getCategoryColor(habit.category).border}`}>
               {habit.category}
@@ -872,7 +1091,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 e.stopPropagation();
                 setTimerLockModalHabit(habit);
               }}
-              className="text-[10px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-2 py-0.5 rounded-md font-mono font-bold flex items-center gap-1 flex-shrink-0 cursor-pointer hover:bg-amber-500/25 transition-all"
+              className="text-[10px] bg-accent/15 text-accent-foreground border border-accent/30 px-2 py-0.5 rounded-md font-mono font-bold flex items-center gap-1 flex-shrink-0 cursor-pointer hover:bg-accent/25 transition-all"
               title={`⚡ Timer-Locked: Requires ${habit.focus_duration_minutes || 25}m focus sprint`}
             >
               ⚡ Timer-Locked
@@ -883,33 +1102,34 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             const c = isWithinCircadianWindow(habit.window_start, habit.window_end);
             if (c.status === "upcoming") {
               return (
-                <span className="text-[10px] bg-blue-500/15 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
+                <span className="text-[10px] bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
                   {c.label}
                 </span>
               );
             }
             if (c.status === "closed") {
               return (
-                <span className="text-[10px] bg-zinc-500/15 text-zinc-400 border border-zinc-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
+                <span className="text-[10px] bg-zinc-500/15 text-zinc-700 dark:text-zinc-400 border border-zinc-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
                   {c.label}
                 </span>
               );
             }
             return (
-              <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
+              <span className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
                 🟢 In Window
               </span>
             );
           })()}
           {habit.streak > 0 && (
-            <span className="text-[11px] text-pps-orange font-mono font-bold flex items-center gap-0.5 flex-shrink-0" title={`Current Streak: ${habit.streak} days`}>
-              <span>🔥</span>
+            <span className="text-[11px] text-primary font-mono font-bold flex items-center gap-0.5 flex-shrink-0 bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md shadow-2xs" title={`Current Streak: ${habit.streak} days`}>
+              <Flame className="w-3.5 h-3.5 text-primary fill-primary/20 inline" />
               <span>{habit.streak}</span>
             </span>
           )}
           {isSkipped && (
-            <span className="text-[10px] bg-surface/80 border border-border/60 px-2 py-0.5 rounded font-mono text-muted-foreground flex-shrink-0">
-              ⏸️ {skipReason}
+            <span className="text-[10px] bg-surface/80 border border-border/60 px-2 py-0.5 rounded font-mono text-muted-foreground flex items-center gap-1 flex-shrink-0">
+              <Shield className="w-3 h-3 text-muted-foreground inline" />
+              <span>{skipReason}</span>
             </span>
           )}
           {habit.startTime && (
@@ -921,18 +1141,41 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         <div className="flex items-center gap-2 flex-shrink-0">
           {!isCompletedToday && !isSkipped && (
             <>
-              {/* Primary 1-Tap Focus Sprint Button */}
+              {/* Primary 1-Tap Focus Sprint Button / Live Timer Indicator */}
+              {focusTimer.isRunning && (focusTimer.linkedHabitId === habit.id || focusTimer.activeTaskName === habit.name) ? (
+                <button
+                  type="button"
+                  onClick={() => focusTimer.toggleTimer()}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs animate-pulse shrink-0"
+                  title="Session in progress - click to pause/resume"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span>{Math.floor(focusTimer.remainingSec / 60)}:{(focusTimer.remainingSec % 60).toString().padStart(2, "0")}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
+                    toast.success(`⏱️ ${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary text-primary-foreground hover:text-white border border-primary/30 hover:border-primary text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs hover:scale-105 shrink-0"
+                  title="Launch Pomodoro Focus Session"
+                >
+                  <Zap className="w-3 h-3 fill-primary/30" />
+                  <span>{habit.focus_duration_minutes || 25}m Sprint</span>
+                </button>
+              )}
+
+              {/* Direct 1-Tap 2m Micro Pill */}
               <button
                 type="button"
-                onClick={() => {
-                  focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
-                  toast.success(`⏱️ ${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
-                }}
-                className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs hover:scale-105 shrink-0"
-                title="Launch Pomodoro Focus Session"
+                onClick={() => completeHabit(habit.id, "micro")}
+                className="px-2.5 py-1 rounded-lg bg-accent/10 hover:bg-accent text-accent-foreground border border-accent/30 text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs hover:scale-105 shrink-0"
+                title="Scale down to 2-minute emergency micro-habit (+2 XP, streak protected)"
               >
-                <Zap className="w-3 h-3 fill-primary/30" />
-                <span>{habit.focus_duration_minutes || 25}m</span>
+                <Layers className="w-3 h-3 text-accent-foreground" />
+                <span>2m Micro</span>
               </button>
 
               {/* Advanced Actions Dropdown (2m Micro, Parkinson's Slice, Rest / Sick / Busy) */}
@@ -951,7 +1194,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     onClick={() => completeHabit(habit.id, "micro")}
                     className="cursor-pointer text-xs flex items-center gap-2.5 p-2 rounded-lg hover:bg-amber-500/10"
                   >
-                    <span className="p-1 rounded-md bg-amber-500/15 text-amber-400">🪜</span>
+                    <span className="p-1 rounded-md bg-amber-500/15 text-amber-400"><Layers className="w-3.5 h-3.5" /></span>
                     <div>
                       <div className="font-bold text-foreground">2m Micro-Habit</div>
                       <div className="text-[10px] text-muted-foreground">Low energy fallback (+2 XP)</div>
@@ -964,7 +1207,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     }}
                     className="cursor-pointer text-xs flex items-center gap-2.5 p-2 rounded-lg hover:bg-indigo-500/10"
                   >
-                    <span className="p-1 rounded-md bg-indigo-500/15 text-indigo-400">⏳</span>
+                    <span className="p-1 rounded-md bg-indigo-500/15 text-indigo-400"><Clock className="w-3.5 h-3.5" /></span>
                     <div>
                       <div className="font-bold text-foreground">Parkinson's Slicer</div>
                       <div className="text-[10px] text-muted-foreground">Slice into a 15m sprint</div>
@@ -975,7 +1218,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     onClick={() => completeHabit(habit.id, "rest")}
                     className="cursor-pointer text-xs flex items-center gap-2.5 p-2 rounded-lg hover:bg-emerald-500/10"
                   >
-                    <span className="p-1 rounded-md bg-emerald-500/15 text-emerald-400">💤</span>
+                    <span className="p-1 rounded-md bg-emerald-500/15 text-emerald-400"><Sparkles className="w-3.5 h-3.5" /></span>
                     <div>
                       <div className="font-bold text-foreground">Rest Day</div>
                       <div className="text-[10px] text-muted-foreground">Honored recovery (+5 XP)</div>
@@ -985,7 +1228,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     onClick={() => handleSkipHabit(habit.id, "Sick")}
                     className="cursor-pointer text-xs flex items-center gap-2.5 p-2 rounded-lg hover:bg-rose-500/10"
                   >
-                    <span className="p-1 rounded-md bg-rose-500/15 text-rose-400">🤒</span>
+                    <span className="p-1 rounded-md bg-rose-500/15 text-rose-400"><Shield className="w-3.5 h-3.5" /></span>
                     <div>
                       <div className="font-bold text-foreground">Sick Day</div>
                       <div className="text-[10px] text-muted-foreground">Pause streak with shield</div>
@@ -995,7 +1238,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     onClick={() => handleSkipHabit(habit.id, "Busy")}
                     className="cursor-pointer text-xs flex items-center gap-2.5 p-2 rounded-lg hover:bg-surface"
                   >
-                    <span className="p-1 rounded-md bg-muted text-muted-foreground">💼</span>
+                    <span className="p-1 rounded-md bg-muted text-muted-foreground"><Briefcase className="w-3.5 h-3.5 text-blue-400" /></span>
                     <div>
                       <div className="font-bold text-foreground">Busy Day</div>
                       <div className="text-[10px] text-muted-foreground">Reschedule without guilt</div>
@@ -1006,7 +1249,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             </>
           )}
           <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold font-mono whitespace-nowrap shrink-0 shadow-xs ${tagClass}`}>
-            {tagText}
+            {tagNode}
           </span>
         </div>
       </motion.div>
@@ -1015,7 +1258,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
 
   const renderEmptyList = (text: string) => (
     <div className="flex items-center justify-center gap-2 py-4 bg-surface/30 border border-dashed border-border/50 rounded-xl text-xs text-muted-foreground font-mono">
-      <span>✨</span>
+      <Sparkles className="w-3.5 h-3.5 text-primary/70 inline" />
       <span>{text}</span>
     </div>
   );
@@ -1028,39 +1271,62 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
   });
 
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div className="space-y-3 sm:space-y-4 relative">
+      {/* ── 🌌 3D AMBIENT SPATIAL PERFORMANCE CANVAS (Gyroscope Orbit & Kaizen Gem) ── */}
+      <ThreePerformanceCanvas />
+
       {/* ── 🚨 Active Emergency Triage Banner ── */}
       <TriageActiveBanner onOpenModal={() => setTriageModalOpen(true)} />
 
-      {/* ── ZONE 1: Context & Nudges ── */}
-      {nudge && (
+      {/* ── ZONE 1: Context & Interactive Demo Experience Guide ── */}
+      {user?.isGuest ? (
+        <InteractiveDemoExperienceBanner
+          guestDaysRemaining={guestDaysRemaining}
+          onNavigate={onNavigate}
+          onStartSprint={(duration) => {
+            focusTimer.changeTimerMode("custom", duration);
+            focusTimer.setActiveTaskName("Demo Deep Work Sprint");
+            focusTimer.startTimer();
+            toast.success(`⚡ Demo Sprint Launched (${duration}m) with Ambient Soundscape`);
+          }}
+        />
+      ) : nudge && dismissedNudgeId !== nudge.id ? (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-primary/15 via-card to-accent/10 border border-primary/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md"
+          className="bg-gradient-to-r from-primary/10 via-card to-accent/5 border border-primary/25 rounded-xl px-3.5 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-xs mb-3"
         >
-          <div className="flex items-center gap-3">
-            <div className="text-2xl p-2 bg-primary/10 rounded-xl">{nudge.icon}</div>
-            <div>
-              <div className="text-sm font-extrabold text-foreground">{nudge.title}</div>
-              <div className="text-xs text-muted-foreground">{nudge.message}</div>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-lg p-1.5 bg-primary/10 rounded-lg flex-shrink-0">{nudge.icon}</span>
+            <div className="min-w-0">
+              <span className="text-xs font-bold text-foreground mr-1.5">{nudge.title}</span>
+              <span className="text-[11px] text-muted-foreground hidden md:inline truncate">{nudge.message}</span>
             </div>
           </div>
-          <Link
-            to="/login?tab=signup"
-            className="text-xs bg-gradient-to-r from-primary to-accent text-white font-extrabold px-4 py-2 rounded-xl hover:opacity-95 transition-all shadow-sm flex-shrink-0 text-center"
-          >
-            {nudge.ctaText}
-          </Link>
+          <div className="flex items-center gap-2 flex-shrink-0 ml-auto sm:ml-0">
+            <Link
+              to="/login?tab=signup"
+              className="text-[11px] bg-primary text-primary-foreground font-bold px-3 py-1 rounded-lg hover:bg-primary/90 transition-all shadow-2xs"
+            >
+              {nudge.ctaText}
+            </Link>
+            <button
+              onClick={() => handleDismissNudge(nudge.id)}
+              className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-surface/50 transition-colors cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </motion.div>
-      )}
+      ) : null}
 
       {/* ── LAYER 1: UNIFIED COCKPIT HEADER (Status, Energy State, Ambient Audio) ── */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-3.5 rounded-2xl bg-card/85 backdrop-blur-xl border border-border/80 shadow-sm"
+        className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-3.5 rounded-2xl bg-card/75 backdrop-blur-xl border border-border/60 shadow-lg relative z-10"
       >
         {/* Left: Greeting, Date & System Pulse */}
         <div className="flex items-center gap-3">
@@ -1097,11 +1363,10 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 <button
                   key={m.id}
                   onClick={() => handleMoodSelect(m.id, m.label)}
-                  className={`px-2 py-0.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                    isActive
+                  className={`px-2 py-0.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${isActive
                       ? `${m.color} border font-bold shadow-xs scale-105`
                       : "text-muted-foreground hover:text-foreground hover:bg-surface"
-                  }`}
+                    }`}
                 >
                   <span>{m.icon}</span>
                   <span className="text-[11px]">{m.label}</span>
@@ -1128,11 +1393,10 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 <button
                   key={type}
                   onClick={() => handleToggleSoundscape(type)}
-                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                    isPlaying
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${isPlaying
                       ? "bg-primary text-primary-foreground shadow-xs scale-105"
                       : "text-muted-foreground hover:text-foreground"
-                  }`}
+                    }`}
                   title={`Procedural ${type} focus soundscape`}
                 >
                   <span>{labels[type].icon}</span>
@@ -1144,17 +1408,49 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           {/* Sound FX Toggle */}
           <button
             onClick={toggleAudioMute}
-            className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-              isAudioMuted
+            className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${isAudioMuted
                 ? "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
                 : "bg-primary/15 border-primary/30 text-primary hover:bg-primary/25"
-            }`}
+              }`}
             title={isAudioMuted ? "Unmute Sound Effects" : "Mute Sound Effects"}
           >
             {isAudioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </motion.div>
+
+      {/* ── SPEED-DIAL QUICK COMMAND DOCK ── */}
+      <InteractiveQuickDock
+        onAddHabitClick={() => {
+          const el = document.getElementById("quick-add-habit-card");
+          if (el) el.scrollIntoView({ behavior: "smooth" });
+          else if (onNavigate) onNavigate("habits");
+        }}
+        onOpenAiAgent={() => toggleAiAgentBox()}
+        onToggleZenMode={() => setViewMode((prev) => (prev === "zen" ? "priority" : "zen"))}
+        isZenMode={viewMode === "zen"}
+        onNavigate={onNavigate}
+        maxStreak={maxStreak}
+        freezeCredits={freezeCredits}
+        hasAiRecommendation={habits.some((h) => !h.completedDates.includes(todayStr))}
+      />
+
+      {/* ── LOADING SKELETONS (shown while habits sync from cloud) ── */}
+      {habitsLoading && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-3.5 rounded-2xl bg-card border border-border/80 shadow-sm animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-surface flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="h-4 w-3/4 rounded bg-surface mb-2" />
+                  <div className="h-3 w-1/2 rounded bg-surface" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── LAYER 2: THE VITALITY COMMAND DECK (4 High-Contrast Cohesive Cards) ── */}
       <motion.div
@@ -1192,13 +1488,12 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             {rolling7Days.map((d) => (
               <div
                 key={d.dateStr}
-                className={`flex flex-col items-center justify-center w-6 h-6 rounded-lg text-[9px] font-mono font-bold transition-all shadow-xs ${
-                  d.isToday
+                className={`flex flex-col items-center justify-center w-6 h-6 rounded-lg text-[9px] font-mono font-bold transition-all shadow-xs ${d.isToday
                     ? "ring-2 ring-primary bg-primary/25 text-primary font-black scale-105"
                     : d.isCompleted
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-emerald-500/10"
-                    : "bg-surface/80 text-foreground/50 border border-border/80"
-                }`}
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-emerald-500/10"
+                      : "bg-surface/80 text-foreground/50 border border-border/80"
+                  }`}
                 title={`${d.dateStr}: ${d.count} completed`}
               >
                 {d.isCompleted ? "✓" : d.label.slice(0, 1)}
@@ -1208,7 +1503,19 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         </div>
 
         {/* Card 2: Streak & Shield Vault + Vitality Badge */}
-        <div className="flex flex-col justify-between p-3.5 rounded-2xl bg-card border border-border/80 shadow-sm hover:border-amber-500/40 transition-all cursor-default">
+        <div
+          onClick={() => onNavigate?.("streak")}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onNavigate?.("streak");
+            }
+          }}
+          className="flex flex-col justify-between p-3.5 rounded-2xl bg-card border border-border/80 shadow-sm hover:border-amber-500/50 hover:shadow-md transition-all cursor-pointer group"
+          title="Open Streak Engine"
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg flex-shrink-0 shadow-sm">
               🔥
@@ -1227,7 +1534,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1 font-bold">
               <Activity className="w-3 h-3 text-emerald-400" /> Vitality
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md font-bold bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-300 border border-emerald-500/30">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md font-bold bg-accent/10 text-accent-foreground border border-accent/30">
               {vitality.score} · {vitality.tier}
             </span>
           </div>
@@ -1259,11 +1566,10 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                   toast.success("⚡ 25m Focus Sprint started!");
                 }
               }}
-              className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-xs ${
-                focusTimer.isRunning
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-xs ${focusTimer.isRunning
                   ? "bg-rose-500/15 text-rose-300 border-rose-500/40 animate-pulse"
                   : "bg-primary/15 text-primary border-primary/30 hover:bg-primary/25 hover:scale-105"
-              }`}
+                }`}
             >
               {focusTimer.isRunning ? "Pause" : "+25m"}
             </button>
@@ -1274,9 +1580,41 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           </div>
         </div>
 
-        {/* Card 4: Next Best Action Recommendation */}
-        <div className="col-span-2 sm:col-span-1 p-3.5 rounded-2xl bg-gradient-to-br from-primary/10 via-card to-accent/10 border border-primary/30 shadow-sm flex flex-col justify-between">
-          {nextBestAction ? (
+        {/* Card 4: Next Target or Active Focus Sprint Monitor */}
+        <div className={`col-span-2 sm:col-span-1 p-3.5 rounded-2xl border shadow-sm flex flex-col justify-between transition-all ${focusTimer.isRunning
+            ? "bg-gradient-to-br from-emerald-500/15 via-card to-primary/10 border-emerald-500/40"
+            : "bg-gradient-to-br from-primary/10 via-card to-accent/10 border-primary/30"
+          }`}>
+          {focusTimer.isRunning ? (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[9px] uppercase font-mono text-emerald-700 dark:text-emerald-400 font-black tracking-wider flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                    <span>Sprint Active</span>
+                  </div>
+                  <div className="text-xs font-black text-foreground truncate mt-0.5">
+                    {focusTimer.activeTaskName || "Deep Work Sprint"}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => focusTimer.toggleTimer()}
+                  className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 text-xs font-bold font-mono hover:bg-emerald-500/30 transition-all cursor-pointer shadow-xs flex-shrink-0"
+                  title="Pause active focus session"
+                >
+                  <span>{Math.floor(focusTimer.remainingSec / 60)}:{(focusTimer.remainingSec % 60).toString().padStart(2, "0")}</span>
+                </button>
+              </div>
+              <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/60 text-[10px] text-muted-foreground font-mono">
+                <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                  <span>⏱️</span>
+                  <span>In Progress</span>
+                </span>
+                <span className="capitalize">{focusTimer.timerMode}</span>
+              </div>
+            </>
+          ) : nextBestAction ? (
             <>
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
@@ -1295,130 +1633,185 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 </button>
               </div>
               <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/60 text-[10px] text-muted-foreground font-mono">
-                <span>Est: {nextBestAction.focus_duration_minutes || 15}m</span>
-                <span className="text-amber-400 font-bold">{nextBestAction.priority || "Normal"}</span>
+                <span>Est: {nextBestAction.focus_duration_minutes || 25}m</span>
+                <span className="text-amber-700 dark:text-amber-400 font-bold">{nextBestAction.priority || "Normal"}</span>
               </div>
             </>
           ) : (
             <div className="text-center py-2 my-auto">
-              <div className="text-xs font-black text-emerald-400">✓ All Caught Up!</div>
+              <div className="text-xs font-black text-primary font-mono">✓ All Caught Up!</div>
               <div className="text-[10px] text-muted-foreground font-mono mt-0.5">No pending tasks for today</div>
             </div>
           )}
         </div>
       </motion.div>
 
-      {/* ── LAYER 3: COMPACT POWER TOOLS ACTION DOCK ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        {/* Tool 1: Emergency Triage */}
-        <button
-          type="button"
-          onClick={() => setTriageModalOpen(true)}
-          className="p-3 rounded-2xl bg-gradient-to-r from-rose-500/15 via-card to-rose-500/5 border border-rose-500/35 hover:border-rose-500/70 transition-all text-left flex items-center justify-between group shadow-xs cursor-pointer hover:scale-[1.01]"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-lg p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
-              🚨
-            </span>
-            <div className="min-w-0">
-              <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
-                <span>Emergency Triage</span>
-                <span className="text-[9px] font-mono uppercase bg-rose-500/25 text-rose-300 px-1.5 py-0.2 rounded-md font-bold">
-                  Panic Mode
-                </span>
-              </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                Mute noise, shield streaks, isolate 1 target
-              </div>
-            </div>
-          </div>
-          <span className="text-xs text-rose-400 font-bold group-hover:translate-x-1 transition-transform ml-2">→</span>
-        </button>
+      {/* ── 👑 PRO-EXCLUSIVE COGNITIVE AI PERFORMANCE AGENT BOX ── */}
+      <AnimatePresence>
+        {showAiAgentBox && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ProAiPerformanceAgentBox
+              habits={habits}
+              todayFocusMinutes={todayFocusMinutes}
+              targetFocusMinutes={profile?.daily_focus_target_minutes || 60}
+              completionRate={completionRate}
+              maxStreak={maxStreak}
+              primaryTrack={profile?.primary_track || "placements"}
+              onStartSprint={(taskName, duration) => {
+                focusTimer.changeTimerMode("pomodoro", duration);
+                focusTimer.setActiveTaskName(taskName);
+                focusTimer.startTimer();
+                toast.success(`⚡ Sprint launched for "${taskName}"!`);
+              }}
+              onNavigate={onNavigate}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* Tool 2: Parkinson's Slicer */}
-        <button
-          type="button"
-          onClick={() => {
-            setTargetHabitForSlicing(null);
-            setParkinsonsModalOpen(true);
-          }}
-          className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-card to-amber-500/5 border border-amber-500/35 hover:border-amber-500/70 transition-all text-left flex items-center justify-between group shadow-xs cursor-pointer hover:scale-[1.01]"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-lg p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
-              ⏳
-            </span>
-            <div className="min-w-0">
-              <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
-                <span>Parkinson’s Slicer</span>
-                <span className="text-[9px] font-mono uppercase bg-amber-500/25 text-amber-300 px-1.5 py-0.2 rounded-md font-bold">
-                  Anti-Procrastinate
-                </span>
-              </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                Slice distant deadlines into 15m micro-bites
-              </div>
-            </div>
-          </div>
-          <span className="text-xs text-amber-400 font-bold group-hover:translate-x-1 transition-transform ml-2">→</span>
-        </button>
+      {/* ── LAYER 3: FOCUS POWER TOOLS (Collapsible Quick Action Drawer) ── */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <button
+            type="button"
+            onClick={togglePowerTools}
+            className="flex items-center gap-1.5 text-xs font-mono font-bold text-muted-foreground hover:text-foreground transition-all cursor-pointer py-0.5 group"
+          >
+            <Wrench className="w-3.5 h-3.5 text-primary group-hover:rotate-45 transition-transform" />
+            <span>Focus Power Tools (3)</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${powerToolsOpen ? "rotate-180" : ""}`} />
+          </button>
+          <span className="text-[10px] text-muted-foreground/70 font-mono">
+            {powerToolsOpen ? "Click to collapse" : "Triage • Parkinson's Slicer • Syllabus"}
+          </span>
+        </div>
 
-        {/* Tool 3: Syllabus Decomposer */}
-        <button
-          type="button"
-          onClick={() => setSyllabusModalOpen(true)}
-          className="p-3 rounded-2xl bg-gradient-to-r from-cyan-500/15 via-card to-cyan-500/5 border border-cyan-500/35 hover:border-cyan-500/70 transition-all text-left flex items-center justify-between group shadow-xs cursor-pointer hover:scale-[1.01]"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-lg p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
-              📚
-            </span>
-            <div className="min-w-0">
-              <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
-                <span>Syllabus Decomposer</span>
-                <span className="text-[9px] font-mono uppercase bg-cyan-500/25 text-cyan-300 px-1.5 py-0.2 rounded-md font-bold">
-                  30-Day Track
-                </span>
+        <AnimatePresence>
+          {powerToolsOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                {/* Tool 1: Emergency Triage */}
+                <button
+                  type="button"
+                  onClick={() => setTriageModalOpen(true)}
+                  className="p-3 rounded-2xl bg-gradient-to-r from-rose-500/15 via-card to-rose-500/5 border border-rose-500/35 hover:border-rose-500/70 transition-all text-left flex items-center justify-between group shadow-xs cursor-pointer hover:scale-[1.01]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
+                      🚨
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
+                        <span>Emergency Triage</span>
+                        <span className="text-[9px] font-mono uppercase bg-rose-500/25 text-rose-300 px-1.5 py-0.2 rounded-md font-bold">
+                          Panic Mode
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                        Mute noise, shield streaks, isolate 1 target
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs text-rose-400 font-bold group-hover:translate-x-1 transition-transform ml-2">→</span>
+                </button>
+
+                {/* Tool 2: Parkinson's Slicer */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetHabitForSlicing(null);
+                    setParkinsonsModalOpen(true);
+                  }}
+                  className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-card to-amber-500/5 border border-amber-500/35 hover:border-amber-500/70 transition-all text-left flex items-center justify-between group shadow-xs cursor-pointer hover:scale-[1.01]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
+                      ⏳
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
+                        <span>Parkinson’s Slicer</span>
+                        <span className="text-[9px] font-mono uppercase bg-amber-500/25 text-amber-300 px-1.5 py-0.2 rounded-md font-bold">
+                          Anti-Procrastinate
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                        Slice distant deadlines into 15m micro-bites
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs text-amber-400 font-bold group-hover:translate-x-1 transition-transform ml-2">→</span>
+                </button>
+
+                {/* Tool 3: Syllabus Decomposer */}
+                <button
+                  type="button"
+                  onClick={() => setSyllabusModalOpen(true)}
+                  className="p-3 rounded-2xl bg-gradient-to-r from-cyan-500/15 via-card to-cyan-500/5 border border-cyan-500/35 hover:border-cyan-500/70 transition-all text-left flex items-center justify-between group shadow-xs cursor-pointer hover:scale-[1.01]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
+                      📚
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
+                        <span>Syllabus Decomposer</span>
+                        <span className="text-[9px] font-mono uppercase bg-cyan-500/25 text-cyan-300 px-1.5 py-0.2 rounded-md font-bold">
+                          30-Day Track
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                        Deconstruct exams & roadmaps into habits
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs text-cyan-400 font-bold group-hover:translate-x-1 transition-transform ml-2">→</span>
+                </button>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                Deconstruct exams & roadmaps into habits
-              </div>
-            </div>
-          </div>
-          <span className="text-xs text-cyan-400 font-bold group-hover:translate-x-1 transition-transform ml-2">→</span>
-        </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── LAYER 4: DAILY HABITS CORE & COMPANION RAIL (8:4 Responsive Grid) ── */}
       {habits.length === 0 ? (
-        <div className="p-6 sm:p-8 rounded-3xl border border-primary/30 bg-gradient-to-br from-card via-surface/60 to-primary/10 shadow-2xl space-y-6 text-left">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-4 border-b border-border/50">
-            <div className="w-16 h-16 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-3xl shadow-sm flex-shrink-0">
+        <div className="p-8 sm:p-12 rounded-3xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-card via-surface/60 to-primary/10 shadow-xl space-y-8 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-20 h-20 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-4xl shadow-sm shadow-primary/20 flex-shrink-0">
               🚀
             </div>
-            <div className="space-y-1">
-              <h3 className="text-xl font-black text-foreground font-mono">
-                Welcome to Your Command Dashboard!
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-                Build unstoppable daily momentum. Install our curated Starter Habit Stack below or create custom habits.
-              </p>
-            </div>
-            <div className="sm:ml-auto">
-              <button
-                onClick={handleInstallStarterStack}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground text-xs font-black transition-all hover:scale-105 shadow-md shadow-primary/20 cursor-pointer flex items-center gap-2"
-              >
-                <span>⚡</span>
-                <span>Install Starter Stack (3 Habits)</span>
-              </button>
-            </div>
+            <h3 className="text-2xl font-black text-foreground font-mono tracking-tight">
+              Welcome to Your Command Dashboard!
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-md px-4">
+              Build unstoppable daily momentum. Install our curated Starter Habit Stack below or create custom habits.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={handleInstallStarterStack}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground text-sm font-black transition-all hover:scale-105 shadow-lg shadow-primary/25 cursor-pointer flex items-center gap-2 group"
+            >
+              <span>⚡</span>
+              <span>Install Starter Stack (3 Habits)</span>
+            </button>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-          {/* Left 8 Columns: Habits Canvas & Unified Toolbar */}
-          <div className="lg:col-span-8 flex flex-col gap-3">
+        <div className={`grid grid-cols-1 ${showCompanionRail ? "lg:grid-cols-12" : "grid-cols-1"} gap-4 items-start`}>
+          {/* Habits Canvas & Unified Toolbar */}
+          <div className={`${showCompanionRail ? "lg:col-span-8" : "w-full"} flex flex-col gap-3`}>
 
             {/* Quick 1-Tap Category Filter Chips & Time Estimate Bar */}
             <div className="flex items-center justify-between gap-2 overflow-x-auto pb-0.5 scrollbar-none">
@@ -1434,20 +1827,18 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     <button
                       key={c}
                       onClick={() => setCategoryFilter(c)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 border ${
-                        isSelected
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 border ${isSelected
                           ? "bg-primary text-white border-primary shadow-md shadow-primary/25 font-bold scale-105"
                           : "bg-card hover:bg-card/90 text-foreground/80 hover:text-foreground border-border/80 shadow-xs"
-                      }`}
+                        }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-white" : color.dot}`} />
-                      <span>{c}</span>
+                      <span>{c === "All" ? "All" : formatCategoryName(c)}</span>
                       <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                          isSelected
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${isSelected
                             ? "bg-white/20 text-white"
                             : `${color.bg} ${color.text} border ${color.border}`
-                        }`}
+                          }`}
                       >
                         {count}
                       </span>
@@ -1459,7 +1850,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               {dueToday.length > 0 && (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card border border-border/80 text-xs font-mono text-muted-foreground whitespace-nowrap flex-shrink-0 shadow-xs">
                   <Clock className="w-3.5 h-3.5 text-primary" />
-                  <span>~{remainingEstimatedMinutes}m left</span>
+                  <span>{formatRemainingTime(remainingEstimatedMinutes)}</span>
                 </div>
               )}
             </div>
@@ -1472,18 +1863,16 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 <div className="flex items-center gap-1 bg-surface border border-border/80 p-0.5 rounded-xl text-xs font-semibold">
                   <button
                     onClick={() => handleDensityModeChange("comfortable")}
-                    className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
-                      densityMode === "comfortable" ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${densityMode === "comfortable" ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground hover:text-foreground"
+                      }`}
                     title="Card view"
                   >
                     ⠿ Cards
                   </button>
                   <button
                     onClick={() => handleDensityModeChange("compact")}
-                    className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
-                      densityMode === "compact" ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${densityMode === "compact" ? "bg-primary/20 text-primary font-bold" : "text-muted-foreground hover:text-foreground"
+                      }`}
                     title="Compact view"
                   >
                     ☰ Compact
@@ -1494,32 +1883,43 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 <div className="flex items-center gap-1 bg-surface border border-border/80 p-0.5 rounded-xl text-xs font-semibold">
                   <button
                     onClick={() => handleViewModeChange("priority")}
-                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                      viewMode === "priority" ? "bg-primary text-primary-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${viewMode === "priority" ? "bg-primary text-primary-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
+                      }`}
                   >
                     <span>🎯</span>
                     <span>Priority</span>
                   </button>
                   <button
                     onClick={() => handleViewModeChange("timeblock")}
-                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                      viewMode === "timeblock" ? "bg-primary text-primary-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${viewMode === "timeblock" ? "bg-primary text-primary-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
+                      }`}
                   >
                     <span>⏰</span>
                     <span>Time Block</span>
                   </button>
                   <button
                     onClick={() => handleViewModeChange("zen")}
-                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                      viewMode === "zen" ? "bg-primary text-primary-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${viewMode === "zen" ? "bg-primary text-primary-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
+                      }`}
                   >
                     <span>⚡</span>
                     <span>Zen</span>
                   </button>
                 </div>
+
+                {/* Sidebar / Wide Deck Toggle */}
+                <button
+                  type="button"
+                  onClick={toggleCompanionRail}
+                  className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold border ${!showCompanionRail
+                      ? "bg-primary/20 text-primary border-primary/40 font-bold shadow-xs"
+                      : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
+                    }`}
+                  title={showCompanionRail ? "Expand habits to full width (hide sidebar)" : "Show companion sidebar"}
+                >
+                  <Sidebar className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{showCompanionRail ? "Wide" : "Sidebar"}</span>
+                </button>
 
                 {/* ⚡ All Done Button */}
                 {dueToday.length > 0 && doneToday.length < dueToday.length && (
@@ -1539,6 +1939,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                 <input
                   type="text"
+                  maxLength={100}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search habits..."
@@ -1618,38 +2019,53 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             </AnimatePresence>
           </div>
 
-          {/* Right 4 Columns: Quick Access Panel */}
-          <div className="lg:col-span-4 flex flex-col gap-3">
-            {/* Immediate Reminders Alert Strip */}
-            <ImmediateRemindersStrip reminders={reminders} />
+          {/* Right 4 Columns: Quick Access Companion Panel */}
+          {showCompanionRail && (
+            <motion.div
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 8 }}
+              transition={{ duration: 0.15 }}
+              className="lg:col-span-4 flex flex-col gap-3"
+            >
+              {/* Immediate Reminders Alert Strip */}
+              <ImmediateRemindersStrip reminders={reminders} />
 
-            {/* 🌬️ Vayu Real-Time Autonomous Flow Banner */}
-            <VayuPulseBanner
-              plan={vayuPlan}
-              currentBlock={vayuCurrentBlock}
-              nextBlock={vayuNextBlock}
-              completionRate={vayuRate}
-              onProcessInput={processVayuInput}
-              onRebalance={rebalanceVayuSchedule}
-              onOpenStudio={() => setIsVayuStudioOpen(true)}
-              onCompleteCurrent={(blockId) => completeVayuBlock(blockId, 100, "manual")}
-              onStartSprint={(block) => {
-                focusTimer.changeTimerMode("custom", block.durationMinutes);
-                focusTimer.setActiveTaskName(block.title);
-                if (block.linkedHabitId || block.habitId) {
-                  focusTimer.setLinkedHabitId(block.linkedHabitId || block.habitId || null);
-                }
-                focusTimer.startTimer();
-                toast.success(`⚡ Launched ${block.durationMinutes}m focus sprint for "${block.title}"`);
-              }}
-            />
+              {/* 🌬️ Autonomous Adaptive Circadian Flow Banner */}
+              <VayuPulseBanner
+                plan={vayuPlan}
+                currentBlock={vayuCurrentBlock}
+                nextBlock={vayuNextBlock}
+                completionRate={vayuRate}
+                onProcessInput={processVayuInput}
+                onRebalance={rebalanceVayuSchedule}
+                onOpenStudio={() => setIsVayuStudioOpen(true)}
+                onCompleteCurrent={(blockId) => completeVayuBlock(blockId, 100, "manual")}
+                onStartSprint={(block) => {
+                  focusTimer.changeTimerMode("custom", block.durationMinutes);
+                  focusTimer.setActiveTaskName(block.title);
+                  if (block.linkedHabitId || block.habitId) {
+                    focusTimer.setLinkedHabitId(block.linkedHabitId || block.habitId || null);
+                  }
+                  focusTimer.startTimer();
+                  toast.success(`⚡ Launched ${block.durationMinutes}m focus sprint for "${block.title}"`);
+                }}
+                activeTimer={{
+                  isRunning: focusTimer.isRunning,
+                  remainingSec: focusTimer.remainingSec,
+                  activeTaskName: focusTimer.activeTaskName,
+                  linkedHabitId: focusTimer.linkedHabitId,
+                }}
+                onToggleTimer={focusTimer.toggleTimer}
+              />
 
-            {/* Embedded Mini Pomodoro Timer */}
-            <MiniPomodoroCard onNavigate={onNavigate} />
+              {/* Embedded Mini Pomodoro Timer */}
+              <MiniPomodoroCard onNavigate={onNavigate} />
 
-            {/* Quick Habit Add Drawer / Input with Track-Adaptive Recommendation Chips */}
-            <QuickAddHabitCard onAddHabit={addHabit} primaryTrack={profile?.primary_track} />
-          </div>
+              {/* Quick Habit Add Drawer / Input with Track-Adaptive Recommendation Chips */}
+              <QuickAddHabitCard onAddHabit={addHabit} primaryTrack={profile?.primary_track} />
+            </motion.div>
+          )}
         </div>
       )}
 
@@ -1728,13 +2144,13 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 ⚡
               </div>
               <div>
-                <h3 className="text-sm font-bold text-foreground">Verified Focus Sprint Required</h3>
-                <p className="text-xs text-muted-foreground">Mechanical Anti-Cheat Protection</p>
+                <h3 className="text-sm font-bold text-foreground">Focus Session Required</h3>
+                <p className="text-xs text-muted-foreground">Proof-of-Focus Habit Lock</p>
               </div>
             </div>
 
             <p className="text-xs text-foreground/90 leading-relaxed">
-              This anchor habit <span className="font-semibold text-amber-400">"{timerLockModalHabit.name}"</span> requires a verified focus sprint ({timerLockModalHabit.focus_duration_minutes || 25}m). Start Sprint now?
+              This anchor habit <span className="font-semibold text-amber-400">"{timerLockModalHabit.name}"</span> requires a verified focus sprint ({timerLockModalHabit.focus_duration_minutes || 25}m). Ready to start?
             </p>
 
             <div className="flex items-center justify-between pt-2">
@@ -1747,7 +2163,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 }}
                 className="text-[11px] text-muted-foreground hover:text-foreground underline cursor-pointer"
               >
-                Bypass (Grace Mode)
+                Mark Done Manually
               </button>
               <div className="flex items-center gap-2">
                 <button
@@ -1905,11 +2321,10 @@ function ZenFocusSpotlight({
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
         <button
           onClick={() => onToggle(current.id)}
-          className={`w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            isDone
+          className={`w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 ${isDone
               ? "bg-pps-green text-white hover:bg-pps-green/90"
               : "bg-gradient-to-br from-primary to-accent text-primary-foreground hover:shadow-lg hover:scale-[1.02]"
-          }`}
+            }`}
         >
           <span>{isDone ? "✅ Completed!" : "⚡ Mark Complete (+10 XP)"}</span>
         </button>

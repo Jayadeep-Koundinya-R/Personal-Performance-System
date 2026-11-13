@@ -18,6 +18,7 @@ import { useHabits } from "@/hooks/use-habits";
 import { useProfile } from "@/hooks/use-profile";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { REGIONAL_PRICING, CurrencyRegion, detectUserRegion } from "@/lib/plans";
 import { useReflections } from "@/hooks/use-reflections";
 import { exportToCSV, exportToJSON, exportReflectionsToCSV, prepareFullExport, parseAndValidateBackup } from "@/lib/dataExport";
@@ -201,13 +202,15 @@ const SettingsSection = ({ user }: { user: User }) => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={logout}
-            className="text-xs bg-destructive/15 text-destructive border border-destructive/30 px-3.5 py-2 rounded-2xl font-extrabold hover:bg-destructive hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+            variant="destructive"
+            size="sm"
+            className="bg-destructive/15 hover:bg-destructive hover:text-destructive-foreground border border-destructive/30 flex items-center gap-1.5 shadow-xs"
           >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -217,10 +220,11 @@ const SettingsSection = ({ user }: { user: User }) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <button
+            <Button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-2xl text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-2 border ${
+              size="sm"
+              className={`flex items-center gap-2 border ${
                 isActive
                   ? "bg-primary text-primary-foreground border-primary shadow-sm"
                   : "bg-surface/60 border-transparent text-muted-foreground hover:text-foreground hover:bg-surface hover:border-border/80"
@@ -239,7 +243,7 @@ const SettingsSection = ({ user }: { user: User }) => {
                   {tab.badge}
                 </span>
               )}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -283,17 +287,19 @@ const SettingsSection = ({ user }: { user: User }) => {
                   </label>
                   <div className="grid grid-cols-5 gap-1.5">
                     {AVATAR_OPTIONS.map((emoji) => (
-                      <button
+                      <Button
                         key={emoji}
                         onClick={() => setSelectedAvatar(emoji)}
-                        className={`text-xl p-2 rounded-xl border transition-all cursor-pointer ${
+                        variant="outline"
+                        size="icon"
+                        className={`text-xl p-2 rounded-xl transition-all cursor-pointer ${
                           selectedAvatar === emoji
                             ? "bg-primary/20 border-primary scale-110 shadow-xs"
                             : "bg-surface/60 border-border/60 hover:border-primary/40"
                         }`}
                       >
                         {emoji}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -364,16 +370,18 @@ const SettingsSection = ({ user }: { user: User }) => {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <button
+                      <Button
                         type="button"
                         onClick={() => {
                           setTheme("dark");
                           toast.success("Theme preference set to Dark Mode (synced to cloud) 🌙");
                         }}
-                        className={`p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${
+                        variant={theme === "dark" ? "default" : "outline"}
+                        size="sm"
+                        className={`flex items-center gap-3 transition-all cursor-pointer p-3 rounded-2xl ${
                           theme === "dark"
-                            ? "bg-primary/20 border-primary shadow-sm ring-1 ring-primary/40"
-                            : "bg-surface border-border/80 hover:border-primary/40 text-muted-foreground"
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm ring-1 ring-primary/40"
+                            : "bg-surface border-border/80 text-muted-foreground hover:border-primary/40"
                         }`}
                       >
                         <div className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-lg shadow-xs">
@@ -384,18 +392,20 @@ const SettingsSection = ({ user }: { user: User }) => {
                           <div className="text-[10px] text-muted-foreground">Deep focus contrast</div>
                         </div>
                         {theme === "dark" && <Check className="w-4 h-4 text-primary ml-auto" />}
-                      </button>
+                      </Button>
 
-                      <button
+                      <Button
                         type="button"
                         onClick={() => {
                           setTheme("light");
                           toast.success("Theme preference set to Light Mode (synced to cloud) ☀️");
                         }}
-                        className={`p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${
+                        variant={theme === "light" ? "default" : "outline"}
+                        size="sm"
+                        className={`flex items-center gap-3 transition-all cursor-pointer p-3 rounded-2xl ${
                           theme === "light"
-                            ? "bg-primary/20 border-primary shadow-sm ring-1 ring-primary/40"
-                            : "bg-surface border-border/80 hover:border-primary/40 text-muted-foreground"
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm ring-1 ring-primary/40"
+                            : "bg-surface border-border/80 text-muted-foreground hover:border-primary/40"
                         }`}
                       >
                         <div className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-lg shadow-xs">
@@ -406,18 +416,19 @@ const SettingsSection = ({ user }: { user: User }) => {
                           <div className="text-[10px] text-muted-foreground">Clean daylight clarity</div>
                         </div>
                         {theme === "light" && <Check className="w-4 h-4 text-primary ml-auto" />}
-                      </button>
+                      </Button>
                     </div>
                   </div>
 
                   <div className="pt-2 flex justify-end">
-                    <button
-                      onClick={saveProfile}
-                      className="text-xs bg-primary text-primary-foreground font-extrabold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-md flex items-center gap-1.5"
-                    >
-                      <Check className="w-4 h-4" />
-                      <span>Save Profile Changes</span>
-                    </button>
+                      <Button
+                        onClick={saveProfile}
+                        variant="default"
+                        className="bg-primary text-primary-foreground font-extrabold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Save Profile Changes</span>
+                      </Button>
                   </div>
                 </div>
               </div>
@@ -445,7 +456,7 @@ const SettingsSection = ({ user }: { user: User }) => {
                   const p = COACH_PERSONAS[personaKey];
                   const isSelected = selectedPersona === personaKey;
                   return (
-                    <button
+                    <Button
                       key={personaKey}
                       type="button"
                       onClick={() => {
@@ -453,6 +464,8 @@ const SettingsSection = ({ user }: { user: User }) => {
                         setActivePersonaId(personaKey);
                         toast.success(`Coach persona switched to ${p.name}!`);
                       }}
+                      variant="outline"
+                      size="sm"
                       className={`text-left p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between relative ${
                         isSelected
                           ? "bg-primary/10 border-primary shadow-md ring-2 ring-primary/40"
@@ -477,11 +490,11 @@ const SettingsSection = ({ user }: { user: User }) => {
                         </p>
                       </div>
 
-                      <div className="mt-3 pt-3 border-t border-border/40">
-                        <div className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Motto:</div>
-                        <div className="text-[11px] italic text-foreground font-medium">"{p.motto}"</div>
-                      </div>
-                    </button>
+                        <div className="mt-3 pt-3 border-t border-border/40">
+                          <div className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Motto:</div>
+                          <div className="text-[11px] italic text-foreground font-medium">"{p.motto}"</div>
+                        </div>
+                      </Button>
                   );
                 })}
               </div>
@@ -685,13 +698,15 @@ const SettingsSection = ({ user }: { user: User }) => {
               </div>
 
               {isPro && (
-                <button
+                <Button
                   onClick={handleBilling}
-                  className="text-xs bg-surface border border-border/80 text-foreground font-extrabold px-4 py-2.5 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs flex items-center gap-1.5 flex-shrink-0"
+                  variant="outline"
+                  size="sm"
+                  className="bg-surface border border-border/80 text-foreground font-extrabold px-4 py-2.5 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs flex items-center gap-1.5 flex-shrink-0"
                 >
                   <CreditCard className="w-4 h-4 text-primary" />
                   <span>Manage Invoices & Billing</span>
-                </button>
+                </Button>
               )}
             </div>
 
@@ -699,25 +714,29 @@ const SettingsSection = ({ user }: { user: User }) => {
             {!isPro && (
               <div className="flex items-center justify-center gap-2 pt-2">
                 <div className="bg-surface border border-border/80 p-1 rounded-2xl flex items-center shadow-xs">
-                  <button
+                  <Button
                     onClick={() => setBillingCycle("monthly")}
-                    className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                      billingCycle === "monthly" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    variant={billingCycle === "monthly" ? "default" : "ghost"}
+                    size="sm"
+                    className={`rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                      billingCycle === "monthly" ? "bg-primary text-primary-foreground shadow-xs" : ""
                     }`}
                   >
                     Monthly Billing
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => setBillingCycle("yearly")}
-                    className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      billingCycle === "yearly" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    variant={billingCycle === "yearly" ? "default" : "ghost"}
+                    size="sm"
+                    className={`rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      billingCycle === "yearly" ? "bg-primary text-primary-foreground shadow-xs" : ""
                     }`}
                   >
                     <span>Annual Billing</span>
                     <span className="text-[10px] font-mono bg-pps-green text-white px-1.5 py-0.2 rounded-full font-bold">
                       {pricingConfig.savingsBadge}
                     </span>
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -771,30 +790,30 @@ const SettingsSection = ({ user }: { user: User }) => {
                     </div>
                   </div>
 
-                  <button
+                  <Button
                     onClick={() => handleCheckout("pro")}
                     disabled={isUpgrading}
-                    className="w-full text-xs bg-primary text-primary-foreground font-black py-3 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-md text-center"
+                    className="w-full bg-primary text-primary-foreground font-black py-3 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-md text-center"
                   >
                     {isUpgrading ? "Opening Checkout..." : "Upgrade to Student Pro 👑"}
-                  </button>
+                  </Button>
                 </div>
               )}
 
               {/* Card 2: Teacher / Mentor Studio (Shown to Free and Pro Users) */}
               {userRole !== "teacher" && (
-                <div className="bg-gradient-to-b from-amber-500/10 via-card to-card border border-amber-500/30 p-6 rounded-3xl shadow-xl flex flex-col justify-between space-y-5">
+                <div className="bg-gradient-to-b from-pps-orange/10 via-card to-card border border-pps-orange/30 p-6 rounded-3xl shadow-xl flex flex-col justify-between space-y-5">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <GraduationCap className="w-5 h-5 text-amber-400" />
+                      <GraduationCap className="w-5 h-5 text-pps-orange" />
                       <h4 className="text-base font-black text-foreground">Teacher & Mentor Studio</h4>
                     </div>
                     <div>
                       <div className="flex items-baseline gap-1 font-mono">
-                        <span className="text-3xl font-black text-amber-400">10%</span>
+                        <span className="text-3xl font-black text-pps-orange">10%</span>
                         <span className="text-xs text-muted-foreground">commission / class ticket</span>
                       </div>
-                      <div className="text-[11px] font-mono text-emerald-400 font-bold mt-1">
+                      <div className="text-[11px] font-mono text-pps-green font-bold mt-1">
                         ₹0 / $0 Upfront Platform Cost • First 5 Classes/Mo Free
                       </div>
                     </div>
@@ -812,7 +831,7 @@ const SettingsSection = ({ user }: { user: User }) => {
                         "Verified Educator Badge on Leaderboards",
                       ].map((item) => (
                         <div key={item} className="flex items-center gap-2 text-foreground font-medium">
-                          <CheckCircle2 className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <CheckCircle2 className="w-4 h-4 text-pps-orange flex-shrink-0" />
                           <span>{item}</span>
                         </div>
                       ))}
@@ -821,7 +840,7 @@ const SettingsSection = ({ user }: { user: User }) => {
 
                   <Link
                     to="/pricing#teacher-calculator"
-                    className="w-full text-xs bg-amber-500 text-black font-black py-3 rounded-xl hover:bg-amber-400 transition-all cursor-pointer shadow-md text-center block"
+                    className="w-full text-xs bg-pps-orange text-black font-black py-3 rounded-xl hover:opacity-90 transition-all cursor-pointer shadow-md text-center block"
                   >
                     Launch Teacher Studio 🎓
                   </Link>
@@ -832,7 +851,7 @@ const SettingsSection = ({ user }: { user: User }) => {
               <div className="bg-card border border-border p-6 rounded-3xl shadow-xl flex flex-col justify-between space-y-5">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-sky-400" />
+                    <Building2 className="w-5 h-5 text-secondary" />
                     <h4 className="text-base font-black text-foreground">Campus Institutional License</h4>
                   </div>
                   <div>
@@ -842,7 +861,7 @@ const SettingsSection = ({ user }: { user: User }) => {
                       </span>
                       <span className="text-xs text-muted-foreground">/ student / semester</span>
                     </div>
-                    <div className="text-[11px] font-mono text-sky-400 font-bold mt-1">
+                    <div className="text-[11px] font-mono text-secondary font-bold mt-1">
                       Bulk Department Deployment • Institutional PO & Demo
                     </div>
                   </div>
@@ -860,19 +879,20 @@ const SettingsSection = ({ user }: { user: User }) => {
                       "Dedicated Customer Success Manager",
                     ].map((item) => (
                       <div key={item} className="flex items-center gap-2 text-foreground font-medium">
-                        <CheckCircle2 className="w-4 h-4 text-sky-400 flex-shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-secondary flex-shrink-0" />
                         <span>{item}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <button
+                <Button
                   onClick={() => handleCheckout("campus")}
-                  className="w-full text-xs bg-surface border border-border/80 text-foreground font-black py-3 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs text-center"
+                  variant="outline"
+                  className="w-full bg-surface border border-border/80 text-foreground font-black py-3 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs text-center"
                 >
                   Request Institutional PO & Demo 🏛️
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -886,15 +906,16 @@ const SettingsSection = ({ user }: { user: User }) => {
                     Share with peers — both accounts receive 1 month of Pro access upon subscription!
                   </div>
                 </div>
-                <button
+                <Button
                   onClick={() => {
                     navigator.clipboard.writeText(profile.referralCode || "");
                     toast.success("Referral code copied to clipboard!");
                   }}
+                  variant="outline"
                   className="text-xs bg-primary/15 text-primary border border-primary/30 font-extrabold px-4 py-2 rounded-xl hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer"
                 >
                   Copy Referral Code
-                </button>
+                </Button>
               </div>
             )}
           </motion.div>
@@ -947,7 +968,7 @@ const SettingsSection = ({ user }: { user: User }) => {
                 <Layers className="w-4 h-4 text-primary" />
                 <span>Ecosystem Connectors & Webhooks Hub</span>
               </h3>
-              <span className="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
+              <span className="text-xs font-mono font-bold text-accent bg-accent/10 border border-accent/30 px-2.5 py-0.5 rounded-full">
                 Planned for v2.0
               </span>
             </div>
@@ -971,7 +992,7 @@ const SettingsSection = ({ user }: { user: User }) => {
                       <span className="text-2xl">{item.icon}</span>
                       <div className="text-xs font-extrabold text-foreground">{item.name}</div>
                     </div>
-                    <span className="text-[9.5px] font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-1.5 py-0.2 rounded-md">
+                    <span className="text-[9.5px] font-mono font-bold text-accent bg-accent/10 border border-accent/30 px-1.5 py-0.2 rounded-md">
                       Coming Soon
                     </span>
                   </div>

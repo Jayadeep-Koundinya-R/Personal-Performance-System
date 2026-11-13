@@ -4,10 +4,11 @@ import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
 import { RoadmapSection } from "@/components/roadmap/RoadmapSection";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, Sun, Moon } from "lucide-react";
 import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
 import { BrandLogo } from "@/components/BrandLogo";
+import { Button } from "@/components/ui/button";
 
 export const RoadmapPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
@@ -54,13 +55,16 @@ export const RoadmapPage: React.FC = () => {
             </Link>
 
             {/* Theme Toggle */}
-            <button
+            <Button
+              variant="outline"
+              size="icon"
               onClick={toggleTheme}
-              className="p-2 rounded-xl bg-surface border border-border/80 text-foreground hover:border-primary/40 transition-colors cursor-pointer text-xs"
+              className="p-2 rounded-xl bg-surface border border-border/80 text-foreground hover:border-primary/40 transition-colors cursor-pointer text-xs flex items-center justify-center h-8 w-8"
               title="Toggle Light / Dark Mode"
+              aria-label="Toggle Light or Dark Mode"
             >
-              {theme === "dark" ? "☀️" : "🌙"}
-            </button>
+              {theme === "dark" ? <Sun className="w-4 h-4 text-pps-orange" /> : <Moon className="w-4 h-4 text-primary" />}
+            </Button>
 
             {hasActiveAccount ? (
               <Link to="/dashboard" className="text-xs bg-primary text-primary-foreground px-4 py-2 rounded-xl font-black hover:opacity-90 transition-all shadow-md shadow-primary/25">

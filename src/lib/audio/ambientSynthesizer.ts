@@ -89,6 +89,14 @@ class AmbientSynthesizer {
     return this.currentType;
   }
 
+  public getIsPlaying(): boolean {
+    return this.currentType !== "none";
+  }
+
+  public isPlaying(): boolean {
+    return this.currentType !== "none";
+  }
+
   // --- Procedural Generators ---
 
   private createRainSound() {

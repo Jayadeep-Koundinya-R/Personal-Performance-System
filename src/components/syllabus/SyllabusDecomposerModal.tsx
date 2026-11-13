@@ -224,6 +224,7 @@ export const SyllabusDecomposerModal: React.FC<SyllabusDecomposerModalProps> = (
                 </label>
                 <textarea
                   value={rawText}
+                  maxLength={5000}
                   onChange={(e) => setRawText(e.target.value)}
                   placeholder={`Example:\n1. B-Trees & B+ Trees Indexing\n2. SQL Nested Subqueries\n3. Banker's Deadlock Algorithm\n4. Paging & Virtual Memory\n5. TCP Congestion Control`}
                   className="w-full h-32 bg-surface border border-border rounded-2xl p-3.5 text-xs text-foreground font-mono focus:outline-hidden focus:border-primary resize-none"

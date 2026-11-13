@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useHabits } from "@/hooks/use-habits";
@@ -17,6 +17,16 @@ export default function VoiceControlModal({ isOpen, onClose, onNavigate }: Voice
   const { isPro } = useSubscription();
   const [lastCommandText, setLastCommandText] = useState("");
   const [feedback, setFeedback] = useState("");
+  const speakRef = useRef<(text: string) => void>(() => {});
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const processVoiceCommand = useCallback((rawText: string) => {
     const text = rawText.toLowerCase().trim();
@@ -34,7 +44,7 @@ export default function VoiceControlModal({ isOpen, onClose, onNavigate }: Voice
           const msg = `Completed habit "${matched.name}"!`;
           setFeedback(`✓ ${msg}`);
           toast.success(msg);
-          speak(msg);
+          speakRef.current(msg);
           return;
         }
       }
@@ -46,7 +56,7 @@ export default function VoiceControlModal({ isOpen, onClose, onNavigate }: Voice
         const msg = `Completed "${pending[0].name}"!`;
         setFeedback(`✓ ${msg}`);
         toast.success(msg);
-        speak(msg);
+        speakRef.current(msg);
         return;
       }
     }
@@ -60,7 +70,7 @@ export default function VoiceControlModal({ isOpen, onClose, onNavigate }: Voice
       const msg = `You have ${remaining} pending habits remaining today out of ${due.length} total.`;
       setFeedback(msg);
       toast.info(msg);
-      speak(msg);
+      speakRef.current(msg);
       return;
     }
 
@@ -68,21 +78,21 @@ export default function VoiceControlModal({ isOpen, onClose, onNavigate }: Voice
     if (text.includes("analytics") || text.includes("chart")) {
       if (onNavigate) onNavigate("analytics");
       setFeedback("Navigating to Analytics Studio...");
-      speak("Navigating to Analytics");
+      speakRef.current("Navigating to Analytics");
       onClose();
       return;
     }
     if (text.includes("reflection") || text.includes("journal")) {
       if (onNavigate) onNavigate("reflections");
       setFeedback("Navigating to Reflections Studio...");
-      speak("Navigating to Reflections");
+      speakRef.current("Navigating to Reflections");
       onClose();
       return;
     }
     if (text.includes("tracker") || text.includes("focus") || text.includes("timer")) {
       if (onNavigate) onNavigate("tracker");
       setFeedback("Opening Focus Studio...");
-      speak("Opening Focus Studio");
+      speakRef.current("Opening Focus Studio");
       onClose();
       return;
     }
@@ -95,6 +105,10 @@ export default function VoiceControlModal({ isOpen, onClose, onNavigate }: Voice
 
   const { isListening, transcript, isSupported, startListening, stopListening, speak } =
     useVoiceCommands(processVoiceCommand);
+
+  useEffect(() => {
+    speakRef.current = speak;
+  }, [speak]);
 
   if (!isOpen) return null;
 
@@ -112,6 +126,7 @@ export default function VoiceControlModal({ isOpen, onClose, onNavigate }: Voice
         >
           <button
             onClick={onClose}
+            aria-label="Close voice controls"
             className="absolute top-4 right-4 text-muted-foreground hover:text-foreground cursor-pointer"
           >
             <X className="w-5 h-5" />

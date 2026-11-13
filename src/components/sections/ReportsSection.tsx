@@ -15,11 +15,13 @@ import { useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHabits, CONFIG } from "@/hooks/use-habits";
 import { exportToCSV, exportToJSON, prepareFullExport } from "@/lib/dataExport";
+import { getRecoveryXPClaimedDates, getMicroCompletionsMap, isMicroCompleted } from "@/lib/dashboard/microHabits";
 import { FileText, Download, TrendingUp, Calendar, Award, Check, Sparkles, Zap, Shield, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import EmptyState from "@/components/EmptyState";
+import { Button } from "@/components/ui/button";
 
 type Period = "week" | "month";
 
@@ -107,7 +109,36 @@ const ReportsSection = () => {
       }
     });
 
-    return { currentCompleted, currentPossible, completionRate, growthPct, habitMatrix, bestDay, daysBack };
+    // Multi-tier completions calculation (Phase 1 Agni metrics)
+    const recoveryDates = getRecoveryXPClaimedDates();
+    const restDaysCount = recoveryDates.filter((d: string) => {
+      const diff = Math.round((now.getTime() - new Date(d).getTime()) / 864e5);
+      return diff >= 0 && diff < daysBack;
+    }).length;
+
+    const microMap = getMicroCompletionsMap();
+    let microCompletionsCount = 0;
+    habits.forEach((h) => {
+      if (h.archived) return;
+      (h.completedDates || []).forEach((d) => {
+        const diff = Math.round((now.getTime() - new Date(d).getTime()) / 864e5);
+        if (diff >= 0 && diff < daysBack && isMicroCompleted(h.id, d, microMap)) {
+          microCompletionsCount++;
+        }
+      });
+    });
+
+    return {
+      currentCompleted,
+      currentPossible,
+      completionRate,
+      growthPct,
+      habitMatrix,
+      bestDay,
+      daysBack,
+      microCompletionsCount,
+      restDaysCount,
+    };
   }, [habits, daysBack]);
 
   // Export PDF Handler
@@ -126,8 +157,13 @@ const ReportsSection = () => {
       doc.setTextColor(0);
       doc.text(`Date Generated: ${new Date().toLocaleDateString()}`, 14, 38);
       doc.text(`Total Habit Completions: ${report.currentCompleted}`, 14, 44);
-      doc.text(`Overall Consistency Rate: ${report.completionRate}%`, 14, 50);
-      doc.text(`Growth vs Previous Period: ${report.growthPct >= 0 ? "+" : ""}${report.growthPct}%`, 14, 56);
+      doc.text(
+        `Full Focus: ${report.currentCompleted - report.microCompletionsCount} | 2m Micro Shields: ${report.microCompletionsCount} | Rest Days: ${report.restDaysCount}`,
+        14,
+        50
+      );
+      doc.text(`Overall Consistency Rate: ${report.completionRate}%`, 14, 56);
+      doc.text(`Growth vs Previous Period: ${report.growthPct >= 0 ? "+" : ""}${report.growthPct}%`, 14, 62);
 
       // Table of Habits
       const tableData = report.habitMatrix.map((item, idx) => [
@@ -191,31 +227,33 @@ const ReportsSection = () => {
 
         {/* Export Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          <button
+          <Button
             onClick={generatePDF}
             className="text-xs bg-primary text-primary-foreground font-extrabold px-4 py-2 rounded-2xl hover:bg-primary/90 transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
           >
             <FileText className="w-4 h-4" />
             <span>Export Executive PDF</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={handleExportCSV}
+            variant="outline"
             className="text-xs bg-surface border border-border/80 text-foreground px-3.5 py-2 rounded-2xl font-extrabold hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
             title="Export CSV Spreadsheet"
           >
             <FileSpreadsheet className="w-4 h-4 text-pps-green" />
             <span>CSV</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={handleExportJSON}
+            variant="outline"
             className="text-xs bg-surface border border-border/80 text-foreground px-3.5 py-2 rounded-2xl font-extrabold hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
             title="Backup JSON Data"
           >
-            <Download className="w-4 h-4 text-sky-300" />
+            <Download className="w-4 h-4 text-secondary" />
             <span>JSON Backup</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -227,22 +265,26 @@ const ReportsSection = () => {
         </div>
 
         <div className="flex items-center gap-1 bg-surface border border-border/80 p-1 rounded-2xl">
-          <button
+          <Button
             onClick={() => setPeriod("week")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-              period === "week" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+            variant={period === "week" ? "default" : "outline"}
+            size="sm"
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border ${
+              period === "week" ? "bg-primary text-primary-foreground shadow-xs border-primary" : "text-muted-foreground hover:text-foreground border-border/80"
             }`}
           >
             Weekly (7 Days)
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setPeriod("month")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-              period === "month" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+            variant={period === "month" ? "default" : "outline"}
+            size="sm"
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border ${
+              period === "month" ? "bg-primary text-primary-foreground shadow-xs border-primary" : "text-muted-foreground hover:text-foreground border-border/80"
             }`}
           >
             Monthly (30 Days)
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -292,6 +334,22 @@ const ReportsSection = () => {
             <div className="text-xl font-extrabold font-mono text-foreground">{report.bestDay}</div>
             <div className="text-[10.5px] text-secondary font-mono font-bold">Highest output day</div>
           </div>
+        </div>
+      </div>
+
+      {/* Multi-Tier Execution Metrics Strip (Agni 2.0 Hardening) */}
+      <div className="flex items-center gap-2.5 flex-wrap text-xs font-mono font-bold">
+        <div className="bg-card border border-border px-3.5 py-2 rounded-2xl shadow-xs flex items-center gap-2">
+          <span>🎯 Full Focus Sprints:</span>
+          <strong className="text-primary font-extrabold">{report.currentCompleted - report.microCompletionsCount}</strong>
+        </div>
+        <div className="bg-card border border-border px-3.5 py-2 rounded-2xl shadow-xs flex items-center gap-2">
+          <span>🪜 2m Micro Shields:</span>
+          <strong className="text-pps-orange font-extrabold">{report.microCompletionsCount}</strong>
+        </div>
+        <div className="bg-card border border-border px-3.5 py-2 rounded-2xl shadow-xs flex items-center gap-2">
+          <span>🌿 Recovery Rest Days:</span>
+          <strong className="text-pps-green font-extrabold">{report.restDaysCount}</strong>
         </div>
       </div>
 

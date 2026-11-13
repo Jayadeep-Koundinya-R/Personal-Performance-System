@@ -5,9 +5,14 @@ import { toast } from "sonner";
 
 export interface Notification {
   id: string;
-  type: "streak" | "levelup" | "achievement" | "reminder" | "incomplete" | "quest" | "alarm";
+  type: "streak" | "levelup" | "achievement" | "reminder" | "incomplete" | "quest" | "alarm" | "circadian" | "curfew" | "sprint" | "squad";
   title: string;
   message: string;
+  reason?: string;
+  fact?: string;
+  priority?: "low" | "medium" | "high" | "urgent";
+  actionLabel?: string;
+  actionPayload?: { section?: string; habitId?: string; duration?: number };
   icon: string;
   time: string;
   read: boolean;
@@ -16,6 +21,7 @@ export interface Notification {
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
+  activeBannerAlert: Notification | null;
   addNotification: (n: Omit<Notification, "id" | "time" | "read">) => void;
   markAsRead: (id: string) => void;
   markAllRead: () => void;
@@ -112,41 +118,6 @@ export function NotificationProvider({
     }
   }, [notifications, userId, userEmail, isGuestUser]);
 
-  // Check habits due today — with strict deduplication
-  useEffect(() => {
-    const todayStr = new Date().toISOString().split("T")[0];
-    const lastCheckKey = `pps_notif_check_${userEmail || "guest"}`;
-    const lastCheck = localStorage.getItem(lastCheckKey);
-    if (lastCheck === todayStr || habits.length === 0) return;
-
-    const dueToday = habits.filter((h) => {
-      if (h.completedDates?.includes(todayStr)) return false;
-      if (h.period === "Daily" || h.period === "Today") return true;
-      if (h.dueDate) {
-        return h.dueDate.split("T")[0] <= todayStr;
-      }
-      return false;
-    });
-
-    if (dueToday.length > 0) {
-      const hasExistingReminder = notifications.some(
-        (n) => n.title === "Habits waiting today!" && !n.read
-      );
-
-      if (!hasExistingReminder) {
-        addNotification({
-          type: "reminder",
-          title: "Habits waiting today!",
-          message: `You have ${dueToday.length} habit${dueToday.length > 1 ? "s" : ""} to complete today.`,
-          icon: "📋",
-        });
-      }
-      try {
-        localStorage.setItem(lastCheckKey, todayStr);
-      } catch {}
-    }
-  }, [habits, userEmail, notifications]);
-
   const addNotification = useCallback(
     async (n: Omit<Notification, "id" | "time" | "read">) => {
       // Check for exact duplicate in current state
@@ -181,6 +152,41 @@ export function NotificationProvider({
     },
     [userId, isGuestUser, notifications]
   );
+
+  // Check habits due today — with strict deduplication
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const lastCheckKey = `pps_notif_check_${userEmail || "guest"}`;
+    const lastCheck = localStorage.getItem(lastCheckKey);
+    if (lastCheck === todayStr || habits.length === 0) return;
+
+    const dueToday = habits.filter((h) => {
+      if (h.completedDates?.includes(todayStr)) return false;
+      if (h.period === "Daily" || h.period === "Today") return true;
+      if (h.dueDate) {
+        return h.dueDate.split("T")[0] <= todayStr;
+      }
+      return false;
+    });
+
+    if (dueToday.length > 0) {
+      const hasExistingReminder = notifications.some(
+        (n) => n.title === "Habits waiting today!" && !n.read
+      );
+
+      if (!hasExistingReminder) {
+        addNotification({
+          type: "reminder",
+          title: "Habits waiting today!",
+          message: `You have ${dueToday.length} habit${dueToday.length > 1 ? "s" : ""} to complete today.`,
+          icon: "📋",
+        });
+      }
+      try {
+        localStorage.setItem(lastCheckKey, todayStr);
+      } catch {}
+    }
+  }, [habits, userEmail, notifications, addNotification]);
 
   const markAsRead = useCallback(
     async (id: string) => {
@@ -234,11 +240,17 @@ export function NotificationProvider({
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const activeBannerAlert =
+    notifications.find((n) => !n.read && (n.priority === "urgent" || n.priority === "high")) ||
+    notifications.find((n) => !n.read) ||
+    null;
+
   return (
     <NotificationContext.Provider
       value={{
         notifications,
         unreadCount,
+        activeBannerAlert,
         addNotification,
         markAsRead,
         markAllRead,

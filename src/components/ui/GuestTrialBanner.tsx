@@ -24,7 +24,20 @@ function getLocalStorageUsage(): { usedKB: number; percentage: number } {
 
 export default function GuestTrialBanner() {
   const { user, guestDaysRemaining, isGuestTrialExpired } = useAuth();
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem("pps_dismiss_trial_banner") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      sessionStorage.setItem("pps_dismiss_trial_banner", "true");
+    } catch {}
+  };
 
   if (!user?.isGuest || isGuestTrialExpired || dismissed) return null;
 
@@ -67,7 +80,7 @@ export default function GuestTrialBanner() {
           {!isStorageHigh && <ArrowRight className="w-3 h-3" />}
         </Link>
         <button
-          onClick={() => setDismissed(true)}
+          onClick={handleDismiss}
           className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-surface/50 transition-colors cursor-pointer"
           title="Dismiss banner"
         >

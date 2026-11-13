@@ -496,7 +496,7 @@ export function useGroups() {
         return { success: true, groupId: newGroupId };
       }
     },
-    [user, profile, isGuestUser, fetchCloudGroups]
+    [user, profile, isGuestUser]
   );
 
   // Join Group via Invite Code

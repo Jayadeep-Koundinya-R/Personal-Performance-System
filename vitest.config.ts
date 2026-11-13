@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    pool: "forks",
+    pool: process.platform === "win32" ? "threads" : "forks",
     testTimeout: 15000,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],

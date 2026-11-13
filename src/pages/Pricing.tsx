@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { REGIONAL_PRICING, CurrencyRegion } from "@/lib/plans";
@@ -10,6 +10,7 @@ import { CampusDemoModal } from "@/components/pricing/CampusDemoModal";
 import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
 import { BrandLogo } from "@/components/BrandLogo";
+import { Button } from "@/components/ui/button";
 
 import {
   Globe,
@@ -108,6 +109,26 @@ function PricingContent() {
   // Campus Cost Calculation
   const campusCost = campusStudents * (region === "IN" ? 2000 : 49);
 
+  // Close Pro modal on Escape key
+  useEffect(() => {
+    if (!isProModalOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsProModalOpen(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isProModalOpen]);
+
+  // Close demo modal on Escape key
+  useEffect(() => {
+    if (!isDemoModalOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsDemoModalOpen(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isDemoModalOpen]);
+
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary selection:text-white transition-colors duration-500">
       {/* 🌌 Animated 3D Floating Background */}
@@ -151,12 +172,13 @@ function PricingContent() {
             </div>
 
             <div className="flex items-center gap-2.5">
-              <button
+              <Button
+                variant="outline"
                 onClick={() => setIsProModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border/80 bg-surface hover:bg-surface/80 text-foreground font-bold text-xs cursor-pointer transition-colors"
+                className="flex-1 py-2.5 rounded-xl border border-border/80 bg-surface hover:bg-surface/80 text-foreground font-bold text-xs cursor-pointer transition-colors h-auto"
               >
                 Close
-              </button>
+              </Button>
               <Link
                 to="/dashboard"
                 onClick={() => setIsProModalOpen(false)}
@@ -178,23 +200,26 @@ function PricingContent() {
 
         <div className="flex items-center gap-3">
           {/* Region Switcher */}
-          <button
+          <Button
+            variant="outline"
             onClick={() => selectRegion(region === "IN" ? "GLOBAL" : "IN")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface/80 border border-border/80 text-xs font-bold hover:border-primary/40 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface/80 border border-border/80 text-xs font-bold hover:border-primary/40 transition-colors cursor-pointer h-auto"
           >
             <span>{pricingConfig.flag}</span>
             <span className="text-foreground">{pricingConfig.currencyCode}</span>
             <span className="text-[10px] text-muted-foreground">({region === "IN" ? "UPI/Cards" : "Stripe/USD"})</span>
-          </button>
+          </Button>
 
           {/* Theme Toggle */}
-          <button
+          <Button
+            variant="outline"
+            size="icon"
             onClick={toggleTheme}
-            className="p-1.5 px-2.5 rounded-xl bg-surface/80 border border-border/80 text-foreground hover:border-primary/40 transition-colors cursor-pointer text-xs"
+            className="p-1.5 px-2.5 rounded-xl bg-surface/80 border border-border/80 text-foreground hover:border-primary/40 transition-colors cursor-pointer text-xs h-8 w-8"
             title="Toggle Light / Dark Mode"
           >
             {theme === "dark" ? "☀️" : "🌙"}
-          </button>
+          </Button>
 
           <Link
             to={hasActiveAccount ? "/dashboard" : "/login?tab=signin"}
@@ -215,7 +240,7 @@ function PricingContent() {
 
           <h1 className="text-4xl sm:text-6xl font-black text-foreground tracking-tight leading-[1.1] font-mono">
             Invest in Momentum. <br />
-            <span className="bg-gradient-to-r from-primary via-cyan-400 to-amber-300 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary via-accent to-pps-orange bg-clip-text text-transparent">
               Built for Scale & Impact.
             </span>
           </h1>
@@ -227,30 +252,32 @@ function PricingContent() {
           {/* Billing Interval Toggle */}
           <div className="pt-2 flex justify-center">
             <div className="inline-flex items-center p-1.5 rounded-2xl bg-surface/80 border border-border/80 backdrop-blur-xl shadow-xl">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setInterval("monthly")}
-                className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer h-auto ${
                   interval === "monthly"
-                    ? "bg-primary text-primary-foreground shadow-md font-black"
+                    ? "bg-primary text-primary-foreground shadow-md font-black hover:bg-primary"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Monthly Billing
-              </button>
+              </Button>
 
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setInterval("yearly")}
-                className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
+                className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 h-auto ${
                   interval === "yearly"
-                    ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md font-black"
+                    ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md font-black hover:bg-primary"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span>Annual Billing</span>
-                <span className="text-[10px] bg-amber-400 text-black px-2 py-0.5 rounded-md font-black tracking-wide shadow-xs">
+                <span className="text-[10px] bg-pps-orange text-black px-2 py-0.5 rounded-md font-black tracking-wide shadow-xs">
                   {pricingConfig.savingsBadge}
                 </span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -261,7 +288,7 @@ function PricingContent() {
           <div className="p-6 sm:p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-border/80 flex flex-col justify-between space-y-6 shadow-xl hover:border-primary/40 hover:scale-[1.01] transition-all duration-300 group">
             <div className="space-y-4">
               <div className="w-12 h-12 rounded-2xl bg-surface/90 border border-border flex items-center justify-center text-2xl shadow-sm group-hover:scale-110 transition-transform">
-                🌱
+                <Sparkles className="w-6 h-6 text-primary" />
               </div>
               <div>
                 <h3 className="text-lg font-black text-foreground font-mono">Personal Free</h3>
@@ -295,8 +322,8 @@ function PricingContent() {
             </div>
 
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-2xl text-primary shadow-md">
-                ⚡
+              <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shadow-md">
+                <Zap className="w-6 h-6 text-primary" />
               </div>
               <div>
                 <h3 className="text-lg font-black text-foreground font-mono">Student Pro</h3>
@@ -317,22 +344,22 @@ function PricingContent() {
               </ul>
             </div>
 
-            <button
+            <Button
               onClick={() => startCheckout(interval)}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary via-secondary to-accent text-white font-black text-xs shadow-xl shadow-primary/30 hover:opacity-95 transition-all cursor-pointer"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary via-secondary to-accent text-white font-black text-xs shadow-xl shadow-primary/30 hover:opacity-95 transition-all cursor-pointer h-auto"
             >
               {isPro ? "Current Plan Active (Pro)" : `Upgrade to Pro (${interval === "yearly" ? "Annual" : "Monthly"}) →`}
-            </button>
+            </Button>
           </div>
 
           {/* Card 3: Teacher / Mentor Studio */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-amber-500/30 flex flex-col justify-between space-y-6 shadow-xl hover:border-amber-500/60 hover:scale-[1.01] transition-all duration-300 group">
+          <div className="p-6 sm:p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-pps-orange/30 flex flex-col justify-between space-y-6 shadow-xl hover:border-pps-orange/60 hover:scale-[1.01] transition-all duration-300 group">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center text-2xl shadow-sm group-hover:scale-110 transition-transform">
-                  🎓
+                <div className="w-12 h-12 rounded-2xl bg-pps-orange/20 text-pps-orange border border-pps-orange/30 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                  <GraduationCap className="w-6 h-6 text-pps-orange" />
                 </div>
-                <span className="text-[10px] font-mono font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30 uppercase">
+                <span className="text-[10px] font-mono font-black text-pps-orange bg-pps-orange/10 px-2.5 py-1 rounded-full border border-pps-orange/30 uppercase">
                   🏗️ Beta
                 </span>
               </div>
@@ -340,22 +367,22 @@ function PricingContent() {
                 <h3 className="text-lg font-black text-foreground font-mono">Teacher Studio</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">For tutors, music teachers & creators (Local Preview)</p>
               </div>
-              <div className="font-mono text-2xl font-black text-amber-300">
+              <div className="font-mono text-2xl font-black text-pps-orange">
                 10% <span className="text-xs font-normal text-muted-foreground">Commission / ticket</span>
               </div>
               <ul className="space-y-2.5 text-xs text-muted-foreground font-medium pt-3 border-t border-border/40">
-                <li className="flex items-center gap-2 text-foreground font-bold"><Check className="w-4 h-4 text-amber-400 flex-shrink-0" /> ₹0 / $0 Upfront Platform Cost</li>
-                <li className="flex items-center gap-2 text-foreground font-bold"><Check className="w-4 h-4 text-amber-400 flex-shrink-0" /> Host Live Paid Masterclasses</li>
-                <li className="flex items-center gap-2 text-foreground font-bold"><Check className="w-4 h-4 text-amber-400 flex-shrink-0" /> 1-Click Ticket Booking (UPI/Cards)</li>
-                <li className="flex items-center gap-2 text-foreground"><Check className="w-4 h-4 text-amber-400 flex-shrink-0" /> Automated Class Attendance Logs</li>
-                <li className="flex items-center gap-2 text-foreground"><Check className="w-4 h-4 text-amber-400 flex-shrink-0" /> Assign Habits to Class Rosters</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-amber-400 flex-shrink-0" /> First 5 Classes/Mo 100% Free</li>
+                <li className="flex items-center gap-2 text-foreground font-bold"><Check className="w-4 h-4 text-pps-orange flex-shrink-0" /> ₹0 / $0 Upfront Platform Cost</li>
+                <li className="flex items-center gap-2 text-foreground font-bold"><Check className="w-4 h-4 text-pps-orange flex-shrink-0" /> Host Live Paid Masterclasses</li>
+                <li className="flex items-center gap-2 text-foreground font-bold"><Check className="w-4 h-4 text-pps-orange flex-shrink-0" /> 1-Click Ticket Booking (UPI/Cards)</li>
+                <li className="flex items-center gap-2 text-foreground"><Check className="w-4 h-4 text-pps-orange flex-shrink-0" /> Automated Class Attendance Logs</li>
+                <li className="flex items-center gap-2 text-foreground"><Check className="w-4 h-4 text-pps-orange flex-shrink-0" /> Assign Habits to Class Rosters</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-pps-orange flex-shrink-0" /> First 5 Classes/Mo 100% Free</li>
               </ul>
             </div>
 
             <a
               href="#teacher-calculator"
-              className="w-full py-3 rounded-2xl bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 border border-amber-500/30 font-extrabold text-xs text-center transition-all block shadow-xs"
+              className="w-full py-3 rounded-2xl bg-pps-orange/15 text-pps-orange hover:bg-pps-orange/25 border border-pps-orange/30 font-extrabold text-xs text-center transition-all block shadow-xs"
             >
               Calculate Earnings ↓
             </a>
@@ -365,10 +392,10 @@ function PricingContent() {
           <div className="p-6 sm:p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-secondary/30 flex flex-col justify-between space-y-6 shadow-xl hover:border-secondary/60 hover:scale-[1.01] transition-all duration-300 group">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/30 flex items-center justify-center text-2xl shadow-sm group-hover:scale-110 transition-transform">
-                  🏫
+                <div className="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/30 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                  <Building2 className="w-6 h-6 text-secondary" />
                 </div>
-                <span className="text-[10px] font-mono font-black text-orange-400 bg-orange-500/10 px-2.5 py-1 rounded-full border border-orange-500/30 uppercase">
+                <span className="text-[10px] font-mono font-black text-pps-orange bg-pps-orange/10 px-2.5 py-1 rounded-full border border-pps-orange/30 uppercase">
                   🏗️ Planned
                 </span>
               </div>
@@ -390,25 +417,26 @@ function PricingContent() {
               </ul>
             </div>
 
-            <button
+            <Button
+              variant="outline"
               onClick={() => setIsDemoModalOpen(true)}
-              className="w-full py-3 rounded-2xl bg-secondary/15 text-secondary hover:bg-secondary/25 border border-secondary/30 font-extrabold text-xs text-center transition-all block shadow-xs cursor-pointer"
+              className="w-full py-3 rounded-2xl bg-secondary/15 text-secondary hover:bg-secondary/25 border border-secondary/30 font-extrabold text-xs text-center transition-all block shadow-xs cursor-pointer h-auto"
             >
               Request Institutional PO & Demo ↓
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* ── Section: Interactive Teacher Earnings Calculator ── */}
-        <div id="teacher-calculator" className="p-8 sm:p-10 rounded-3xl border border-amber-500/30 bg-gradient-to-br from-card/90 via-surface/70 to-amber-500/10 backdrop-blur-2xl shadow-2xl space-y-8">
+        <div id="teacher-calculator" className="p-8 sm:p-10 rounded-3xl border border-pps-orange/30 bg-gradient-to-br from-card/90 via-surface/70 to-pps-orange/10 backdrop-blur-2xl shadow-2xl space-y-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-amber-300 bg-amber-500/15 px-3 py-1 rounded-full border border-amber-500/30">
+                <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-pps-orange bg-pps-orange/15 px-3 py-1 rounded-full border border-pps-orange/30">
                   <Calculator className="w-3.5 h-3.5" />
                   <span>Mentor & Creator Revenue Engine</span>
                 </div>
-                <span className="text-[10px] font-mono font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30 uppercase">
+                <span className="text-[10px] font-mono font-black text-pps-orange bg-pps-orange/10 px-2.5 py-1 rounded-full border border-pps-orange/30 uppercase">
                   🏗️ Beta Preview
                 </span>
               </div>
@@ -426,7 +454,7 @@ function PricingContent() {
             <div className="space-y-3 p-5 rounded-2xl bg-surface/80 border border-border/80">
               <div className="flex justify-between text-xs font-bold">
                 <span className="text-muted-foreground">Students Per Batch:</span>
-                <span className="text-amber-400 font-mono text-sm">{teacherStudents} Students</span>
+                <span className="text-pps-orange font-mono text-sm">{teacherStudents} Students</span>
               </div>
               <input
                 type="range"
@@ -435,14 +463,14 @@ function PricingContent() {
                 step="1"
                 value={teacherStudents}
                 onChange={(e) => setTeacherStudents(parseInt(e.target.value))}
-                className="w-full h-2 bg-card rounded-lg appearance-none cursor-pointer accent-amber-400"
+                className="w-full h-2 bg-card rounded-lg appearance-none cursor-pointer accent-pps-orange"
               />
             </div>
 
             <div className="space-y-3 p-5 rounded-2xl bg-surface/80 border border-border/80">
               <div className="flex justify-between text-xs font-bold">
                 <span className="text-muted-foreground">Ticket Fee / Student:</span>
-                <span className="text-amber-400 font-mono text-sm">{symbol}{teacherFee}</span>
+                <span className="text-pps-orange font-mono text-sm">{symbol}{teacherFee}</span>
               </div>
               <input
                 type="range"
@@ -451,14 +479,14 @@ function PricingContent() {
                 step={region === "IN" ? 25 : 2}
                 value={teacherFee}
                 onChange={(e) => setTeacherFee(parseInt(e.target.value))}
-                className="w-full h-2 bg-card rounded-lg appearance-none cursor-pointer accent-amber-400"
+                className="w-full h-2 bg-card rounded-lg appearance-none cursor-pointer accent-pps-orange"
               />
             </div>
 
             <div className="space-y-3 p-5 rounded-2xl bg-surface/80 border border-border/80">
               <div className="flex justify-between text-xs font-bold">
                 <span className="text-muted-foreground">Classes Per Month:</span>
-                <span className="text-amber-400 font-mono text-sm">{teacherClassesPerMonth} Sessions</span>
+                <span className="text-pps-orange font-mono text-sm">{teacherClassesPerMonth} Sessions</span>
               </div>
               <input
                 type="range"
@@ -467,13 +495,13 @@ function PricingContent() {
                 step="1"
                 value={teacherClassesPerMonth}
                 onChange={(e) => setTeacherClassesPerMonth(parseInt(e.target.value))}
-                className="w-full h-2 bg-card rounded-lg appearance-none cursor-pointer accent-amber-400"
+                className="w-full h-2 bg-card rounded-lg appearance-none cursor-pointer accent-pps-orange"
               />
             </div>
           </div>
 
           {/* Live Earnings Projection Banner */}
-          <div className="p-6 sm:p-8 rounded-2xl bg-card border border-amber-500/40 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center shadow-lg">
+          <div className="p-6 sm:p-8 rounded-2xl bg-card border border-pps-orange/40 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center shadow-lg">
             <div>
               <div className="text-[11px] font-mono text-muted-foreground uppercase">Monthly Gross Revenue</div>
               <div className="text-2xl font-mono font-bold text-foreground mt-1.5">
@@ -483,14 +511,14 @@ function PricingContent() {
 
             <div className="border-y sm:border-y-0 sm:border-x border-border/50 py-3 sm:py-0">
               <div className="text-[11px] font-mono text-muted-foreground uppercase">PPS Platform Commission (10%)</div>
-              <div className="text-2xl font-mono font-bold text-red-400 mt-1.5">
+              <div className="text-2xl font-mono font-bold text-destructive mt-1.5">
                 - {symbol}{ppsCommission.toLocaleString()}
               </div>
             </div>
 
             <div>
-              <div className="text-[11px] font-mono text-amber-400 uppercase font-black">Your Net Take-Home Earnings</div>
-              <div className="text-3xl font-mono font-black text-amber-300 mt-1.5">
+              <div className="text-[11px] font-mono text-pps-orange uppercase font-black">Your Net Take-Home Earnings</div>
+              <div className="text-3xl font-mono font-black text-pps-orange mt-1.5">
                 {symbol}{teacherNet.toLocaleString()}
               </div>
             </div>
@@ -536,13 +564,13 @@ function PricingContent() {
               </div>
             </div>
 
-            <button
+            <Button
               onClick={() => setIsDemoModalOpen(true)}
-              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-secondary to-cyan-400 text-black font-black text-xs hover:opacity-95 transition-all cursor-pointer shadow-lg shadow-secondary/20 flex items-center gap-2"
+              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-secondary to-accent text-black font-black text-xs hover:opacity-95 transition-all cursor-pointer shadow-lg shadow-secondary/20 flex items-center gap-2 h-auto"
             >
               <Building2 className="w-4 h-4" />
               <span>Request Official Invoice & Pilot PO</span>
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -564,8 +592,8 @@ function PricingContent() {
                   <th className="p-4 sm:p-5 font-bold text-foreground">Feature</th>
                   <th className="p-4 sm:p-5 text-center">Personal Free</th>
                   <th className="p-4 sm:p-5 text-center text-primary font-bold bg-primary/5">Student Pro</th>
-                  <th className="p-4 sm:p-5 text-center text-amber-300 font-bold">Teacher Studio <span className="text-[9px] text-amber-400 font-mono">(Beta)</span></th>
-                  <th className="p-4 sm:p-5 text-center text-secondary font-bold">Campus License <span className="text-[9px] text-orange-400 font-mono">(Planned)</span></th>
+                  <th className="p-4 sm:p-5 text-center text-pps-orange font-bold">Teacher Studio <span className="text-[9px] text-pps-orange font-mono">(Beta)</span></th>
+                  <th className="p-4 sm:p-5 text-center text-secondary font-bold">Campus License <span className="text-[9px] text-pps-orange font-mono">(Planned)</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -577,7 +605,7 @@ function PricingContent() {
                     </td>
                     <td className="p-4 sm:p-5 text-center text-muted-foreground font-medium">{f.free}</td>
                     <td className="p-4 sm:p-5 text-center font-bold text-primary bg-primary/5">{f.pro}</td>
-                    <td className="p-4 sm:p-5 text-center font-bold text-amber-300">{f.teacher}</td>
+                    <td className="p-4 sm:p-5 text-center font-bold text-pps-orange">{f.teacher}</td>
                     <td className="p-4 sm:p-5 text-center font-bold text-secondary">{f.campus}</td>
                   </tr>
                 ))}
@@ -597,7 +625,7 @@ function PricingContent() {
           </div>
 
           <div className="space-y-1.5">
-            <div className="w-10 h-10 rounded-2xl bg-card border border-border mx-auto flex items-center justify-center text-emerald-400">
+            <div className="w-10 h-10 rounded-2xl bg-card border border-border mx-auto flex items-center justify-center text-pps-green">
               <CreditCard className="w-5 h-5" />
             </div>
             <div className="text-xs font-bold text-foreground">Instant UPI & Cards</div>
@@ -605,7 +633,7 @@ function PricingContent() {
           </div>
 
           <div className="space-y-1.5">
-            <div className="w-10 h-10 rounded-2xl bg-card border border-border mx-auto flex items-center justify-center text-amber-400">
+            <div className="w-10 h-10 rounded-2xl bg-card border border-border mx-auto flex items-center justify-center text-pps-orange">
               <Award className="w-5 h-5" />
             </div>
             <div className="text-xs font-bold text-foreground">30-Day Refund Guarantee</div>
@@ -634,13 +662,14 @@ function PricingContent() {
 
           {FAQS.map((faq, i) => (
             <div key={i} className="border border-border/80 rounded-2xl bg-card/80 backdrop-blur-md overflow-hidden">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                className="w-full p-4.5 sm:p-5 text-left text-xs font-bold text-foreground flex items-center justify-between cursor-pointer"
+                className="w-full p-4.5 sm:p-5 text-left text-xs font-bold text-foreground flex items-center justify-between cursor-pointer h-auto hover:bg-transparent"
               >
                 <span>{faq.q}</span>
                 <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${openFaq === i ? "rotate-180" : ""}`} />
-              </button>
+              </Button>
               {openFaq === i && (
                 <div className="p-4.5 sm:p-5 pt-0 text-xs text-muted-foreground leading-relaxed border-t border-border/40 bg-surface/30">
                   {faq.a}

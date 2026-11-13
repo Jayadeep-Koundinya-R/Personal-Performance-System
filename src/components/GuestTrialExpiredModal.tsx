@@ -61,6 +61,16 @@ export default function GuestTrialExpiredModal() {
             <span>Create Free Account →</span>
           </Link>
 
+          <button
+            onClick={() => {
+              localStorage.setItem("pps_guest_created_at", new Date().toISOString());
+              window.location.reload();
+            }}
+            className="w-full bg-pps-green text-white font-extrabold py-3 px-6 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md hover:opacity-90 transition-all cursor-pointer"
+          >
+            <span>⚡ Reset 7-Day Demo Session</span>
+          </button>
+
           <Link
             to="/pricing"
             className="w-full bg-surface border border-border text-foreground font-bold py-3 px-6 rounded-2xl text-xs block hover:border-primary/50 transition-colors"

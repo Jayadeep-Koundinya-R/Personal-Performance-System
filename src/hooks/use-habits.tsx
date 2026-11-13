@@ -715,7 +715,7 @@ export function HabitsProvider({
         toast.error("Failed to sync completion with database. Reverting.");
       }
     }
-  }, [habits, isGuest, userId, fetchHabits, getTodayStr]);
+  }, [habits, isGuest, userId, fetchHabits]);
 
   // ── Task 1.1: Multi-Tier Habit Completion Engine ──
   const completeHabit = useCallback(
@@ -773,7 +773,7 @@ export function HabitsProvider({
         toast.success(`🎉 Habit completed: "${habit.name}"! (+10 XP)`);
       }
     },
-    [habits, getTodayStr, toggleCompletion]
+    [habits, toggleCompletion]
   );
 
   // ── Task 1.2: Window listener for pps_focus_session_completed ──
@@ -799,7 +799,7 @@ export function HabitsProvider({
     return () => {
       window.removeEventListener("pps_focus_session_completed", handleFocusCompleted);
     };
-  }, [habits, completeHabit, getTodayStr]);
+  }, [habits, completeHabit]);
 
   const markAllDone = useCallback(async (): Promise<void> => {
     const todayStr = getTodayStr();

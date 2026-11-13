@@ -119,7 +119,7 @@ export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
   };
 
   return (
-    <div className="bg-card/75 border border-border/70 rounded-2xl p-4 shadow-xs relative overflow-hidden transition-all hover:border-primary/30 space-y-3">
+    <div className="bg-card/95 backdrop-blur-xl border border-border/80 rounded-2xl p-4 shadow-sm relative overflow-hidden transition-all hover:border-primary/40 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Sparkles className="w-4 h-4 text-primary" />
@@ -137,6 +137,7 @@ export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
           <input
             type="text"
             value={name}
+            maxLength={120}
             onChange={(e) => setName(e.target.value)}
             placeholder="Add habit (e.g. 2 LeetCode problems, 20m Walk)..."
             className="w-full bg-surface border border-border/80 rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/70 outline-none focus:border-primary transition-colors"

@@ -25,7 +25,10 @@ import RitualOverlay from "@/components/RitualOverlay";
 import { Navigate, Link, useLocation } from "react-router-dom";
 import AiChatWidget from "@/components/ui/AiChatWidget";
 import VoiceControlModal from "@/components/ui/VoiceControlModal";
-import { Mic, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, X, Flame, Layers, Bell, Trash2 } from "lucide-react";
+import {
+  Mic, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, X, Flame, Layers, Bell, Trash2,
+  LayoutDashboard, Sliders, Calendar, Target, Users, BarChart3, Award, BookOpen, FileText, Settings
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { HABIT_TEMPLATES } from "@/lib/habitTemplates";
@@ -40,6 +43,8 @@ import { ActiveCallProvider } from "@/context/ActiveCallContext";
 import { FloatingCallPiP } from "@/components/focus-rooms/FloatingCallPiP";
 import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
 import { KeyboardShortcutsModal } from "@/components/ui/KeyboardShortcutsModal";
+import { NotificationDropdown } from "@/components/dashboard/NotificationDropdown";
+import { NotificationBar } from "@/components/dashboard/NotificationBar";
 import { InteractiveOnboardingModal } from "@/components/onboarding/InteractiveOnboardingModal";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -55,37 +60,37 @@ const ReflectionSection = lazy(() => import("@/components/sections/ReflectionSec
 const HabitManagerSection = lazy(() => import("@/components/sections/HabitManagerSection").then(m => ({ default: m.default })));
 const ReminderSection = lazy(() => import("@/components/sections/ReminderSection").then(m => ({ default: m.default })));
 const AchievementsSection = lazy(() => import("@/components/sections/AchievementsSection").then(m => ({ default: m.default })));
-import SocialSection from "@/components/sections/SocialSection";
+const SocialSection = lazy(() => import("@/components/sections/SocialSection").then(m => ({ default: m.default })));
 const ReportsSection = lazy(() => import("@/components/sections/ReportsSection").then(m => ({ default: m.default })));
 const SettingsSection = lazy(() => import("@/components/sections/SettingsSection").then(m => ({ default: m.default })));
 
 export interface NavItemConfig {
   key: string;
-  icon: string;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   category: "Core Workspace" | "Focus & Social" | "Growth & Stats" | "System";
 }
 
 const NAV_ITEMS: NavItemConfig[] = [
   // Core Workspace
-  { key: "dashboard", icon: "⚡", label: "Dashboard", category: "Core Workspace" },
-  { key: "habits", icon: "⚙️", label: "Habit Architect", category: "Core Workspace" },
-  { key: "calendar", icon: "📅", label: "Calendar", category: "Core Workspace" },
+  { key: "dashboard", icon: LayoutDashboard, label: "Dashboard", category: "Core Workspace" },
+  { key: "habits", icon: Sliders, label: "Habit Architect", category: "Core Workspace" },
+  { key: "calendar", icon: Calendar, label: "Calendar", category: "Core Workspace" },
   
   // Focus & Social
-  { key: "tracker", icon: "🎯", label: "Focus Studio", category: "Focus & Social" },
-  { key: "social", icon: "👥", label: "Study Squads", category: "Focus & Social" },
-  { key: "streak", icon: "🔥", label: "Streak Engine", category: "Focus & Social" },
+  { key: "tracker", icon: Target, label: "Focus Studio", category: "Focus & Social" },
+  { key: "social", icon: Users, label: "Study Squads", category: "Focus & Social" },
+  { key: "streak", icon: Flame, label: "Streak Engine", category: "Focus & Social" },
 
   // Growth & Intelligence
-  { key: "analytics", icon: "📊", label: "Analytics", category: "Growth & Stats" },
-  { key: "achievements", icon: "🏅", label: "Achievements", category: "Growth & Stats" },
-  { key: "reflections", icon: "📝", label: "Reflections", category: "Growth & Stats" },
-  { key: "reports", icon: "📈", label: "Reports", category: "Growth & Stats" },
+  { key: "analytics", icon: BarChart3, label: "Analytics", category: "Growth & Stats" },
+  { key: "achievements", icon: Award, label: "Achievements", category: "Growth & Stats" },
+  { key: "reflections", icon: BookOpen, label: "Reflections", category: "Growth & Stats" },
+  { key: "reports", icon: FileText, label: "Reports", category: "Growth & Stats" },
 
   // System
-  { key: "reminders", icon: "🔔", label: "Reminders", category: "System" },
-  { key: "settings", icon: "🛠", label: "Settings", category: "System" },
+  { key: "reminders", icon: Bell, label: "Reminders", category: "System" },
+  { key: "settings", icon: Settings, label: "Settings", category: "System" },
 ];
 
 type SectionKey = string;
@@ -160,10 +165,54 @@ function DashboardInner({ user }: { user: User }) {
     const path = location.pathname.toLowerCase();
     if (path === "/analytics" || path.endsWith("/analytics")) {
       setActiveSection("analytics");
+      return;
     } else if (path === "/social" || path.endsWith("/social") || path === "/focus-rooms") {
       setActiveSection("social");
+      return;
     }
-  }, [location.pathname]);
+
+    try {
+      const searchParams = new URLSearchParams(location.search);
+      const sec = searchParams.get("section");
+      if (sec && NAV_ITEMS.some((n) => n.key === sec)) {
+        setActiveSection(sec);
+        return;
+      }
+      const hash = window.location.hash;
+      const searchIdx = hash.indexOf("?");
+      if (searchIdx !== -1) {
+        const hashParams = new URLSearchParams(hash.slice(searchIdx));
+        const hashSec = hashParams.get("section");
+        if (hashSec && NAV_ITEMS.some((n) => n.key === hashSec)) {
+          setActiveSection(hashSec);
+          return;
+        }
+      }
+    } catch {}
+  }, [location.pathname, location.search]);
+
+  // Synchronize hash changes and browser back/forward buttons
+  useEffect(() => {
+    const handleHashChange = () => {
+      try {
+        const hash = window.location.hash;
+        const searchIdx = hash.indexOf("?");
+        if (searchIdx !== -1) {
+          const params = new URLSearchParams(hash.slice(searchIdx));
+          const sec = params.get("section");
+          if (sec && NAV_ITEMS.some((n) => n.key === sec)) {
+            setActiveSection(sec);
+            return;
+          }
+        }
+        if (hash === "#/dashboard" || hash === "#/" || !hash) {
+          setActiveSection("dashboard");
+        }
+      } catch {}
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   // Hardware Back-Button hierarchical navigation from internal sub-sections
   useEffect(() => {
@@ -179,7 +228,7 @@ function DashboardInner({ user }: { user: User }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifFilter, setNotifFilter] = useState<"all" | "unread">("all");
-  const { calculateLevel, calculateTotalXP, habits, getTodayStr, isHabitDueToday, addHabit, toggleCompletion } = useHabits();
+  const { calculateLevel, calculateTotalXP, habits, loading: habitsLoading, getTodayStr, isHabitDueToday, addHabit, toggleCompletion } = useHabits();
   const { theme, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllRead, clearAll, dismissNotification } = useNotifications();
   const { profile } = useProfile();
@@ -209,6 +258,18 @@ function DashboardInner({ user }: { user: User }) {
 
   // In-app reminder scheduler — checks every 60s for due reminders and habit time alerts
   useReminderScheduler();
+
+  // Keyboard shortcut: Ctrl+B to toggle sidebar collapse
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        setSidebarCollapsed((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRitual, setShowRitual] = useState(false);
@@ -254,9 +315,10 @@ function DashboardInner({ user }: { user: User }) {
     if (!settingsLoading && settings) {
       setShowOnboarding(!settings.onboardingCompleted);
       const today = new Date().toISOString().split("T")[0];
-      setShowRitual(settings.ritualLastDone !== today);
+      // Only prompt morning ritual on the primary daily dashboard overview, not when navigating to specific sub-sections
+      setShowRitual(settings.ritualLastDone !== today && activeSection === "dashboard");
     }
-  }, [settingsLoading, settings]);
+  }, [settingsLoading, settings, activeSection]);
 
   const handleApplyTemplate = async (templateId: string) => {
     const template = HABIT_TEMPLATES.find((t) => t.id === templateId);
@@ -391,6 +453,8 @@ function DashboardInner({ user }: { user: User }) {
 
   // Safe Initialization: Hydrate previous seen values WITHOUT triggering celebratory popups
   useEffect(() => {
+    if (habitsLoading) return; // Wait until habits have finished loading from storage/backend
+
     const currentCount = getBadgeCount();
     const currentLevel = calculateLevel();
 
@@ -403,13 +467,15 @@ function DashboardInner({ user }: { user: User }) {
         const storedBadgeCount = localStorage.getItem(seenBadgeKey);
         if (storedBadgeCount !== null) {
           savedSeenBadges = Math.max(Number(storedBadgeCount), currentCount);
+        } else {
+          localStorage.setItem(seenBadgeKey, String(currentCount));
         }
         const storedLevel = localStorage.getItem(seenLevelKey);
         if (storedLevel !== null) {
           savedSeenLevel = Math.max(Number(storedLevel), currentLevel);
+        } else {
+          localStorage.setItem(seenLevelKey, String(currentLevel));
         }
-        localStorage.setItem(seenBadgeKey, String(savedSeenBadges));
-        localStorage.setItem(seenLevelKey, String(savedSeenLevel));
       } catch {}
 
       prevBadgeCountRef.current = savedSeenBadges;
@@ -419,7 +485,7 @@ function DashboardInner({ user }: { user: User }) {
     }
 
     // Active session Level Up detection (only when user actively levels up)
-    if (prevLevelRef.current !== null && currentLevel > prevLevelRef.current) {
+    if (prevLevelRef.current !== null && currentLevel > prevLevelRef.current && !celebration.show) {
       const levelTitle =
         currentLevel >= 10
           ? "Legend"
@@ -464,7 +530,7 @@ function DashboardInner({ user }: { user: User }) {
         localStorage.setItem(seenBadgeKey, String(currentCount));
       } catch {}
     }
-  }, [getBadgeCount, calculateLevel, calculateTotalXP, celebration.show, seenBadgeKey, seenLevelKey]);
+  }, [habitsLoading, getBadgeCount, calculateLevel, calculateTotalXP, celebration.show, seenBadgeKey, seenLevelKey]);
 
   const level = calculateLevel();
   const xp = calculateTotalXP();
@@ -475,17 +541,31 @@ function DashboardInner({ user }: { user: User }) {
   const navigateToSection = useCallback((section: string) => {
     if (section === "focus" || section === "squad" || section === "study-squad") {
       setActiveSection("social");
+      try { window.location.hash = "#/dashboard?section=social"; } catch {}
     } else if (section === "pomodoro" || section === "timer") {
       setActiveSection("tracker");
+      try { window.location.hash = "#/dashboard?section=tracker"; } catch {}
     } else if (NAV_ITEMS.some((n) => n.key === section)) {
       setActiveSection(section as SectionKey);
+      try {
+        window.location.hash = section === "dashboard" ? "#/dashboard" : `#/dashboard?section=${section}`;
+      } catch {}
     }
   }, []);
 
   const renderSection = () => {
     const LoadingFallback = () => (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-muted-foreground">Loading...</div>
+      <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in duration-300">
+        <div className="relative w-12 h-12">
+          <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+          <div className="absolute inset-2 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="text-primary text-base font-mono font-black">⚡</span>
+          </div>
+        </div>
+        <div className="space-y-2 text-center">
+          <div className="h-2 w-32 bg-muted/60 rounded-full animate-pulse mx-auto" />
+          <div className="h-2 w-24 bg-muted/40 rounded-full animate-pulse mx-auto" />
+        </div>
       </div>
     );
 
@@ -568,7 +648,7 @@ function DashboardInner({ user }: { user: User }) {
               onClick={() => setShowMobileMenu(!showMobileMenu)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-surface border border-border text-xs font-black text-foreground shadow-2xs hover:border-primary/40 transition-all cursor-pointer"
             >
-              <span>{NAV_ITEMS.find((n) => n.key === activeSection)?.icon}</span>
+              {(() => { const ActiveIcon = NAV_ITEMS.find((n) => n.key === activeSection)?.icon; return ActiveIcon ? <ActiveIcon className="w-3.5 h-3.5 text-primary" /> : null; })()}
               <span className="truncate max-w-[105px] font-mono">
                 {NAV_ITEMS.find((n) => n.key === activeSection)?.label}
               </span>
@@ -602,7 +682,7 @@ function DashboardInner({ user }: { user: User }) {
                         }`}
                       >
                         <span className="flex items-center gap-2">
-                          <span>{item.icon}</span>
+                          <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
                           <span>{item.label}</span>
                         </span>
                         {activeSection === item.key && <span>✓</span>}
@@ -645,170 +725,32 @@ function DashboardInner({ user }: { user: User }) {
                   transition={{ duration: 0.15 }}
                   className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-card border border-border rounded-2xl shadow-2xl z-[1020] overflow-hidden ring-1 ring-black/10 dark:ring-white/10 flex flex-col"
                 >
-                  {/* GitHub-Style Filter Ribbon */}
-                  <div className="px-3 py-2 border-b border-border/80 bg-surface/90 flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1 bg-card p-0.5 rounded-xl border border-border/60">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setNotifFilter("all");
-                        }}
-                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                          notifFilter === "all"
-                            ? "bg-primary text-primary-foreground font-black"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        All ({notifications.length})
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setNotifFilter("unread");
-                        }}
-                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                          notifFilter === "unread"
-                            ? "bg-primary text-primary-foreground font-black"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <span>Unread</span>
-                        {unreadCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            markAllRead();
-                          }}
-                          className="px-1.5 py-0.5 rounded-lg text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-surface cursor-pointer"
-                          title="Mark all as read"
-                        >
-                          ✓ Read
-                        </button>
-                      )}
-                      {notifications.length > 0 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            clearAll();
-                          }}
-                          className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-surface cursor-pointer"
-                          title="Clear all"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {notifications.filter((n) => (notifFilter === "unread" ? !n.read : true)).length === 0 ? (
-                    <div className="px-4 py-8 text-center text-muted-foreground bg-card">
-                      <div className="w-10 h-10 mx-auto mb-2 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-xl shadow-inner">
-                        ✨
-                      </div>
-                      <div className="text-xs font-bold text-foreground">
-                        {notifFilter === "unread" ? "All Caught Up!" : "Inbox is Empty"}
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 max-w-[200px] mx-auto">
-                        {notifFilter === "unread" ? "No unread alerts waiting." : "No notifications yet."}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="max-h-72 overflow-y-auto p-2 space-y-1.5 bg-card">
-                      {notifications
-                        .filter((n) => (notifFilter === "unread" ? !n.read : true))
-                        .slice(0, 10)
-                        .map((n, i) => {
-                          const typeColor = 
-                            n.type === "alarm" ? "text-rose-400 bg-rose-500/15 border-rose-500/30" :
-                            n.type === "streak" ? "text-amber-400 bg-amber-500/15 border-amber-500/30" :
-                            n.type === "levelup" ? "text-purple-400 bg-purple-500/15 border-purple-500/30" :
-                            n.type === "achievement" ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/30" :
-                            n.type === "quest" ? "text-indigo-400 bg-indigo-500/15 border-indigo-500/30" :
-                            "text-cyan-400 bg-cyan-500/15 border-cyan-500/30";
-
-                          const typeIcon =
-                            n.type === "alarm" ? "⏰" :
-                            n.type === "streak" ? "🔥" :
-                            n.type === "levelup" ? "👑" :
-                            n.type === "achievement" ? "🏅" :
-                            n.type === "quest" ? "⚔️" :
-                            "📋";
-
-                          return (
-                            <motion.div
-                              key={n.id}
-                              initial={{ opacity: 0, y: 3 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: i * 0.02 }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markAsRead(n.id);
-                              }}
-                              className={`p-2.5 rounded-xl border transition-all cursor-pointer relative group flex items-start gap-2.5 ${
-                                !n.read
-                                  ? "bg-gradient-to-r from-primary/10 via-card to-card border-primary/40 shadow-2xs"
-                                  : "bg-surface/50 border-border/50 hover:border-border"
-                              }`}
-                            >
-                              <div className="w-7 h-7 rounded-lg bg-surface border border-border/60 flex items-center justify-center text-xs flex-shrink-0 shadow-2xs mt-0.5">
-                                {typeIcon}
-                              </div>
-                              <div className="min-w-0 flex-1 pr-3">
-                                <div className="flex items-center gap-1 flex-wrap">
-                                  <span className={`text-[8px] font-mono uppercase font-black px-1.5 py-0.2 rounded-md border ${typeColor}`}>
-                                    {n.type || "alert"}
-                                  </span>
-                                  <span className="text-[11px] font-bold text-foreground truncate">{n.title}</span>
-                                  {!n.read && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse ml-auto" />
-                                  )}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</div>
-                                <div className="text-[8.5px] text-muted-foreground/70 mt-1 font-mono">{n.time}</div>
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  dismissNotification(n.id);
-                                }}
-                                title="Dismiss notification"
-                                className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-surface transition-all cursor-pointer absolute top-2 right-2"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </motion.div>
-                          );
-                        })}
-                    </div>
-                  )}
-
-                  {/* Mobile Footer */}
-                  <div className="px-3 py-2 border-t border-border/80 bg-surface/60 flex items-center justify-between text-[10px]">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setNotifOpen(false);
-                        setActiveSection("reminders");
-                      }}
-                      className="text-muted-foreground hover:text-primary font-mono font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <span>🔔 Alert Preferences →</span>
-                    </button>
-                  </div>
+                  <NotificationDropdown
+                    notifications={notifications}
+                    unreadCount={unreadCount}
+                    notifFilter={notifFilter}
+                    onFilterChange={setNotifFilter}
+                    onMarkAllRead={markAllRead}
+                    onClearAll={clearAll}
+                    onMarkRead={markAsRead}
+                    onDismiss={dismissNotification}
+                    onNavigateReminders={() => {
+                      setNotifOpen(false);
+                      setActiveSection("reminders");
+                    }}
+                    maxListHeight="max-h-72"
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
           <button
             onClick={logout}
-            className="bg-transparent border-none text-muted-foreground hover:text-destructive cursor-pointer p-1.5 flex items-center justify-center transition-colors"
+            aria-label="Log out"
+            className="bg-transparent border-none text-muted-foreground hover:text-destructive cursor-pointer p-1.5 flex items-center justify-center transition-colors rounded-lg hover:bg-destructive/10"
             title="Log out"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           </button>
         </div>
       </div>
@@ -908,7 +850,7 @@ function DashboardInner({ user }: { user: User }) {
                               ${sidebarCollapsed ? "justify-center px-0" : ""}
                             `}
                           >
-                            <span className="text-base flex-shrink-0">{item.icon}</span>
+                            <item.icon className="w-4 h-4 flex-shrink-0" />
                             {!sidebarCollapsed && (
                               <span className="truncate flex-1">{item.label}</span>
                             )}
@@ -973,7 +915,7 @@ function DashboardInner({ user }: { user: User }) {
               <span className="text-muted-foreground">workspace</span>
               <span className="text-muted-foreground/60">/</span>
               <span className="font-bold text-foreground flex items-center gap-1.5 bg-surface px-2.5 py-1 rounded-lg border border-border/60">
-                <span>{NAV_ITEMS.find((n) => n.key === activeSection)?.icon}</span>
+                {(() => { const HeaderIcon = NAV_ITEMS.find((n) => n.key === activeSection)?.icon; return HeaderIcon ? <HeaderIcon className="w-3.5 h-3.5 text-primary" /> : null; })()}
                 <span>{NAV_ITEMS.find((n) => n.key === activeSection)?.label}</span>
               </span>
             </div>
@@ -1016,178 +958,21 @@ function DashboardInner({ user }: { user: User }) {
                       transition={{ duration: 0.15 }}
                       className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-2xl z-[120] overflow-hidden ring-1 ring-black/10 dark:ring-white/10 flex flex-col"
                     >
-                      {/* Top GitHub-Style Filter Ribbon */}
-                      <div className="px-3.5 py-2.5 border-b border-border/80 bg-surface/90 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1 bg-card p-0.5 rounded-xl border border-border/60">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setNotifFilter("all");
-                            }}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                              notifFilter === "all"
-                                ? "bg-primary text-primary-foreground font-black shadow-xs"
-                                : "text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            All ({notifications.length})
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setNotifFilter("unread");
-                            }}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                              notifFilter === "unread"
-                                ? "bg-primary text-primary-foreground font-black shadow-xs"
-                                : "text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            <span>Unread</span>
-                            {unreadCount > 0 && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                            )}
-                          </button>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          {unreadCount > 0 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markAllRead();
-                              }}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface text-[11px] font-bold transition-colors cursor-pointer"
-                              title="Mark all as read"
-                            >
-                              ✓ Read
-                            </button>
-                          )}
-                          {notifications.length > 0 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                clearAll();
-                              }}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-surface text-[11px] font-bold transition-colors cursor-pointer"
-                              title="Clear all"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* List Area */}
-                      {notifications.filter((n) => (notifFilter === "unread" ? !n.read : true)).length === 0 ? (
-                        <div className="px-6 py-10 text-center text-muted-foreground bg-card">
-                          <div className="w-12 h-12 mx-auto mb-2.5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl shadow-inner">
-                            ✨
-                          </div>
-                          <div className="text-xs font-bold text-foreground">
-                            {notifFilter === "unread" ? "All Caught Up!" : "Inbox is Empty"}
-                          </div>
-                          <p className="text-[11px] text-muted-foreground mt-1 max-w-[220px] mx-auto leading-relaxed">
-                            {notifFilter === "unread"
-                              ? "You have completed all active habit alerts and streak reminders."
-                              : "Habit alerts, streak freezes, and milestone updates will appear here."}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="max-h-80 overflow-y-auto p-2 space-y-1.5 bg-card">
-                          {notifications
-                            .filter((n) => (notifFilter === "unread" ? !n.read : true))
-                            .slice(0, 15)
-                            .map((n, i) => {
-                              const typeColor = 
-                                n.type === "alarm" ? "text-rose-400 bg-rose-500/15 border-rose-500/30" :
-                                n.type === "streak" ? "text-amber-400 bg-amber-500/15 border-amber-500/30" :
-                                n.type === "levelup" ? "text-purple-400 bg-purple-500/15 border-purple-500/30" :
-                                n.type === "achievement" ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/30" :
-                                n.type === "quest" ? "text-indigo-400 bg-indigo-500/15 border-indigo-500/30" :
-                                "text-cyan-400 bg-cyan-500/15 border-cyan-500/30";
-
-                              const typeIcon =
-                                n.type === "alarm" ? "⏰" :
-                                n.type === "streak" ? "🔥" :
-                                n.type === "levelup" ? "👑" :
-                                n.type === "achievement" ? "🏅" :
-                                n.type === "quest" ? "⚔️" :
-                                "📋";
-
-                              return (
-                                <motion.div
-                                  key={n.id}
-                                  initial={{ opacity: 0, y: 4 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: i * 0.02 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    markAsRead(n.id);
-                                  }}
-                                  className={`p-3 rounded-2xl border transition-all cursor-pointer relative group flex items-start gap-3 ${
-                                    !n.read
-                                      ? "bg-gradient-to-r from-primary/10 via-card to-card border-primary/40 shadow-xs"
-                                      : "bg-surface/40 border-border/50 hover:border-border hover:bg-surface/70"
-                                  }`}
-                                >
-                                  {/* Icon container */}
-                                  <div className="w-8 h-8 rounded-xl bg-surface border border-border/60 flex items-center justify-center text-sm flex-shrink-0 shadow-2xs mt-0.5">
-                                    {typeIcon}
-                                  </div>
-
-                                  {/* Content */}
-                                  <div className="min-w-0 flex-1 pr-3">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className={`text-[8.5px] font-mono uppercase font-black px-1.5 py-0.2 rounded-md border ${typeColor}`}>
-                                        {n.type || "alert"}
-                                      </span>
-                                      <span className="text-xs font-bold text-foreground truncate">{n.title}</span>
-                                      {!n.read && (
-                                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse ml-auto" />
-                                      )}
-                                    </div>
-                                    <div className="text-[11px] text-muted-foreground leading-snug mt-1 line-clamp-2">
-                                      {n.message}
-                                    </div>
-                                    <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-border/30 text-[9.5px] text-muted-foreground font-mono">
-                                      <span>{n.time}</span>
-                                      {!n.read && (
-                                        <span className="text-primary font-bold hover:underline">Click to mark read</span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Quick dismiss button */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      dismissNotification(n.id);
-                                    }}
-                                    title="Dismiss"
-                                    className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-surface transition-all cursor-pointer absolute top-2.5 right-2.5"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                  </button>
-                                </motion.div>
-                              );
-                            })}
-                        </div>
-                      )}
-
-                      {/* Dropdown Footer Quick Link */}
-                      <div className="px-3.5 py-2 border-t border-border/80 bg-surface/60 flex items-center justify-between text-[11px]">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setNotifOpen(false);
-                            setActiveSection("reminders");
-                          }}
-                          className="text-muted-foreground hover:text-primary font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                          <span>🔔 Manage Alert Preferences →</span>
-                        </button>
-                      </div>
+                      <NotificationDropdown
+                        notifications={notifications}
+                        unreadCount={unreadCount}
+                        notifFilter={notifFilter}
+                        onFilterChange={setNotifFilter}
+                        onMarkAllRead={markAllRead}
+                        onClearAll={clearAll}
+                        onMarkRead={markAsRead}
+                        onDismiss={dismissNotification}
+                        onNavigateReminders={() => {
+                          setNotifOpen(false);
+                          setActiveSection("reminders");
+                        }}
+                        maxListHeight="max-h-80"
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1203,7 +988,8 @@ function DashboardInner({ user }: { user: User }) {
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-4 pb-28 md:px-8 md:py-7 md:pb-8 overflow-y-auto overflow-x-hidden max-w-full">
+          <main className="flex-1 px-4 py-3.5 md:px-7 md:py-4 md:pb-8 overflow-y-auto overflow-x-hidden max-w-full" style={{ paddingBottom: 'max(7rem, calc(7rem + env(safe-area-inset-bottom)))' }}>
+            <NotificationBar onNavigate={navigateToSection} />
             <AnimatedSection sectionKey={activeSection}>
               {renderSection()}
             </AnimatedSection>
@@ -1220,7 +1006,8 @@ function DashboardInner({ user }: { user: User }) {
             activeSection === "dashboard" ? "text-primary font-black scale-105" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <span className="text-lg">⚡</span>
+          <span className={`w-1 h-1 rounded-full mb-0.5 ${activeSection === "dashboard" ? "bg-primary" : "bg-transparent"}`} />
+          <LayoutDashboard className={`w-5 h-5 mb-0.5 ${activeSection === "dashboard" ? "text-primary" : "text-muted-foreground"}`} />
           <span>Today</span>
         </button>
 
@@ -1231,7 +1018,8 @@ function DashboardInner({ user }: { user: User }) {
             activeSection === "tracker" ? "text-primary font-black scale-105" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <span className="text-lg">🎯</span>
+          <span className={`w-1 h-1 rounded-full mb-0.5 ${activeSection === "tracker" ? "bg-primary" : "bg-transparent"}`} />
+          <Target className={`w-5 h-5 mb-0.5 ${activeSection === "tracker" ? "text-primary" : "text-muted-foreground"}`} />
           <span>Focus</span>
         </button>
 
@@ -1242,7 +1030,8 @@ function DashboardInner({ user }: { user: User }) {
             activeSection === "habits" ? "text-primary font-black scale-105" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <span className="text-lg">⚙️</span>
+          <span className={`w-1 h-1 rounded-full mb-0.5 ${activeSection === "habits" ? "bg-primary" : "bg-transparent"}`} />
+          <Sliders className={`w-5 h-5 mb-0.5 ${activeSection === "habits" ? "text-primary" : "text-muted-foreground"}`} />
           <span>Habits</span>
         </button>
 
@@ -1253,7 +1042,8 @@ function DashboardInner({ user }: { user: User }) {
             activeSection === "analytics" ? "text-primary font-black scale-105" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <span className="text-lg">📊</span>
+          <span className={`w-1 h-1 rounded-full mb-0.5 ${activeSection === "analytics" ? "bg-primary" : "bg-transparent"}`} />
+          <BarChart3 className={`w-5 h-5 mb-0.5 ${activeSection === "analytics" ? "text-primary" : "text-muted-foreground"}`} />
           <span>Stats</span>
         </button>
 
@@ -1384,9 +1174,22 @@ const DashboardPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="text-4xl mb-3 animate-pulse">⚡</div>
-          <div className="text-muted-foreground text-sm">Loading...</div>
+        <div className="text-center space-y-4 animate-in fade-in duration-500">
+          <div className="relative w-16 h-16 mx-auto">
+            <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            <div className="absolute inset-1.5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <span className="text-2xl">⚡</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-foreground font-mono">PPS Studio</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Loading your performance workspace...</div>
+          </div>
+          <div className="flex gap-1 justify-center">
+            {[0,1,2].map(i => (
+              <div key={i} className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
         </div>
       </div>
     );

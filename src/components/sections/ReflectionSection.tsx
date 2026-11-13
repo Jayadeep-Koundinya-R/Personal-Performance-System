@@ -14,13 +14,14 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useReflections } from "@/hooks/use-reflections";
 import { useSubscription } from "@/hooks/use-subscription";
+import { Button } from "@/components/ui/button";
 import { BookOpen, Sparkles, Search, Tag, Smile, Frown, Meh, Flame, Zap, Trash2, Copy, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import EmptyState from "@/components/EmptyState";
 
 const MOODS = [
-  { key: "unstoppable", emoji: "🔥", label: "Unstoppable", color: "text-amber-400" },
+  { key: "unstoppable", emoji: "🔥", label: "Unstoppable", color: "text-pps-orange" },
   { key: "great", emoji: "😊", label: "Great", color: "text-pps-green" },
   { key: "okay", emoji: "😐", label: "Okay", color: "text-primary" },
   { key: "low", emoji: "😔", label: "Low Energy", color: "text-pps-orange" },
@@ -102,7 +103,7 @@ const ReflectionSection = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20 min-h-[300px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3.5"></div>
-        <div className="text-slate-300 text-sm font-extrabold font-mono">Loading reflections timeline...</div>
+        <div className="text-muted-foreground text-sm font-extrabold font-mono">Loading reflections timeline...</div>
       </div>
     );
   }
@@ -134,19 +135,21 @@ const ReflectionSection = () => {
           <h3 className="text-xs font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
             <span>💡 1-Click Guided Prompts</span>
           </h3>
-          <span className="text-[11px] font-mono font-bold text-sky-300">Click to Insert</span>
+          <span className="text-[11px] font-mono font-bold text-secondary">Click to Insert</span>
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
           {GUIDED_PROMPTS.map((p) => (
-            <button
+            <Button
               key={p.title}
+              variant="ghost"
+              size="sm"
               onClick={() => insertPrompt(p.text)}
-              className="text-xs font-extrabold bg-surface border border-border/80 text-foreground hover:border-primary/40 hover:bg-primary/10 px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
+              className="bg-surface border border-border/80 text-foreground hover:border-primary/40 hover:bg-primary/10 px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
             >
               <Sparkles className="w-3.5 h-3.5 text-primary" />
               <span>{p.title}</span>
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -175,26 +178,40 @@ const ReflectionSection = () => {
             <label className="text-xs font-extrabold text-foreground font-mono">1. Select Mood</label>
             <div className="flex items-center gap-2 pt-1">
               {MOODS.map((m) => (
-                <button
+                <Button
                   key={m.key}
-                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setMood(m.key)}
-                  className={`text-2xl cursor-pointer transition-all duration-200 ${
+                  className={`text-2xl cursor-pointer transition-all duration-200 p-1.5 ${
                     mood === m.key ? "scale-125 opacity-100 drop-shadow-md" : "opacity-40 hover:opacity-80"
                   }`}
                   title={m.label}
                 >
                   {m.emoji}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
 
-          {/* Energy Rating Slider (1-10) */}
+          {/* Energy Rating Slider (1-10) with Vitality Tier Alignment */}
           <div className="space-y-1.5">
-            <div className="flex justify-between text-xs font-extrabold text-foreground font-mono">
+            <div className="flex justify-between text-xs font-extrabold text-foreground font-mono items-center">
               <span>2. Energy Level</span>
-              <span className="text-primary font-bold">{energyLevel} / 10</span>
+              <div className="flex items-center gap-1.5">
+<span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+  energyLevel >= 8
+    ? "bg-pps-green/15 text-pps-green border border-pps-green/30"
+    : energyLevel >= 5
+    ? "bg-primary/15 text-primary border border-primary/30"
+    : energyLevel >= 3
+    ? "bg-pps-orange/15 text-pps-orange border border-pps-orange/30"
+    : "bg-destructive/15 text-destructive border border-destructive/30"
+}`}>
+                  {energyLevel >= 8 ? "Peak Flow 🔥" : energyLevel >= 5 ? "Optimal ⚡" : energyLevel >= 3 ? "Building 🌿" : "Dormant 💤"}
+                </span>
+                <span className="text-primary font-bold">{energyLevel}/10</span>
+              </div>
             </div>
             <input
               type="range"
@@ -211,9 +228,10 @@ const ReflectionSection = () => {
             <label className="text-xs font-extrabold text-foreground font-mono">3. Add Tag</label>
             <div className="flex items-center gap-1 overflow-x-auto pb-1 max-w-full">
               {TAG_SUGGESTIONS.map((tag) => (
-                <button
+                <Button
                   key={tag}
-                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => setSelectedTag(selectedTag === tag ? "" : tag)}
                   className={`text-[11px] font-mono px-2 py-1 rounded-lg border font-bold transition-all cursor-pointer ${
                     selectedTag === tag
@@ -222,7 +240,7 @@ const ReflectionSection = () => {
                   }`}
                 >
                   {tag}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -230,13 +248,13 @@ const ReflectionSection = () => {
 
         {/* Save Button Row */}
         <div className="pt-2 flex justify-end">
-          <button
+          <Button
             onClick={save}
-            className="text-xs bg-primary text-primary-foreground font-extrabold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+            className="font-extrabold px-6 py-2.5 rounded-xl shadow-md flex items-center gap-1.5"
           >
             <Check className="w-4 h-4" />
             <span>Save Reflection Entry</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -292,24 +310,28 @@ const ReflectionSection = () => {
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      <button
+                      <Button
                         onClick={() => copyEntry(entry.text)}
+                        variant="ghost"
+                        size="sm"
                         className="p-1.5 bg-surface border border-border/80 text-muted-foreground hover:text-foreground rounded-lg transition-all cursor-pointer"
                         title="Copy to Clipboard"
                       >
                         <Copy className="w-3.5 h-3.5" />
-                      </button>
+                      </Button>
 
-                      <button
+                      <Button
                         onClick={() => {
                           deleteEntry(entry.id);
                           toast.success("Reflection deleted");
                         }}
+                        variant="ghost"
+                        size="sm"
                         className="p-1.5 bg-surface border border-destructive/40 text-destructive hover:bg-destructive/10 rounded-lg transition-all cursor-pointer"
                         title="Delete Reflection"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
 

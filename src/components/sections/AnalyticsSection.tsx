@@ -32,6 +32,7 @@ import {
   Info,
   CheckCircle2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
@@ -314,8 +315,10 @@ const AnalyticsSection = () => {
             ].map((t) => {
               const isCurrent = timeRange === t.key;
               return (
-                <button
+                <Button
                   key={t.key}
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setTimeRange(t.key)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer ${
                     isCurrent
@@ -324,20 +327,22 @@ const AnalyticsSection = () => {
                   }`}
                 >
                   {t.label}
-                </button>
+                </Button>
               );
             })}
           </div>
 
           {/* Export PDF Button */}
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleExportPDF}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-surface border border-border/80 hover:border-primary text-foreground text-xs font-bold transition-all hover:shadow-sm cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border-border/80 text-foreground text-xs font-bold transition-all hover:shadow-sm cursor-pointer"
             title="Download executive PDF report"
           >
             <Download className="w-3.5 h-3.5 text-primary" />
             <span className="hidden sm:inline">Export PDF</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -384,7 +389,7 @@ const AnalyticsSection = () => {
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs font-mono font-bold text-muted-foreground px-1">
           <span className="flex items-center gap-1.5 uppercase tracking-wider text-[10px]">
-            <Award className="w-3.5 h-3.5 text-amber-400" />
+            <Award className="w-3.5 h-3.5 text-pps-orange" />
             <span>Executive Records Vault</span>
           </span>
           <span className="text-[10px] text-muted-foreground/80 font-mono hidden sm:inline">
@@ -459,7 +464,7 @@ const AnalyticsSection = () => {
               <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-extrabold">
                 Lifetime Completions
               </span>
-              <div className="w-7 h-7 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-sm">
+              <div className="w-7 h-7 rounded-lg bg-accent/15 border border-accent/30 flex items-center justify-center text-sm">
                 🏆
               </div>
             </div>
@@ -467,7 +472,7 @@ const AnalyticsSection = () => {
               <div className="text-xl sm:text-2xl font-black font-mono text-foreground">
                 {records.totalLifetimeCompletions} <span className="text-xs font-sans text-muted-foreground">Done</span>
               </div>
-              <div className="text-[11px] text-cyan-400 font-mono font-semibold">
+              <div className="text-[11px] text-accent font-mono font-semibold">
                 Level {currentLevel} • {totalXP} Total XP
               </div>
             </div>
@@ -500,7 +505,7 @@ const AnalyticsSection = () => {
             {weeklyCurve.peakDay && (
               <div className="text-right hidden sm:block">
                 <span className="text-muted-foreground">Peak: </span>
-                <span className="font-black text-emerald-400">
+                <span className="font-black text-pps-green">
                   {weeklyCurve.peakDay.dayLabel} ({weeklyCurve.peakDay.focusMinutes}m)
                 </span>
               </div>
@@ -515,7 +520,7 @@ const AnalyticsSection = () => {
             <div className="absolute top-0 right-4 bg-surface border border-primary/40 px-3 py-1.5 rounded-xl shadow-lg text-xs font-mono z-10 flex items-center gap-2 pointer-events-none">
               <span className="font-bold text-foreground">{activeCurveDay.dayLabel} ({activeCurveDay.dateStr}):</span>
               <span className="font-black text-primary">{activeCurveDay.focusMinutes}m</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${activeCurveDay.meetsTarget ? "bg-emerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${activeCurveDay.meetsTarget ? "bg-pps-green/20 text-pps-green" : "bg-muted text-muted-foreground"}`}>
                 {activeCurveDay.meetsTarget ? "✓ Met Target" : `${Math.round((activeCurveDay.focusMinutes / weeklyCurve.targetMinutes) * 100)}% of goal`}
               </span>
             </div>
@@ -537,7 +542,7 @@ const AnalyticsSection = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-border/40 pb-3">
           <div>
             <h3 className="text-xs font-black uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-emerald-400" />
+              <Calendar className="w-4 h-4 text-pps-green" />
               <span>Activity Heatmap Matrix — Last 6 Months</span>
             </h3>
             <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
@@ -602,10 +607,10 @@ const AnalyticsSection = () => {
         <div className="bg-card border border-border/80 p-5 rounded-3xl shadow-xl space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5">
             <h3 className="text-xs font-black uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+              <Zap className="w-4 h-4 text-pps-orange shrink-0" />
               <span>Circadian & Energy Correlation</span>
             </h3>
-            <span className={`text-[9.5px] font-mono font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${energyData.check.sufficient ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-amber-500/15 text-amber-300 border-amber-500/30"}`}>
+            <span className={`text-[9.5px] font-mono font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${energyData.check.sufficient ? "bg-pps-green/20 text-pps-green border border-pps-green/30" : "bg-pps-orange/15 text-pps-orange border border-pps-orange/30"}`}>
               {energyData.check.sufficient ? "14D Active" : "14-Day Baseline"}
             </span>
           </div>
@@ -614,7 +619,7 @@ const AnalyticsSection = () => {
             /* Honest Empty State for < 14 Days */
             <div className="p-5 rounded-2xl bg-surface/50 border border-border/70 space-y-3 text-left">
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 text-amber-400 text-lg">
+                <div className="w-9 h-9 rounded-xl bg-pps-orange/15 border border-pps-orange/30 flex items-center justify-center shrink-0 text-pps-orange text-lg">
                   <Info className="w-4 h-4" />
                 </div>
                 <div className="space-y-1 min-w-0">
@@ -635,7 +640,7 @@ const AnalyticsSection = () => {
                 </div>
                 <div className="h-2 bg-surface border border-border/80 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-primary to-amber-500 rounded-full transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-primary to-pps-orange rounded-full transition-all duration-500"
                     style={{ width: `${energyData.check.progressPct}%` }}
                   />
                 </div>
@@ -659,7 +664,7 @@ const AnalyticsSection = () => {
                     <div className="text-[11px] text-muted-foreground font-medium">Logged on {energyData.moodMap.high.days} days</div>
                   </div>
                 </div>
-                <div className="text-base font-extrabold font-mono text-emerald-400">{energyData.highAvg} Habits/Day</div>
+                <div className="text-base font-extrabold font-mono text-pps-green">{energyData.highAvg} Habits/Day</div>
               </div>
 
               <div className="bg-surface/60 border border-border/60 p-3 rounded-2xl flex items-center justify-between">
@@ -713,7 +718,7 @@ const AnalyticsSection = () => {
           ) : (
             habitRankings.map(({ habit, doneCount, consistencyPct, status }, rank) => {
               let statusBadge = (
-                <span className="text-[10.5px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                <span className="text-[10.5px] font-mono font-bold bg-pps-green/15 text-pps-green border border-pps-green/30 px-2 py-0.5 rounded-full">
                   🏆 Master ({consistencyPct}%)
                 </span>
               );
@@ -919,10 +924,10 @@ const FocusCurveChart: React.FC<FocusCurveChartProps> = ({
   );
 };
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 /* ── Enhanced Heatmap Component with 2m Micro Partial State ── */
 function EnhancedHeatmapGrid({ habits }: { habits: ReturnType<typeof useHabits>["habits"] }) {
-  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
   const { weeks, monthLabels } = useMemo(() => {
     const DAYS = 182;
     const today = new Date();

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Lock, Laptop } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface SecurityTabProps {
   onUpdatePassword: (password: string) => Promise<string | null>;
@@ -70,12 +71,12 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ onUpdatePassword }) =>
             />
           </div>
 
-          <button
+          <Button
             onClick={changePassword}
             className="w-full text-xs bg-primary text-primary-foreground font-extrabold py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm mt-2"
           >
             Update Account Password
-          </button>
+          </Button>
         </div>
       </div>
 

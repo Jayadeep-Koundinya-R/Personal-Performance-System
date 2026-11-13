@@ -15,17 +15,19 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
 import { useSubscription } from "@/hooks/use-subscription";
-import { Flame, Shield, Award, AlertTriangle, Check, Sparkles, Zap, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Flame, Shield, Award, AlertTriangle, Check, Sparkles, Zap, Lock, Layers } from "lucide-react";
+import { getRecoveryXPClaimedDates } from "@/lib/dashboard/microHabits";
 import { toast } from "sonner";
 
 // Flame Tier Helper
 function getFlameTier(streak: number) {
-  if (streak >= 30) return { name: "Immortal Phoenix", icon: "🏆", color: "text-amber-400", bg: "bg-amber-500/15 border-amber-500/30", nextGoal: 100, rank: "Tier 5" };
-  if (streak >= 14) return { name: "Legendary Blaze", icon: "💎", color: "text-purple-400", bg: "bg-purple-500/15 border-purple-500/30", nextGoal: 30, rank: "Tier 4" };
+  if (streak >= 30) return { name: "Immortal Phoenix", icon: "🏆", color: "text-accent dark:text-accent", bg: "bg-accent/15 border-accent/30", nextGoal: 100, rank: "Tier 5" };
+  if (streak >= 14) return { name: "Legendary Blaze", icon: "💎", color: "text-secondary dark:text-accent", bg: "bg-secondary/15 border-accent/30", nextGoal: 30, rank: "Tier 4" };
   if (streak >= 7) return { name: "Inferno Fire", icon: "🥇", color: "text-pps-orange", bg: "bg-pps-orange/15 border-pps-orange/30", nextGoal: 14, rank: "Tier 3" };
   if (streak >= 4) return { name: "Ignited Flame", icon: "🥈", color: "text-primary", bg: "bg-primary/15 border-primary/30", nextGoal: 7, rank: "Tier 2" };
   if (streak >= 1) return { name: "Spark Momentum", icon: "🥉", color: "text-pps-yellow", bg: "bg-pps-yellow/15 border-pps-yellow/30", nextGoal: 4, rank: "Tier 1" };
-  return { name: "Dormant", icon: "💀", color: "text-slate-400", bg: "bg-surface/50 border-border/40", nextGoal: 1, rank: "Unranked" };
+  return { name: "Dormant", icon: "💀", color: "text-muted-foreground", bg: "bg-surface/50 border-border/40", nextGoal: 1, rank: "Unranked" };
 }
 
 // Milestones Definition
@@ -38,7 +40,7 @@ const MILESTONES = [
 ];
 
 const StreakSection = () => {
-  const { habits, getMaxStreak, getTotalFreezeCredits, applyStreakFreeze, toggleCompletion, getTodayStr, isHabitDueToday } = useHabits();
+  const { habits, getMaxStreak, getTotalFreezeCredits, applyStreakFreeze, toggleCompletion, completeHabit, getTodayStr, isHabitDueToday } = useHabits();
   const { limits } = useSubscription();
   const todayStr = getTodayStr();
 
@@ -49,6 +51,19 @@ const StreakSection = () => {
   const totalCompletions = habits.reduce((s, h) => s + (h.completedDates || []).length, 0);
 
   const activeHabits = useMemo(() => habits.filter((h) => !h.archived), [habits]);
+
+  // Rolling 7-day Rest Days calculation (max 2 per week per Agni 2.0)
+  const rolling7DaysRestDays = useMemo(() => {
+    try {
+      const dates = getRecoveryXPClaimedDates();
+      const now = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 7);
+      return dates.filter((d: string) => new Date(d) >= sevenDaysAgo).length;
+    } catch {
+      return 0;
+    }
+  }, []);
 
   // At-Risk Habits (Has streak > 0, due today, but NOT yet completed today)
   const atRiskHabits = useMemo(() => {
@@ -71,9 +86,10 @@ const StreakSection = () => {
 
   // Handle 1-click completion
   const handleToggle = (habitId: string, done: boolean) => {
-    toggleCompletion(habitId);
-    if (!done) {
-      toast.success("🔥 Habit completed! Streak extended.");
+    if (done) {
+      toggleCompletion(habitId);
+    } else {
+      completeHabit(habitId, "full");
     }
   };
 
@@ -95,12 +111,21 @@ const StreakSection = () => {
           </p>
         </div>
 
-        {/* Inventory Badge */}
-        <div className="flex items-center gap-2 bg-card border border-border/80 px-3.5 py-1.5 rounded-2xl shadow-xs">
-          <Shield className="w-4 h-4 text-primary" />
-          <span className="text-xs font-mono font-extrabold text-foreground">
-            {freezeCredits} Shield{freezeCredits !== 1 ? "s" : ""} Available
-          </span>
+        {/* Inventory Badges */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 bg-card border border-border/80 px-3.5 py-1.5 rounded-2xl shadow-xs">
+            <Shield className="w-4 h-4 text-primary" />
+            <span className="text-xs font-mono font-extrabold text-foreground">
+              {freezeCredits} Shield{freezeCredits !== 1 ? "s" : ""} Available
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 bg-card border border-border/80 px-3.5 py-1.5 rounded-2xl shadow-xs">
+            <span className="text-xs">🌿</span>
+            <span className="text-xs font-mono font-extrabold text-foreground">
+              {rolling7DaysRestDays}/2 Rest Days Used
+            </span>
+          </div>
         </div>
       </div>
 
@@ -115,7 +140,7 @@ const StreakSection = () => {
           <div className="text-6xl sm:text-7xl font-extrabold font-mono text-pps-orange tracking-tight drop-shadow-md">
             {maxStreak}
           </div>
-          <div className="text-xs font-extrabold uppercase font-mono tracking-wider text-slate-200 mt-1">
+          <div className="text-xs font-extrabold uppercase font-mono tracking-wider text-muted-foreground mt-1">
             Day Unbroken Chain
           </div>
         </div>
@@ -194,7 +219,7 @@ const StreakSection = () => {
             return (
               <div
                 key={ds}
-                className={`p-2 rounded-2xl border text-center transition-all ${
+                className={`p-1.5 sm:p-2 rounded-2xl border text-center transition-all overflow-hidden ${
                   completedCount > 0
                     ? "bg-pps-green/10 border-pps-green/40 shadow-2xs"
                     : isToday
@@ -206,8 +231,17 @@ const StreakSection = () => {
                 <div className="text-sm my-0.5">
                   {completedCount > 0 ? "✓" : isToday ? "⏳" : "—"}
                 </div>
-                <div className="text-[9px] font-mono text-muted-foreground">
-                  {completedCount > 0 ? `${completedCount} done` : isToday ? "in progress" : "rest"}
+                <div className="text-[9px] font-mono text-muted-foreground truncate">
+                  {completedCount > 0 ? (
+                    `${completedCount} done`
+                  ) : isToday ? (
+                    <>
+                      <span className="hidden sm:inline">in progress</span>
+                      <span className="sm:hidden">today</span>
+                    </>
+                  ) : (
+                    "rest"
+                  )}
                 </div>
               </div>
             );
@@ -241,14 +275,39 @@ const StreakSection = () => {
 
             <div className="flex items-center gap-2 flex-wrap">
               {atRiskHabits.map((h) => (
-                <button
-                  key={h.id}
-                  onClick={() => handleToggle(h.id, false)}
-                  className="bg-destructive text-destructive-foreground text-xs font-extrabold px-3 py-1.5 rounded-xl hover:bg-destructive/90 transition-all cursor-pointer shadow-xs flex items-center gap-1 font-mono"
-                >
-                  <span>✓ Complete {h.name}</span>
-                </button>
+                <div key={h.id} className="flex items-center gap-1 bg-surface/70 border border-border/80 p-1 rounded-xl">
+                  <span className="text-[11px] font-bold text-foreground px-2 truncate max-w-[120px]">{h.name}</span>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => completeHabit(h.id, "full")}
+                title="Full completion (+10 XP)"
+              >
+                <span>✓ Full (+10 XP)</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => completeHabit(h.id, "micro")}
+                className="border-pps-orange/40 text-pps-orange hover:bg-pps-orange/20 hover:text-black"
+                title="2-minute emergency micro habit (+2 XP, streak protected)"
+              >
+                <Layers className="w-3 h-3" />
+                <span>2m Micro</span>
+              </Button>
+                </div>
               ))}
+              {rolling7DaysRestDays < 2 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => completeHabit(atRiskHabits[0].id, "rest")}
+                className="border-pps-green/40 text-pps-green hover:bg-pps-green/20 hover:text-black"
+                title="Claim Rest Day (+5 Recovery XP, shields streak)"
+              >
+                <span>🌿 Claim Rest Day (+5 XP)</span>
+              </Button>
+              )}
             </div>
           </motion.div>
         )}
@@ -371,28 +430,41 @@ const StreakSection = () => {
 
                   {/* Footer Action Buttons */}
                   <div className="pt-1 flex items-center gap-2">
-                    <button
-                      onClick={() => handleToggle(h.id, isDoneToday)}
-                      className={`flex-1 text-xs font-extrabold py-2 px-3 rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 font-mono ${
-                        isDoneToday
-                          ? "bg-pps-green/15 text-pps-green border-pps-green/30"
-                          : "bg-primary text-primary-foreground border-primary hover:bg-primary/90 shadow-xs"
-                      }`}
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>{isDoneToday ? "Completed Today ✓" : "Complete Today"}</span>
-                    </button>
+                <Button
+                  size="sm"
+                  variant={isDoneToday ? "outline" : "default"}
+                  className={`flex-1 border ${isDoneToday ? "border-pps-green/30 text-pps-green hover:bg-pps-green/10" : "border-primary"}`}
+                  onClick={() => handleToggle(h.id, isDoneToday)}
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{isDoneToday ? "Completed Today ✓" : "Complete (+10 XP)"}</span>
+                </Button>
 
-                    {(h.freezeCredits || 0) > 0 && streak > 0 && (
-                      <button
-                        onClick={() => handleFreeze(h.id)}
-                        className="p-2 bg-surface border border-border/80 text-primary hover:bg-primary/10 rounded-xl transition-all cursor-pointer flex items-center justify-center"
-                        title="Use Streak Shield"
-                      >
-                        <Shield className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+                {!isDoneToday && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => completeHabit(h.id, "micro")}
+                    className="border-pps-orange/40 text-pps-orange hover:bg-pps-orange/20 hover:text-black"
+                    title="2-minute emergency micro habit (+2 XP, streak protected)"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>2m Micro</span>
+                  </Button>
+                )}
+
+                {(h.freezeCredits || 0) > 0 && streak > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleFreeze(h.id)}
+                    className="p-2 text-primary hover:bg-primary/10"
+                    title="Use Streak Shield"
+                  >
+                    <Shield className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
                 </motion.div>
               );
             })

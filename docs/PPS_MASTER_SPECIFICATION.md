@@ -32,6 +32,12 @@
    - [Phase 3: The Dopamine & Motivation Engine (Personas & Time Slicer)](#phase-3-the-dopamine--motivation-engine-personas--time-slicer)
    - [Phase 4: Dashboard V2 Deep Polish & Analytics Studio](#phase-4-dashboard-v2-deep-polish--analytics-studio)
    - [Phase 5: Native Mobile Hardening & Viral Social Bridge](#phase-5-native-mobile-hardening--viral-social-bridge)
+   - [Phase 6: High-Signal Notifications & Capacitor Bridge](#phase-6-high-signal-notifications--capacitor-bridge)
+6. [The High-Signal Notification Bar & Reason/Fact Engine](#6-the-high-signal-notification-bar--reasonfact-engine)
+   - [6.1 The Zero-Spam Justification Rule](#61-the-zero-spam-justification-rule)
+   - [6.2 The Main Notification Bar HUD (In-App Architecture)](#62-the-main-notification-bar-hud-in-app-architecture)
+   - [6.3 Verified Fact-Based Notification Matrix](#63-verified-fact-based-notification-matrix)
+   - [6.4 Capacitor Native Local Notifications Bridge](#64-capacitor-native-local-notifications-bridge)
 
 ---
 
@@ -284,3 +290,81 @@ graph TD
 - [x] **Task 5.2:** Build the WhatsApp Study Buddy invite generator (`whatsapp://send?text=...`) using the 6-character squad invite engine.
 - [x] **Task 5.3:** Connect Realtime Presence in `use-groups.ts` to power the live Co-Work Radar pill.
 - [x] **Task 5.4:** Verify zero-leak session cleanup on logout and execute physical Android device smoke tests.
+
+
+---
+
+### Phase 6: High-Signal Notifications & Capacitor Bridge
+
+- [ ] **Task 6.1:** Define High-Signal Notification Contract (`id`, `type`, `title`, `message`, `reason`, `fact`, `priority`, `actionLabel`, `actionUrl`) in `src/hooks/use-notifications.tsx`.
+- [ ] **Task 6.2:** Build the persistent, sticky in-app **Main Notification Bar (`NotificationBar.tsx`)** mounted on the dashboard command deck with expandable drawer.
+- [ ] **Task 6.3:** Implement the zero-spam **Reason & Fact Justification Engine** ensuring every notification provides transparent behavioral/biological evidence.
+- [ ] **Task 6.4:** Bridge `@capacitor/local-notifications` with native channels (`agni_curfew_channel`, `sprint_timer_channel`, `circadian_channel`) and haptic buzzes.
+- [ ] **Task 6.5:** Author Vitest verification suite in `src/components/dashboard/__tests__/notification-system.test.ts` covering alert priorities, reason rendering, and offline queueing.
+
+---
+
+## 6. The High-Signal Notification Bar & Reason/Fact Engine
+
+### 6.1 The Zero-Spam Justification Rule
+Standard notification architectures fail because apps indiscriminately blast generic nudges ("Don't forget to track today!", "We miss you!"). This triggers notification fatigue, cognitive irritation, and eventual permission revocation.
+
+Under the **PPS Agni Notification Doctrine**, an alert is permitted into the user's conscious attention field if and only if it satisfies the **Zero-Spam Justification Rule**:
+
+$$\text{Alert Permitted} \iff \text{Urgency} \ge \text{Threshold} \ \land \ \text{Has Concrete Biological/Behavioral Reason}$$
+
+Every notification object must carry an explicit `reason` (the causal driver) and optional `fact` (the underlying productivity science).
+
+```typescript
+export interface HighSignalNotification {
+  id: string;
+  type: "circadian" | "curfew" | "streak_defense" | "sprint_complete" | "squad_sync";
+  title: string;
+  message: string;
+  reason: string;      // The exact operational reason why this alert fired
+  fact?: string;       // The scientific or game-state truth backing the alert
+  priority: "low" | "medium" | "high" | "urgent";
+  actionLabel?: string;
+  actionPayload?: { section: string; habitId?: string; duration?: number };
+  time: string;
+  read: boolean;
+}
+```
+
+---
+
+### 6.2 The Main Notification Bar HUD (In-App Architecture)
+The **Main Notification Bar** is an ambient, sticky status bar rendered at the top of the main Dashboard viewport.
+
+1. **Ambient Priority Banner:** Displays the current highest-priority active state (e.g., active circadian peak window, or evening curfew countdown).
+2. **Contextual Action Button:** Allows the user to act within 1 tap without navigating away (e.g., `[⚡ Start 25m Sprint]`, `[🪜 Log 2m Micro]`, `[😴 Initiate Shutdown]`).
+3. **Expandable Notification Tray:** Clicking the banner or the bell badge smoothly expands an interactive notification panel with categorized tabs:
+   - **All Signals**
+   - **Circadian & Sprints**
+   - **Curfew & Streaks**
+   - **Study Squads**
+4. **Reason Pill:** Every card renders a distinct, styled badge: `💡 Why this alert: <Reason>`.
+
+---
+
+### 6.3 Verified Fact-Based Notification Matrix
+
+| Alert Type | Trigger Condition | Display Title | Body Text | Mandatory Reason & Scientific Fact | Priority |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Circadian Energy Window** | Current time matches `habit.window_start` | ⚡ Peak Window Open | Your morning deep work window is active. | **Reason:** Your configured circadian peak is 09:00–11:30.<br>**Fact:** Frontal lobe cognitive speed is 22% higher during your primary biological window. | High |
+| **Agni 10 PM Curfew Alarm** | 21:30 (30m pre-curfew) and 22:00 (curfew) | 🔥 Agni Curfew Countdown | 30 minutes to digital shutdown. | **Reason:** Preserves tomorrow's streak multiplier and sleep recovery.<br>**Fact:** Blue light cessation 60m before bed increases slow-wave sleep by 34%. | Urgent |
+| **Streak Defense Alert** | 20:30 with $\ge 1$ uncompleted habits | 🛡️ Streak Defense Active | Complete 1 habit or log a 2-minute micro habit. | **Reason:** Day 5 streak at risk of burning a freeze credit tonight.<br>**Fact:** The 2-minute micro habit (+3 XP) keeps neural habit pathways active during low-energy days. | High |
+| **Proof-of-Focus Sprint Completion** | Focus timer reaches 00:00 | 🏆 Focus Sprint Verified | +10 XP earned for unbroken session. | **Reason:** Full 25-minute Pomodoro completed without tab abandon.<br>**Fact:** Uninterrupted single-tasking prevents attention residue and mental fatigue. | Medium |
+| **Squad Co-Work Radar** | Verified study squad member begins a sprint | 👥 Squad Focus Started | Arjun started a 45m DSA session. | **Reason:** Real-time peer accountability partner is active right now.<br>**Fact:** Co-working increases task persistence by 3.2× via Hawthorne effect. | Medium |
+
+---
+
+### 6.4 Capacitor Native Local Notifications Bridge
+On native Android and iOS devices, in-app notifications synchronize to `@capacitor/local-notifications`:
+
+1. **Android Notification Channels:**
+   - `pps_curfew_alarms`: High importance, max volume, continuous vibration pattern (`[0, 250, 250, 250]`).
+   - `pps_sprint_timer`: High importance, chime audio tone, short haptic tap.
+   - `pps_circadian_nudge`: Default importance, ambient notification without vibration.
+2. **Lock-Screen Action Buttons:** Direct action triggers on Android notifications (e.g. `[Start Timer]`, `[Snooze 10m]`, `[Rest Day]`).
+3. **Background Wake-Lock:** Schedules precise alarms even when the app is backgrounded or device is in Doze mode.

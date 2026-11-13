@@ -42,7 +42,7 @@ export const ScreenFinalReview: React.FC<Props> = ({ state, updateState, onBack,
   useEffect(() => {
     const activeHabits = habits.filter((h) => enabledHabits[h.id]);
     updateState({ customHabits: activeHabits });
-  }, [habits, enabledHabits]);
+  }, [habits, enabledHabits, updateState]);
 
   const handleTitleChange = (id: string, newTitle: string) => {
     setHabits((prev) =>

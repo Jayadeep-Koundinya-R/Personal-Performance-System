@@ -33,9 +33,11 @@ import {
   Smile,
   CheckCircle2,
   ExternalLink,
+  ArrowLeft,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 import { DashboardProviders } from "@/providers/AppProviders";
 
@@ -186,7 +188,7 @@ const MeetingRoomInner: React.FC = () => {
         <div className="flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="font-mono text-xl font-black text-primary tracking-wider flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+              <span className="w-3 h-3 rounded-full bg-pps-green animate-ping" />
               <span>PPS.MEET</span>
             </div>
             <span className="text-xs font-mono text-muted-foreground bg-surface/80 border border-border/80 px-2.5 py-1 rounded-xl">
@@ -194,12 +196,14 @@ const MeetingRoomInner: React.FC = () => {
             </span>
           </div>
 
-          <button
+          <Button
+            variant="outline"
             onClick={() => navigate("/dashboard")}
-            className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground bg-surface/80 hover:bg-surface border border-border/80 px-3 py-1.5 rounded-2xl transition-all cursor-pointer shadow-xs h-auto"
           >
-            ← Back to Dashboard
-          </button>
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Dashboard</span>
+          </Button>
         </div>
 
         {/* Center Green Room Box */}
@@ -226,21 +230,25 @@ const MeetingRoomInner: React.FC = () => {
 
               {/* Floating Bottom Cam/Mic Controls */}
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 p-2 bg-black/70 backdrop-blur-xl rounded-2xl border border-white/10 shadow-xl">
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={toggleMic}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                  className={`p-3 rounded-xl border transition-all cursor-pointer h-10 w-10 ${
                     isMuted
-                      ? "bg-red-500/20 text-red-400 border-red-500/40"
+                      ? "bg-destructive/20 text-destructive border-destructive/40"
                       : "bg-surface border-border/80 text-foreground hover:bg-muted"
                   }`}
                   title={isMuted ? "Unmute Mic" : "Mute Mic"}
                 >
-                  {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-emerald-400" />}
-                </button>
+                  {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-pps-green" />}
+                </Button>
 
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={toggleCamera}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                  className={`p-3 rounded-xl border transition-all cursor-pointer h-10 w-10 ${
                     isCameraOn
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
@@ -248,7 +256,7 @@ const MeetingRoomInner: React.FC = () => {
                   title={isCameraOn ? "Turn Camera Off" : "Turn Camera On"}
                 >
                   {isCameraOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -256,7 +264,7 @@ const MeetingRoomInner: React.FC = () => {
           {/* Right: Join Info & Action Panel */}
           <div className="lg:col-span-5 space-y-6">
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full border border-emerald-400/20">
+              <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-pps-green bg-pps-green/10 px-3 py-1 rounded-full border border-pps-green/20">
                 <Radio className="w-3.5 h-3.5" />
                 <span>Ready to Join</span>
               </div>
@@ -274,7 +282,7 @@ const MeetingRoomInner: React.FC = () => {
                 Focus Room Status:
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="w-2.5 h-2.5 rounded-full bg-pps-green animate-pulse" />
                 <span className="text-xs font-semibold text-foreground">
                   Live presence active — squad peers sync automatically on join
                 </span>
@@ -283,21 +291,22 @@ const MeetingRoomInner: React.FC = () => {
 
             {/* Join Button */}
             <div className="space-y-3 pt-2">
-              <button
+              <Button
                 onClick={handleJoinMeeting}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary via-secondary to-accent text-white font-black text-sm hover:opacity-95 transition-all shadow-xl shadow-primary/30 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary via-secondary to-accent text-white font-black text-sm hover:opacity-95 transition-all shadow-xl shadow-primary/30 flex items-center justify-center gap-2 cursor-pointer h-auto"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Join Meeting Now</span>
-              </button>
+              </Button>
 
-              <button
+              <Button
+                variant="outline"
                 onClick={handleCopyMeetingLink}
-                className="w-full py-2.5 rounded-xl bg-surface border border-border/80 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-card transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-surface border border-border/80 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-card transition-all flex items-center justify-center gap-1.5 cursor-pointer h-auto"
               >
                 <Copy className="w-3.5 h-3.5" />
                 <span>Copy Invite Link</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -325,8 +334,8 @@ const MeetingRoomInner: React.FC = () => {
               <h2 className="text-sm font-black text-foreground font-mono truncate max-w-xs">
                 {roomName}
               </h2>
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-[10px] font-bold text-pps-green bg-pps-green/10 px-2 py-0.5 rounded-full border border-pps-green/20 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-pps-green animate-ping" />
                 <span>{participants.length} In Meeting</span>
               </span>
             </div>
@@ -351,8 +360,8 @@ const MeetingRoomInner: React.FC = () => {
 
         {/* Header Actions: Security Badge, Copy Link, Ambience, Layout Toggle */}
         <div className="flex items-center gap-2">
-          <div className="hidden md:flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-xl shadow-xs">
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="hidden md:flex items-center gap-1.5 text-[11px] font-mono font-bold text-pps-green bg-pps-green/10 border border-pps-green/30 px-2.5 py-1 rounded-xl shadow-xs">
+            <Shield className="w-3.5 h-3.5 text-pps-green" />
             <span>256-Bit E2EE Secure</span>
           </div>
 
@@ -363,14 +372,15 @@ const MeetingRoomInner: React.FC = () => {
             onVolumeChange={setAmbienceVolume}
           />
 
-          <button
+          <Button
+            variant="outline"
             onClick={handleCopyMeetingLink}
-            className="p-2 rounded-xl bg-surface border border-border/80 text-muted-foreground hover:text-foreground text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+            className="p-2 rounded-xl bg-surface border border-border/80 text-muted-foreground hover:text-foreground text-xs font-bold transition-all cursor-pointer flex items-center gap-1 h-auto"
             title="Copy Meeting Invite Link"
           >
             <Copy className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Copy Link</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -427,15 +437,15 @@ const MeetingRoomInner: React.FC = () => {
                           className="w-full h-full object-cover transform -scale-x-100"
                         />
                         <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[9px] font-mono font-bold text-primary border border-primary/40 flex items-center gap-1.5 z-20 shadow-md">
-                          <span className={`w-1.5 h-1.5 rounded-full ${isDailyConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${isDailyConnected ? "bg-pps-green animate-pulse" : "bg-pps-orange"}`} />
                           <span>{isDailyConnected ? "Daily.co Live HD" : "Camera Active"}</span>
                         </span>
                       </div>
                     ) : !isYou && participantCameraOn && remoteStream ? (
                       <div className="absolute inset-0 bg-black z-0">
                         <RemotePeerVideo stream={remoteStream} />
-                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[9px] font-mono font-bold text-emerald-400 border border-emerald-500/40 flex items-center gap-1.5 z-20 shadow-md">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[9px] font-mono font-bold text-pps-green border border-pps-green/40 flex items-center gap-1.5 z-20 shadow-md">
+                          <span className="w-1.5 h-1.5 rounded-full bg-pps-green animate-pulse" />
                           <span>Peer Live HD</span>
                         </span>
                       </div>
@@ -459,13 +469,13 @@ const MeetingRoomInner: React.FC = () => {
                       </span>
 
                       <div className="flex items-center gap-1">
-                        <span className="p-1 rounded-lg bg-black/60 backdrop-blur-md text-amber-400 border border-white/10 text-[10px] font-bold flex items-center gap-0.5 px-2">
-                          <Flame className="w-3 h-3 fill-amber-400" />
+                        <span className="p-1 rounded-lg bg-black/60 backdrop-blur-md text-pps-orange border border-white/10 text-[10px] font-bold flex items-center gap-0.5 px-2">
+                          <Flame className="w-3 h-3 fill-pps-orange" />
                           <span>{p.streak}d</span>
                         </span>
                         <span
                           className={`p-1.5 rounded-lg backdrop-blur-md border border-white/10 ${
-                            participantIsMuted ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"
+                            participantIsMuted ? "bg-destructive/20 text-destructive" : "bg-pps-green/20 text-pps-green"
                           }`}
                           title={participantIsMuted ? "Muted" : "Microphone Active"}
                         >
@@ -521,9 +531,10 @@ const MeetingRoomInner: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setSidebarTab(null)}
-                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface cursor-pointer transition-colors"
+                  aria-label="Close sidebar"
                 >
-                  ✕
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
@@ -576,10 +587,13 @@ const MeetingRoomInner: React.FC = () => {
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       placeholder="Send a message to everyone..."
+                      aria-label="Send a message to room"
+                      maxLength={500}
                       className="flex-1 px-3 py-2 bg-surface border border-border/80 rounded-xl text-xs text-foreground outline-none focus:border-primary"
                     />
                     <button
                       type="submit"
+                      aria-label="Send message"
                       className="p-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" />
@@ -588,18 +602,24 @@ const MeetingRoomInner: React.FC = () => {
                 </div>
               ) : (
                 <div className="flex-1 p-4 overflow-y-auto space-y-2">
-                  {participants.map((p) => (
-                    <div key={p.id} className="p-3 rounded-2xl bg-surface/70 border border-border/60 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xl">{p.avatar}</span>
-                        <div>
-                          <div className="text-xs font-bold text-foreground">{p.name}</div>
-                          <div className="text-[10px] text-muted-foreground font-mono">{p.currentTask}</div>
-                        </div>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-amber-400">{p.streak}d</span>
+                  {participants.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-muted-foreground font-mono">
+                      No other participants in the room yet.
                     </div>
-                  ))}
+                  ) : (
+                    participants.map((p) => (
+                      <div key={p.id} className="p-3 rounded-2xl bg-surface/70 border border-border/60 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-xl">{p.avatar}</span>
+                          <div>
+                            <div className="text-xs font-bold text-foreground">{p.name}</div>
+                            <div className="text-[10px] text-muted-foreground font-mono">{p.currentTask}</div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-amber-400">{p.streak}d</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </motion.div>
@@ -703,7 +723,7 @@ const MeetingRoomInner: React.FC = () => {
 
           <button
             onClick={handleLeaveMeeting}
-            className="px-4 py-2.5 rounded-2xl bg-destructive hover:bg-destructive/90 text-white text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-lg shadow-destructive/20"
+            className="px-4 py-2.5 rounded-2xl bg-destructive hover:bg-destructive/90 active:scale-[0.97] text-white text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-lg shadow-destructive/20"
           >
             <PhoneOff className="w-4 h-4" />
             <span>Leave Meeting</span>
@@ -720,9 +740,22 @@ export const MeetingRoom: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#090b10] text-foreground">
-        <div className="text-center space-y-3">
-          <div className="text-4xl animate-pulse">⚡</div>
-          <div className="text-xs font-mono text-muted-foreground">Initializing PPS Meet Studio...</div>
+        <div className="text-center space-y-4 animate-in fade-in duration-500">
+          <div className="relative w-14 h-14 mx-auto">
+            <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            <div className="absolute inset-1.5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <span className="text-xl">🎯</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-sm font-black text-foreground font-mono">PPS Meet Studio</div>
+            <div className="text-xs font-mono text-muted-foreground mt-0.5">Initializing secure focus room...</div>
+          </div>
+          <div className="flex gap-1 justify-center">
+            {[0,1,2].map(i => (
+              <div key={i} className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
         </div>
       </div>
     );

@@ -23,8 +23,27 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
 import { useFocusTimer } from "@/hooks/use-focus-timer";
+import { Button } from "@/components/ui/button";
 import EmptyState from "@/components/EmptyState";
 import { toast } from "sonner";
+import {
+  Sparkles,
+  Zap,
+  Flame,
+  Monitor,
+  Headphones,
+  Lightbulb,
+  Play,
+  Pause,
+  RotateCcw,
+  Volume2,
+  Maximize2,
+  CheckCircle2,
+  Clock,
+  Target,
+  Check,
+  Layers,
+} from "lucide-react";
 
 /* Floating XP component */
 const FloatingXP = ({ habitId }: { habitId: string }) => (
@@ -67,7 +86,7 @@ interface DailyTrackerProps {
 }
 
 const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
-  const { habits, toggleCompletion, isHabitDueToday, getTodayStr } = useHabits();
+  const { habits, toggleCompletion, completeHabit, isHabitDueToday, getTodayStr } = useHabits();
   const timer = useFocusTimer();
   const todayStr = getTodayStr();
   const [justCompleted, setJustCompleted] = useState<Set<string>>(new Set());
@@ -130,6 +149,12 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
   };
 
   const handleToggle = (habitId: string, wasDone: boolean) => {
+    const targetHabit = habits.find((h) => h.id === habitId);
+    if (!wasDone && targetHabit?.requires_focus_timer && !timer.completedSessions) {
+      toast.info(`⚡ "${targetHabit.name}" requires a verified focus sprint! Launching ${targetHabit.focus_duration_minutes || 25}m timer...`);
+      timer.startHabitFocus(targetHabit, targetHabit.focus_duration_minutes || 25);
+      return;
+    }
     toggleCompletion(habitId);
     if (!wasDone) {
       setJustCompleted((prev) => new Set(prev).add(habitId));
@@ -195,8 +220,8 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
             className="bg-gradient-to-r from-primary/10 via-secondary/5 to-primary/10 border border-primary/25 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-xl animate-pulse">
-                💡
+              <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                <Lightbulb className="w-5 h-5 text-primary animate-pulse" />
               </div>
               <div>
                 <div className="text-xs font-bold text-foreground">Ready to start your first focus session?</div>
@@ -208,9 +233,10 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => timer.startHabitFocus(nextUncompleted, 25)}
-                className="bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+                className="bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
               >
-                ▶ Start 25m Focus
+                <Play className="w-3 h-3 fill-current" />
+                <span>Start 25m Focus</span>
               </button>
               <button
                 onClick={() => timer.dismissSuggestion()}
@@ -240,13 +266,15 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                 <span>{timer.TIMER_PRESETS[timer.timerMode].icon}</span>
                 <span>{timer.TIMER_PRESETS[timer.timerMode].label} Mode</span>
               </span>
-              <button
+              <Button
                 onClick={() => timer.setIsFullscreen(true)}
-                className="text-xs font-semibold text-muted-foreground hover:text-foreground bg-surface border border-border/80 px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 hover:border-primary/40"
+                variant="outline"
+                size="sm"
+                className="bg-surface border border-border/80 px-3 py-1 rounded-xl transition-all cursor-pointer hover:border-primary/40 flex items-center gap-1.5"
               >
-                <span>🖥️</span>
+                <Monitor className="w-3.5 h-3.5 text-primary" />
                 <span>Zen Fullscreen</span>
-              </button>
+              </Button>
             </div>
 
             {/* Task Title Input & Habit Selector */}
@@ -306,8 +334,10 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                 const preset = timer.TIMER_PRESETS[mode];
                 const isCurrent = timer.timerMode === mode;
                 return (
-                  <button
+                  <Button
                     key={mode}
+                    variant={isCurrent ? "default" : "outline"}
+                    size="sm"
                     onClick={() => timer.changeTimerMode(mode)}
                     className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex flex-col items-center gap-0.5 border ${
                       isCurrent
@@ -320,7 +350,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                     <span className="text-[10px] opacity-80 font-mono">
                       {mode === "custom" ? `${timer.customMinutes}m` : `${preset.minutes}m`}
                     </span>
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -353,8 +383,9 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
             {/* Ambient Soundscapes Controls */}
             <div className="pt-2 border-t border-border/40 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono text-muted-foreground font-semibold flex items-center gap-1">
-                  🎧 Ambient Soundscape
+                <span className="text-[11px] font-mono text-muted-foreground font-semibold flex items-center gap-1.5">
+                  <Headphones className="w-3.5 h-3.5 text-primary" />
+                  <span>Ambient Soundscape</span>
                 </span>
                 {timer.activeSound && (
                   <span className="text-[10px] text-pps-green font-mono font-bold animate-pulse">● Playing</span>
@@ -369,8 +400,10 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                 ]).map((snd) => {
                   const isActive = timer.activeSound === snd.key;
                   return (
-                    <button
+                    <Button
                       key={snd.key}
+                      variant={isActive ? "secondary" : "outline"}
+                      size="sm"
                       onClick={() => timer.handleSoundToggle(snd.key)}
                       className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium transition-all cursor-pointer ${
                         isActive
@@ -379,7 +412,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                       }`}
                     >
                       {snd.label}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -451,13 +484,15 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                   <div className="text-xs font-bold text-foreground">🌊 Extend your flow?</div>
                   <div className="flex items-center gap-1.5 justify-center">
                     {[5, 10, 15].map((mins) => (
-                      <button
+                      <Button
                         key={mins}
+                        variant="outline"
+                        size="sm"
                         onClick={() => timer.handleFlowExtend(mins)}
                         className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground text-[11px] font-bold py-1.5 px-3 rounded-lg transition-all cursor-pointer"
                       >
                         +{mins}m
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   <button
@@ -474,24 +509,27 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
             {!timer.showFlowExtend && (
               <div className="flex flex-col items-center gap-2">
                 <div className="flex items-center gap-3">
-                  <button
+                  <Button
                     onClick={() => timer.toggleTimer()}
+                    size="lg"
                     className={`px-7 py-3 rounded-2xl text-sm font-bold shadow-lg transition-all cursor-pointer flex items-center gap-2 ${
                       timer.isRunning
-                        ? "bg-pps-yellow text-slate-950 hover:bg-pps-yellow/90"
+                        ? "bg-pps-yellow text-foreground hover:bg-pps-yellow/90"
                         : "bg-gradient-to-br from-primary to-accent text-primary-foreground hover:shadow-primary/25 hover:scale-[1.02]"
                     }`}
                   >
                     <span>{timer.isRunning ? "⏸ Pause Focus" : "▶ Start Focus"}</span>
-                  </button>
+                  </Button>
 
-                  <button
+                  <Button
                     onClick={() => timer.resetTimer()}
+                    variant="outline"
+                    size="sm"
                     className="p-3 bg-surface border border-border/80 text-muted-foreground hover:text-foreground rounded-2xl hover:bg-muted transition-all cursor-pointer"
                     title="Reset Timer [R]"
                   >
                     🔄
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Keyboard shortcut hints */}
@@ -534,7 +572,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
           </div>
 
           {/* Hover Tooltip Popover */}
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-900 text-white text-[11px] p-2.5 rounded-xl shadow-xl border border-slate-800 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-30 font-sans">
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-card text-foreground text-[11px] p-2.5 rounded-xl shadow-xl border border-border opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-30 font-sans">
             <div className="font-bold text-primary mb-0.5">⏱️ Focus Duration</div>
             Tracks total active focus time logged today across Pomodoro and custom sessions.
           </div>
@@ -559,7 +597,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
           </div>
 
           {/* Hover Tooltip Popover */}
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 bg-slate-900 text-white text-[11px] p-2.5 rounded-xl shadow-xl border border-slate-800 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-30 font-sans">
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 bg-card text-foreground text-[11px] p-2.5 rounded-xl shadow-xl border border-border opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-30 font-sans">
             <div className="font-bold text-pps-orange mb-0.5">🎯 Daily Target (4 Sessions)</div>
             Productivity science recommends 4 × 25m Pomodoro sessions (100 mins) daily for optimal deep work.
           </div>
@@ -590,7 +628,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
           </div>
 
           {/* Hover Tooltip Popover */}
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-slate-900 text-white text-[11px] p-2.5 rounded-xl shadow-xl border border-slate-800 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-30 font-sans">
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-card text-foreground text-[11px] p-2.5 rounded-xl shadow-xl border border-border opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-30 font-sans">
             <div className="font-bold text-pps-green mb-0.5">⚡ Focus Tiers</div>
             • <b>Standby</b>: 0m<br/>
             • <b>Active</b>: 1m–59m<br/>
@@ -648,8 +686,10 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                 const isSelected = selectedCat === cat;
 
                 return (
-                  <button
+                  <Button
                     key={cat}
+                    variant={isSelected ? "default" : "outline"}
+                    size="sm"
                     onClick={() => setSelectedCat(cat)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-1.5 border ${
                       isSelected
@@ -661,7 +701,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                     <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-extrabold ${isSelected ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted/80 text-slate-200 border border-border/60"}`}>
                       {catDone}/{catHabits.length}
                     </span>
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -730,13 +770,43 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                                 )}
                               </AnimatePresence>
                             </button>
-                            <span className={`truncate ${done ? "line-through text-muted-foreground font-bold opacity-85" : "text-foreground font-extrabold"}`}>
-                              {habit.name}
-                            </span>
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`truncate ${done ? "line-through text-muted-foreground font-bold opacity-85" : "text-foreground font-extrabold"}`}>
+                                  {habit.name}
+                                </span>
+                                {habit.requires_focus_timer && (
+                                  <span className="text-[10px] font-mono font-bold bg-pps-orange/15 text-pps-orange border border-pps-orange/30 px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                                    <Zap className="w-2.5 h-2.5" />
+                                    <span>⚡ {habit.focus_duration_minutes || 25}m Sprint Required</span>
+                                  </span>
+                                )}
+                                {(habit.window_start || habit.window_end) && (
+                                  <span className="text-[10px] font-mono font-bold bg-secondary/15 text-secondary border border-secondary/30 px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                                    <Clock className="w-2.5 h-2.5" />
+                                    <span>{habit.window_start || "Start"} - {habit.window_end || "End"}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
                           {/* Action Buttons */}
                           <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
+                            {/* 2m Micro Habit Button */}
+                            {!done && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => completeHabit(habit.id, "micro")}
+                              className="bg-pps-orange/15 text-pps-orange border border-pps-orange/40 hover:bg-pps-orange hover:text-black text-[10.5px] font-extrabold px-2 py-1 rounded-lg transition-all cursor-pointer shadow-xs flex items-center gap-1 font-mono"
+                              title="2-minute emergency micro habit (+2 XP, streak protected)"
+                            >
+                              <Layers className="w-3 h-3" />
+                              <span>2m Micro</span>
+                            </Button>
+                            )}
+
                             {/* Quick Preset Timer Pills */}
                             {!done && (
                               <div className="hidden sm:flex items-center gap-0.5 bg-surface border border-border/80 rounded-lg p-0.5">
@@ -753,30 +823,34 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                               </div>
                             )}
 
-                            <button
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => timer.startHabitFocus(habit)}
-                              className="bg-primary/15 text-primary border border-primary/30 hover:bg-primary hover:text-primary-foreground text-[11px] font-bold py-1 px-2.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                              className="bg-primary/15 text-primary border border-primary/30 hover:bg-primary hover:text-primary-foreground text-[11px] font-bold py-1 px-2.5 rounded-lg transition-all cursor-pointer shadow-xs flex items-center gap-1"
                               title="Launch into Focus Room"
                             >
                               <span>⚡</span>
                               <span>Focus</span>
-                            </button>
+                            </Button>
 
-                            <button
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => {
                                 setActiveNoteHabitId(activeNoteHabitId === habit.id ? null : habit.id);
                                 setNoteInput(note || "");
                               }}
-                              className={`text-[11px] px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1 font-bold ${
+                              className={`text-[11px] px-2 py-1 rounded-lg border transition-all cursor-pointer flex-bold ${
                                 note
                                   ? "bg-secondary/15 border-secondary/30 text-secondary"
-                                  : "bg-surface border-border/80 text-slate-200 hover:text-foreground"
+                                  : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
                               }`}
                               title="Add log note"
                             >
                               📝
                               <span className="hidden sm:inline">{note ? "Note" : "+ Note"}</span>
-                            </button>
+                            </Button>
 
                             <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold font-mono ${priClass[habit.priority] || priClass.Optional}`}>
                               {habit.priority}
@@ -820,18 +894,22 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                                 className="flex-1 bg-surface border border-border rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary font-medium"
                                 onKeyDown={(e) => e.key === "Enter" && saveHabitNote(habit.id)}
                               />
-                              <button
+                              <Button
                                 onClick={() => saveHabitNote(habit.id)}
-                                className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-all cursor-pointer"
+                                variant="default"
+                                size="sm"
+                                className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer"
                               >
                                 Save
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 onClick={() => setActiveNoteHabitId(null)}
+                                variant="ghost"
+                                size="sm"
                                 className="text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 cursor-pointer"
                               >
                                 ✕
-                              </button>
+                              </Button>
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -862,13 +940,13 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-[9999] bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-white relative overflow-hidden"
+            className="fixed inset-0 z-[9999] bg-card/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-foreground relative overflow-hidden"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-slate-950 to-slate-950 pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-card to-card pointer-events-none" />
 
             <button
               onClick={() => timer.setIsFullscreen(false)}
-              className="absolute top-6 right-6 text-muted-foreground hover:text-white bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all hover:border-primary/40"
+              className="absolute top-6 right-6 text-muted-foreground hover:text-foreground bg-card border border-border px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all hover:border-primary/40"
             >
               Exit ✕
             </button>
@@ -882,7 +960,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
 
               <div className="relative w-72 h-72 flex items-center justify-center my-4">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                  <circle cx="100" cy="100" r="90" className="stroke-slate-800" strokeWidth="8" fill="transparent" />
+                  <circle cx="100" cy="100" r="90" className="stroke-border" strokeWidth="8" fill="transparent" />
                   <motion.circle
                     cx="100" cy="100" r="90"
                     className="stroke-primary"
@@ -899,7 +977,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                   <span className="text-5xl font-extrabold font-mono text-white tracking-tighter">
                     {timer.formatTimerTime(timer.remainingSec)}
                   </span>
-                  <span className="text-xs text-slate-400 mt-2 font-mono">{timer.TIMER_PRESETS[timer.timerMode].label}</span>
+                  <span className="text-xs text-muted-foreground mt-2 font-mono">{timer.TIMER_PRESETS[timer.timerMode].label}</span>
                 </div>
               </div>
 
@@ -911,31 +989,34 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                   { key: "noise" as const, label: "📻" },
                   { key: "binaural" as const, label: "🧘" },
                 ]).map((snd) => (
-                  <button
+                  <Button
                     key={snd.key}
+                    variant={timer.activeSound === snd.key ? "outline" : "ghost"}
+                    size="sm"
                     onClick={() => timer.handleSoundToggle(snd.key)}
                     className={`text-lg p-2 rounded-xl border transition-all cursor-pointer ${
                       timer.activeSound === snd.key
                         ? "bg-primary/20 border-primary/40 shadow-sm"
-                        : "bg-slate-900 border-slate-800 hover:border-primary/30"
+                        : "bg-card border-border hover:border-primary/30"
                     }`}
                   >
                     {snd.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
 
               <div className="flex items-center gap-4">
-                <button
+                <Button
                   onClick={() => timer.toggleTimer()}
+                  size="lg"
                   className={`px-8 py-3.5 rounded-2xl text-base font-bold shadow-2xl transition-all cursor-pointer ${
                     timer.isRunning
-                      ? "bg-pps-yellow text-slate-950 hover:bg-pps-yellow/90"
+                      ? "bg-pps-yellow text-foreground hover:bg-pps-yellow/90"
                       : "bg-primary text-primary-foreground hover:scale-105"
                   }`}
                 >
                   {timer.isRunning ? "⏸ Pause" : "▶ Start Focus"}
-                </button>
+                </Button>
               </div>
             </div>
           </motion.div>

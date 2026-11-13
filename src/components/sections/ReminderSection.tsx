@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useReminders } from "@/hooks/use-reminders";
 import { useHabits } from "@/hooks/use-habits";
 import { useUserSettings } from "@/hooks/use-user-settings";
+import { Button } from "@/components/ui/button";
 import { Bell, Clock, Volume2, Plus, Check, Trash2, Shield, Sparkles, Zap, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import EmptyState from "@/components/EmptyState";
@@ -23,6 +24,7 @@ const CIRCADIAN_PRESETS = [
   { label: "Morning Hero Stack Alarm 🌅", time: "07:00", repeat: "Daily", deliveryType: "alarm", desc: "Start your day with hydration & mindfulness" },
   { label: "Afternoon Deep Work Review ☀️", time: "13:00", repeat: "Daily", deliveryType: "notification", desc: "Midday momentum check-in" },
   { label: "Night Recovery & Screen Detox 🌙", time: "21:30", repeat: "Daily", deliveryType: "alarm", desc: "Prepare body & mind for sleep" },
+  { label: "Agni 10 PM Curfew Alarm 🔥", time: "22:00", repeat: "Daily", deliveryType: "alarm", desc: "Absolute digital cutoff & wind-down" },
 ];
 
 const REPEAT_OPTIONS = [
@@ -137,7 +139,7 @@ const ReminderSection = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20 min-h-[300px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3.5"></div>
-        <div className="text-slate-300 text-sm font-extrabold font-mono">Loading alarm studio...</div>
+        <div className="text-muted-foreground text-sm font-extrabold font-mono">Loading alarm studio...</div>
       </div>
     );
   }
@@ -159,25 +161,27 @@ const ReminderSection = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={() => {
               playAlarmPreviewSound();
               toast.info("🔊 Playing Web Audio Alarm Chime Preview!");
             }}
-            className="text-xs bg-surface border border-border/80 text-foreground px-3.5 py-2 rounded-2xl font-extrabold hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+            variant="outline"
+            size="sm"
+            className="bg-surface border border-border/80 text-foreground px-3.5 py-2 rounded-2xl font-extrabold hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
             title="Test Alarm Sound"
           >
             <Volume2 className="w-4 h-4 text-primary" />
             <span>Test Sound 🔊</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={() => setIsFormOpen(!isFormOpen)}
-            className="text-xs bg-primary text-primary-foreground font-extrabold px-4 py-2 rounded-2xl hover:bg-primary/90 transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
+            className="bg-primary text-primary-foreground font-extrabold px-4 py-2 rounded-2xl hover:bg-primary/90 transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
           >
             <Plus className="w-4 h-4" />
             <span>{isFormOpen ? "Close Form" : "Set New Alarm"}</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -187,7 +191,7 @@ const ReminderSection = () => {
           <h3 className="text-xs font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
             <span>🌅 Circadian Alarm Presets</span>
           </h3>
-          <span className="text-[11px] font-mono font-bold text-sky-300">1-Click Quick Add</span>
+          <span className="text-[11px] font-mono font-bold text-secondary">1-Click Quick Add</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -202,12 +206,14 @@ const ReminderSection = () => {
                 <div className="text-[10.5px] text-muted-foreground font-medium mt-1">{p.desc}</div>
               </div>
 
-              <button
+              <Button
                 onClick={() => addPreset(p)}
+                variant="outline"
+                size="sm"
                 className="w-full text-xs font-extrabold bg-primary/15 text-primary border border-primary/30 py-1.5 rounded-xl hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer font-mono mt-2"
               >
                 + Add Preset
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -272,7 +278,18 @@ const ReminderSection = () => {
 
               {/* Delivery Mode */}
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-foreground font-mono">4. Delivery Mode</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-foreground font-mono">4. Delivery Mode</label>
+                  <button
+                    type="button"
+                    onClick={playAlarmPreviewSound}
+                    className="text-[10.5px] font-mono font-bold text-primary hover:underline cursor-pointer flex items-center gap-1"
+                    title="Test alarm sound"
+                  >
+                    <Volume2 className="w-3 h-3" />
+                    <span>Test Sound</span>
+                  </button>
+                </div>
                 <select
                   value={deliveryType}
                   onChange={(e) => setDeliveryType(e.target.value)}
@@ -301,20 +318,22 @@ const ReminderSection = () => {
 
             {/* Form Actions */}
             <div className="pt-2 flex justify-end gap-2 border-t border-border/40">
-              <button
+              <Button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
+                variant="outline"
+                size="sm"
                 className="text-xs font-bold text-muted-foreground hover:text-foreground px-4 py-2 rounded-xl hover:bg-surface transition-all cursor-pointer"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={save}
-                className="text-xs bg-primary text-primary-foreground font-extrabold px-5 py-2 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+                className="bg-primary text-primary-foreground font-extrabold px-5 py-2 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
               >
                 Save Alarm
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -377,7 +396,7 @@ const ReminderSection = () => {
                         <span>•</span>
                         <span>{r.repeat}</span>
                         <span>•</span>
-                        <span className={isPersistent ? "text-pps-orange font-bold" : "text-sky-300"}>
+                        <span className={isPersistent ? "text-pps-orange font-bold" : "text-secondary"}>
                           {isPersistent ? "Persistent Alarm" : "Passive Banner"}
                         </span>
                       </div>
@@ -387,25 +406,30 @@ const ReminderSection = () => {
                   {/* Right Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
                     {/* Snooze Buttons */}
-                    <button
+                    <Button
                       onClick={() => snoozeReminder(r.label, 15)}
+                      variant="outline"
+                      size="sm"
                       className="text-[10.5px] font-mono font-extrabold bg-surface border border-border/80 text-foreground hover:border-primary/40 px-2.5 py-1 rounded-xl transition-all cursor-pointer"
                       title="Snooze for 15 mins"
                     >
                       💤 +15m
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       onClick={() => snoozeReminder(r.label, 60)}
+                      variant="outline"
+                      size="sm"
                       className="text-[10.5px] font-mono font-extrabold bg-surface border border-border/80 text-foreground hover:border-primary/40 px-2.5 py-1 rounded-xl transition-all cursor-pointer"
                       title="Snooze for 1 hour"
                     >
                       💤 +1h
-                    </button>
+                    </Button>
 
                     {/* Enable Toggle */}
-                    <button
+                    <Button
                       onClick={() => toggleReminder(r.id)}
+                      size="sm"
                       className={`text-xs font-mono font-extrabold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
                         r.enabled
                           ? "bg-pps-green/15 text-pps-green border-pps-green/30"
@@ -413,19 +437,21 @@ const ReminderSection = () => {
                       }`}
                     >
                       {r.enabled ? "Active ✓" : "Off"}
-                    </button>
+                    </Button>
 
                     {/* Remove */}
-                    <button
+                    <Button
                       onClick={() => {
                         removeReminder(r.id);
                         toast.success("Reminder deleted");
                       }}
+                      variant="ghost"
+                      size="sm"
                       className="p-1.5 bg-surface border border-destructive/40 text-destructive hover:bg-destructive/10 rounded-xl transition-all cursor-pointer"
                       title="Delete Reminder"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                 </motion.div>
               );

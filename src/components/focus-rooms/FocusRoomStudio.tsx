@@ -93,7 +93,7 @@ export const FocusRoomStudio: React.FC<FocusRoomStudioProps> = ({
     return () => {
       leaveRoom();
     };
-  }, []);
+  }, [joinRoom, leaveRoom]);
 
   // Bind local webcam stream to video element
   useEffect(() => {

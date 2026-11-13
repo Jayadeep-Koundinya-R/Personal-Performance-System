@@ -21,6 +21,7 @@ import ShareWinCard from "@/components/ShareWinCard";
 import AccountabilityCircles from "@/components/AccountabilityCircles";
 import { GroupView } from "@/components/focus-rooms/GroupView";
 import { FEATURE_FLAGS } from "@/config/features";
+import { shareViaWhatsApp } from "@/lib/social/whatsappInvite";
 import {
   Trophy,
   Users,
@@ -46,6 +47,7 @@ import {
   Radio,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface SocialActivity {
   id: string;
@@ -367,8 +369,8 @@ export default function SocialSection() {
           </p>
         </div>
 
-        {/* Friend Invite Input */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Friend Invite & WhatsApp Share */}
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
           <input
             type="text"
             placeholder="Find friend by @username..."
@@ -376,13 +378,28 @@ export default function SocialSection() {
             onChange={(e) => setInviteUsername(e.target.value)}
             className="bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary w-full sm:w-56"
           />
-          <button
+          <Button
             onClick={sendInvite}
             className="text-xs bg-primary text-primary-foreground font-extrabold px-4 py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0 shadow-sm"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>Invite</span>
-          </button>
+          </Button>
+          <Button
+            onClick={() =>
+              shareViaWhatsApp({
+                squadName: "Agni Performance Squad",
+                squadCode: "AGNI88",
+                senderName: profile?.displayName || "Jayadeep",
+                studyTopic: "Deep Work & Daily Mastery",
+              })
+            }
+            className="text-xs bg-pps-green hover:bg-pps-green text-foreground font-extrabold px-3.5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0 shadow-sm font-mono"
+            title="Share 6-character squad invite code via WhatsApp"
+          >
+            <span>💬</span>
+            <span>WhatsApp</span>
+          </Button>
         </div>
       </div>
 
@@ -405,18 +422,21 @@ export default function SocialSection() {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
             return (
-              <button
+              <Button
                 key={tab.key}
+                type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                variant={isActive ? "default" : "outline"}
+                size="sm"
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap border ${
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-sm font-black"
-                    : "text-muted-foreground hover:text-foreground hover:bg-card"
+                    ? "bg-primary text-primary-foreground shadow-sm font-black border-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card border-border/80"
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 <span>{tab.label}</span>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -440,7 +460,7 @@ export default function SocialSection() {
                 <strong className="text-foreground font-bold">Live Account Leaderboard:</strong> Your personal total XP ({totalXP.toLocaleString()} XP), Level {level}, and {streak}-day streak are active. Connect with friends and focus room peers to see their real-time standings.
               </div>
             </div>
-            <span className="text-[10px] font-mono font-black uppercase text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md flex-shrink-0">
+            <span className="text-[10px] font-mono font-black uppercase text-pps-green bg-pps-green/15 border border-pps-green/30 px-2 py-0.5 rounded-md flex-shrink-0">
               Live Standing
             </span>
           </div>
@@ -455,11 +475,11 @@ export default function SocialSection() {
           }`}>
             {/* 2nd Place (Silver) - if exists */}
             {leaderboardData[1] && (
-              <div className="p-5 rounded-3xl bg-gradient-to-b from-card to-slate-500/10 border border-slate-400/30 flex flex-col items-center text-center space-y-3 shadow-lg relative order-2 md:order-1">
-                <div className="w-8 h-8 rounded-full bg-slate-300 text-black font-black flex items-center justify-center text-xs shadow-md">
+              <div className="p-5 rounded-3xl bg-gradient-to-b from-card to-card/10 border border-border/30 flex flex-col items-center text-center space-y-3 shadow-lg relative order-2 md:order-1">
+                <div className="w-8 h-8 rounded-full bg-muted text-foreground font-black flex items-center justify-center text-xs shadow-md">
                   2
                 </div>
-                <div className="w-16 h-16 rounded-3xl bg-surface border-2 border-slate-300/40 flex items-center justify-center text-3xl shadow-md">
+                <div className="w-16 h-16 rounded-3xl bg-surface border-2 border-border/40 flex items-center justify-center text-3xl shadow-md">
                   {leaderboardData[1].avatar}
                 </div>
                 <div>
@@ -467,7 +487,7 @@ export default function SocialSection() {
                   <div className="text-xs font-mono font-bold text-muted-foreground mt-0.5">{leaderboardData[1].xp.toLocaleString()} XP</div>
                 </div>
                 <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
-                  <span className="flex items-center gap-0.5 text-amber-400 font-bold"><Flame className="w-3 h-3 fill-amber-400" /> {leaderboardData[1].streak}d</span>
+                  <span className="flex items-center gap-0.5 text-pps-orange font-bold"><Flame className="w-3 h-3 fill-pps-orange" /> {leaderboardData[1].streak}d</span>
                   <span>•</span>
                   <span>Lvl {leaderboardData[1].level}</span>
                 </div>
@@ -476,20 +496,20 @@ export default function SocialSection() {
 
             {/* 1st Place (Gold Champion) */}
             {leaderboardData[0] && (
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-card via-amber-500/10 to-amber-500/20 border-2 border-amber-400 shadow-2xl flex flex-col items-center text-center space-y-3 relative order-1 md:order-2 transform md:-translate-y-2">
-                <div className="absolute -top-3.5 bg-amber-400 text-black font-mono font-black text-[11px] uppercase px-3 py-0.5 rounded-full flex items-center gap-1 shadow-md">
+              <div className="p-6 rounded-3xl bg-gradient-to-b from-card via-pps-orange/10 to-pps-orange/20 border-2 border-pps-orange shadow-2xl flex flex-col items-center text-center space-y-3 relative order-1 md:order-2 transform md:-translate-y-2">
+                <div className="absolute -top-3.5 bg-pps-orange text-foreground font-mono font-black text-[11px] uppercase px-3 py-0.5 rounded-full flex items-center gap-1 shadow-md">
                   <Crown className="w-3.5 h-3.5" />
                   <span>Rank #1 Leader</span>
                 </div>
-                <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center text-4xl shadow-xl mt-1">
+                <div className="w-20 h-20 rounded-3xl bg-pps-orange/20 border-2 border-pps-orange flex items-center justify-center text-4xl shadow-xl mt-1">
                   {leaderboardData[0].avatar}
                 </div>
                 <div>
                   <div className="text-base font-black text-foreground">{leaderboardData[0].name}</div>
-                  <div className="text-sm font-mono font-black text-amber-300 mt-0.5">{leaderboardData[0].xp.toLocaleString()} Total XP</div>
+                  <div className="text-sm font-mono font-black text-pps-orange mt-0.5">{leaderboardData[0].xp.toLocaleString()} Total XP</div>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-                  <span className="flex items-center gap-0.5 text-amber-400 font-black"><Flame className="w-3.5 h-3.5 fill-amber-400" /> {leaderboardData[0].streak}d Streak</span>
+                  <span className="flex items-center gap-0.5 text-pps-orange font-black"><Flame className="w-3.5 h-3.5 fill-pps-orange" /> {leaderboardData[0].streak}d Streak</span>
                   <span>•</span>
                   <span className="font-bold text-foreground">Level {leaderboardData[0].level} Achiever</span>
                 </div>
@@ -498,19 +518,19 @@ export default function SocialSection() {
 
             {/* 3rd Place (Bronze) - if exists */}
             {leaderboardData[2] && (
-              <div className="p-5 rounded-3xl bg-gradient-to-b from-card to-amber-700/10 border border-amber-700/30 flex flex-col items-center text-center space-y-3 shadow-lg relative order-3">
-                <div className="w-8 h-8 rounded-full bg-amber-700/60 text-amber-200 font-black flex items-center justify-center text-xs shadow-md">
+              <div className="p-5 rounded-3xl bg-gradient-to-b from-card to-card/10 border border-border/30 flex flex-col items-center text-center space-y-3 shadow-lg relative order-3">
+                <div className="w-8 h-8 rounded-full bg-pps-orange/30 text-pps-orange font-black flex items-center justify-center text-xs shadow-md">
                   3
                 </div>
-                <div className="w-16 h-16 rounded-3xl bg-surface border-2 border-amber-700/40 flex items-center justify-center text-3xl shadow-md">
+                <div className="w-16 h-16 rounded-3xl bg-surface border-2 border-border/40 flex items-center justify-center text-3xl shadow-md">
                   {leaderboardData[2].avatar}
                 </div>
                 <div>
                   <div className="text-sm font-black text-foreground">{leaderboardData[2].name}</div>
-                  <div className="text-xs font-mono font-bold text-amber-500 mt-0.5">{leaderboardData[2].xp.toLocaleString()} XP</div>
+                  <div className="text-xs font-mono font-bold text-pps-orange mt-0.5">{leaderboardData[2].xp.toLocaleString()} XP</div>
                 </div>
                 <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
-                  <span className="flex items-center gap-0.5 text-amber-400 font-bold"><Flame className="w-3 h-3 fill-amber-400" /> {leaderboardData[2].streak}d</span>
+                  <span className="flex items-center gap-0.5 text-pps-orange font-bold"><Flame className="w-3 h-3 fill-pps-orange" /> {leaderboardData[2].streak}d</span>
                   <span>•</span>
                   <span>Lvl {leaderboardData[2].level}</span>
                 </div>
@@ -564,12 +584,14 @@ export default function SocialSection() {
                       {item.xp.toLocaleString()} XP
                     </div>
                     {!item.isYou && (
-                      <button
+                      <Button
                         onClick={() => toast.success(`Sent cheer to ${item.name}! 👏`)}
+                        variant="ghost"
+                        size="sm"
                         className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                       >
                         Cheer 👏
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -589,7 +611,7 @@ export default function SocialSection() {
                   </p>
                 </div>
                 <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
-                  <button
+                  <Button
                     onClick={() => {
                       navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/login?tab=signup`);
                       toast.success("Squad invite link copied to clipboard! 📋");
@@ -597,7 +619,7 @@ export default function SocialSection() {
                     className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer shadow-xs"
                   >
                     📋 Copy Squad Invite Link
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -622,7 +644,7 @@ export default function SocialSection() {
                       <span className="text-[10px] font-mono font-bold uppercase text-primary bg-primary/15 border border-primary/30 px-2 py-0.5 rounded-md">
                         {q.category}
                       </span>
-                      <span className="text-xs font-mono font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-lg">
+                      <span className="text-xs font-mono font-extrabold text-pps-orange bg-pps-orange/10 px-2 py-0.5 rounded-lg">
                         +{q.rewardXp} XP
                       </span>
                     </div>
@@ -664,16 +686,17 @@ export default function SocialSection() {
                   </div>
 
                   {/* Join / Leave CTA */}
-                  <button
+                  <Button
                     onClick={() => handleToggleQuest(q.id)}
-                    className={`w-full py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                    variant={q.isJoined ? "outline" : "default"}
+                    className={`w-full py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border ${
                       q.isJoined
-                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30"
-                        : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20"
+                        ? "bg-pps-green/20 text-pps-green border border-pps-green/30 hover:bg-pps-green/30"
+                        : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 border-primary"
                     }`}
                   >
                     {q.isJoined ? "Quest Active (Joined ✓)" : "Join Co-Op Quest"}
-                  </button>
+                  </Button>
                 </div>
               );
             })}
@@ -686,7 +709,7 @@ export default function SocialSection() {
         <div className="space-y-4 max-w-2xl mx-auto">
           <div className="p-4 rounded-2xl bg-surface/60 border border-border/60 text-xs text-muted-foreground font-medium flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+              <Radio className="w-3.5 h-3.5 text-pps-green animate-pulse" />
               <span>Real-time squad study celebrations & milestone alerts</span>
             </span>
             <span className="text-[10px] font-mono text-primary font-bold">+1 XP per cheer</span>
@@ -742,9 +765,12 @@ export default function SocialSection() {
                   {/* Reactions Dock */}
                   <div className="flex items-center gap-2 pt-1">
                     {act.reactions.map((r) => (
-                      <button
+                      <Button
                         key={r.emoji}
+                        type="button"
                         onClick={() => handleReactToActivity(act.id, r.emoji)}
+                        variant={r.reactedByUser ? "default" : "outline"}
+                        size="sm"
                         className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
                           r.reactedByUser
                             ? "bg-primary/20 border-primary text-primary"
@@ -753,7 +779,7 @@ export default function SocialSection() {
                       >
                         <span>{r.emoji}</span>
                         <span className="text-[11px] font-mono">{r.count}</span>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -792,7 +818,7 @@ export default function SocialSection() {
                   onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                   className="bg-surface border border-border/80 text-xs font-mono font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary uppercase flex-1"
                 />
-                <button
+                <Button
                   onClick={async () => {
                     const err = await joinClassroom(joinCode);
                     if (err) toast.error(err);
@@ -801,14 +827,14 @@ export default function SocialSection() {
                   className="text-xs bg-primary text-primary-foreground font-extrabold px-4 py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
                 >
                   Join Class
-                </button>
+                </Button>
               </div>
             </div>
 
             {/* Create Classroom (Teachers) */}
             <div className="bg-card border border-border p-5 rounded-3xl shadow-xl space-y-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-400" />
+                <Sparkles className="w-5 h-5 text-pps-orange" />
                 <h3 className="text-sm font-extrabold text-foreground">Create New Classroom</h3>
               </div>
               <div className="space-y-2">
@@ -826,7 +852,7 @@ export default function SocialSection() {
                   onChange={(e) => setNewClassDesc(e.target.value)}
                   className="w-full bg-surface border border-border/80 text-xs rounded-xl px-3.5 py-2 outline-none text-foreground focus:border-primary"
                 />
-                <button
+                <Button
                   onClick={async () => {
                     const err = await createClassroom(newClassName, newClassDesc);
                     if (err) toast.error(err);
@@ -838,7 +864,7 @@ export default function SocialSection() {
                   className="w-full text-xs bg-gradient-to-r from-primary to-accent text-white font-extrabold py-2.5 rounded-xl hover:opacity-95 transition-all cursor-pointer shadow-sm"
                 >
                   Create & Generate Code
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -878,15 +904,17 @@ export default function SocialSection() {
                           {clsAssigned.map((a) => (
                             <div key={a.id} className="flex items-center justify-between text-xs bg-card/80 border border-border/60 px-3 py-1.5 rounded-xl font-medium">
                               <span>{a.habitName}</span>
-                              <button
+                              <Button
                                 onClick={async () => {
                                   await addHabit(a.habitName, a.category, a.period, "High");
                                   toast.success(`Added assigned habit "${a.habitName}" to your tracker!`);
                                 }}
-                                className="text-[10px] bg-primary/15 text-primary font-bold px-2 py-0.5 rounded-lg hover:bg-primary hover:text-white transition-all cursor-pointer"
+                                variant="outline"
+                                size="sm"
+                                className="text-[10px] bg-primary/15 text-primary font-bold px-2 py-0.5 rounded-lg border border-primary/30 hover:bg-primary hover:text-white transition-all cursor-pointer"
                               >
                                 + Import to My Tracker
-                              </button>
+                              </Button>
                             </div>
                           ))}
                         </div>
@@ -894,7 +922,7 @@ export default function SocialSection() {
 
                       {/* Classroom Action Dock: Start Live Class & Attendance */}
                       <div className="mt-3.5 pt-2.5 border-t border-border/40 flex items-center justify-between gap-2 flex-wrap">
-                        <button
+                        <Button
                           onClick={() => {
                             toast.success(`Started Live Class for ${cls.name}! 🎥`, {
                               description: "Students enrolled in this classroom are notified to join the live studio.",
@@ -904,16 +932,18 @@ export default function SocialSection() {
                         >
                           <Video className="w-3.5 h-3.5" />
                           <span>Start Live Class</span>
-                        </button>
+                        </Button>
 
-                        <button
+                        <Button
                           onClick={() => {
                             toast.info(`Attendance Report for ${cls.name}: ${cls.memberCount} students active · 94% on-time rate 📋`);
                           }}
-                          className="px-2.5 py-1.5 rounded-xl bg-surface border border-border/80 text-muted-foreground hover:text-foreground text-[11px] font-bold transition-all cursor-pointer"
+                          variant="outline"
+                          size="sm"
+                          className="px-2.5 py-1.5 rounded-xl border border-border/80 text-muted-foreground hover:text-foreground text-[11px] font-bold transition-all cursor-pointer"
                         >
                           View Attendance
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
@@ -929,17 +959,19 @@ export default function SocialSection() {
                         }}
                         className="bg-card border border-border/80 text-xs font-medium rounded-xl px-3 py-1.5 outline-none text-foreground focus:border-primary flex-1"
                       />
-                      <button
+                      <Button
                         onClick={async () => {
                           if (selectedClassId === cls.id && assignName.trim()) {
                             await assignHabit(cls.id, assignName, "Learning", "Daily");
                             setAssignName("");
                           }
                         }}
-                        className="text-xs bg-surface border border-border/80 text-foreground font-bold px-3 py-1.5 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs flex-shrink-0"
+                        variant="outline"
+                        size="sm"
+                        className="text-xs border border-border/80 text-foreground font-bold px-3 py-1.5 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs flex-shrink-0"
                       >
                         Assign
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );

@@ -216,6 +216,7 @@ export const ParkinsonsLawInverterModal: React.FC<ParkinsonsLawInverterModalProp
                   <input
                     type="text"
                     value={microStep}
+                    maxLength={200}
                     onChange={(e) => setMicroStep(e.target.value)}
                     placeholder="e.g., Outline Page 1, draft introduction, test DB connection"
                     className="w-full bg-surface border border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground focus:outline-hidden focus:border-primary"

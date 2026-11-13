@@ -87,7 +87,7 @@ describe("🌬️ Vayu UI Components (HUD Banner & Flow Studio)", () => {
         />
       );
 
-      expect(screen.getByText("Vayu Circadian Flow")).toBeInTheDocument();
+      expect(screen.getByText("Adaptive Circadian Flow")).toBeInTheDocument();
       expect(screen.getByText("Algorithms Mastery Sprint")).toBeInTheDocument();
       expect(screen.getByText("20% Achieved")).toBeInTheDocument();
       expect(screen.getByText(/Peak Energy/i)).toBeInTheDocument();
@@ -154,7 +154,7 @@ describe("🌬️ Vayu UI Components (HUD Banner & Flow Studio)", () => {
         />
       );
 
-      const input = screen.getByPlaceholderText(/Tell Vayu:/i);
+      const input = screen.getByPlaceholderText(/Tell Flow Engine:/i);
       fireEvent.change(input, { target: { value: "Finished DSA session 100%" } });
 
       const submitBtn = screen.getByRole("button", { name: /Process/i });
@@ -178,7 +178,7 @@ describe("🌬️ Vayu UI Components (HUD Banner & Flow Studio)", () => {
         />
       );
 
-      expect(screen.getByText("Vayu Flow Studio")).toBeInTheDocument();
+      expect(screen.getByText("Adaptive Flow Studio")).toBeInTheDocument();
       expect(screen.getByText("10:00 PM")).toBeInTheDocument();
       expect(screen.getByText("Algorithms Mastery Sprint")).toBeInTheDocument();
       expect(screen.getByText("Vayu Prana: Mindful Recharge")).toBeInTheDocument();

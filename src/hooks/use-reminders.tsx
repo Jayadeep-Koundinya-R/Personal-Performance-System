@@ -254,7 +254,7 @@ export function RemindersProvider({
     } catch (err) {
       console.error("Failed to toggle reminder on cloud:", err);
     }
-  }, [reminders, userId, storageScope, isGuestUser]);
+  }, [reminders, storageScope, isGuestUser]);
 
   const removeReminder = useCallback(async (id: string) => {
     const updatedList = reminders.filter((r) => r.id !== id);
@@ -276,7 +276,7 @@ export function RemindersProvider({
     } catch (err) {
       console.error("Failed to delete reminder on cloud:", err);
     }
-  }, [reminders, userId, storageScope, isGuestUser]);
+  }, [reminders, storageScope, isGuestUser]);
 
   return (
     <RemindersContext.Provider value={{ reminders, loading, addReminder, toggleReminder, removeReminder, refresh }}>

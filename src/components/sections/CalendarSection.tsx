@@ -18,6 +18,7 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
 import { useFocusTimer } from "@/hooks/use-focus-timer";
+import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, ListFilter, Zap } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,8 +31,9 @@ const MONTHS = [
 ];
 
 function getCircadianBlock(habit: any): "morning" | "afternoon" | "evening" {
-  if (habit.startTime) {
-    const hour = parseInt(habit.startTime.split(":")[0], 10);
+  const time = habit.window_start || habit.startTime;
+  if (time) {
+    const hour = parseInt(time.split(":")[0], 10);
     if (hour < 12) return "morning";
     if (hour < 18) return "afternoon";
     return "evening";
@@ -218,8 +220,10 @@ const CalendarSection = () => {
             const Icon = v.icon;
             const isCurrent = viewMode === v.key;
             return (
-              <button
+              <Button
                 key={v.key}
+                variant={isCurrent ? "default" : "outline"}
+                size="sm"
                 onClick={() => setViewMode(v.key)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${isCurrent
                   ? "bg-primary text-primary-foreground shadow-xs"
@@ -228,7 +232,7 @@ const CalendarSection = () => {
               >
                 <Icon className="w-3.5 h-3.5" />
                 <span>{v.label}</span>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -239,40 +243,47 @@ const CalendarSection = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           {/* Month Navigator */}
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={() => navigateMonth(-1)}
+              variant="outline"
+              size="sm"
               className="p-2 bg-surface border border-border/80 rounded-xl hover:bg-muted hover:border-primary/40 transition-all cursor-pointer"
               title="Previous Month"
             >
               <ChevronLeft className="w-4 h-4 text-foreground" />
-            </button>
+            </Button>
 
             <h2 className="text-base font-extrabold text-foreground font-mono min-w-[160px] text-center">
               {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
             </h2>
 
-            <button
+            <Button
               onClick={() => navigateMonth(1)}
+              variant="outline"
+              size="sm"
               className="p-2 bg-surface border border-border/80 rounded-xl hover:bg-muted hover:border-primary/40 transition-all cursor-pointer"
               title="Next Month"
             >
               <ChevronRight className="w-4 h-4 text-foreground" />
-            </button>
+            </Button>
 
-            <button
+            <Button
               onClick={goToToday}
-              className="text-xs bg-primary/15 text-primary border border-primary/30 px-3 py-1.5 rounded-xl font-bold hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer ml-1"
+              size="sm"
+              className="bg-primary/15 text-primary border border-primary/30 px-3 py-1.5 rounded-xl font-bold hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer ml-1"
             >
               Today
-            </button>
+            </Button>
           </div>
 
           {/* Category & Single Habit Filters */}
           <div className="flex items-center gap-2 flex-wrap max-w-full">
             <div className="flex items-center gap-1 overflow-x-auto pb-0.5 max-w-full">
               {categories.map((cat) => (
-                <button
+                <Button
                   key={cat}
+                  variant={selectedCategory === cat && !selectedHabitId ? "secondary" : "outline"}
+                  size="sm"
                   onClick={() => {
                     setSelectedCategory(cat);
                     setSelectedHabitId(null);
@@ -283,7 +294,7 @@ const CalendarSection = () => {
                     }`}
                 >
                   {cat}
-                </button>
+                </Button>
               ))}
             </div>
 
@@ -447,7 +458,7 @@ const CalendarSection = () => {
                 <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
                   <span>⏰ Weekly Circadian Time-Block Schedule</span>
                 </h3>
-                <p className="text-[11.5px] text-sky-300 font-medium mt-0.5">
+                <p className="text-[11.5px] text-secondary font-medium mt-0.5">
                   Align habits with biological energy peaks: 🌅 Morning (Focus) • ☀️ Afternoon (Execution) • 🌙 Evening (Wind-down)
                 </p>
               </div>
@@ -483,11 +494,11 @@ const CalendarSection = () => {
                     </div>
 
                     {/* Circadian Time Blocks */}
-                    {([
-                      { title: "MORNING 🌅", time: "6am–12pm", color: "text-sky-300", habits: morningHabits },
-                      { title: "AFTERNOON ☀️", time: "12pm–6pm", color: "text-amber-300", habits: afternoonHabits },
-                      { title: "EVENING 🌙", time: "6pm–12am", color: "text-indigo-300", habits: eveningHabits },
-                    ]).map((block) => (
+{([
+  { title: "MORNING 🌅", time: "6am–12pm", color: "text-secondary", habits: morningHabits },
+  { title: "AFTERNOON ☀️", time: "12pm–6pm", color: "text-pps-orange", habits: afternoonHabits },
+  { title: "EVENING 🌙", time: "6pm–12am", color: "text-accent", habits: eveningHabits },
+]).map((block) => (
                       <div key={block.title} className="space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className={`text-[9.5px] font-mono font-extrabold uppercase ${block.color}`}>
@@ -509,26 +520,36 @@ const CalendarSection = () => {
                                     }`}
                                 >
                                   <div className="flex items-center gap-1.5 min-w-0">
-                                    <button
+                                    <Button
                                       onClick={() => handleRetroactiveToggle(h.id, w.dateStr)}
-                                      className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer text-[10px] font-bold ${isDone ? "bg-pps-green border-pps-green text-white" : "border-slate-400 hover:border-primary"
-                                        }`}
+                                      variant={isDone ? "default" : "outline"}
+                                      size="sm"
+                                      className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer text-[10px] font-bold ${isDone ? "bg-pps-green border-pps-green text-foreground" : "border-border hover:border-primary"}`}
                                       title="Toggle completion for this date"
                                     >
                                       {isDone && "✓"}
-                                    </button>
-                                    <span className={`truncate max-w-[85px] ${isDone ? "line-through opacity-80" : ""}`}>
-                                      {h.name}
-                                    </span>
+                                    </Button>
+                                    <div className="truncate min-w-0">
+                                      <div className={`truncate max-w-[85px] ${isDone ? "line-through opacity-80" : ""}`}>
+                                        {h.name}
+                                      </div>
+                                      {h.requires_focus_timer && (
+                                        <div className="text-[8.5px] font-mono text-pps-orange font-extrabold flex items-center gap-0.5">
+                                          <span>⚡{h.focus_duration_minutes || 25}m</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
 
-                                  <button
+                                  <Button
                                     onClick={() => timer.startHabitFocus(h)}
+                                    variant="ghost"
+                                    size="sm"
                                     className="text-[10px] text-primary hover:text-primary-foreground hover:bg-primary/20 p-1 rounded transition-all cursor-pointer flex-shrink-0"
                                     title="Launch in Focus Studio"
                                   >
                                     <Zap className="w-3 h-3" />
-                                  </button>
+                                  </Button>
                                 </div>
                               );
                             })
@@ -628,12 +649,14 @@ const CalendarSection = () => {
                     Click checkmark to retroactively complete or undo habits for this date
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={() => setSelectedDayStr(null)}
+                  variant="ghost"
+                  size="sm"
                   className="text-muted-foreground hover:text-foreground text-sm font-bold p-1 cursor-pointer"
                 >
                   ✕
-                </button>
+                </Button>
               </div>
 
               {/* Day Note Display if any */}
@@ -666,17 +689,19 @@ const CalendarSection = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <button
+                          <Button
                             onClick={(e) => {
                               e.stopPropagation();
                               timer.startHabitFocus(habit);
                               setSelectedDayStr(null);
                             }}
-                            className="p-1 text-primary hover:bg-primary/20 rounded transition-all"
+                            variant="ghost"
+                            size="sm"
+                            className="p-1 text-primary hover:bg-primary/20 rounded transition-all cursor-pointer"
                             title="Launch in Focus Studio"
                           >
                             <Zap className="w-3.5 h-3.5" />
-                          </button>
+                          </Button>
 
                           <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${isDone ? "bg-pps-green/20 text-pps-green font-bold border border-pps-green/30" : "bg-muted text-muted-foreground"}`}>
                             {isDone ? "+10 XP ✓" : "Pending"}
@@ -691,12 +716,12 @@ const CalendarSection = () => {
               </div>
 
               <div className="pt-2 text-center">
-                <button
+                <Button
                   onClick={() => setSelectedDayStr(null)}
                   className="w-full bg-primary text-primary-foreground font-bold text-xs py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
                 >
                   Done
-                </button>
+                </Button>
               </div>
             </motion.div>
           </motion.div>

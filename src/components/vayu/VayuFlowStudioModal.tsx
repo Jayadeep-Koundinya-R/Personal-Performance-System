@@ -80,9 +80,9 @@ export const VayuFlowStudioModal: React.FC<VayuFlowStudioModalProps> = ({
             </div>
             <div>
               <DialogTitle className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-                Vayu Flow Studio
-                <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] font-semibold text-cyan-600 dark:text-cyan-300 border border-cyan-500/30">
-                  45/15 Ultradian Engine
+                Adaptive Flow Studio
+                <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                  45/15 Rhythm Engine
                 </span>
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
@@ -154,8 +154,9 @@ export const VayuFlowStudioModal: React.FC<VayuFlowStudioModalProps> = ({
           <input
             type="text"
             value={promptText}
+            maxLength={300}
             onChange={(e) => setPromptText(e.target.value)}
-            placeholder="Give Vayu a directive (e.g. 'Prioritize DSA and system design today')..."
+            placeholder="Give Flow Engine a directive (e.g. 'Prioritize DSA and system design today')..."
             className="flex-1 rounded-xl border border-border/80 bg-surface dark:bg-slate-900/80 px-3.5 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-cyan-400 focus:outline-none"
           />
           <button

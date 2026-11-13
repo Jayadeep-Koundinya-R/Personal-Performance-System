@@ -533,7 +533,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
       console.warn("Daily.co setup notice:", err);
       toast.info(`Joined ${groupName} Focus Room 🎯`);
     }
-  }, [user, profile, isCameraOn, isMuted, currentTask, groupName, setupPresence, isGuestUser, groupId, fetchDailyRoomUrl]);
+  }, [user, profile, isCameraOn, isMuted, currentTask, groupName, setupPresence, isGuestUser, groupId, fetchDailyRoomUrl, effectiveUserId]);
 
   // ── 8. Leave Room & Clean Teardown ──
   const leaveRoom = useCallback(async () => {
@@ -656,7 +656,7 @@ export function useFocusRoom(groupId: string, groupName: string) {
     }
 
     toast.info(next ? "Microphone muted 🔇" : "Microphone active 🎙️");
-  }, [isMuted, localStream, getFullPresencePayload]);
+  }, [isMuted, localStream, getFullPresencePayload, effectiveUserId]);
 
   // ── 11. Screen Share Toggle ──
   const toggleScreenShare = useCallback(async () => {

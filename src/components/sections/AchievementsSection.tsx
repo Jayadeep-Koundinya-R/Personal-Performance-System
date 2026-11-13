@@ -19,6 +19,8 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { CORE_BADGE_IDS } from "@/lib/plans";
 import { Award, Trophy, Star, Flame, Check, Lock, Sparkles, Zap, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { getRecoveryXPClaimedDates, getMicroCompletionsMap } from "@/lib/dashboard/microHabits";
+import { Button } from "@/components/ui/button";
 
 interface Badge {
   id: string;
@@ -39,6 +41,9 @@ interface Stats {
   dueToday: number;
   totalDays: number;
   level: number;
+  microCompletions: number;
+  restDays: number;
+  focusSprintCount: number;
 }
 
 const BADGES: Badge[] = [
@@ -172,6 +177,47 @@ const BADGES: Badge[] = [
     requirementText: "Reach Level 10",
     getProgress: (s) => ({ current: Math.min(s.level, 10), total: 10, pct: Math.min(100, (s.level / 10) * 100) }),
   },
+  {
+    id: "burnout_shield",
+    name: "Anti-Burnout Shield",
+    category: "habit",
+    description: "Protect your consistency streak using 2-minute micro habits or rest days",
+    icon: "🛡️",
+    xpReward: 50,
+    requirementText: "1 Micro Action or Rest Day",
+    getProgress: (s) => {
+      const totalProtected = (s.microCompletions || 0) + (s.restDays || 0);
+      return { current: Math.min(totalProtected, 1), total: 1, pct: Math.min(100, totalProtected * 100) };
+    },
+  },
+  {
+    id: "curfew_master",
+    name: "Agni Curfew Guardian",
+    category: "perfect",
+    description: "Conquer all daily habits and protect sleep hygiene before 10 PM curfew",
+    icon: "🔥",
+    xpReward: 75,
+    requirementText: "Pre-Curfew Completion",
+    getProgress: (s) => ({
+      current: s.dueToday > 0 && s.doneToday === s.dueToday ? 1 : 0,
+      total: 1,
+      pct: s.dueToday > 0 && s.doneToday === s.dueToday ? 100 : 0,
+    }),
+  },
+  {
+    id: "deep_focus_sprint",
+    name: "Proof-of-Focus Sprinter",
+    category: "completion",
+    description: "Execute verified focus sprints to master difficult anchor habits",
+    icon: "⚡",
+    xpReward: 80,
+    requirementText: "5 Focus Sprints",
+    getProgress: (s) => ({
+      current: Math.min(s.focusSprintCount || 0, 5),
+      total: 5,
+      pct: Math.min(100, ((s.focusSprintCount || 0) / 5) * 100),
+    }),
+  },
 ];
 
 const AchievementsSection = () => {
@@ -187,6 +233,17 @@ const AchievementsSection = () => {
     const dueToday = habits.filter((h) => isHabitDueToday(h));
     const doneToday = dueToday.filter((h) => (h.completedDates || []).includes(todayStr));
     const allDates = new Set(habits.flatMap((h) => h.completedDates || []));
+
+    const microMap = getMicroCompletionsMap();
+    let totalMicro = 0;
+    Object.values(microMap).forEach((dates) => {
+      totalMicro += dates.length;
+    });
+    const restDates = getRecoveryXPClaimedDates();
+
+    const focusSprintHabits = habits.filter((h) => h.requires_focus_timer);
+    const sprintCount = focusSprintHabits.reduce((acc, h) => acc + (h.completedDates || []).length, 0);
+
     return {
       totalCompletions: habits.reduce((s, h) => s + (h.completedDates || []).length, 0),
       maxStreak: getMaxStreak(),
@@ -195,6 +252,9 @@ const AchievementsSection = () => {
       dueToday: dueToday.length,
       totalDays: allDates.size,
       level: calculateLevel(),
+      microCompletions: totalMicro,
+      restDays: restDates.length,
+      focusSprintCount: sprintCount,
     };
   }, [habits, isHabitDueToday, todayStr, getMaxStreak, calculateLevel]);
 
@@ -230,7 +290,7 @@ const AchievementsSection = () => {
               Milestone Rewards
             </span>
           </h1>
-          <p className="text-xs text-slate-300 font-medium mt-0.5">
+          <p className="text-xs text-muted-foreground font-medium mt-0.5">
             Unlock milestone badges, track live requirement progress, and claim bonus XP rewards
           </p>
         </div>
@@ -257,7 +317,7 @@ const AchievementsSection = () => {
               <div className="text-xl sm:text-2xl font-extrabold font-mono text-foreground mt-0.5">
                 {unlockedCount} / {visibleBadges.length} Badges Unlocked
               </div>
-              <div className="text-xs text-slate-300 font-medium mt-0.5">
+              <div className="text-xs text-muted-foreground font-medium mt-0.5">
                 Level {stats.level} Master • {stats.totalCompletions} Total Completions
               </div>
             </div>
@@ -265,7 +325,7 @@ const AchievementsSection = () => {
 
           <div className="w-full sm:w-48 space-y-1.5 flex-shrink-0">
             <div className="flex justify-between text-xs font-mono font-extrabold">
-              <span className="text-slate-300">Trophy Room</span>
+              <span className="text-muted-foreground">Trophy Room</span>
               <span className="text-pps-yellow">{overallProgressPct}%</span>
             </div>
             <div className="h-3 bg-surface border border-border/80 rounded-full overflow-hidden">
@@ -290,17 +350,20 @@ const AchievementsSection = () => {
             { key: "level", label: "💎 Level Rank" },
             { key: "perfect", label: "⭐ Perfect Days" },
           ].map((cat) => (
-            <button
+            <Button
               key={cat.key}
+              type="button"
               onClick={() => setSelectedCatFilter(cat.key)}
+              variant={selectedCatFilter === cat.key ? "default" : "outline"}
+              size="sm"
               className={`text-[11px] px-3.5 py-1.5 rounded-xl border font-extrabold transition-all cursor-pointer whitespace-nowrap ${
                 selectedCatFilter === cat.key
-                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                  : "bg-surface border-border/80 text-slate-300 hover:text-foreground"
+                  ? "shadow-xs"
+                  : "bg-surface border-border/80 text-muted-foreground hover:text-foreground hover:border-primary"
               }`}
             >
               {cat.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -346,11 +409,11 @@ const AchievementsSection = () => {
                       {isUnlocked && <Check className="w-4 h-4 text-pps-green font-bold" />}
                       {isLockedProTease && (
                         <span title="Pro Exclusive">
-                          <Lock className="w-3.5 h-3.5 text-amber-400" />
+                          <Lock className="w-3.5 h-3.5 text-pps-orange" />
                         </span>
                       )}
                     </h3>
-                    <div className="text-[11px] text-slate-300 font-mono font-bold mt-0.5">
+                    <div className="text-[11px] text-muted-foreground font-mono font-bold mt-0.5">
                       {badge.requirementText}
                     </div>
                   </div>
@@ -358,12 +421,12 @@ const AchievementsSection = () => {
 
                 <div className="flex flex-col items-end gap-1">
                   <span className={`text-[10.5px] font-mono font-extrabold px-2.5 py-0.5 rounded-full border ${
-                    isUnlocked ? "bg-pps-yellow/20 text-pps-yellow border-pps-yellow/30" : "bg-muted text-slate-400"
+                    isUnlocked ? "bg-pps-yellow/20 text-pps-yellow border-pps-yellow/30" : "bg-muted text-muted-foreground"
                   }`}>
                     +{badge.xpReward} XP
                   </span>
                   {isLockedProTease && (
-                    <span className="text-[9.5px] font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-1.5 py-0.2 rounded-md flex items-center gap-1">
+                    <span className="text-[9.5px] font-mono font-bold text-pps-orange bg-pps-orange/10 border border-pps-orange/30 px-1.5 py-0.2 rounded-md flex items-center gap-1">
                       🔒 PRO
                     </span>
                   )}
@@ -371,7 +434,7 @@ const AchievementsSection = () => {
               </div>
 
               {/* Description */}
-              <p className="text-xs text-slate-200 font-medium">{badge.description}</p>
+              <p className="text-xs text-muted-foreground font-medium">{badge.description}</p>
 
               {/* Progress Bar (For Locked) or Unlocked Status */}
               <div className="pt-2 border-t border-border/40">
@@ -382,7 +445,7 @@ const AchievementsSection = () => {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <div className="flex justify-between text-[10.5px] font-mono font-extrabold text-slate-300">
+                    <div className="flex justify-between text-[10.5px] font-mono font-extrabold text-muted-foreground">
                       <span>Progress ({prog.current}/{prog.total})</span>
                       <span className="text-primary">{Math.round(prog.pct)}%</span>
                     </div>

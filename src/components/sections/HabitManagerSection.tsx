@@ -15,7 +15,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useHabits, Habit } from "@/hooks/use-habits";
 import { useSubscription } from "@/hooks/use-subscription";
 import { HABIT_TEMPLATES, HabitTemplate } from "@/lib/habitTemplates";
-import { Search, Plus, Sparkles, Layers, Check, Edit2, Trash2, Archive, Bell, Clock, Calendar, Shield, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Plus, Sparkles, Layers, Check, Edit2, Trash2, Archive, Bell, Clock, Calendar, Shield, Tag, Zap } from "lucide-react";
 import { toast } from "sonner";
 import EmptyState from "@/components/EmptyState";
 import { CustomSelect } from "@/components/ui/CustomSelect";
@@ -54,12 +55,12 @@ const ROUTINE_BUNDLES = [
 ];
 
 const COLOR_PALETTE = [
-  { value: "indigo", label: "Indigo", bg: "bg-indigo-500", border: "border-indigo-500/40", text: "text-indigo-400" },
-  { value: "emerald", label: "Emerald", bg: "bg-emerald-500", border: "border-emerald-500/40", text: "text-emerald-400" },
-  { value: "amber", label: "Amber", bg: "bg-amber-500", border: "border-amber-500/40", text: "text-amber-400" },
-  { value: "rose", label: "Rose", bg: "bg-rose-500", border: "border-rose-500/40", text: "text-rose-400" },
-  { value: "sky", label: "Sky", bg: "bg-sky-500", border: "border-sky-500/40", text: "text-sky-400" },
-  { value: "violet", label: "Violet", bg: "bg-violet-500", border: "border-violet-500/40", text: "text-violet-400" },
+  { value: "indigo", label: "Indigo", bg: "bg-secondary", border: "border-secondary/40", text: "text-secondary" },
+  { value: "emerald", label: "Emerald", bg: "bg-pps-green", border: "border-pps-green/40", text: "text-pps-green" },
+  { value: "amber", label: "Amber", bg: "bg-pps-orange", border: "border-pps-orange/40", text: "text-pps-orange" },
+  { value: "rose", label: "Rose", bg: "bg-destructive", border: "border-destructive/40", text: "text-destructive" },
+  { value: "sky", label: "Sky", bg: "bg-secondary", border: "border-secondary/40", text: "text-secondary" },
+  { value: "violet", label: "Violet", bg: "bg-accent", border: "border-accent/40", text: "text-accent" },
 ];
 
 const PRIORITY_BADGES: Record<string, string> = {
@@ -91,6 +92,10 @@ const HabitManagerSection = () => {
   const [color, setColor] = useState("indigo");
   const [startAlarm, setStartAlarm] = useState(false);
   const [endAlarm, setEndAlarm] = useState(false);
+  const [requiresFocusTimer, setRequiresFocusTimer] = useState(false);
+  const [focusDurationMinutes, setFocusDurationMinutes] = useState(25);
+  const [windowStart, setWindowStart] = useState("");
+  const [windowEnd, setWindowEnd] = useState("");
   const [nameError, setNameError] = useState(false);
 
   // Edit Modal State
@@ -103,6 +108,10 @@ const HabitManagerSection = () => {
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
   const [editColor, setEditColor] = useState("indigo");
+  const [editRequiresFocusTimer, setEditRequiresFocusTimer] = useState(false);
+  const [editFocusDurationMinutes, setEditFocusDurationMinutes] = useState(25);
+  const [editWindowStart, setEditWindowStart] = useState("");
+  const [editWindowEnd, setEditWindowEnd] = useState("");
 
   // Routine Bundles Modal State
   const [showBundles, setShowBundles] = useState(false);
@@ -144,7 +153,11 @@ const HabitManagerSection = () => {
       endTime || null,
       color,
       startAlarm,
-      endAlarm
+      endAlarm,
+      requiresFocusTimer,
+      focusDurationMinutes,
+      windowStart || undefined,
+      windowEnd || undefined
     );
 
     if (err) {
@@ -161,6 +174,10 @@ const HabitManagerSection = () => {
     setStartTime("");
     setEndTime("");
     setColor("indigo");
+    setRequiresFocusTimer(false);
+    setFocusDurationMinutes(25);
+    setWindowStart("");
+    setWindowEnd("");
     setIsFormOpen(false);
     toast.success("Habit added to your architect stack!");
   };
@@ -200,6 +217,10 @@ const HabitManagerSection = () => {
     setEditStartTime(h.startTime || "");
     setEditEndTime(h.endTime || "");
     setEditColor(h.color || "indigo");
+    setEditRequiresFocusTimer(h.requires_focus_timer || false);
+    setEditFocusDurationMinutes(h.focus_duration_minutes || 25);
+    setEditWindowStart(h.window_start || "");
+    setEditWindowEnd(h.window_end || "");
   };
 
   // Save Edit
@@ -213,6 +234,10 @@ const HabitManagerSection = () => {
       startTime: editStartTime || null,
       endTime: editEndTime || null,
       color: editColor,
+      requires_focus_timer: editRequiresFocusTimer,
+      focus_duration_minutes: editFocusDurationMinutes,
+      window_start: editWindowStart || undefined,
+      window_end: editWindowEnd || undefined,
     });
     setEditHabit(null);
     toast.success("Habit updated successfully!");
@@ -235,21 +260,23 @@ const HabitManagerSection = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={() => setShowBundles(true)}
-            className="text-xs bg-secondary/15 text-secondary border border-secondary/30 px-3.5 py-2 rounded-2xl font-extrabold hover:bg-secondary hover:text-secondary-foreground transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+            variant="secondary"
+            size="sm"
+            className="bg-secondary/15 text-secondary border border-secondary/30 px-3.5 py-2 rounded-2xl font-extrabold hover:bg-secondary hover:text-secondary-foreground transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Routine Bundles</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={() => setIsFormOpen(!isFormOpen)}
-            className="text-xs bg-primary text-primary-foreground font-extrabold px-4 py-2 rounded-2xl hover:bg-primary/90 transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
+            className="bg-primary text-primary-foreground font-extrabold px-4 py-2 rounded-2xl hover:bg-primary/90 transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
           >
             <Plus className="w-4 h-4" />
             <span>{isFormOpen ? "Close Form" : "Build New Habit"}</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -289,7 +316,7 @@ const HabitManagerSection = () => {
 
               {/* Atomic Stacking Trigger */}
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-sky-300 font-mono flex items-center gap-1">
+                <label className="text-xs font-extrabold text-secondary font-mono flex items-center gap-1">
                   <span>2. Atomic Trigger ("After I...")</span>
                   <span className="text-[10px] text-muted-foreground font-normal">(Optional Habit Stacking)</span>
                 </label>
@@ -298,7 +325,7 @@ const HabitManagerSection = () => {
                   placeholder="e.g. Pour my morning coffee ☕"
                   value={triggerEvent}
                   onChange={(e) => setTriggerEvent(e.target.value)}
-                  className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-sky-400"
+                  className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary"
                 />
               </div>
 
@@ -349,9 +376,10 @@ const HabitManagerSection = () => {
                 <label className="text-xs font-extrabold text-foreground font-mono">Theme Accent Color</label>
                 <div className="flex items-center gap-2 pt-1">
                   {COLOR_PALETTE.map((c) => (
-                    <button
+                    <Button
                       key={c.value}
-                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setColor(c.value)}
                       className={`w-7 h-7 rounded-full ${c.bg} cursor-pointer transition-all ${
                         color === c.value ? "ring-2 ring-foreground ring-offset-2 ring-offset-background scale-110" : "opacity-70 hover:opacity-100"
@@ -361,24 +389,138 @@ const HabitManagerSection = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Proof-of-Focus Sprint Lock */}
+              <div className="sm:col-span-2 p-3.5 bg-surface/50 border border-border/70 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-pps-orange font-bold text-sm">⚡</span>
+                    <div>
+                      <div className="text-xs font-extrabold text-foreground font-mono">Proof-of-Focus Sprint Lock (Agni 2.0)</div>
+                      <div className="text-[10.5px] text-muted-foreground">Requires a verified focus sprint before this anchor habit can be marked done</div>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={requiresFocusTimer}
+                    onChange={(e) => setRequiresFocusTimer(e.target.checked)}
+                    className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer accent-primary"
+                  />
+                </div>
+                {requiresFocusTimer && (
+                  <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                    <span className="text-[11px] font-mono text-muted-foreground font-semibold">Sprint Duration:</span>
+                    {[15, 25, 45, 60].map((mins) => (
+                      <Button
+                        key={mins}
+                        type="button"
+                        variant={focusDurationMinutes === mins ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setFocusDurationMinutes(mins)}
+                        className={`text-[10.5px] font-mono font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                          focusDurationMinutes === mins
+                            ? "bg-pps-orange text-foreground border border-pps-orange shadow-xs"
+                            : "bg-surface border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {mins}m
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Circadian Biological Energy Window */}
+              <div className="sm:col-span-2 p-3.5 bg-surface/50 border border-border/70 rounded-2xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-secondary font-bold text-sm">⏳</span>
+                    <div>
+                      <div className="text-xs font-extrabold text-foreground font-mono">Circadian Biological Window</div>
+                      <div className="text-[10.5px] text-muted-foreground">Align habit execution with your peak energy window</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { label: "🌅 Morning (08–12)", start: "08:00", end: "12:00" },
+                      { label: "☀️ Afternoon (13–16)", start: "13:00", end: "16:00" },
+                      { label: "🌙 Evening (17–21)", start: "17:00", end: "21:00" },
+                    ].map((preset) => (
+                      <Button
+                        key={preset.label}
+                        type="button"
+                        variant={windowStart === preset.start && windowEnd === preset.end ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setWindowStart(preset.start);
+                          setWindowEnd(preset.end);
+                        }}
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
+                          windowStart === preset.start && windowEnd === preset.end
+                            ? "bg-secondary/20 text-secondary border border-secondary/40 font-bold"
+                            : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                    {(windowStart || windowEnd) && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        onClick={() => {
+                          setWindowStart("");
+                          setWindowEnd("");
+                        }}
+                        className="text-[10px] text-destructive hover:underline cursor-pointer ml-1"
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border/40">
+                  <div>
+                    <label className="text-[10px] font-mono text-muted-foreground font-semibold">Window Opens (HH:MM)</label>
+                    <input
+                      type="time"
+                      value={windowStart}
+                      onChange={(e) => setWindowStart(e.target.value)}
+                      className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3 py-1.5 outline-none text-foreground mt-0.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono text-muted-foreground font-semibold">Window Closes (HH:MM)</label>
+                    <input
+                      type="time"
+                      value={windowEnd}
+                      onChange={(e) => setWindowEnd(e.target.value)}
+                      className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3 py-1.5 outline-none text-foreground mt-0.5"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Form Actions */}
             <div className="pt-2 flex justify-end gap-2 border-t border-border/40">
-              <button
+              <Button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
+                variant="outline"
+                size="sm"
                 className="text-xs font-bold text-muted-foreground hover:text-foreground px-4 py-2 rounded-xl hover:bg-surface transition-all cursor-pointer"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleAdd}
-                className="text-xs bg-primary text-primary-foreground font-extrabold px-5 py-2 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+                className="bg-primary text-primary-foreground font-extrabold px-5 py-2 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
               >
                 Save Habit to Stack
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -389,22 +531,26 @@ const HabitManagerSection = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           {/* Active / Archived Tab Pill */}
           <div className="flex items-center gap-1 bg-surface border border-border/80 p-1 rounded-2xl">
-            <button
+            <Button
               onClick={() => setViewMode("active")}
+              variant={viewMode === "active" ? "default" : "outline"}
+              size="sm"
               className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
                 viewMode === "active" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Active Habits ({habits.filter((h) => !h.archived).length})
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setViewMode("archived")}
+              variant={viewMode === "archived" ? "default" : "outline"}
+              size="sm"
               className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
                 viewMode === "archived" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Archived ({habits.filter((h) => h.archived).length})
-            </button>
+            </Button>
           </div>
 
           {/* Search Box */}
@@ -423,8 +569,10 @@ const HabitManagerSection = () => {
         {/* Category Chips Bar */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
           {categories.map((cat) => (
-            <button
+            <Button
               key={cat}
+              variant={selectedCategoryTab === cat ? "secondary" : "outline"}
+              size="sm"
               onClick={() => setSelectedCategoryTab(cat)}
               className={`text-[11px] px-3 py-1 rounded-lg border font-bold transition-all cursor-pointer whitespace-nowrap ${
                 selectedCategoryTab === cat
@@ -433,7 +581,7 @@ const HabitManagerSection = () => {
               }`}
             >
               {cat}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -466,7 +614,7 @@ const HabitManagerSection = () => {
                     <div>
                       <h3 className="text-sm font-extrabold text-foreground leading-snug">{h.name}</h3>
                       {isAtomic && (
-                        <div className="text-[10.5px] font-mono text-sky-300 font-bold mt-0.5 flex items-center gap-1">
+                        <div className="text-[10.5px] font-mono text-secondary font-bold mt-0.5 flex items-center gap-1">
                           <span>🔗 Atomic Stack</span>
                         </div>
                       )}
@@ -485,12 +633,12 @@ const HabitManagerSection = () => {
                       ⏰ {h.period}
                     </span>
                     {h.requires_focus_timer && (
-                      <span className="bg-amber-500/15 text-amber-500 border border-amber-500/30 px-2 py-0.5 rounded-lg">
+                      <span className="bg-pps-orange/15 text-pps-orange border border-pps-orange/30 px-2 py-0.5 rounded-lg">
                         ⚡ Sprint ({h.focus_duration_minutes || 25}m)
                       </span>
                     )}
                     {(h.window_start || h.window_end) && (
-                      <span className="bg-blue-500/15 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-lg">
+                      <span className="bg-secondary/15 text-secondary border border-secondary/30 px-2 py-0.5 rounded-lg">
                         ⏳ {h.window_start || "00:00"} – {h.window_end || "23:59"}
                       </span>
                     )}
@@ -499,37 +647,66 @@ const HabitManagerSection = () => {
 
                 {/* Footer Controls */}
                 <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-2">
-                  <div className="text-[11px] font-mono font-bold text-pps-green">
-                    ✓ {h.completedDates.length} Done
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold text-pps-green">
+                      ✓ {h.completedDates.length} Done
+                    </span>
+                    <Button
+                      onClick={() => {
+                        window.dispatchEvent(
+                          new CustomEvent("pps_start_focus_timer", {
+                            detail: {
+                              habitId: h.id,
+                              habitName: h.name,
+                              duration: h.focus_duration_minutes || 25,
+                            },
+                          })
+                        );
+                        toast.success(`⚡ Focus Sprint launched for "${h.name}"!`);
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="text-[10px] font-mono font-bold bg-pps-orange/15 text-pps-orange border border-pps-orange/30 hover:bg-pps-orange hover:text-black px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      title="Launch Focus Sprint for this habit"
+                    >
+                      <Zap className="w-3 h-3" />
+                      <span>Sprint ({h.focus_duration_minutes || 25}m)</span>
+                    </Button>
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <button
+                    <Button
                       onClick={() => openEdit(h)}
+                      variant="ghost"
+                      size="sm"
                       className="p-1.5 bg-surface border border-border/80 text-muted-foreground hover:text-foreground rounded-lg transition-all cursor-pointer"
                       title="Edit Habit"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       onClick={() => toggleArchive(h)}
+                      variant="ghost"
+                      size="sm"
                       className="p-1.5 bg-surface border border-border/80 text-muted-foreground hover:text-foreground rounded-lg transition-all cursor-pointer"
                       title={h.archived ? "Restore Habit" : "Archive Habit"}
                     >
                       <Archive className="w-3.5 h-3.5" />
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       onClick={() => {
                         deleteHabit(h.id);
                         toast.success("Habit deleted");
                       }}
+                      variant="destructive"
+                      size="sm"
                       className="p-1.5 bg-surface border border-destructive/40 text-destructive hover:bg-destructive/10 rounded-lg transition-all cursor-pointer"
                       title="Delete Habit"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </motion.div>
@@ -564,12 +741,14 @@ const HabitManagerSection = () => {
                     1-click install high-performance habit stacks created by productivity scientists
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={() => setShowBundles(false)}
+                  variant="ghost"
+                  size="sm"
                   className="text-muted-foreground hover:text-foreground text-sm font-bold p-1 cursor-pointer"
                 >
                   ✕
-                </button>
+                </Button>
               </div>
 
               <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
@@ -592,12 +771,12 @@ const HabitManagerSection = () => {
                       ))}
                     </div>
 
-                    <button
+                    <Button
                       onClick={() => installBundle(b)}
                       className="w-full bg-secondary text-secondary-foreground font-extrabold text-xs py-2 rounded-xl hover:bg-secondary/90 transition-all cursor-pointer shadow-xs mt-2"
                     >
                       1-Click Install Bundle
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -625,9 +804,12 @@ const HabitManagerSection = () => {
             >
               <div className="flex items-center justify-between pb-3 border-b border-border/40">
                 <h3 className="text-base font-extrabold text-foreground font-mono">✏️ Edit Habit Architecture</h3>
-                <button onClick={() => setEditHabit(null)} className="text-muted-foreground hover:text-foreground text-sm font-bold">
-                  ✕
-                </button>
+                      <Button
+                        onClick={() => setEditHabit(null)}
+                        className="text-muted-foreground hover:text-foreground text-sm font-bold"
+                      >
+                        ✕
+                      </Button>
               </div>
 
               <div className="space-y-3">
@@ -680,21 +862,104 @@ const HabitManagerSection = () => {
                     </select>
                   </div>
                 </div>
+
+                {/* Edit Proof-of-Focus Lock */}
+                <div className="p-3 bg-surface/50 border border-border/70 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-foreground flex items-center gap-1.5">
+                      <span className="text-pps-orange">⚡</span>
+                      <span>Proof-of-Focus Lock (Agni 2.0)</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={editRequiresFocusTimer}
+                      onChange={(e) => setEditRequiresFocusTimer(e.target.checked)}
+                      className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer accent-primary"
+                    />
+                  </div>
+                  {editRequiresFocusTimer && (
+                    <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                      <span className="text-[11px] font-mono text-muted-foreground font-semibold">Duration:</span>
+                      {[15, 25, 45, 60].map((mins) => (
+                        <Button
+                          key={mins}
+                          type="button"
+                          variant={editFocusDurationMinutes === mins ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setEditFocusDurationMinutes(mins)}
+                          className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                            editFocusDurationMinutes === mins
+                              ? "bg-pps-orange text-foreground border border-pps-orange"
+                              : "bg-surface border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {mins}m
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Edit Circadian Window */}
+                <div className="p-3 bg-surface/50 border border-border/70 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-foreground flex items-center gap-1.5">
+                      <span className="text-secondary">⏳</span>
+                      <span>Circadian Window</span>
+                    </span>
+                    {(editWindowStart || editWindowEnd) && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        onClick={() => {
+                          setEditWindowStart("");
+                          setEditWindowEnd("");
+                        }}
+                        className="text-[10px] text-destructive hover:underline cursor-pointer"
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[9.5px] font-mono text-muted-foreground">Start Time</label>
+                      <input
+                        type="time"
+                        value={editWindowStart}
+                        onChange={(e) => setEditWindowStart(e.target.value)}
+                        className="w-full bg-surface border border-border/80 text-xs font-bold rounded-lg px-2 py-1 outline-none text-foreground mt-0.5"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9.5px] font-mono text-muted-foreground">End Time</label>
+                      <input
+                        type="time"
+                        value={editWindowEnd}
+                        onChange={(e) => setEditWindowEnd(e.target.value)}
+                        className="w-full bg-surface border border-border/80 text-xs font-bold rounded-lg px-2 py-1 outline-none text-foreground mt-0.5"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-2 flex justify-end gap-2 border-t border-border/40">
-                <button
+                <Button
                   onClick={() => setEditHabit(null)}
+                  variant="outline"
+                  size="sm"
                   className="text-xs font-bold text-muted-foreground hover:text-foreground px-4 py-2 rounded-xl hover:bg-surface"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleSaveEdit}
-                  className="text-xs bg-primary text-primary-foreground font-extrabold px-5 py-2 rounded-xl hover:bg-primary/90 shadow-sm"
+                  className="bg-primary text-primary-foreground font-extrabold px-5 py-2 rounded-xl hover:bg-primary/90 shadow-sm"
                 >
                   Save Changes
-                </button>
+                </Button>
               </div>
             </motion.div>
           </motion.div>

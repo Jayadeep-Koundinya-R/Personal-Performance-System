@@ -5,6 +5,7 @@ import { Habit } from "@/hooks/use-habits";
 import { ReflectionEntry } from "@/hooks/use-reflections";
 import { exportToCSV, exportToJSON, parseAndValidateBackup } from "@/lib/dataExport";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface DataVaultTabProps {
   habits: Habit[];
@@ -106,12 +107,12 @@ export const DataVaultTab: React.FC<DataVaultTabProps> = ({
               </select>
             </div>
 
-            <button
+            <Button
               onClick={exportData}
               className="w-full text-xs bg-primary text-primary-foreground font-extrabold py-2.5 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
             >
               Download Data Snapshot ({exportFormat.toUpperCase()})
-            </button>
+            </Button>
           </div>
 
           {/* Import / Restore Card */}
@@ -123,16 +124,25 @@ export const DataVaultTab: React.FC<DataVaultTabProps> = ({
               </div>
             </div>
 
-            <label className="text-xs bg-surface border border-border/80 text-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs">
-              <Upload className="w-3.5 h-3.5 text-primary" />
-              <span>Choose JSON Backup</span>
+            <div className="flex items-center gap-1.5">
+              <Button
+                onClick={() => {
+                  const input = document.getElementById("json-file-input") as HTMLInputElement;
+                  input?.click();
+                }}
+                className="text-xs bg-surface border border-border/80 text-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+              >
+                <Upload className="w-3.5 h-3.5 text-primary" />
+                <span>Choose JSON Backup</span>
+              </Button>
               <input
+                id="json-file-input"
                 type="file"
                 accept=".json,application/json"
                 onChange={handleImportBackup}
                 className="hidden"
               />
-            </label>
+            </div>
           </div>
 
           {/* Replay Guide */}
@@ -144,16 +154,16 @@ export const DataVaultTab: React.FC<DataVaultTabProps> = ({
               </div>
             </div>
 
-            <button
+            <Button
               onClick={() => {
                 onResetOnboarding();
                 toast.success("Onboarding tour re-enabled. Refresh or navigate to Today tab to begin.");
               }}
-              className="text-xs bg-surface border border-border/80 text-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="text-xs bg-surface border border-border/80 text-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-muted/40 transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
             >
               <HelpCircle className="w-3.5 h-3.5 text-primary" />
               <span>Restart Tour</span>
-            </button>
+            </Button>
           </div>
 
           {/* Danger Zone: Reset Data */}
@@ -165,18 +175,18 @@ export const DataVaultTab: React.FC<DataVaultTabProps> = ({
               </div>
             </div>
 
-            <button
+            <Button
               onClick={async () => {
                 if (window.confirm("⚠️ WARNING: Are you sure you want to delete all habits and data? This cannot be undone.")) {
                   await onResetAllData();
                   toast.success("Workspace reset to initial clean state.");
                 }
               }}
-              className="text-xs bg-destructive text-destructive-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-destructive/90 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="text-xs bg-destructive text-destructive-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-destructive/90 transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Purge All Data</span>
-            </button>
+            </Button>
           </div>
         </div>
       </div>
