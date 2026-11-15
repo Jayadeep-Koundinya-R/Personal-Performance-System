@@ -277,13 +277,13 @@ function DashboardInner({ user }: { user: User }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileMoreSheet, setShowMobileMoreSheet] = useState(false);
 
-  // 7-day guest trial expiry — auto-logout expired guest users
+  // 5-day guest trial expiry — auto-logout expired guest users
   useEffect(() => {
     if (!user.isGuest) return;
     const createdAt = localStorage.getItem("pps_guest_created_at");
     if (!createdAt) return;
     const elapsed = Date.now() - new Date(createdAt).getTime();
-    if (elapsed >= 7 * 24 * 60 * 60 * 1000) {
+    if (elapsed >= 5 * 24 * 60 * 60 * 1000) {
       // Clear guest data and force redirect to login
       localStorage.removeItem("pps_guest");
       localStorage.removeItem("pps_guest_created_at");
@@ -311,12 +311,21 @@ function DashboardInner({ user }: { user: User }) {
     }
   }, [refreshSub]);
 
+  const handleDismissRitual = useCallback(() => {
+    const today = new Date().toISOString().split("T")[0];
+    try {
+      sessionStorage.setItem(`pps_ritual_dismissed_${today}`, "true");
+    } catch {}
+    setShowRitual(false);
+  }, []);
+
   useEffect(() => {
     if (!settingsLoading && settings) {
       setShowOnboarding(!settings.onboardingCompleted);
       const today = new Date().toISOString().split("T")[0];
-      // Only prompt morning ritual on the primary daily dashboard overview, not when navigating to specific sub-sections
-      setShowRitual(settings.ritualLastDone !== today && activeSection === "dashboard");
+      const isDismissed = sessionStorage.getItem(`pps_ritual_dismissed_${today}`) === "true";
+      // Only prompt morning ritual on the primary daily dashboard overview if not already dismissed in this session
+      setShowRitual(!isDismissed && settings.ritualLastDone !== today && activeSection === "dashboard");
     }
   }, [settingsLoading, settings, activeSection]);
 
@@ -600,7 +609,7 @@ function DashboardInner({ user }: { user: User }) {
 
 
       <AnimatePresence>
-        {showRitual && !showOnboarding && <RitualOverlay onDismiss={() => setShowRitual(false)} />}
+        {showRitual && !showOnboarding && <RitualOverlay onDismiss={handleDismissRitual} />}
       </AnimatePresence>
 
       <AnimatePresence>

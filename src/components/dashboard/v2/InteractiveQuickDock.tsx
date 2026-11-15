@@ -121,7 +121,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => setShowSprintMenu((prev) => !prev)}
-                className="px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 hover:bg-primary/90 shadow-md shadow-primary/25 hover:scale-[1.02]"
+                className="px-3 py-1.5 min-h-[40px] sm:min-h-[36px] rounded-xl bg-primary text-primary-foreground text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 hover:bg-primary/90 shadow-md shadow-primary/25 hover:scale-[1.02] touch-manipulation"
                 title="Launch a focused deep work sprint"
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
@@ -181,7 +181,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
                 feedbackSounds.playClick();
                 onAddHabitClick();
               }}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-surface border border-border/80 text-foreground hover:border-primary/40 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 hover:bg-surface/90 shadow-xs"
+              className="px-2.5 sm:px-3 py-1.5 min-h-[40px] sm:min-h-[36px] rounded-xl bg-surface border border-border/80 text-foreground hover:border-primary/40 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 hover:bg-surface/90 shadow-xs touch-manipulation"
               title="Add a new habit or daily task"
             >
               <Plus className="w-3.5 h-3.5 text-primary" />
@@ -198,7 +198,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
                 feedbackSounds.playClick();
                 onOpenAiAgent();
               }}
-              className="relative px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500/15 via-primary/10 to-purple-500/15 border border-primary/35 text-primary hover:border-primary text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs hover:scale-105"
+              className="relative px-2.5 sm:px-3 py-1.5 min-h-[40px] sm:min-h-[36px] rounded-xl bg-gradient-to-r from-indigo-500/15 via-primary/10 to-purple-500/15 border border-primary/35 text-primary hover:border-primary text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs hover:scale-105 touch-manipulation"
               title="Open Pro AI Cognitive Copilot"
             >
               <Bot className="w-3.5 h-3.5 text-primary" />
@@ -218,7 +218,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowAudioMenu((prev) => !prev)}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+              className={`px-2.5 sm:px-3 py-1.5 min-h-[40px] sm:min-h-[36px] rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs touch-manipulation ${
                 isPlayingAudio
                   ? "bg-amber-500/15 border-amber-500/40 text-amber-500 font-bold"
                   : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
@@ -292,7 +292,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
                 feedbackSounds.playClick();
                 onNavigate("social");
               }}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-surface border border-border/80 text-foreground hover:border-cyan-500/40 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 hover:bg-surface/90 shadow-xs"
+              className="px-2.5 sm:px-3 py-1.5 min-h-[40px] sm:min-h-[36px] rounded-xl bg-surface border border-border/80 text-foreground hover:border-cyan-500/40 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 hover:bg-surface/90 shadow-xs touch-manipulation"
               title="Open Focus Room & Whiteboard"
             >
               <Users className="w-3.5 h-3.5 text-cyan-400" />
@@ -308,7 +308,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
                 feedbackSounds.playClick();
                 onToggleZenMode();
               }}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+              className={`px-2.5 sm:px-3 py-1.5 min-h-[40px] sm:min-h-[36px] rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs touch-manipulation ${
                 isZenMode
                   ? "bg-purple-500/20 border-purple-500/40 text-purple-400 font-bold"
                   : "bg-surface border-border/80 text-muted-foreground hover:text-foreground"
@@ -327,7 +327,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setShowShieldModal(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-surface/80 border border-border/60 hover:border-primary/40 transition-all cursor-pointer text-xs font-mono"
+            className="flex items-center gap-1.5 px-2.5 py-1 min-h-[40px] sm:min-h-[36px] rounded-xl bg-surface/80 border border-border/60 hover:border-primary/40 transition-all cursor-pointer text-xs font-mono touch-manipulation"
             title="Streak Protection & Freeze Credits"
           >
             <Flame className="w-3.5 h-3.5 text-pps-orange" />

@@ -899,13 +899,19 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     : "border-border/60 hover:border-primary/20"
             }`}
         >
-          <div className="flex items-center gap-2 overflow-hidden truncate">
-            <input
-              type="checkbox"
-              checked={isCompletedToday}
-              onChange={() => handleToggleHabit(habit.id)}
-              className="accent-primary w-3.5 h-3.5 cursor-pointer flex-shrink-0"
-            />
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden truncate">
+            <label
+              aria-label={`Mark ${habit.name} ${isCompletedToday ? "incomplete" : "complete"}`}
+              className="min-w-[40px] min-h-[40px] sm:min-w-[32px] sm:min-h-[32px] -ml-2 -my-2 flex items-center justify-center cursor-pointer touch-manipulation select-none shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                type="checkbox"
+                checked={isCompletedToday}
+                onChange={() => handleToggleHabit(habit.id)}
+                className="accent-primary w-3.5 h-3.5 cursor-pointer"
+              />
+            </label>
             <span className={`truncate font-medium ${isCompletedToday ? "line-through text-muted-foreground" : "text-foreground"}`}>
               {habit.name}
             </span>
@@ -1091,13 +1097,19 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     : "border-border/60 hover:border-primary/20"
           }`}
       >
-        <div className="flex items-center gap-2.5 overflow-hidden truncate">
-          <input
-            type="checkbox"
-            checked={isCompletedToday}
-            onChange={() => handleToggleHabit(habit.id)}
-            className="accent-primary w-4 h-4 cursor-pointer flex-shrink-0"
-          />
+        <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-hidden truncate">
+          <label
+            aria-label={`Mark ${habit.name} ${isCompletedToday ? "incomplete" : "complete"}`}
+            className="min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] -ml-2 -my-2 flex items-center justify-center cursor-pointer touch-manipulation select-none shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              type="checkbox"
+              checked={isCompletedToday}
+              onChange={() => handleToggleHabit(habit.id)}
+              className="accent-primary w-4 h-4 cursor-pointer"
+            />
+          </label>
           <span className={`truncate font-semibold tracking-tight ${isCompletedToday ? "line-through opacity-45 text-muted-foreground" : "text-slate-900 dark:text-slate-100"}`}>{habit.name}</span>
           {habit.category && (
             <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold border flex-shrink-0 ${getCategoryColor(habit.category).bg} ${getCategoryColor(habit.category).text} ${getCategoryColor(habit.category).border}`}>
@@ -1158,7 +1170,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {!isCompletedToday && !isSkipped && (
             <>
               {/* Primary 1-Tap Focus Sprint Button / Live Timer Indicator */}
@@ -1166,7 +1178,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 <button
                   type="button"
                   onClick={() => focusTimer.toggleTimer()}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs animate-pulse shrink-0"
+                  className="px-2 sm:px-2.5 py-1 min-h-[36px] sm:min-h-[32px] rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs animate-pulse shrink-0 touch-manipulation"
                   title="Session in progress - click to pause/resume"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
@@ -1179,11 +1191,12 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
                     toast.success(`⏱️ ${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/30 hover:border-primary text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs hover:scale-105 shrink-0"
+                  className="px-2 sm:px-2.5 py-1 min-h-[36px] sm:min-h-[32px] rounded-lg bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/30 hover:border-primary text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs hover:scale-105 shrink-0 touch-manipulation"
                   title="Launch Pomodoro Focus Session"
                 >
                   <Zap className="w-3 h-3 fill-primary/30" />
-                  <span>{habit.focus_duration_minutes || 25}m Sprint</span>
+                  <span className="hidden sm:inline">{habit.focus_duration_minutes || 25}m Sprint</span>
+                  <span className="sm:hidden">{habit.focus_duration_minutes || 25}m</span>
                 </button>
               )}
 
@@ -1191,18 +1204,19 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               <button
                 type="button"
                 onClick={() => completeHabit(habit.id, "micro")}
-                className="px-2.5 py-1 rounded-lg bg-accent/10 hover:bg-accent text-accent-foreground border border-accent/30 text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs hover:scale-105 shrink-0"
+                className="px-2 sm:px-2.5 py-1 min-h-[36px] sm:min-h-[32px] rounded-lg bg-accent/10 hover:bg-accent text-accent-foreground border border-accent/30 text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs hover:scale-105 shrink-0 touch-manipulation"
                 title="Scale down to 2-minute emergency micro-habit (+2 XP, streak protected)"
               >
                 <Layers className="w-3 h-3 text-accent-foreground" />
-                <span>2m Micro</span>
+                <span className="hidden sm:inline">2m Micro</span>
+                <span className="sm:hidden">2m</span>
               </button>
 
               {/* Advanced Actions Dropdown (2m Micro, Parkinson's Slice, Rest / Sick / Busy) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="p-1.5 rounded-lg bg-surface/80 hover:bg-muted/40 border border-border/80 text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0 shadow-xs"
+                    className="p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg bg-surface/80 hover:bg-muted/40 border border-border/80 text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0 shadow-xs touch-manipulation"
                     title="Advanced options"
                     aria-label="Habit options"
                   >

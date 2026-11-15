@@ -11,8 +11,8 @@
 | **v0.5** | **Auth Truth** | Remove fake `@pps.local` logins; real Supabase email auth; guest strictly labeled as local demo with no fake Pro; single onboarding flag. | ✅ COMPLETED |
 | **v0.6** | **Data Truth** | Signed-in user data stored in Supabase only; multi-device habit sync (phone sees PC habits); guest data stays local until account creation. | ✅ COMPLETED |
 | **v0.7** | **Surface Clean-Up** | 5-day demo trial with persistent sign-in alerts; universal 3D Aurora Mesh; remove dashboard atom; badge unbuilt modules; zero mock bots. | ✅ COMPLETED |
-| **v0.8** | **Focused Daily Loop UI** | Fast habit check-off in under 10 seconds; clean mobile ergonomics at 390px; reduce visual noise and excess overlays. | 🔄 NEXT UP |
-| **v0.9** | **Closed Beta Ready** | Public deploy URL (Vercel/Pages); 5–10 real friends testing for 7 consecutive days; zero localStorage sync confusion. | ⏳ QUEUED |
+| **v0.8** | **Focused Daily Loop UI** | Fast habit check-off in under 10 seconds; clean mobile ergonomics at 390px; reduce visual noise and excess overlays. | ✅ COMPLETED |
+| **v0.9** | **Closed Beta Ready** | Public deploy URL (Vercel/Pages); 5–10 real friends testing for 7 consecutive days; zero localStorage sync confusion. | 🔄 NEXT UP |
 | **v1.0** | **General Availability** | Production telemetry, error tracking, Stripe/Razorpay live checkout, native PWA offline sync. | ⏳ PLANNED |
 | **v1.1** | **Multi-Account Social P2P & Group Messaging** | WhatsApp-style 1-on-1 direct messaging, encrypted conversation threads, message delivery receipts, and peer-to-peer accountability rooms between distinct user accounts. | ⏳ DEDICATED MILESTONE |
 
@@ -50,12 +50,22 @@
 
 ---
 
-## 🛠️ v0.8 Implementation Checklist (Focused Daily Loop UI) — 🔄 NEXT UP
+## 🛠️ v0.8 Implementation Checklist (Focused Daily Loop UI) — ✅ COMPLETED
 
-- [ ] **Task 0.8.1:** Ensure habit completion check-off interaction completes in under 10 seconds without modal friction.
-- [ ] **Task 0.8.2:** Perfect mobile ergonomics at 390px viewport width (thumb-friendly tap targets, single-column alignment).
-- [ ] **Task 0.8.3:** Reduce visual noise and excess overlays on dashboard load.
-- [ ] **Task 0.8.4:** Audit and verify all core action buttons have active event handlers.
+- [x] **Task 0.8.1:** Ensure habit completion check-off interaction completes in under 10 seconds without modal friction (optimistic state updates, haptic/sound chimes, 2m micro-habit fast paths).
+- [x] **Task 0.8.2:** Perfect mobile ergonomics at 390px viewport width (thumb-friendly tap targets with `min-w-[44px]` checkboxes, `min-h-[40px]` Quick Dock buttons, `touch-manipulation` for zero click latency, responsive mobile label truncation).
+- [x] **Task 0.8.3:** Reduce visual noise and excess overlays on dashboard load (session-persistent morning ritual dismissal, strict 5-day guest trial sync).
+- [x] **Task 0.8.4:** Audit and verify all core action buttons have active event handlers (Quick Sprint, Ambient Audio, AI Agent, Zen Mode, 2m Micro, Parkinson's Slicer, Rest Day).
+- [x] **Task 0.8.5:** Author Vitest verification suite in `src/pages/__tests__/daily-loop-v0.8.test.tsx` (6/6 tests passing) verifying rapid check-off, micro-habits, mobile touch targets, ritual session dismissal, and 5-day guest duration.
+
+---
+
+## 🛠️ v0.9 Implementation Checklist (Closed Beta Ready) — 🔄 NEXT UP
+
+- [ ] **Task 0.9.1:** Production build audit (`npm run build`) and bundle optimization.
+- [ ] **Task 0.9.2:** Environment variable hardening (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) for public deployment.
+- [ ] **Task 0.9.3:** 7-day multi-device testing protocol documentation for initial 5–10 beta testers.
+- [ ] **Task 0.9.4:** Zero localStorage sync confusion validation across cold browser refreshes.
 
 ---
 
