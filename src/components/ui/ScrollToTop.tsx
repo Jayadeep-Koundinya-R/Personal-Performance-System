@@ -34,7 +34,10 @@ export const ScrollToTop: React.FC = () => {
     });
   };
 
-  const radius = 18;
+  const size = 52;
+  const strokeWidth = 2.5;
+  const center = size / 2;
+  const radius = 22;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (scrollProgress / 100) * circumference;
 
@@ -50,30 +53,33 @@ export const ScrollToTop: React.FC = () => {
         >
           <button
             onClick={scrollToTop}
-            className="group relative flex items-center justify-center w-12 h-12 rounded-full bg-card/85 backdrop-blur-xl border border-primary/30 text-foreground shadow-2xl hover:border-primary hover:shadow-primary/20 hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer"
+            className="group relative flex items-center justify-center w-12 h-12 rounded-full bg-card/90 backdrop-blur-xl border border-primary/30 text-foreground shadow-2xl hover:border-primary hover:shadow-primary/25 hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer overflow-visible"
             title="Scroll to Top (Press to return to header)"
             aria-label="Scroll to top"
           >
-            {/* SVG Circular Progress Ring */}
-            <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
+            {/* SVG Circular Progress Ring - unclipped with dedicated viewBox & overflow-visible */}
+            <svg
+              className="absolute -inset-[2px] w-[52px] h-[52px] -rotate-90 pointer-events-none overflow-visible"
+              viewBox="0 0 52 52"
+            >
               <circle
-                cx="24"
-                cy="24"
+                cx={center}
+                cy={center}
                 r={radius}
                 className="stroke-border/40"
-                strokeWidth="2.5"
-                fill="transparent"
+                strokeWidth={strokeWidth}
+                fill="none"
               />
               <circle
-                cx="24"
-                cy="24"
+                cx={center}
+                cy={center}
                 r={radius}
                 className="stroke-primary transition-all duration-150"
-                strokeWidth="2.5"
+                strokeWidth={strokeWidth}
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
-                fill="transparent"
+                fill="none"
               />
             </svg>
 

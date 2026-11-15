@@ -58,7 +58,7 @@ export interface AuthReturn {
 
 const AuthContext = createContext<AuthReturn | null>(null);
 
-const TRIAL_DURATION_DAYS = 5;
+export const TRIAL_DURATION_DAYS = 5;
 
 async function hashPassword(password: string): Promise<string> {
   if (typeof crypto !== "undefined" && crypto.subtle) {

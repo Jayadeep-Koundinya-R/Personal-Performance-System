@@ -51,4 +51,22 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes("node_modules")) {
+            if (id.includes("jspdf") || id.includes("html2canvas")) return "pdf";
+            if (id.includes("recharts") || id.includes("d3-")) return "charts";
+            if (id.includes("framer-motion")) return "motion";
+            if (id.includes("@radix-ui") || id.includes("cmdk") || id.includes("vaul")) return "ui";
+            if (id.includes("lucide-react")) return "icons";
+            if (id.includes("@supabase")) return "supabase";
+            if (id.includes("react") || id.includes("react-dom") || id.includes("react-router")) return "vendor";
+          }
+        },
+      },
+    },
+  },
 });

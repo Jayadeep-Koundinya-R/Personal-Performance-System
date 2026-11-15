@@ -116,6 +116,76 @@ export const ThreeDBackground: React.FC = () => {
           style={{ willChange: "transform, opacity", transform: "translateZ(-30px)" }}
         />
 
+        {/* ── 3D Geometric Object 1: Floating Prismatic Glass Cube (Top-Right) ── */}
+        <div
+          className="absolute top-24 right-[10%] hidden md:block pointer-events-none transition-all duration-700 animate-pulse"
+          style={{
+            transform: "translateZ(85px) perspective(800px) rotateX(20deg) rotateY(-25deg)",
+            animationDuration: "6s",
+          }}
+        >
+          <div
+            className={`w-24 h-24 rounded-2xl border-2 backdrop-blur-md transition-all duration-700 relative shadow-2xl ${
+              isDark
+                ? "border-primary/50 bg-gradient-to-br from-primary/25 via-indigo-600/15 to-transparent shadow-[0_0_35px_rgba(99,102,241,0.35)]"
+                : "border-indigo-400/50 bg-gradient-to-br from-white/90 via-indigo-100/60 to-transparent shadow-[0_8px_30px_rgba(99,102,241,0.18)]"
+            }`}
+          >
+            {/* Inner 3D specular facet */}
+            <div
+              className={`absolute inset-2 rounded-xl border border-dashed transition-all duration-700 ${
+                isDark ? "border-cyan-400/40 bg-cyan-500/5" : "border-indigo-300/60 bg-white/40"
+              }`}
+              style={{ transform: "translateZ(20px)" }}
+            />
+          </div>
+        </div>
+
+        {/* ── 3D Geometric Object 2: Floating Concentric Cyber Torus Ring (Mid-Left) ── */}
+        <div
+          className="absolute top-[45%] left-[5%] hidden lg:block pointer-events-none transition-all duration-700 animate-pulse"
+          style={{
+            transform: "translateZ(55px) perspective(900px) rotateX(55deg) rotateZ(30deg)",
+            animationDuration: "8s",
+          }}
+        >
+          <div
+            className={`w-28 h-28 rounded-full border-4 border-dashed backdrop-blur-sm transition-all duration-700 relative ${
+              isDark
+                ? "border-cyan-400/45 bg-gradient-to-tr from-cyan-500/15 to-transparent shadow-[0_0_40px_rgba(6,182,212,0.3)]"
+                : "border-sky-400/50 bg-gradient-to-tr from-sky-100/60 to-transparent shadow-[0_8px_25px_rgba(56,189,248,0.15)]"
+            }`}
+          >
+            {/* Concentric core pulse */}
+            <div
+              className="absolute inset-4 rounded-full border-2 border-primary/30 animate-spin"
+              style={{ animationDuration: "20s" }}
+            />
+          </div>
+        </div>
+
+        {/* ── 3D Geometric Object 3: Floating Pyramidal Octahedron Diamond (Bottom-Right) ── */}
+        <div
+          className="absolute bottom-28 right-[7%] hidden md:block pointer-events-none transition-all duration-700 animate-pulse"
+          style={{
+            transform: "translateZ(75px) perspective(800px) rotate(45deg) rotateX(15deg)",
+            animationDuration: "7s",
+          }}
+        >
+          <div
+            className={`w-20 h-20 border-2 rounded-2xl backdrop-blur-md transition-all duration-700 shadow-2xl ${
+              isDark
+                ? "border-amber-400/50 bg-gradient-to-br from-amber-500/20 via-transparent to-primary/20 shadow-[0_0_35px_rgba(251,191,36,0.3)]"
+                : "border-amber-400/60 bg-gradient-to-br from-amber-100/80 via-white/80 to-primary/20 shadow-[0_8px_25px_rgba(245,158,11,0.18)]"
+            }`}
+          >
+            <div
+              className="absolute inset-2 border border-dashed rounded-xl border-amber-300/40"
+              style={{ transform: "rotate(45deg)" }}
+            />
+          </div>
+        </div>
+
         {/* ── 3D Perspective Cyber-Topography Floor Grid ── */}
         <div
           className="absolute inset-0 pointer-events-none"

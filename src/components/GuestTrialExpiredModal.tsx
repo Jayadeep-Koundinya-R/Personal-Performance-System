@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Lock, Sparkles, CheckCircle2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, TRIAL_DURATION_DAYS } from "@/hooks/use-auth";
 
 export default function GuestTrialExpiredModal() {
   const { user, isGuestTrialExpired, logout } = useAuth();
@@ -24,13 +24,13 @@ export default function GuestTrialExpiredModal() {
 
         <div>
           <span className="text-[10.5px] font-mono font-extrabold text-primary uppercase tracking-widest bg-primary/10 border border-primary/20 px-3 py-1 rounded-full">
-            7-Day Demo Period Ended
+            {TRIAL_DURATION_DAYS}-Day Demo Period Ended
           </span>
           <h2 className="text-2xl font-extrabold text-foreground mt-3">
             Your Demo Trial Has Expired
           </h2>
           <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-            You've built great momentum over the last 7 days! To keep tracking your habits, save your streak, and earn XP, please create a free account or upgrade to Pro.
+            You've built great momentum over the last {TRIAL_DURATION_DAYS} days! To keep tracking your habits, save your streak, and earn XP, please create a free account or upgrade to Pro.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export default function GuestTrialExpiredModal() {
             }}
             className="w-full bg-pps-green text-white font-extrabold py-3 px-6 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md hover:opacity-90 transition-all cursor-pointer"
           >
-            <span>⚡ Reset 7-Day Demo Session</span>
+            <span>⚡ Reset {TRIAL_DURATION_DAYS}-Day Demo Session</span>
           </button>
 
           <Link

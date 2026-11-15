@@ -13,7 +13,7 @@
 */
 
 import React, { useState, useEffect, useMemo } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, TRIAL_DURATION_DAYS } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { Navigate, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -125,16 +125,16 @@ const LoginPage = () => {
 
   const pwStrength = useMemo(() => getPasswordStrength(signupPassword), [signupPassword]);
 
-  // Check 7-day guest trial expiry
+  // Check guest trial expiry
   const isGuestTrialExpired = (() => {
     const createdAt = localStorage.getItem("pps_guest_created_at");
     if (!createdAt) return false;
     const elapsed = Date.now() - new Date(createdAt).getTime();
-    return elapsed >= 7 * 24 * 60 * 60 * 1000;
+    return elapsed >= TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000;
   })();
 
   // Only auto-redirect to /dashboard if user has a REAL registered account (not temporary demo mode).
-  // A user in 7-day demo mode who visits /login MUST be able to enter their credentials to sign in or register!
+  // A user in demo mode who visits /login MUST be able to enter their credentials to sign in or register!
   if (!loading && isLoggedIn && !user?.isGuest) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -187,11 +187,12 @@ const LoginPage = () => {
       setMessage({ text: "Please enter a display name to begin your demo session.", type: "error" });
       return;
     }
+    setMessage(null);
     localStorage.setItem("pps_onboarded_guest", "true");
     localStorage.setItem("pps_guest_onboarded", "true");
     localStorage.setItem("pps_onboarding_completed", "true");
     loginAsGuest(guestName.trim(), guestRemember);
-    toast.success(`Welcome to PPS, ${guestName.trim()}! 7-Day Demo Active.`);
+    toast.success(`Welcome to PPS, ${guestName.trim()}! ${TRIAL_DURATION_DAYS}-Day Demo Active.`);
     navigate("/dashboard");
   };
 
@@ -342,7 +343,7 @@ const LoginPage = () => {
                       : tab === "signup"
                       ? "Create Your Account"
                       : tab === "demo"
-                      ? "Instant 7-Day Demo Trial"
+                      ? `Instant ${TRIAL_DURATION_DAYS}-Day Demo Trial`
                       : "Welcome Back"}
                   </span>
                 </h2>
@@ -363,7 +364,7 @@ const LoginPage = () => {
                   <div className="flex items-center gap-2 min-w-0">
                     <Sparkles className="w-4 h-4 text-primary shrink-0" />
                     <span className="text-foreground text-[11px] leading-snug">
-                      Browsing in <strong>7-Day Demo Mode</strong>. Sign in or register below to save and sync your habits to the cloud!
+                      Browsing in <strong>{TRIAL_DURATION_DAYS}-Day Demo Mode</strong>. Sign in or register below to save and sync your habits to the cloud!
                     </span>
                   </div>
                   <Button
@@ -575,7 +576,7 @@ const LoginPage = () => {
                       disabled={submitting}
                       className="w-full bg-primary text-primary-foreground font-black py-3 rounded-2xl hover:bg-primary/90 transition-all cursor-pointer shadow-md text-xs disabled:opacity-50 h-auto"
                     >
-                      {submitting ? "Creating Workspace..." : "Create Account (Free 7 Days) ✨"}
+                      {submitting ? "Creating Workspace..." : `Create Account (Free ${TRIAL_DURATION_DAYS} Days) ✨`}
                     </Button>
                   </motion.div>
                 )}
@@ -593,7 +594,7 @@ const LoginPage = () => {
                     <div className="p-3.5 bg-pps-green/10 border border-pps-green/30 rounded-2xl flex items-center gap-3">
                       <span className="text-2xl flex-shrink-0">⚡</span>
                       <div>
-                        <div className="text-xs font-black text-pps-green">Zero-Friction 7-Day Access</div>
+                        <div className="text-xs font-black text-pps-green">Zero-Friction {TRIAL_DURATION_DAYS}-Day Access</div>
                         <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
                           Instant access to habits, focus rooms, soundscapes, and dashboard tools.
                         </div>
@@ -606,7 +607,10 @@ const LoginPage = () => {
                         type="text"
                         placeholder="Enter your name (e.g. Alex)"
                         value={guestName}
-                        onChange={(e) => setGuestName(e.target.value)}
+                        onChange={(e) => {
+                          setGuestName(e.target.value);
+                          if (message?.type === "error") setMessage(null);
+                        }}
                         className={inputCls}
                         autoFocus
                       />
@@ -627,7 +631,7 @@ const LoginPage = () => {
                       disabled={!guestName.trim()}
                       className="w-full bg-pps-green text-white font-black py-3 rounded-2xl hover:opacity-90 transition-all cursor-pointer shadow-md text-xs disabled:opacity-50 h-auto"
                     >
-                      Enter 7-Day Demo Dashboard →
+                      Enter {TRIAL_DURATION_DAYS}-Day Demo Dashboard →
                     </Button>
                   </motion.div>
                 )}

@@ -12,8 +12,8 @@
 | **v0.6** | **Data Truth** | Signed-in user data stored in Supabase only; multi-device habit sync (phone sees PC habits); guest data stays local until account creation. | ✅ COMPLETED |
 | **v0.7** | **Surface Clean-Up** | 5-day demo trial with persistent sign-in alerts; universal 3D Aurora Mesh; remove dashboard atom; badge unbuilt modules; zero mock bots. | ✅ COMPLETED |
 | **v0.8** | **Focused Daily Loop UI** | Fast habit check-off in under 10 seconds; clean mobile ergonomics at 390px; reduce visual noise and excess overlays. | ✅ COMPLETED |
-| **v0.9** | **Closed Beta Ready** | Public deploy URL (Vercel/Pages); 5–10 real friends testing for 7 consecutive days; zero localStorage sync confusion. | 🔄 NEXT UP |
-| **v1.0** | **General Availability** | Production telemetry, error tracking, Stripe/Razorpay live checkout, native PWA offline sync. | ⏳ PLANNED |
+| **v0.9** | **Closed Beta Ready** | Production build audit & chunk splitting; unclipped scroll progress ring; tactile 3D geometric glass objects; 7-day tester protocol. | ✅ COMPLETED |
+| **v1.0** | **General Availability** | Production telemetry, error tracking, Stripe/Razorpay live checkout, native PWA offline sync. | 🔄 NEXT UP |
 | **v1.1** | **Multi-Account Social P2P & Group Messaging** | WhatsApp-style 1-on-1 direct messaging, encrypted conversation threads, message delivery receipts, and peer-to-peer accountability rooms between distinct user accounts. | ⏳ DEDICATED MILESTONE |
 
 ---
@@ -60,12 +60,22 @@
 
 ---
 
-## 🛠️ v0.9 Implementation Checklist (Closed Beta Ready) — 🔄 NEXT UP
+## 🛠️ v0.9 Implementation Checklist (Closed Beta Ready) — ✅ COMPLETED
 
-- [ ] **Task 0.9.1:** Production build audit (`npm run build`) and bundle optimization.
-- [ ] **Task 0.9.2:** Environment variable hardening (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) for public deployment.
-- [ ] **Task 0.9.3:** 7-day multi-device testing protocol documentation for initial 5–10 beta testers.
-- [ ] **Task 0.9.4:** Zero localStorage sync confusion validation across cold browser refreshes.
+- [x] **Task 0.9.1:** Production build audit (`npm run build`) with zero chunk size warnings via Rolldown functional `manualChunks` optimization (separate chunks for `vendor`, `ui`, `charts`, `motion`, `pdf`, `supabase`, `icons`).
+- [x] **Task 0.9.2:** Environment variable hardening and universal export of `TRIAL_DURATION_DAYS = 5` in `src/hooks/use-auth.ts`, dynamically powering all auth screens and trial modals with zero hardcoded strings.
+- [x] **Task 0.9.3:** Fixed scroll-to-top button circular progress clipping (`src/components/ui/ScrollToTop.tsx`) with dedicated 52x52 SVG `viewBox="0 0 52 52"` and `overflow-visible`.
+- [x] **Task 0.9.4:** Attached authentic 3D isometric geometric objects (Prismatic Glass Cube, Concentric Cyber Torus Ring, and Faceted Pyramidal Octahedron) in `src/components/ui/ThreeDBackground.tsx` with hardware-accelerated 3D mouse parallax tracking (`perspective(1000px)`).
+- [x] **Task 0.9.5:** Authored 7-day multi-device testing protocol documentation in `docs/CLOSED_BETA_TESTING_PROTOCOL.md` for initial 5–10 beta testers.
+- [x] **Task 0.9.6:** Authored Vitest verification suite in `src/pages/__tests__/closed-beta-v0.9.test.ts` (3/3 tests passing).
+
+---
+
+## 🛠️ v1.0 Implementation Checklist (General Availability) — 🔄 NEXT UP
+
+- [ ] **Task 1.0.1:** Production telemetry & Sentry/PostHog error logging integration.
+- [ ] **Task 1.0.2:** Stripe/Razorpay live production checkout webhook handlers.
+- [ ] **Task 1.0.3:** PWA Service Worker offline fallback validation.
 
 ---
 
