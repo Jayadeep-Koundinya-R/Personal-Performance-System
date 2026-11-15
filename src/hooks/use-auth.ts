@@ -140,10 +140,19 @@ async function migrateGuestData(userId: string): Promise<void> {
       }
 
       for (const habit of guestHabits) {
+        // v0.6 Data Truth: Skip untouched stock demo habits so new registered accounts start with an authentic empty state
+        const isUntouchedStockDemo =
+          habit.id?.startsWith("demo-") &&
+          (!habit.completedDates || habit.completedDates.length === 0);
+
+        if (isUntouchedStockDemo) {
+          continue;
+        }
+
         const newHabitId = generateUUID();
         habitIdMap.set(habit.id, newHabitId);
 
-        const { error: habitError } = await supabase.from("habits").insert({
+        const habitPayload: any = {
           id: newHabitId,
           user_id: userId,
           name: habit.name,
@@ -160,7 +169,31 @@ async function migrateGuestData(userId: string): Promise<void> {
           archived: habit.archived || false,
           start_alarm: habit.startAlarm || false,
           end_alarm: habit.endAlarm || false,
-        });
+          requires_focus_timer: habit.requires_focus_timer || false,
+          focus_duration_minutes: habit.focus_duration_minutes || 25,
+          window_start: habit.window_start || null,
+          window_end: habit.window_end || null,
+        };
+
+        let { error: habitError } = await supabase.from("habits").insert(habitPayload);
+
+        // Defensive fallback: If PostgREST schema cache is missing optional columns, retry with baseline fields
+        if (habitError && (habitError.message?.includes("column") || habitError.code === "PGRST204")) {
+          const fallbackPayload: any = {
+            id: newHabitId,
+            user_id: userId,
+            name: habit.name,
+            category: habit.category || "Uncategorized",
+            priority: habit.priority || "Medium",
+            period: habit.period || "Daily",
+            due_date: habit.dueDate || new Date().toISOString(),
+            streak: habit.streak || 0,
+            freeze_credits: habit.freezeCredits || 2,
+            last_completed_date: habit.lastCompletedDate || null,
+          };
+          const fallbackRes = await supabase.from("habits").insert(fallbackPayload);
+          habitError = fallbackRes.error;
+        }
 
         if (habitError) {
           console.error(`Failed to migrate habit "${habit.name}":`, habitError);
@@ -261,7 +294,18 @@ async function migrateGuestData(userId: string): Promise<void> {
     }
 
     // Only remove local guest data if the corresponding migration succeeded to prevent network loss
-    if (habitsSuccess) localStorage.removeItem("habits_guest");
+    if (habitsSuccess) {
+      localStorage.removeItem("habits_guest");
+      // Remove any lingering habits_* keys from guest session
+      try {
+        const toRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("habits_")) toRemove.push(k);
+        }
+        toRemove.forEach((k) => localStorage.removeItem(k));
+      } catch {}
+    }
     if (reflectionsSuccess) localStorage.removeItem("reflections_guest");
     if (remindersSuccess) localStorage.removeItem("reminders_guest");
     if (settingsSuccess) localStorage.removeItem("pps_settings_guest");

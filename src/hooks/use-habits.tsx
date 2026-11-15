@@ -149,15 +149,16 @@ export function HabitsProvider({
   const [loading, setLoading] = useState(true);
   const [autoChecked, setAutoChecked] = useState(false);
   const { settings, loading: settingsLoading } = useUserSettings();
-  const isGuest = isGuestProp || !userId || userId === "guest_local" || userId.startsWith("guest");
+  const isGuest = isGuestProp || !userId || userId === "guest_local" || userId.startsWith("guest") || userId.startsWith("local_");
 
   const fetchHabits = useCallback(async () => {
-    if (isGuest || !userId || userId === "guest_local" || userId.startsWith("guest")) return;
+    if (isGuest || !userId || userId === "guest_local" || userId.startsWith("guest") || userId.startsWith("local_")) return;
     setLoading(true);
     const { data: habitsData, error } = await supabase
       .from("habits")
       .select("*")
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
 
     if (error) { console.error("Failed to load habits:", error); setLoading(false); return; }
 
@@ -167,7 +168,8 @@ export function HabitsProvider({
       const { data } = await supabase
         .from("habit_completions")
         .select("*")
-        .in("habit_id", habitIds);
+        .in("habit_id", habitIds)
+        .order("completed_date", { ascending: true });
       completionsData = data || [];
     }
 
@@ -299,10 +301,22 @@ export function HabitsProvider({
       })
       .subscribe();
 
+    // Cross-device focus & visibility sync: when returning to tab/app, refresh habits
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        fetchHabits();
+      }
+    };
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+
     return () => {
       try {
+        channel.unsubscribe();
         supabase.removeChannel(channel);
       } catch {}
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
     };
   }, [userId, isGuest, userEmail, fetchHabits]);
 
@@ -458,7 +472,7 @@ export function HabitsProvider({
       freeze_credits: newCredits,
       streak: newStreak,
       last_completed_date: yesterdayStr,
-    }).eq("id", habitId);
+    }).eq("id", habitId).eq("user_id", userId!);
     await fetchHabits();
     return null;
   }, [habits, isGuest, userId, fetchHabits]);
@@ -511,7 +525,7 @@ export function HabitsProvider({
     if (isGuest) return;
 
     try {
-      const { error } = await supabase.from("habits").delete().eq("id", id);
+      const { error } = await supabase.from("habits").delete().eq("id", id).eq("user_id", userId!);
       if (error) throw error;
       fetchHabits();
     } catch (dbError) {
@@ -519,7 +533,7 @@ export function HabitsProvider({
       setHabits(previousHabits);
       toast.error("Failed to delete habit. Reverting.");
     }
-  }, [habits, isGuest, fetchHabits]);
+  }, [habits, isGuest, userId, fetchHabits]);
 
   const updateHabit = useCallback(async (id: string, updates: Partial<Habit>) => {
     const previousHabits = [...habits];
@@ -550,7 +564,7 @@ export function HabitsProvider({
     if (updates.window_end !== undefined) dbUpdates.window_end = updates.window_end;
 
     try {
-      const { error } = await supabase.from("habits").update(dbUpdates).eq("id", id);
+      const { error } = await supabase.from("habits").update(dbUpdates).eq("id", id).eq("user_id", userId!);
       if (error) throw error;
       fetchHabits();
     } catch (dbError) {
@@ -558,7 +572,7 @@ export function HabitsProvider({
       setHabits(previousHabits);
       toast.error("Failed to update habit. Reverting.");
     }
-  }, [habits, isGuest, fetchHabits]);
+  }, [habits, isGuest, userId, fetchHabits]);
 
   const toggleCompletion = useCallback(async (id: string, targetDateStr?: string, forceBypass?: boolean) => {
     const habit = habits.find(h => h.id === id);
@@ -678,12 +692,13 @@ export function HabitsProvider({
           streak: updatedStreak,
           last_completed_date: dateToToggle,
           due_date: updatedDueDate,
-        }).eq("id", id);
+        }).eq("id", id).eq("user_id", userId!);
         if (updateError) throw updateError;
       } else {
         // Remove completion
         const { error: deleteError } = await supabase.from("habit_completions").delete()
           .eq("habit_id", id)
+          .eq("user_id", userId!)
           .eq("completed_date", dateToToggle);
         if (deleteError) throw deleteError;
 
@@ -692,7 +707,7 @@ export function HabitsProvider({
           streak: updatedStreak,
           last_completed_date: updatedLastCompletedDate,
           due_date: updatedDueDate,
-        }).eq("id", id);
+        }).eq("id", id).eq("user_id", userId!);
         if (updateError) throw updateError;
       }
       fetchHabits();
@@ -865,7 +880,7 @@ export function HabitsProvider({
           streak: updates.streak,
           last_completed_date: todayStr,
           due_date: updates.dueDate,
-        }).eq("id", h.id);
+        }).eq("id", h.id).eq("user_id", userId!);
       });
 
       const results = await Promise.all(updatePromises);
