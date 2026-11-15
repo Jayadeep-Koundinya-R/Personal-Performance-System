@@ -16,7 +16,36 @@ export default defineConfig({
     },
   },
   plugins: [
-    react(),
+    react({
+      disableOxcRecommendation: true,
+    }),
+    {
+      name: "rolldown-jsx-warning-fix",
+      enforce: "post",
+      config(cfg) {
+        if (cfg.optimizeDeps?.rollupOptions) {
+          if ("jsx" in (cfg.optimizeDeps.rollupOptions as any)) {
+            delete (cfg.optimizeDeps.rollupOptions as any).jsx;
+          }
+          if (Object.keys(cfg.optimizeDeps.rollupOptions).length === 0) {
+            delete (cfg.optimizeDeps as any).rollupOptions;
+          }
+        }
+      },
+      configResolved(config) {
+        if (config.optimizeDeps?.rollupOptions) {
+          if ("jsx" in (config.optimizeDeps.rollupOptions as any)) {
+            delete (config.optimizeDeps.rollupOptions as any).jsx;
+          }
+          if (Object.keys(config.optimizeDeps.rollupOptions).length === 0) {
+            delete (config.optimizeDeps as any).rollupOptions;
+          }
+        }
+        if ((config.optimizeDeps as any)?.rolldownOptions && "jsx" in (config.optimizeDeps as any).rolldownOptions) {
+          delete (config.optimizeDeps as any).rolldownOptions.jsx;
+        }
+      },
+    },
     VitePWA({
       disable: isCapacitor || process.env.NODE_ENV === "development",
       devOptions: {
