@@ -1,5 +1,26 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Activity,
+  AlertTriangle,
+  Briefcase,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Flame,
+  Headphones,
+  Layers,
+  MoreHorizontal,
+  Search,
+  Shield,
+  Sidebar,
+  Sparkles,
+  Volume2,
+  VolumeX,
+  Wrench,
+  X,
+  Zap,
+} from "lucide-react";
 import { useHabits, Habit } from "@/hooks/use-habits";
 import { useProfile } from "@/hooks/use-profile";
 import { useReminders } from "@/hooks/use-reminders";
@@ -16,7 +37,6 @@ import { MomentumCommandDeck } from "@/components/dashboard/v2/MomentumCommandDe
 import { ImmediateRemindersStrip } from "@/components/dashboard/v2/ImmediateRemindersStrip";
 import { QuickAddHabitCard } from "@/components/dashboard/v2/QuickAddHabitCard";
 import { DashboardCommandHub } from "@/components/dashboard/v2/DashboardCommandHub";
-import { ThreePerformanceCanvas } from "@/components/dashboard/v2/ThreePerformanceCanvas";
 import { InteractiveQuickDock } from "@/components/dashboard/v2/InteractiveQuickDock";
 import { ProAiPerformanceAgentBox } from "@/components/dashboard/v2/ProAiPerformanceAgentBox";
 import { InteractiveDemoExperienceBanner } from "@/components/dashboard/v2/InteractiveDemoExperienceBanner";
@@ -1159,7 +1179,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
                     toast.success(`⏱️ ${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary text-primary-foreground hover:text-white border border-primary/30 hover:border-primary text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs hover:scale-105 shrink-0"
+                  className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/30 hover:border-primary text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs hover:scale-105 shrink-0"
                   title="Launch Pomodoro Focus Session"
                 >
                   <Zap className="w-3 h-3 fill-primary/30" />
@@ -1272,8 +1292,8 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
 
   return (
     <div className="space-y-3 sm:space-y-4 relative">
-      {/* ── 🌌 3D AMBIENT SPATIAL PERFORMANCE CANVAS (Gyroscope Orbit & Kaizen Gem) ── */}
-      <ThreePerformanceCanvas />
+      {/* ── 🌌 Ambient Spatial Header Glow ── */}
+      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-3/4 max-w-4xl h-44 bg-gradient-to-r from-primary/20 via-cyan-500/15 to-accent/20 blur-3xl rounded-full pointer-events-none -z-10" />
 
       {/* ── 🚨 Active Emergency Triage Banner ── */}
       <TriageActiveBanner onOpenModal={() => setTriageModalOpen(true)} />

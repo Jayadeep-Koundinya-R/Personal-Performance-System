@@ -81,6 +81,25 @@ export const MarketplacePageInner: React.FC = () => {
 
       {/* Main Mentor Hub Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 relative z-10">
+        {/* v0.7 Surface Clean-Up: Transparent Milestone Badge */}
+        <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400 text-lg flex-shrink-0">🎓</span>
+            <div>
+              <div className="text-sm font-bold text-foreground flex items-center gap-2 flex-wrap">
+                <span>Educator & Mentor Marketplace</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 uppercase tracking-wider font-extrabold">Coming Soon in v1.0</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Cohort masterclasses, verified mentor bookings, and lecture-to-habit parsing are queued for our enterprise milestone. Below is an architectural preview.
+              </p>
+            </div>
+          </div>
+          <Link to="/dashboard" className="text-xs font-bold px-3 py-1.5 rounded-xl bg-surface border border-border/80 text-foreground hover:bg-card shrink-0">
+            Back to Dashboard
+          </Link>
+        </div>
+
         <TeacherMarketplace />
       </main>
 

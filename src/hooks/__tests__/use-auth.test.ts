@@ -73,7 +73,7 @@ describe("useAuth Hook & Auth Flows", () => {
       result.current.loginAsGuest("Demo Guest", true);
     });
 
-    expect(result.current.guestDaysRemaining).toBe(7);
+    expect(result.current.guestDaysRemaining).toBe(5);
     expect(result.current.isGuestTrialExpired).toBe(false);
   });
 

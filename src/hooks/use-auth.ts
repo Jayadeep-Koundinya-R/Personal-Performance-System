@@ -58,7 +58,7 @@ export interface AuthReturn {
 
 const AuthContext = createContext<AuthReturn | null>(null);
 
-const TRIAL_DURATION_DAYS = 7;
+const TRIAL_DURATION_DAYS = 5;
 
 async function hashPassword(password: string): Promise<string> {
   if (typeof crypto !== "undefined" && crypto.subtle) {
@@ -743,7 +743,7 @@ function useProvideAuth(): AuthReturn {
     }
   }, []);
 
-  const daysRemaining = user?.isGuest ? getGuestTrialDaysRemaining() : 7;
+  const daysRemaining = user?.isGuest ? getGuestTrialDaysRemaining() : 5;
   const isExpired = user?.isGuest ? checkIsGuestTrialExpired() : false;
 
   return {

@@ -126,7 +126,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
                 <span>Quick Sprint</span>
-                <kbd className="hidden md:inline-block text-[9px] bg-white/20 text-white px-1 py-0.2 rounded font-mono font-normal">Space</kbd>
+                <kbd className="hidden md:inline-block text-[9px] bg-white/20 text-white border border-white/30 px-1 py-0.5 rounded font-mono font-medium">Space</kbd>
               </button>
             </div>
           )}
@@ -186,7 +186,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
             >
               <Plus className="w-3.5 h-3.5 text-primary" />
               <span className="hidden sm:inline">Add Task</span>
-              <kbd className="hidden md:inline-block text-[9px] bg-muted px-1 py-0.2 rounded font-mono text-muted-foreground">Q</kbd>
+              <kbd className="hidden md:inline-block text-[9px] bg-muted/80 text-foreground border border-border/80 px-1 py-0.5 rounded font-mono font-medium shadow-2xs">Q</kbd>
             </button>
           )}
 
@@ -227,7 +227,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
             >
               <Headphones className={`w-3.5 h-3.5 ${isPlayingAudio ? "text-amber-500 animate-pulse" : ""}`} />
               <span className="hidden sm:inline">{isPlayingAudio ? "Audio On" : "432Hz Sound"}</span>
-              <kbd className="hidden md:inline-block text-[9px] bg-muted px-1 py-0.2 rounded font-mono text-muted-foreground">A</kbd>
+              <kbd className="hidden md:inline-block text-[9px] bg-muted/80 text-foreground border border-border/80 px-1 py-0.5 rounded font-mono font-medium shadow-2xs">A</kbd>
             </button>
 
             {/* Audio Selection Popover */}
@@ -317,7 +317,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
             >
               <Maximize2 className="w-3.5 h-3.5 text-purple-400" />
               <span className="hidden sm:inline">Zen Mode</span>
-              <kbd className="hidden md:inline-block text-[9px] bg-muted px-1 py-0.2 rounded font-mono text-muted-foreground">Z</kbd>
+              <kbd className="hidden md:inline-block text-[9px] bg-muted/80 text-foreground border border-border/80 px-1 py-0.5 rounded font-mono font-medium shadow-2xs">Z</kbd>
             </button>
           )}
         </div>

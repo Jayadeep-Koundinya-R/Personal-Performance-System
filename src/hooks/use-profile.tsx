@@ -19,6 +19,8 @@ export interface Profile {
   streak?: number;
   timezone: string | null;
   onboarding_completed?: boolean;
+  daily_focus_target_minutes?: number;
+  primary_track?: string;
 }
 
 interface ProfileContextType {
@@ -49,6 +51,8 @@ function mapProfile(row: Record<string, unknown>): Profile {
     streak: (row.longest_streak as number) || 0,
     timezone: (row.timezone as string) || "UTC",
     onboarding_completed: Boolean(row.onboarding_completed),
+    daily_focus_target_minutes: (row.daily_focus_target_minutes as number) || 60,
+    primary_track: (row.primary_track as string) || (row.identity_class as string) || "placements",
   };
 }
 
@@ -82,6 +86,8 @@ export function ProfileProvider({ children, userId, isGuest }: { children: React
         streak: 0,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         onboarding_completed: isOnboarded,
+        daily_focus_target_minutes: 60,
+        primary_track: "placements",
       });
       setLoading(false);
       return;
