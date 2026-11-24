@@ -14,9 +14,10 @@
 */
 
 import { motion } from "framer-motion";
+import type { ReactNode } from "react";
 
 interface EmptyStateProps {
-  icon: string;
+  icon: ReactNode;
   title: string;
   description: string;
   actionLabel?: string;
@@ -35,7 +36,7 @@ const EmptyState = ({ icon, title, description, actionLabel, onAction }: EmptySt
       <motion.div
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className="text-6xl mb-4"
+        className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-4"
       >
         {icon}
       </motion.div>

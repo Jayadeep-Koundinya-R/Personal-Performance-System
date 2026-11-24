@@ -426,7 +426,7 @@ const AchievementsSection = () => {
                     +{badge.xpReward} XP
                   </span>
                   {isLockedProTease && (
-                    <span className="text-[9.5px] font-mono font-bold text-pps-orange bg-pps-orange/10 border border-pps-orange/30 px-1.5 py-0.2 rounded-md flex items-center gap-1">
+                    <span className="text-[9.5px] font-mono font-bold text-pps-orange bg-pps-orange/10 border border-pps-orange/30 px-1.5 py-0.5 rounded-md flex items-center gap-1">
                       🔒 PRO
                     </span>
                   )}

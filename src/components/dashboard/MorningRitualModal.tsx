@@ -98,8 +98,15 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
       setMood("great");
       setEnergy("great");
       setPriority("");
+      return;
     }
-  }, [isOpen]);
+
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
 
   const handleMoodSelect = useCallback((selectedMood: string) => {
     setMood(selectedMood);
@@ -216,12 +223,18 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
           {/* Decorative background elements */}
           <div className="absolute -inset-4 bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-blue-500/10 rounded-3xl blur-xl opacity-60 animate-pulse" />
           
-          <div className="relative bg-card rounded-2xl border border-border shadow-2xl overflow-hidden text-foreground">
+          <div 
+            className="relative bg-card rounded-2xl border border-border shadow-2xl overflow-hidden text-foreground"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="morning-ritual-title"
+          >
             {/* Header */}
             <div className="flex items-center justify-between px-8 py-6 border-b border-border bg-surface/50">
               <div>
-                <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-amber-400 to-purple-400 bg-clip-text text-transparent font-mono">
-                  Good Morning, Performer! 🌅
+                <h2 id="morning-ritual-title" className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-amber-400 to-purple-400 bg-clip-text text-transparent font-mono flex items-center gap-2">
+                  <span>Good Morning, Performer!</span>
+                  <Sun className="w-6 h-6 text-amber-400 inline shrink-0" />
                 </h2>
                 <p className="text-muted-foreground text-xs sm:text-sm mt-1">
                   Let's set the tone for an incredible day ahead
@@ -229,6 +242,7 @@ export default function MorningRitualModal({ isOpen, onClose }: MorningRitualMod
               </div>
               <button
                 onClick={onClose}
+                aria-label="Close morning ritual"
                 className="p-2 rounded-full hover:bg-surface transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-5 h-5" />

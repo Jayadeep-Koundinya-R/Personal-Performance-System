@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Play, Pause, RotateCcw, Flame, Coffee, Clock, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Play, Pause, RotateCcw, Flame, Coffee, Clock, Sparkles, SlidersHorizontal, Zap, Target, Leaf } from "lucide-react";
 import { PomodoroMode } from "@/hooks/use-focus-room";
 
 interface PomodoroSyncOverlayProps {
@@ -12,12 +12,12 @@ interface PomodoroSyncOverlayProps {
   onReset: (durationSec?: number) => void;
 }
 
-const PRESET_DURATIONS = [
-  { label: "25m Sprint", sec: 25 * 60, mode: "work" as const, icon: "⚡" },
-  { label: "50m Deep", sec: 50 * 60, mode: "work" as const, icon: "🎯" },
-  { label: "15m Blitz", sec: 15 * 60, mode: "work" as const, icon: "⏱️" },
-  { label: "5m Break", sec: 5 * 60, mode: "break" as const, icon: "☕" },
-  { label: "10m Rest", sec: 10 * 60, mode: "break" as const, icon: "🌿" },
+const PRESET_DURATIONS: { label: string; sec: number; mode: "work" | "break"; icon: React.ComponentType<{ className?: string }> }[] = [
+  { label: "25m Sprint", sec: 25 * 60, mode: "work", icon: Zap },
+  { label: "50m Deep", sec: 50 * 60, mode: "work", icon: Target },
+  { label: "15m Blitz", sec: 15 * 60, mode: "work", icon: Clock },
+  { label: "5m Break", sec: 5 * 60, mode: "break", icon: Coffee },
+  { label: "10m Rest", sec: 10 * 60, mode: "break", icon: Leaf },
 ];
 
 export const PomodoroSyncOverlay: React.FC<PomodoroSyncOverlayProps> = ({
@@ -81,7 +81,7 @@ export const PomodoroSyncOverlay: React.FC<PomodoroSyncOverlayProps> = ({
               <span className="text-[11px] font-mono font-extrabold uppercase text-foreground">
                 {mode === "work" ? "Squad Focus Sprint" : "Squad Rest Break"}
               </span>
-              <span className="text-[9px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.2 rounded border border-amber-400/20">
+              <span className="text-[9px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20">
                 {cycles} Done
               </span>
             </div>
@@ -146,7 +146,7 @@ export const PomodoroSyncOverlay: React.FC<PomodoroSyncOverlayProps> = ({
                     : "bg-surface/80 border border-border/80 text-muted-foreground hover:text-foreground hover:bg-surface"
                 }`}
               >
-                <span>{preset.icon}</span>
+                {React.createElement(preset.icon, { className: "w-3 h-3 shrink-0" })}
                 <span>{preset.label}</span>
               </button>
             );

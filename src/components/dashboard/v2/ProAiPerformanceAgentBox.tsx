@@ -7,6 +7,7 @@ import {
   Lock,
   Crown,
   ChevronRight,
+  ChevronDown,
   Send,
   RefreshCw,
   TrendingUp,
@@ -61,6 +62,23 @@ export const ProAiPerformanceAgentBox: React.FC<Props> = ({
   });
 
   const isPro = subIsPro || localProOverride;
+
+  const [isTeaserCollapsed, setIsTeaserCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("pps_ai_teaser_collapsed") !== "false";
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleTeaser = () => {
+    feedbackSounds.playClick();
+    const next = !isTeaserCollapsed;
+    setIsTeaserCollapsed(next);
+    try {
+      localStorage.setItem("pps_ai_teaser_collapsed", String(next));
+    } catch {}
+  };
 
   const [activeTab, setActiveTab] = useState<"analysis" | "chat">("analysis");
   const [messages, setMessages] = useState<Array<{ sender: "user" | "ai"; text: string; time: string }>>([
@@ -288,74 +306,75 @@ export const ProAiPerformanceAgentBox: React.FC<Props> = ({
 
       {/* ── Content Area: Gated View vs Active Pro Features ── */}
       {!isPro ? (
-        /* ═══════════ PRO-GATED PREVIEW SCREEN ═══════════ */
-        <div className="p-6 sm:p-8 text-center space-y-6 relative overflow-hidden">
-          {/* Blurred Background Teaser */}
-          <div className="absolute inset-0 opacity-15 filter blur-sm pointer-events-none p-6 space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="h-20 bg-primary/30 rounded-2xl" />
-              <div className="h-20 bg-cyan-500/30 rounded-2xl" />
-              <div className="h-20 bg-amber-500/30 rounded-2xl" />
-            </div>
-            <div className="h-32 bg-card rounded-2xl" />
-          </div>
-
-          <div className="relative z-10 max-w-lg mx-auto space-y-4">
-            <div className="w-16 h-16 rounded-3xl bg-amber-500/15 border-2 border-amber-500/40 text-amber-500 flex items-center justify-center text-3xl mx-auto shadow-xl shadow-amber-500/10">
-              <Lock className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-1">
-              <h4 className="text-xl font-black text-foreground font-mono">
-                Executive Cognitive AI Agent Locked
-              </h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Student Pro unlocks real-time cognitive audits, circadian fatigue tracking, automatic bottleneck resolution, and direct Gemini 2.0 Pro copilot coaching.
-              </p>
-            </div>
-
-            {/* Feature Pills */}
-            <div className="grid grid-cols-2 gap-2 text-left text-xs font-mono pt-2">
-              <div className="p-2.5 rounded-xl bg-surface/80 border border-border/80 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary shrink-0" />
-                <span className="text-foreground font-medium">Circadian Fatigue Detection</span>
+        /* ═══════════ SLEEK COMPACT PRO-GATED GLASS CARD ═══════════ */
+        <div className="p-4 bg-card/60 backdrop-blur-xl space-y-3 relative overflow-hidden transition-all">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-500 flex items-center justify-center text-lg shrink-0 shadow-sm">
+                <Lock className="w-5 h-5" />
               </div>
-              <div className="p-2.5 rounded-xl bg-surface/80 border border-border/80 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span className="text-foreground font-medium">Discipline Velocity Index</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-surface/80 border border-border/80 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="text-foreground font-medium">Proactive Bottleneck Breaker</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-surface/80 border border-border/80 flex items-center gap-2">
-                <Bot className="w-4 h-4 text-purple-400 shrink-0" />
-                <span className="text-foreground font-medium">Uncapped AI Chat Memory</span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-xs sm:text-sm font-black text-foreground font-mono">
+                    Executive Cognitive AI Agent Locked
+                  </h4>
+                  <span className="text-[9.5px] bg-amber-500/20 text-amber-500 border border-amber-500/40 px-2 py-0.5 rounded-full font-mono font-bold">
+                    PRO ONLY
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  Unlocks circadian fatigue audits, discipline velocity tracking & Gemini 2.0 Pro coaching.
+                </p>
               </div>
             </div>
 
-            {/* CTA Buttons */}
-            <div className="pt-4 flex items-center justify-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
               <button
                 type="button"
                 onClick={handleToggleProSandbox}
-                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-primary text-black font-black text-xs sm:text-sm hover:scale-105 transition-all shadow-xl shadow-amber-500/25 cursor-pointer flex items-center gap-2"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-primary text-black font-black text-xs hover:scale-105 transition-all shadow-md shadow-amber-500/20 cursor-pointer flex items-center gap-1.5 shrink-0"
               >
-                <Crown className="w-4 h-4 fill-current" />
-                <span>Unlock 7-Day Free Pro Sandbox (1-Click)</span>
+                <Crown className="w-3.5 h-3.5 fill-current" />
+                <span>Unlock 7-Day Free Pro Sandbox</span>
               </button>
 
-              {onNavigate && (
-                <button
-                  type="button"
-                  onClick={() => onNavigate("pricing")}
-                  className="px-4 py-3 rounded-2xl bg-surface hover:bg-muted border border-border/80 text-foreground font-bold text-xs transition-all cursor-pointer"
-                >
-                  View Pro Plans
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={toggleTeaser}
+                className="p-2 rounded-xl bg-surface/80 border border-border/80 hover:bg-surface text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0"
+                title={isTeaserCollapsed ? "Expand feature details" : "Collapse details"}
+                aria-label="Toggle AI feature details"
+              >
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isTeaserCollapsed ? "" : "rotate-180"}`} />
+              </button>
             </div>
           </div>
+
+          {!isTeaserCollapsed && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="pt-2 border-t border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono"
+            >
+              <div className="p-2 rounded-xl bg-surface/60 border border-border/60 flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="text-[11px] text-foreground font-medium truncate">Circadian Fatigue Detection</span>
+              </div>
+              <div className="p-2 rounded-xl bg-surface/60 border border-border/60 flex items-center gap-2">
+                <TrendingUp className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="text-[11px] text-foreground font-medium truncate">Discipline Velocity Index</span>
+              </div>
+              <div className="p-2 rounded-xl bg-surface/60 border border-border/60 flex items-center gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="text-[11px] text-foreground font-medium truncate">Bottleneck Breaker</span>
+              </div>
+              <div className="p-2 rounded-xl bg-surface/60 border border-border/60 flex items-center gap-2">
+                <Bot className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                <span className="text-[11px] text-foreground font-medium truncate">Gemini 2.0 Pro Coaching</span>
+              </div>
+            </motion.div>
+          )}
         </div>
       ) : activeTab === "analysis" ? (
         /* ═══════════ ACTIVE PRO LIVE AUDIT TAB ═══════════ */

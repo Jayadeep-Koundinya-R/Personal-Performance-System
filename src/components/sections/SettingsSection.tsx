@@ -141,10 +141,10 @@ const SettingsSection = ({ user }: { user: User }) => {
   // Checkout trigger
   const handleCheckout = async (targetPlan: "pro" | "teacher" | "campus") => {
     if (targetPlan === "campus") {
-      const mailtoUrl = "mailto:enterprise@upalakshya.com?subject=PPS%20Campus%20Institutional%20License%20Negotiation&body=Hello%20UpaLakshya%20PPS%20Enterprise%20Team%2C%0A%0AWe%20would%20like%20to%20negotiate%20and%20deploy%20the%20Campus%20Institutional%20License%20for%20our%20organization.%0A%0AInstitution%20Name%3A%0AEstimated%20Students%2FFaculty%20Seats%3A%0AContact%20Person%3A%0APpreferred%20Timeline%3A%0A%0AThank%20you!";
+      const mailtoUrl = "mailto:upalakshyasupport@gmail.com?subject=PPS%20Campus%20Institutional%20License%20Negotiation&body=Hello%20UpaLakshya%20PPS%20Enterprise%20Team%2C%0A%0AWe%20would%20like%20to%20negotiate%20and%20deploy%20the%20Campus%20Institutional%20License%20for%20our%20organization.%0A%0AInstitution%20Name%3A%0AEstimated%20Students%2FFaculty%20Seats%3A%0AContact%20Person%3A%0APpreferred%20Timeline%3A%0A%0AThank%20you!";
       window.location.href = mailtoUrl;
       toast.success("🏛️ Campus License Negotiation Opened", {
-        description: "Email client launched for enterprise@upalakshya.com. Our campus director will review and provide custom pricing."
+        description: "Email client launched for upalakshyasupport@gmail.com. Our team will review and provide custom pricing."
       });
       return;
     }

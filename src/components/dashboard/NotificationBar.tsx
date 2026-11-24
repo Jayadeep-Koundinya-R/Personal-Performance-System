@@ -12,7 +12,8 @@ import {
   ChevronRight, 
   X, 
   Sparkles,
-  Info
+  Info,
+  Lightbulb
 } from "lucide-react";
 
 interface NotificationBarProps {
@@ -24,7 +25,7 @@ function getAlertStyle(type?: string, priority?: string) {
     return {
       bg: "bg-rose-950/40 border-rose-500/50 text-rose-200",
       accent: "text-rose-400 bg-rose-500/20 border-rose-500/30",
-      badge: "🔥 URGENT CURFEW",
+      badge: "URGENT CURFEW",
       icon: Moon,
     };
   }
@@ -32,7 +33,7 @@ function getAlertStyle(type?: string, priority?: string) {
     return {
       bg: "bg-amber-950/40 border-amber-500/50 text-amber-200",
       accent: "text-amber-400 bg-amber-500/20 border-amber-500/30",
-      badge: "⚡ CIRCADIAN PEAK",
+      badge: "CIRCADIAN PEAK",
       icon: Zap,
     };
   }
@@ -40,7 +41,7 @@ function getAlertStyle(type?: string, priority?: string) {
     return {
       bg: "bg-orange-950/40 border-orange-500/50 text-orange-200",
       accent: "text-orange-400 bg-orange-500/20 border-orange-500/30",
-      badge: "🛡️ STREAK SHIELD",
+      badge: "STREAK SHIELD",
       icon: Flame,
     };
   }
@@ -48,14 +49,14 @@ function getAlertStyle(type?: string, priority?: string) {
     return {
       bg: "bg-cyan-950/40 border-cyan-500/50 text-cyan-200",
       accent: "text-cyan-400 bg-cyan-500/20 border-cyan-500/30",
-      badge: "👥 SQUAD SYNC",
+      badge: "SQUAD SYNC",
       icon: Users,
     };
   }
   return {
     bg: "bg-primary/10 border-primary/30 text-foreground",
     accent: "text-primary bg-primary/15 border-primary/20",
-    badge: "🔔 ACTION REQUIRED",
+    badge: "ACTION REQUIRED",
     icon: Bell,
   };
 }
@@ -121,7 +122,7 @@ export const NotificationBar: React.FC<NotificationBarProps> = ({ onNavigate }) 
                 {activeBannerAlert.reason && (
                   <div className="pt-1 flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center gap-1 text-[11px] font-mono text-foreground/90 bg-background/40 border border-border/40 px-2 py-0.5 rounded-md">
-                      <span className="text-amber-400">💡</span>
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0 inline" />
                       <strong className="font-semibold">Reason:</strong> {activeBannerAlert.reason}
                     </span>
 

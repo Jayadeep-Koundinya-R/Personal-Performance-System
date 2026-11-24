@@ -101,9 +101,22 @@ const ReflectionSection = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 min-h-[300px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3.5"></div>
-        <div className="text-muted-foreground text-sm font-extrabold font-mono">Loading reflections timeline...</div>
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="h-8 w-64 bg-surface/80 rounded-xl animate-pulse" />
+        <div className="flex gap-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-11 w-24 bg-surface/60 rounded-xl animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-5 rounded-3xl bg-card border border-border/80 space-y-3">
+              <div className="h-4 w-2/5 bg-surface rounded animate-pulse" />
+              <div className="h-3 w-full bg-surface/60 rounded animate-pulse" />
+              <div className="h-3 w-4/5 bg-surface/60 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -282,7 +295,7 @@ const ReflectionSection = () => {
             {filteredEntries.length === 0 ? (
               <div className="bg-card border border-border/80 rounded-3xl p-4">
                 <EmptyState
-                  icon="📝"
+                  icon={<BookOpen className="w-8 h-8" />}
                   title="No Reflections Found"
                   description="Write daily intentions, track your energy, and record your growth journal!"
                   actionLabel="Write Reflection"

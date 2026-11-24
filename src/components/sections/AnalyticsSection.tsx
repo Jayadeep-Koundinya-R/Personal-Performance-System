@@ -31,6 +31,9 @@ import {
   BarChart2,
   Info,
   CheckCircle2,
+  Moon,
+  Smile,
+  Leaf,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -291,7 +294,7 @@ const AnalyticsSection = () => {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-              <span>📈</span>
+              <TrendingUp className="w-4 h-4" />
               <span>Performance Intelligence</span>
             </h1>
             <span className="text-[9.5px] font-mono bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-bold uppercase shrink-0 whitespace-nowrap">
@@ -311,7 +314,7 @@ const AnalyticsSection = () => {
               { key: "30d" as const, label: "30D" },
               { key: "90d" as const, label: "90D" },
               { key: "1y" as const, label: "1Y" },
-              { key: "custom" as const, label: "📅 Custom" },
+              { key: "custom" as const, label: "Custom" },
             ].map((t) => {
               const isCurrent = timeRange === t.key;
               return (
@@ -405,7 +408,7 @@ const AnalyticsSection = () => {
                 Best Streak
               </span>
               <div className="w-7 h-7 rounded-lg bg-pps-orange/15 border border-pps-orange/30 flex items-center justify-center text-sm">
-                🔥
+                <Flame className="w-4 h-4" />
               </div>
             </div>
             <div className="my-2">
@@ -425,7 +428,7 @@ const AnalyticsSection = () => {
                 Best 7-Day Week
               </span>
               <div className="w-7 h-7 rounded-lg bg-pps-green/15 border border-pps-green/30 flex items-center justify-center text-sm">
-                ⚡
+                <Zap className="w-4 h-4" />
               </div>
             </div>
             <div className="my-2">
@@ -445,7 +448,7 @@ const AnalyticsSection = () => {
                 Total Focus Time
               </span>
               <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-sm">
-                ⏱️
+                <Clock className="w-4 h-4" />
               </div>
             </div>
             <div className="my-2">
@@ -465,7 +468,7 @@ const AnalyticsSection = () => {
                 Lifetime Completions
               </span>
               <div className="w-7 h-7 rounded-lg bg-accent/15 border border-accent/30 flex items-center justify-center text-sm">
-                🏆
+                <Award className="w-4 h-4" />
               </div>
             </div>
             <div className="my-2">
@@ -658,7 +661,7 @@ const AnalyticsSection = () => {
             <div className="space-y-3">
               <div className="bg-surface/60 border border-border/60 p-3 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-xl">⚡</span>
+                  <Zap className="w-5 h-5 text-pps-orange" />
                   <div>
                     <div className="text-xs font-extrabold text-foreground">High Energy Days</div>
                     <div className="text-[11px] text-muted-foreground font-medium">Logged on {energyData.moodMap.high.days} days</div>
@@ -669,7 +672,7 @@ const AnalyticsSection = () => {
 
               <div className="bg-surface/60 border border-border/60 p-3 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-xl">😊</span>
+                  <Smile className="w-5 h-5 text-primary" />
                   <div>
                     <div className="text-xs font-extrabold text-foreground">Good Energy Days</div>
                     <div className="text-[11px] text-muted-foreground font-medium">Logged on {energyData.moodMap.good.days} days</div>
@@ -680,7 +683,7 @@ const AnalyticsSection = () => {
 
               <div className="bg-surface/60 border border-border/60 p-3 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-xl">😴</span>
+                  <Moon className="w-5 h-5 text-pps-orange" />
                   <div>
                     <div className="text-xs font-extrabold text-foreground">Low Energy Days</div>
                     <div className="text-[11px] text-muted-foreground font-medium">Logged on {energyData.moodMap.low.days} days</div>
@@ -718,26 +721,30 @@ const AnalyticsSection = () => {
           ) : (
             habitRankings.map(({ habit, doneCount, consistencyPct, status }, rank) => {
               let statusBadge = (
-                <span className="text-[10.5px] font-mono font-bold bg-pps-green/15 text-pps-green border border-pps-green/30 px-2 py-0.5 rounded-full">
-                  🏆 Master ({consistencyPct}%)
+                <span className="text-[10.5px] font-mono font-bold bg-pps-green/15 text-pps-green border border-pps-green/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Award className="w-3 h-3 inline" />
+                  <span>Master ({consistencyPct}%)</span>
                 </span>
               );
               if (status === "strong") {
                 statusBadge = (
-                  <span className="text-[10.5px] font-mono font-bold bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
-                    🔥 Strong ({consistencyPct}%)
+                  <span className="text-[10.5px] font-mono font-bold bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Flame className="w-3 h-3 inline" />
+                    <span>Strong ({consistencyPct}%)</span>
                   </span>
                 );
               } else if (status === "building") {
                 statusBadge = (
-                  <span className="text-[10.5px] font-mono font-bold bg-pps-orange/15 text-pps-orange border border-pps-orange/30 px-2 py-0.5 rounded-full">
-                    🌱 Building ({consistencyPct}%)
+                  <span className="text-[10.5px] font-mono font-bold bg-pps-orange/15 text-pps-orange border border-pps-orange/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Leaf className="w-3 h-3 inline" />
+                    <span>Building ({consistencyPct}%)</span>
                   </span>
                 );
               } else if (status === "at_risk") {
                 statusBadge = (
-                  <span className="text-[10.5px] font-mono font-bold bg-destructive/15 text-destructive border border-destructive/30 px-2 py-0.5 rounded-full">
-                    ⚠️ At-Risk ({consistencyPct}%)
+                  <span className="text-[10.5px] font-mono font-bold bg-destructive/15 text-destructive border border-destructive/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 inline" />
+                    <span>At-Risk ({consistencyPct}%)</span>
                   </span>
                 );
               }

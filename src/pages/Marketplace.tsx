@@ -5,7 +5,7 @@ import { TeacherMarketplace } from "@/components/focus-rooms/TeacherMarketplace"
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
 import { DashboardProviders } from "@/providers/AppProviders";
-import { ArrowLeft, GraduationCap, Sun, Moon } from "lucide-react";
+import { ArrowLeft, GraduationCap, Sun, Moon, Rocket } from "lucide-react";
 import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -17,10 +17,10 @@ export const MarketplacePageInner: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative selection:bg-primary selection:text-white transition-colors duration-500 overflow-x-hidden flex flex-col justify-between">
-      {/* 🌌 Dynamic 3D Ambient Background Layer */}
+      {/* Dynamic 3D Ambient Background Layer */}
       <ThreeDBackground />
 
-      {/* 📊 Top Scroll Progress Bar */}
+      {/* Top Scroll Progress Bar */}
       <ScrollProgressBar />
 
 
@@ -44,7 +44,7 @@ export const MarketplacePageInner: React.FC = () => {
               to="/roadmap"
               className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-xl hover:bg-surface hidden md:inline-flex"
             >
-              Roadmap 🚀
+              Roadmap <Rocket className="w-3.5 h-3.5 inline ml-1" />
             </Link>
 
             <Link
@@ -84,7 +84,7 @@ export const MarketplacePageInner: React.FC = () => {
         {/* v0.7 Surface Clean-Up: Transparent Milestone Badge */}
         <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400 text-lg flex-shrink-0">🎓</span>
+            <GraduationCap className="p-2 rounded-xl bg-amber-500/20 text-amber-400 text-lg flex-shrink-0" />
             <div>
               <div className="text-sm font-bold text-foreground flex items-center gap-2 flex-wrap">
                 <span>Educator & Mentor Marketplace</span>
@@ -116,7 +116,7 @@ export const MarketplacePageInner: React.FC = () => {
         </div>
       </footer>
 
-      {/* 🚀 Floating Scroll to Top */}
+      {/* Floating Scroll to Top */}
       <ScrollToTop />
     </div>
   );

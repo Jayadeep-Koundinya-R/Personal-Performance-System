@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useHabits } from "@/hooks/use-habits";
 import { useSubscription } from "@/hooks/use-subscription";
-import { Mic, MicOff, Volume2, Sparkles, X, Check, HelpCircle } from "lucide-react";
+import { Mic, MicOff, Volume2, Sparkles, X, Check, HelpCircle, Crown } from "lucide-react";
 import { toast } from "sonner";
 
 interface VoiceControlModalProps {
@@ -134,11 +134,11 @@ export default function VoiceControlModal({ isOpen, onClose, onNavigate }: Voice
 
           <div className="flex items-center justify-center gap-2 text-xs font-mono font-bold text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-full w-max mx-auto uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Voice Command Studio {isPro ? "Pro 👑" : ""}</span>
+            <span>Voice Command Studio {isPro ? "Pro" : ""}</span>
           </div>
 
           <div>
-            <h2 className="text-xl font-extrabold text-foreground">Speak Your Command</h2>
+            <h2 id="voice-control-title" className="text-xl font-extrabold text-foreground">Speak Your Command</h2>
             <p className="text-xs text-muted-foreground mt-1">
               Control your habits, focus sessions, and navigation with your voice.
             </p>
@@ -160,7 +160,7 @@ export default function VoiceControlModal({ isOpen, onClose, onNavigate }: Voice
             </motion.button>
 
             <div className="text-xs font-mono font-bold text-slate-300 mt-4">
-              {isListening ? "🎙️ Listening... Speak now!" : "Tap microphone to start listening"}
+              {isListening ? "Listening... Speak now!" : "Tap microphone to start listening"}
             </div>
           </div>
 
@@ -187,13 +187,13 @@ export default function VoiceControlModal({ isOpen, onClose, onNavigate }: Voice
             </div>
             <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-300">
               <div className="p-2 bg-surface/60 border border-border/60 rounded-xl font-mono">
-                🗣️ <span className="text-primary font-bold">"Complete meditation"</span> — Marks habit done
+                <Volume2 className="w-3.5 h-3.5 text-primary shrink-0 inline mr-1.5" /><span className="text-primary font-bold">"Complete meditation"</span> — Marks habit done
               </div>
               <div className="p-2 bg-surface/60 border border-border/60 rounded-xl font-mono">
-                🗣️ <span className="text-primary font-bold">"How many habits left?"</span> — Reads count aloud
+                <Volume2 className="w-3.5 h-3.5 text-primary shrink-0 inline mr-1.5" /><span className="text-primary font-bold">"How many habits left?"</span> — Reads count aloud
               </div>
               <div className="p-2 bg-surface/60 border border-border/60 rounded-xl font-mono">
-                🗣️ <span className="text-primary font-bold">"Go to Analytics"</span> — Navigates to section
+                <Volume2 className="w-3.5 h-3.5 text-primary shrink-0 inline mr-1.5" /><span className="text-primary font-bold">"Go to Analytics"</span> — Navigates to section
               </div>
             </div>
           </div>

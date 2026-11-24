@@ -1,22 +1,43 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      (function() {
+        try {
+          const theme = localStorage.getItem("pps_theme") || "dark";
+          if (theme === "dark") {
+            document.documentElement.classList.add("dark");
+            document.documentElement.classList.remove("light");
+          } else {
+            document.documentElement.classList.add("light");
+            document.documentElement.classList.remove("dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>PPS - Personal Performance System</title>
     <meta name="description" content="A gamified habit tracker and personal performance system by UpaLakshya Labs." />
     <meta name="author" content="UpaLakshya Labs" />
 
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://upalakshya.com/pps" />
     <meta property="og:title" content="PPS - Personal Performance System" />
     <meta property="og:description" content="A gamified habit tracker and personal performance system by UpaLakshya Labs." />
 
     <meta property="og:image" content="./og-image.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@upalakshya" />
     <meta name="twitter:title" content="PPS - Personal Performance System" />
     <meta name="twitter:description" content="A gamified habit tracker and personal performance system by UpaLakshya Labs." />
     <meta name="twitter:image" content="./og-image.png" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PPS" />
+    <link rel="canonical" href="https://upalakshya.com/pps" />
 
     <link rel="icon" type="image/png" sizes="64x64" href="./favicon.png" />
     <link rel="icon" type="image/x-icon" href="./favicon.ico" />

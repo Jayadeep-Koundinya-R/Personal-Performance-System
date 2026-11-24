@@ -137,9 +137,19 @@ const ReminderSection = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 min-h-[300px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3.5"></div>
-        <div className="text-muted-foreground text-sm font-extrabold font-mono">Loading alarm studio...</div>
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="h-8 w-64 bg-surface/80 rounded-xl animate-pulse" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-5 rounded-3xl bg-card border border-border/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="h-4 w-1/3 bg-surface rounded animate-pulse" />
+                <div className="h-8 w-8 bg-surface rounded-lg animate-pulse" />
+              </div>
+              <div className="h-3 w-2/3 bg-surface/60 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -354,7 +364,7 @@ const ReminderSection = () => {
           {reminders.length === 0 ? (
             <div className="bg-card border border-border/80 rounded-3xl p-4">
               <EmptyState
-                icon="🔔"
+                icon={<Bell className="w-8 h-8" />}
                 title="No Active Alarms Configured"
                 description="Configure habit-linked alarms, circadian schedule presets, or user reminders above!"
                 actionLabel="Set New Alarm"
@@ -385,7 +395,7 @@ const ReminderSection = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-extrabold text-foreground">{r.label}</span>
                         {linkedHabit && (
-                          <span className="text-[10px] font-mono font-bold bg-primary/15 text-primary border border-primary/30 px-2 py-0.2 rounded-full">
+                          <span className="text-[10px] font-mono font-bold bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
                             🔗 {linkedHabit.name}
                           </span>
                         )}

@@ -45,48 +45,48 @@ export default function GuestTrialBanner() {
   const isStorageHigh = percentage >= 80;
 
   return (
-    <div className={`border-b px-4 py-2.5 text-xs text-foreground flex items-center justify-between gap-3 shadow-sm backdrop-blur-md transition-colors ${
-      isStorageHigh
-        ? "bg-amber-500/20 border-amber-500/40 text-amber-200"
-        : "bg-gradient-to-r from-primary/20 via-accent/20 to-secondary/20 border-primary/30"
-    }`}>
-      <div className="flex items-center gap-2 flex-wrap">
-        {isStorageHigh ? (
-          <span className="flex items-center gap-1 bg-amber-500/30 text-amber-300 border border-amber-500/50 font-mono font-bold px-2 py-0.5 rounded-md text-[11px]">
-            ⚠️ Local Storage {percentage}% Full ({usedKB} KB)
-          </span>
-        ) : (
-          <span className="flex items-center gap-1 bg-primary/20 text-primary border border-primary/30 font-mono font-bold px-2 py-0.5 rounded-md text-[11px]">
-            <Clock className="w-3.5 h-3.5" />
-            {guestDaysRemaining} {guestDaysRemaining === 1 ? "day" : "days"} left in Demo Trial
-          </span>
-        )}
-
-        <span className="font-medium text-muted-foreground hidden sm:inline">
-          {isStorageHigh
-            ? "Your browser storage is nearly full! Create a free account now to prevent local data loss."
-            : "Create a free account or upgrade to Pro to save your XP, streaks, and habits permanently!"}
+    <aside
+      aria-label="Demo Trial Notification"
+      className={`w-full border-b px-4 py-2.5 text-xs text-foreground flex items-center justify-between gap-3 shadow-xs backdrop-blur-xl transition-all z-20 shrink-0 ${
+        isStorageHigh
+          ? "bg-amber-500/15 border-amber-500/35 text-amber-200"
+          : "bg-gradient-to-r from-primary/15 via-background/95 to-primary/10 border-primary/25"
+      }`}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="flex h-2 w-2 relative shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
         </span>
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <span className="font-bold text-foreground text-[11.5px] flex items-center gap-1.5 shrink-0">
+            <Clock className="w-3.5 h-3.5 text-primary" />
+            <span>{guestDaysRemaining} {guestDaysRemaining === 1 ? "day" : "days"} left in Demo Trial</span>
+          </span>
+          <span className="text-muted-foreground/60 hidden sm:inline">•</span>
+          <span className="text-muted-foreground text-[11px] truncate hidden md:inline">
+            Local Demo Mode. Create a free account or upgrade to Pro to save habits permanently.
+          </span>
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <Link
           to="/login?tab=signup"
-          className={`font-bold px-3 py-1 rounded-lg text-[11.5px] hover:opacity-90 transition-all flex items-center gap-1 shadow-xs ${
-            isStorageHigh ? "bg-amber-500 text-black font-extrabold" : "bg-primary text-primary-foreground"
-          }`}
+          className="font-bold px-3 py-1.5 rounded-xl text-[11px] bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-sm shadow-primary/20 hover:scale-[1.02] cursor-pointer"
         >
-          <span>{isStorageHigh ? "Prevent Data Loss →" : "Save Progress"}</span>
-          {!isStorageHigh && <ArrowRight className="w-3 h-3" />}
+          <Sparkles className="w-3 h-3" />
+          <span>Save Progress / Sync Account</span>
         </Link>
         <button
           onClick={handleDismiss}
-          className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-surface/50 transition-colors cursor-pointer"
+          className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-surface/80 transition-colors cursor-pointer"
           title="Dismiss banner"
+          aria-label="Dismiss banner"
         >
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
-    </div>
+    </aside>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Sparkles, Clock, Calendar, Zap, Check, Target } from "lucide-react";
+import { Plus, Sparkles, Clock, Calendar, Zap, Check, Target, Code, BookOpen, Dumbbell } from "lucide-react";
 import { TRACK_PRESETS } from "@/constants/onboardingPresets";
 import { PrimaryTrackId } from "@/types/onboarding";
 import { toast } from "sonner";
@@ -18,11 +18,11 @@ interface QuickAddHabitCardProps {
   primaryTrack?: string | null;
 }
 
-const AVAILABLE_TRACKS: { id: PrimaryTrackId; label: string; icon: string }[] = [
-  { id: "placements", label: "Placements", icon: "💻" },
-  { id: "competitive_exams", label: "Exams", icon: "📚" },
-  { id: "core_coding", label: "Coding", icon: "⚡" },
-  { id: "fitness", label: "Fitness", icon: "🏃" },
+const AVAILABLE_TRACKS: { id: PrimaryTrackId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "placements", label: "Placements", icon: Code },
+  { id: "competitive_exams", label: "Exams", icon: BookOpen },
+  { id: "core_coding", label: "Coding", icon: Zap },
+  { id: "fitness", label: "Fitness", icon: Dumbbell },
 ];
 
 export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
@@ -70,7 +70,7 @@ export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
       );
 
       if (!err) {
-        toast.success(`Habit "${name.trim()}" activated! 🚀`, {
+        toast.success(`Habit "${name.trim()}" activated!`, {
           description: "Ready to check off in your daily stack.",
         });
         setName("");
@@ -104,7 +104,7 @@ export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
       );
 
       if (!err) {
-        toast.success(`Added "${habitTitle}" to daily stack! 🎯`, {
+        toast.success(`Added "${habitTitle}" to daily stack!`, {
           description: `1-tap added for track: ${trackConfig.title}`,
         });
       } else {
@@ -133,15 +133,19 @@ export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-2.5">
-        <div className="relative">
+        <div className="relative space-y-1">
           <input
             type="text"
             value={name}
             maxLength={120}
             onChange={(e) => setName(e.target.value)}
             placeholder="Add habit (e.g. 2 LeetCode problems, 20m Walk)..."
+            aria-invalid={!name.trim()}
             className="w-full bg-surface border border-border/80 rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/70 outline-none focus:border-primary transition-colors"
           />
+          {!name.trim() && (
+            <p className="text-xs text-destructive mt-1">This field is required</p>
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-xs">
@@ -150,9 +154,9 @@ export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
             onChange={(e) => setPriority(e.target.value)}
             className="bg-surface border border-border/80 rounded-lg px-2 py-1.5 text-[11px] text-muted-foreground focus:text-foreground outline-none focus:border-primary"
           >
-            <option value="High">🔴 High Priority</option>
-            <option value="Medium">🟡 Medium</option>
-            <option value="Low">🟢 Low</option>
+            <option value="High">High Priority</option>
+            <option value="Medium">Medium Priority</option>
+            <option value="Low">Low Priority</option>
           </select>
 
           <select
@@ -210,7 +214,7 @@ export const QuickAddHabitCard: React.FC<QuickAddHabitCardProps> = ({
                 }`}
                 title={`View ${t.label} recommendations`}
               >
-                <span>{t.icon}</span>{" "}
+                <span><t.icon className="w-3 h-3 inline" /></span>{" "}
                 <span className="hidden sm:inline">{t.label}</span>
               </button>
             );

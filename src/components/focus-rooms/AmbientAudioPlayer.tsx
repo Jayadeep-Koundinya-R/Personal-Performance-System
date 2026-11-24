@@ -1,6 +1,6 @@
 import React from "react";
 import { AmbienceType } from "@/lib/audio/ambientSynthesizer";
-import { Volume2, VolumeX, Headphones, Music } from "lucide-react";
+import { Volume2, VolumeX, Headphones, Music, CloudRain, Coffee, BookOpen } from "lucide-react";
 
 interface AmbientAudioPlayerProps {
   currentAmbience: AmbienceType;
@@ -9,12 +9,12 @@ interface AmbientAudioPlayerProps {
   onVolumeChange: (vol: number) => void;
 }
 
-const AMBIENCE_LIST: { type: AmbienceType; label: string; icon: string }[] = [
-  { type: "none", label: "Mute", icon: "🔇" },
-  { type: "rain", label: "Rain", icon: "🌧️" },
-  { type: "lofi", label: "Lo-Fi 432Hz", icon: "🎵" },
-  { type: "coffee", label: "Cafe", icon: "☕" },
-  { type: "library", label: "Library", icon: "📖" },
+const AMBIENCE_LIST: { type: AmbienceType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { type: "none", label: "Mute", icon: VolumeX },
+  { type: "rain", label: "Rain", icon: CloudRain },
+  { type: "lofi", label: "Lo-Fi 432Hz", icon: Music },
+  { type: "coffee", label: "Cafe", icon: Coffee },
+  { type: "library", label: "Library", icon: BookOpen },
 ];
 
 export const AmbientAudioPlayer: React.FC<AmbientAudioPlayerProps> = ({

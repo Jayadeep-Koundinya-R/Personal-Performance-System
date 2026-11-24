@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import { ArrowLeft, Home, LayoutDashboard, Sun, Moon, Compass, Sparkles } from "lucide-react";
+import { ArrowLeft, Home, LayoutDashboard, Sun, Moon, Compass, Sparkles, Rocket } from "lucide-react";
 import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useTheme } from "@/hooks/use-theme";
@@ -96,8 +96,8 @@ const NotFound = () => {
             <Link to="/pricing" className="text-xs px-2.5 py-1 rounded-lg bg-surface hover:bg-card border border-border/60 text-muted-foreground hover:text-foreground transition-colors">
               Pricing Plans
             </Link>
-            <Link to="/roadmap" className="text-xs px-2.5 py-1 rounded-lg bg-surface hover:bg-card border border-border/60 text-muted-foreground hover:text-foreground transition-colors">
-              Roadmap 🚀
+            <Link to="/roadmap" className="text-xs px-2.5 py-1 rounded-lg bg-surface hover:bg-card border border-border/60 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              Roadmap <Rocket className="w-3.5 h-3.5" />
             </Link>
             <Link to="/marketplace" className="text-xs px-2.5 py-1 rounded-lg bg-surface hover:bg-card border border-border/60 text-muted-foreground hover:text-foreground transition-colors">
               Mentor Hub

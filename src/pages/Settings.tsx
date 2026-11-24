@@ -5,7 +5,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { TrackPreferenceSelector } from '@/components/settings/TrackPreferenceSelector';
 import { BrandLogo } from '@/components/BrandLogo';
 import { ThreeDBackground } from '@/components/ui/ThreeDBackground';
-import { Loader2, ArrowLeft, LayoutDashboard, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, Sun, Moon } from 'lucide-react';
 
 const SettingsSection = lazy(() => import('@/components/sections/SettingsSection'));
 
@@ -16,7 +16,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative selection:bg-primary selection:text-white transition-colors duration-500 overflow-x-hidden flex flex-col justify-between">
-      {/* 🌌 Dynamic 3D Ambient Background Layer */}
+      {/* Dynamic 3D Ambient Background Layer */}
       <ThreeDBackground />
 
       {/* Top Global Navigation Bar */}
@@ -72,9 +72,14 @@ export default function SettingsPage() {
         {/* Core Settings Studio */}
         <Suspense
           fallback={
-            <div className="p-12 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="h-7 w-7 animate-spin text-primary" />
-              <span className="text-xs font-mono font-bold text-muted-foreground">Loading settings studio...</span>
+            <div className="space-y-4 animate-in fade-in duration-300">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-6 rounded-3xl bg-card border border-border/80 space-y-4">
+                  <div className="h-5 w-1/3 bg-surface rounded animate-pulse" />
+                  <div className="h-3 w-2/3 bg-surface/60 rounded animate-pulse" />
+                  <div className="h-10 w-full bg-surface/40 rounded-xl animate-pulse" />
+                </div>
+              ))}
             </div>
           }
         >

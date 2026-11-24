@@ -16,28 +16,46 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
-import { Flame, Shield, Award, AlertTriangle, Check, Sparkles, Zap, Lock, Layers } from "lucide-react";
+import { Flame, Shield, Award, AlertTriangle, Check, Sparkles, Zap, Lock, Layers, Hourglass, Gem, Medal, Skull, Leaf } from "lucide-react";
 import { getRecoveryXPClaimedDates } from "@/lib/dashboard/microHabits";
 import { toast } from "sonner";
 
 // Flame Tier Helper
 function getFlameTier(streak: number) {
-  if (streak >= 30) return { name: "Immortal Phoenix", icon: "🏆", color: "text-accent dark:text-accent", bg: "bg-accent/15 border-accent/30", nextGoal: 100, rank: "Tier 5" };
-  if (streak >= 14) return { name: "Legendary Blaze", icon: "💎", color: "text-secondary dark:text-accent", bg: "bg-secondary/15 border-accent/30", nextGoal: 30, rank: "Tier 4" };
-  if (streak >= 7) return { name: "Inferno Fire", icon: "🥇", color: "text-pps-orange", bg: "bg-pps-orange/15 border-pps-orange/30", nextGoal: 14, rank: "Tier 3" };
-  if (streak >= 4) return { name: "Ignited Flame", icon: "🥈", color: "text-primary", bg: "bg-primary/15 border-primary/30", nextGoal: 7, rank: "Tier 2" };
-  if (streak >= 1) return { name: "Spark Momentum", icon: "🥉", color: "text-pps-yellow", bg: "bg-pps-yellow/15 border-pps-yellow/30", nextGoal: 4, rank: "Tier 1" };
-  return { name: "Dormant", icon: "💀", color: "text-muted-foreground", bg: "bg-surface/50 border-border/40", nextGoal: 1, rank: "Unranked" };
+  if (streak >= 30) return { name: "Immortal Phoenix", icon: "award", color: "text-accent dark:text-accent", bg: "bg-accent/15 border-accent/30", nextGoal: 100, rank: "Tier 5" };
+  if (streak >= 14) return { name: "Legendary Blaze", icon: "gem", color: "text-secondary dark:text-accent", bg: "bg-secondary/15 border-accent/30", nextGoal: 30, rank: "Tier 4" };
+  if (streak >= 7) return { name: "Inferno Fire", icon: "medal", color: "text-pps-orange", bg: "bg-pps-orange/15 border-pps-orange/30", nextGoal: 14, rank: "Tier 3" };
+  if (streak >= 4) return { name: "Ignited Flame", icon: "medal", color: "text-primary", bg: "bg-primary/15 border-primary/30", nextGoal: 7, rank: "Tier 2" };
+  if (streak >= 1) return { name: "Spark Momentum", icon: "medal", color: "text-pps-yellow", bg: "bg-pps-yellow/15 border-pps-yellow/30", nextGoal: 4, rank: "Tier 1" };
+  return { name: "Dormant", icon: "skull", color: "text-muted-foreground", bg: "bg-surface/50 border-border/40", nextGoal: 1, rank: "Unranked" };
 }
 
 // Milestones Definition
 const MILESTONES = [
-  { days: 3, title: "3-Day Spark", icon: "🥉", xp: 20, desc: "Ignite your momentum" },
-  { days: 7, title: "7-Day Week Warrior", icon: "🥈", xp: 50, desc: "A full week of pure discipline" },
-  { days: 14, title: "14-Day Fortitude", icon: "🥇", xp: 100, desc: "Two solid weeks unbroken" },
-  { days: 30, title: "30-Day Titan", icon: "💎", xp: 250, desc: "Monthly habit perfection" },
-  { days: 100, title: "100-Day Centurion", icon: "🏆", xp: 1000, desc: "Master of lifestyle transformation" },
+  { days: 3, title: "3-Day Spark", icon: "medal", xp: 20, desc: "Ignite your momentum" },
+  { days: 7, title: "7-Day Week Warrior", icon: "medal", xp: 50, desc: "A full week of pure discipline" },
+  { days: 14, title: "14-Day Fortitude", icon: "medal", xp: 100, desc: "Two solid weeks unbroken" },
+  { days: 30, title: "30-Day Titan", icon: "gem", xp: 250, desc: "Monthly habit perfection" },
+  { days: 100, title: "100-Day Centurion", icon: "award", xp: 1000, desc: "Master of lifestyle transformation" },
 ];
+
+const FLAME_TIER_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  award: Award,
+  gem: Gem,
+  medal: Medal,
+  skull: Skull,
+};
+
+const MILESTONE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  medal: Medal,
+  gem: Gem,
+  award: Award,
+};
+
+function DynamicIcon({ iconMap, iconKey, className }: { iconMap: Record<string, React.ComponentType<{ className?: string }>>; key: string; className?: string }) {
+  const Icon = iconMap[iconKey];
+  return Icon ? <Icon className={className} /> : null;
+}
 
 const StreakSection = () => {
   const { habits, getMaxStreak, getTotalFreezeCredits, applyStreakFreeze, toggleCompletion, completeHabit, getTodayStr, isHabitDueToday } = useHabits();
@@ -80,7 +98,7 @@ const StreakSection = () => {
     if (err) {
       toast.error(err);
     } else {
-      toast.success("🛡️ Streak Shield activated! Your streak is protected.");
+      toast.success("Streak Shield activated! Your streak is protected.");
     }
   };
 
@@ -101,7 +119,8 @@ const StreakSection = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
-            <span>🔥 Streak Engine</span>
+            <Flame className="w-4 h-4" />
+            <span>Streak Engine</span>
             <span className="text-[11px] font-mono bg-pps-orange/15 text-pps-orange border border-pps-orange/30 px-2.5 py-0.5 rounded-full font-bold uppercase">
               Don't Break The Chain
             </span>
@@ -121,7 +140,7 @@ const StreakSection = () => {
           </div>
 
           <div className="flex items-center gap-2 bg-card border border-border/80 px-3.5 py-1.5 rounded-2xl shadow-xs">
-            <span className="text-xs">🌿</span>
+            <Leaf className="w-3 h-3" />
             <span className="text-xs font-mono font-extrabold text-foreground">
               {rolling7DaysRestDays}/2 Rest Days Used
             </span>
@@ -136,7 +155,7 @@ const StreakSection = () => {
         className="bg-gradient-to-br from-pps-orange/10 via-card to-primary/10 border border-pps-orange/30 p-6 sm:p-8 rounded-3xl text-center shadow-xl relative overflow-hidden space-y-5"
       >
         <div className="inline-block relative">
-          <div className="text-6xl animate-bounce mb-1">🔥</div>
+          <Flame className="w-10 h-10 animate-bounce mb-1" />
           <div className="text-6xl sm:text-7xl font-extrabold font-mono text-pps-orange tracking-tight drop-shadow-md">
             {maxStreak}
           </div>
@@ -148,7 +167,9 @@ const StreakSection = () => {
         {/* Global Flame Rank Badge */}
         <div>
           <span className={`inline-flex items-center gap-1.5 text-xs font-mono font-extrabold px-3.5 py-1 rounded-full border ${globalTier.bg} ${globalTier.color}`}>
-            <span>{globalTier.icon}</span>
+            {FLAME_TIER_ICONS[globalTier.icon] ? (
+              <DynamicIcon iconMap={FLAME_TIER_ICONS} iconKey={globalTier.icon} className="w-3 h-3" />
+            ) : null}
             <span>Global Rank: {globalTier.name} ({globalTier.rank})</span>
           </span>
         </div>
@@ -172,12 +193,14 @@ const StreakSection = () => {
         {/* Pure Discipline Bonus Badge or Forgiving Comeback Badge */}
         {maxStreak >= 7 ? (
           <div className="inline-flex items-center gap-1.5 text-xs font-mono font-extrabold bg-pps-green/15 text-pps-green border border-pps-green/30 px-3.5 py-1 rounded-full shadow-xs">
-            <span>✨ Pure Discipline Bonus:</span>
+            <Sparkles className="w-3 h-3 inline" />
+            <span>Pure Discipline Bonus:</span>
             <span>+25 XP for maintaining 7d+ unshielded streak!</span>
           </div>
         ) : maxStreak === 0 && totalCompletions > 0 ? (
           <div className="inline-flex items-center gap-1.5 text-xs font-mono font-extrabold bg-primary/15 text-primary border border-primary/30 px-3.5 py-1 rounded-full shadow-xs">
-            <span>🌱 Fresh Day Momentum:</span>
+            <Leaf className="w-3 h-3 inline" />
+            <span>Fresh Day Momentum:</span>
             <span>Every master restart begins with 1 clean action. Check off 1 habit to ignite a new spark!</span>
           </div>
         ) : null}
@@ -191,7 +214,7 @@ const StreakSection = () => {
       <div className="bg-surface/70 border border-border/80 p-5 rounded-3xl shadow-lg space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-lg">🌱</span>
+            <Leaf className="w-5 h-5" />
             <div>
               <h3 className="text-xs font-extrabold uppercase font-mono tracking-wider text-foreground">
                 Compassionate Habit Resilience
@@ -229,7 +252,7 @@ const StreakSection = () => {
               >
                 <div className="text-[10px] font-mono font-bold text-muted-foreground">{dayLabel}</div>
                 <div className="text-sm my-0.5">
-                  {completedCount > 0 ? "✓" : isToday ? "⏳" : "—"}
+                  {completedCount > 0 ? "✓" : isToday ? (<Hourglass className="w-3 h-3" />) : "—"}
                 </div>
                 <div className="text-[9px] font-mono text-muted-foreground truncate">
                   {completedCount > 0 ? (
@@ -261,7 +284,7 @@ const StreakSection = () => {
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-destructive/20 border border-destructive/40 flex items-center justify-center text-xl flex-shrink-0">
-                ⚠️
+                <AlertTriangle className="w-5 h-5 text-destructive" />
               </div>
               <div>
                 <h3 className="text-xs font-extrabold uppercase font-mono tracking-wider text-destructive flex items-center gap-1.5">
@@ -304,8 +327,9 @@ const StreakSection = () => {
                 onClick={() => completeHabit(atRiskHabits[0].id, "rest")}
                 className="border-pps-green/40 text-pps-green hover:bg-pps-green/20 hover:text-black"
                 title="Claim Rest Day (+5 Recovery XP, shields streak)"
-              >
-                <span>🌿 Claim Rest Day (+5 XP)</span>
+                >
+                  <Leaf className="w-3 h-3 inline" />
+                  <span>Claim Rest Day (+5 XP)</span>
               </Button>
               )}
             </div>
@@ -318,7 +342,8 @@ const StreakSection = () => {
         <div className="flex items-center justify-between border-b border-border/40 pb-3">
           <div>
             <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-              <span>🏆 Milestone Trophy Wall</span>
+              <Award className="w-3 h-3 inline" />
+              <span>Milestone Trophy Wall</span>
             </h3>
             <p className="text-[11.5px] text-muted-foreground font-medium mt-0.5">
               Unlock milestone badges by holding unbroken streaks
@@ -341,7 +366,11 @@ const StreakSection = () => {
                     : "bg-surface/50 border-border/60 opacity-60"
                 }`}
               >
-                <div className="text-3xl">{m.icon}</div>
+                <div className="text-3xl">
+                  {MILESTONE_ICONS[m.icon] ? (
+                    <DynamicIcon iconMap={MILESTONE_ICONS} key={m.icon} className="w-8 h-8" />
+                  ) : null}
+                </div>
                 <div>
                   <div className={`text-xs font-extrabold font-mono ${isUnlocked ? "text-foreground" : "text-muted-foreground"}`}>
                     {m.title}
@@ -363,7 +392,8 @@ const StreakSection = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
-            🔥 Individual Habit Streak Health
+            <Flame className="w-4 h-4 inline" />
+            <span>Individual Habit Streak Health</span>
           </h2>
           <span className="text-xs text-muted-foreground font-mono font-bold">
             {activeHabits.length} Habits Tracked
@@ -410,7 +440,10 @@ const StreakSection = () => {
 
                   {/* Streak Count Number */}
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-extrabold font-mono text-pps-orange">{tier.icon} {streak}</span>
+                    {FLAME_TIER_ICONS[tier.icon] ? (
+                      <DynamicIcon iconMap={FLAME_TIER_ICONS} iconKey={tier.icon} className="w-5 h-5 text-pps-orange" />
+                    ) : null}
+                    <span className="text-3xl font-extrabold font-mono text-pps-orange">{streak}</span>
                     <span className="text-xs text-muted-foreground font-mono font-bold">Days Unbroken</span>
                   </div>
 

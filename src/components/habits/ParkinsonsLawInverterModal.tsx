@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useHabits, Habit } from '@/hooks/use-habits';
 import { useFocusTimer } from '@/hooks/use-focus-timer';
@@ -20,6 +20,15 @@ export const ParkinsonsLawInverterModal: React.FC<ParkinsonsLawInverterModalProp
 }) => {
   const { habits, updateHabit } = useHabits();
   const { changeTimerMode, startTimer, setActiveTaskName, setLinkedHabitId, startHabitFocus } = useFocusTimer();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
 
   // If no targetHabit was passed, allow selecting from the user's active habits
   const activeHabits = useMemo(() => habits.filter((h) => !h.archived), [habits]);
@@ -87,7 +96,7 @@ export const ParkinsonsLawInverterModal: React.FC<ParkinsonsLawInverterModalProp
         onSprintStarted(effectiveHabit.id, selectedMinutes);
       }
 
-      toast.success(`⚡ Anti-procrastination sprint launched! 15 minutes to freedom.`, {
+      toast.success(`Anti-procrastination sprint launched! 15 minutes to freedom.`, {
         description: `Micro-bite locked: "${sprintLabel}"`,
       });
 
@@ -101,22 +110,27 @@ export const ParkinsonsLawInverterModal: React.FC<ParkinsonsLawInverterModalProp
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+      <div 
+        className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="parkinsons-title"
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="relative w-full max-w-lg bg-card border border-primary/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh]"
+          className="relative w-full max-w-lg bg-card border border-primary/30 rounded-3xl shadow-xl overflow-hidden flex flex-col max-h-[88vh]"
         >
           {/* Header Banner */}
           <div className="bg-gradient-to-r from-primary/25 via-card to-amber-500/20 border-b border-border/80 px-6 py-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl shadow-inner">
-                ⏳
+                <Clock className="w-5 h-5 text-amber-400" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-foreground tracking-tight">
+                  <h3 id="parkinsons-title" className="text-base font-black text-foreground tracking-tight">
                     Parkinson’s Law Inverter
                   </h3>
                   <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">

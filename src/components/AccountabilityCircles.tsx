@@ -93,7 +93,8 @@ export default function AccountabilityCircles({ userId = "", isPro = false }: { 
       <div className="flex items-center justify-between border-b border-border/40 pb-3">
         <div>
           <h3 className="text-sm font-extrabold text-foreground uppercase font-mono tracking-wider flex items-center gap-2">
-            <span>🛡️ Accountability Circles</span>
+            <Shield className="w-4 h-4 text-primary" />
+            <span>Accountability Circles</span>
           </h3>
           <p className="text-xs text-muted-foreground font-medium mt-0.5">
             Form small high-accountability circles (3-5 friends) to share daily habit progress
@@ -158,9 +159,10 @@ export default function AccountabilityCircles({ userId = "", isPro = false }: { 
             <div key={c.id} className="bg-surface border border-border/80 rounded-2xl p-4 flex justify-between items-center">
               <div>
                 <div className="font-extrabold text-sm text-foreground">{c.name}</div>
-                <div className="text-xs font-mono text-muted-foreground font-bold mt-0.5">
-                  👥 {c.memberCount} members • Code: <span className="text-primary font-bold">{c.inviteCode}</span>
-                </div>
+                <div className="text-xs font-mono text-muted-foreground font-bold mt-0.5 flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5" />
+                    <span>{c.memberCount} members • Code: <span className="text-primary font-bold">{c.inviteCode}</span></span>
+                  </div>
               </div>
             </div>
           ))

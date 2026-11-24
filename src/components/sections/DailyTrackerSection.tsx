@@ -22,7 +22,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
-import { useFocusTimer } from "@/hooks/use-focus-timer";
+import { useFocusTimer, useFocusTimerTick } from "@/hooks/use-focus-timer";
 import { Button } from "@/components/ui/button";
 import EmptyState from "@/components/EmptyState";
 import { toast } from "sonner";
@@ -88,6 +88,12 @@ interface DailyTrackerProps {
 const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
   const { habits, toggleCompletion, completeHabit, isHabitDueToday, getTodayStr } = useHabits();
   const timer = useFocusTimer();
+  const tick = useFocusTimerTick();
+
+  const currentSec = tick.remainingSec ?? timer.remainingSec ?? 25 * 60;
+  const currentRatio = tick.progressRatio ?? timer.progressRatio ?? 0;
+  const currentOffset = tick.strokeDashoffset ?? timer.strokeDashoffset ?? 565;
+
   const todayStr = getTodayStr();
   const [justCompleted, setJustCompleted] = useState<Set<string>>(new Set());
 
@@ -360,16 +366,29 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                className="bg-surface border border-border/60 p-3 rounded-xl space-y-1.5"
+                className="bg-surface border border-border/60 p-3 rounded-xl space-y-2"
               >
-                <div className="flex justify-between text-xs font-mono">
+                <div className="flex justify-between items-center text-xs font-mono">
                   <span>Custom Duration:</span>
-                  <span className="font-bold text-primary">{timer.customMinutes} Minutes</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={1}
+                      max={180}
+                      value={timer.customMinutes}
+                      onChange={(e) => {
+                        const mins = Math.max(1, Math.min(180, Number(e.target.value) || 1));
+                        timer.setCustomMinutes(mins);
+                      }}
+                      className="w-16 bg-card border border-border/80 focus:border-primary px-2 py-0.5 rounded-lg text-center font-bold text-primary outline-none text-xs"
+                    />
+                    <span className="font-bold text-primary">min</span>
+                  </div>
                 </div>
                 <input
                   type="range"
                   min={1}
-                  max={120}
+                  max={180}
                   value={timer.customMinutes}
                   onChange={(e) => {
                     const mins = Number(e.target.value);
@@ -450,7 +469,7 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                   className="stroke-primary"
                   strokeWidth="12"
                   strokeDasharray="565"
-                  strokeDashoffset={timer.strokeDashoffset}
+                  strokeDashoffset={currentOffset}
                   strokeLinecap="round"
                   fill="transparent"
                   transition={{ duration: 0.5, ease: "linear" }}
@@ -459,12 +478,12 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
 
               {/* Inner Countdown */}
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-                <span className="text-lg mb-0.5">{getGrowthStage(timer.progressRatio)}</span>
+                <span className="text-lg mb-0.5">{getGrowthStage(currentRatio)}</span>
                 <span className="text-[10px] uppercase font-mono tracking-widest text-muted-foreground font-semibold">
                   {timer.isRunning ? "Focusing..." : timer.showFlowExtend ? "Done!" : "Ready"}
                 </span>
                 <span className="text-4xl font-extrabold font-mono text-foreground tracking-tighter my-0.5">
-                  {timer.formatTimerTime(timer.remainingSec)}
+                  {timer.formatTimerTime(currentSec)}
                 </span>
                 <span className="text-[11px] font-semibold text-primary truncate max-w-[140px]">
                   {timer.activeTaskName}
@@ -966,16 +985,16 @@ const DailyTrackerSection = ({ onNavigate }: DailyTrackerProps) => {
                     className="stroke-primary"
                     strokeWidth="8"
                     strokeDasharray="565"
-                    strokeDashoffset={timer.strokeDashoffset}
+                    strokeDashoffset={currentOffset}
                     strokeLinecap="round"
                     fill="transparent"
                   />
                 </svg>
 
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl mb-1">{getGrowthStage(timer.progressRatio)}</span>
+                  <span className="text-2xl mb-1">{getGrowthStage(currentRatio)}</span>
                   <span className="text-5xl font-extrabold font-mono text-white tracking-tighter">
-                    {timer.formatTimerTime(timer.remainingSec)}
+                    {timer.formatTimerTime(currentSec)}
                   </span>
                   <span className="text-xs text-muted-foreground mt-2 font-mono">{timer.TIMER_PRESETS[timer.timerMode].label}</span>
                 </div>

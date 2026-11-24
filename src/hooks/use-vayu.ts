@@ -283,7 +283,7 @@ export function useVayu() {
         Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
       } catch {}
 
-      const msg = `🌬️ Vayu Auto-Completed: "${blockTitle}" (+15 XP). Vital day rate is now ${rate}%.`;
+      const msg = `🌬️ Daily Flow Auto-Completed: "${blockTitle}" (+15 XP). Smart Rhythm rate is now ${rate}%.`;
       setLastActionMessage(msg);
       toast.success(msg);
     },
@@ -303,8 +303,8 @@ export function useVayu() {
         targetDate: todayStr,
       });
 
-      persistPlan(freshPlan);
-      toast.success("🌬️ Vayu Circadian Plan Generated", {
+persistPlan(freshPlan);
+      toast.success("🌬️ Daily Flow Plan Generated", {
         description: sanitized ? `Directive: "${sanitized}"` : "45/15 Ultradian rhythm aligned with your biological windows.",
       });
     },
@@ -319,7 +319,7 @@ export function useVayu() {
       const currentTimeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
       const rebalanced = rebalanceSchedule(plan, currentTimeStr, curfewTimeStr);
       persistPlan(rebalanced);
-      toast.info("🌬️ Vayu Flow Fluidly Rebalanced", {
+      toast.info("🌬️ Daily Flow Smart Rhythm Rebalanced", {
         description: rebalanced.rebalanceExplanation || "Schedule shifted forward seamlessly with zero guilt.",
       });
     },
@@ -365,7 +365,7 @@ export function useVayu() {
             new CustomEvent("pps_start_focus_timer", {
               detail: {
                 durationMins: result.suggestedDurationMinutes || 45,
-                taskName: currentBlock?.title || "Vayu Focus Sprint",
+                taskName: currentBlock?.title || "Daily Flow Focus Sprint",
                 linkedHabitId: currentBlock?.habitId || currentBlock?.linkedHabitId,
               },
             })
@@ -408,7 +408,7 @@ export function useVayu() {
         try {
           addXP(20);
         } catch {}
-        toast.success(`🌬️ Focus Session Logged (+20 XP)! Vayu updated your cognitive momentum.`);
+        toast.success(`🌬️ Focus Session Logged (+20 XP)! Daily Flow updated your cognitive momentum.`);
       }
     },
     [plan, currentBlock, completeBlock, addXP]

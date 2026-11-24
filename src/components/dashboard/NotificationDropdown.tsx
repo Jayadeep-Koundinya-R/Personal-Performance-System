@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, Sparkles, AlarmClock, Flame, Crown, Award, Sword, ClipboardList, Check } from "lucide-react";
 
 export interface Notification {
   id: string;
@@ -38,12 +38,12 @@ function getTypeColor(type?: string) {
 
 function getTypeIcon(type?: string) {
   switch (type) {
-    case "alarm": return "⏰";
-    case "streak": return "🔥";
-    case "levelup": return "👑";
-    case "achievement": return "🏅";
-    case "quest": return "⚔️";
-    default: return "📋";
+    case "alarm": return <AlarmClock className="w-4 h-4" />;
+    case "streak": return <Flame className="w-4 h-4" />;
+    case "levelup": return <Crown className="w-4 h-4" />;
+    case "achievement": return <Award className="w-4 h-4" />;
+    case "quest": return <Sword className="w-4 h-4" />;
+    default: return <ClipboardList className="w-4 h-4" />;
   }
 }
 
@@ -85,10 +85,11 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
           {unreadCount > 0 && (
             <button
               onClick={(e) => { e.stopPropagation(); onMarkAllRead(); }}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface text-[11px] font-bold transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
               title="Mark all as read"
             >
-              ✓ Read
+              <Check className="w-3 h-3" />
+              <span>Read</span>
             </button>
           )}
           {notifications.length > 0 && (
@@ -106,7 +107,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       {/* List or Empty State */}
       {filtered.length === 0 ? (
         <div className="px-6 py-10 text-center text-muted-foreground bg-card">
-          <div className="w-12 h-12 mx-auto mb-2.5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl shadow-inner">✨</div>
+          <div className="w-12 h-12 mx-auto mb-2.5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl shadow-inner"><Sparkles className="w-6 h-6 text-primary" /></div>
           <div className="text-xs font-bold text-foreground">
             {notifFilter === "unread" ? "All Caught Up!" : "Inbox is Empty"}
           </div>
@@ -166,7 +167,8 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
           onClick={(e) => { e.stopPropagation(); onNavigateReminders(); }}
           className="text-muted-foreground hover:text-primary font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
         >
-          <span>🔔 Manage Alert Preferences →</span>
+          <Bell className="w-3.5 h-3.5" />
+          <span>Manage Alert Preferences →</span>
         </button>
       </div>
     </>

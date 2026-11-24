@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useFocusTimer, TIMER_PRESETS, TimerMode } from "@/hooks/use-focus-timer";
+import { useFocusTimer, useFocusTimerTick, TIMER_PRESETS, TimerMode } from "@/hooks/use-focus-timer";
 import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2, Sparkles, Clock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,6 +10,7 @@ interface MiniPomodoroCardProps {
 
 export const MiniPomodoroCard: React.FC<MiniPomodoroCardProps> = ({ onNavigate }) => {
   const timer = useFocusTimer();
+  const tick = useFocusTimerTick();
   const [selectedMins, setSelectedMins] = useState<number>(25);
 
   const presets = [
@@ -38,8 +39,8 @@ export const MiniPomodoroCard: React.FC<MiniPomodoroCardProps> = ({ onNavigate }
     }
   };
 
-  const formattedTime = timer.formatTimerTime(timer.remainingSec);
-  const progressPct = Math.round(timer.progressRatio * 100);
+  const formattedTime = timer.formatTimerTime(tick.remainingSec);
+  const progressPct = Math.round(tick.progressRatio * 100);
 
   return (
     <motion.div

@@ -80,7 +80,7 @@ export const VayuFlowStudioModal: React.FC<VayuFlowStudioModalProps> = ({
             </div>
             <div>
               <DialogTitle className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-                Adaptive Flow Studio
+                Smart Rhythm Studio
                 <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
                   45/15 Rhythm Engine
                 </span>
@@ -109,7 +109,7 @@ export const VayuFlowStudioModal: React.FC<VayuFlowStudioModalProps> = ({
               className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-emerald-500 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:from-cyan-400 hover:to-emerald-400 transition-all cursor-pointer"
             >
               <RefreshCw className="h-3 w-3" />
-              <span>Rebalance Schedule (Zero Guilt)</span>
+              <span>Smart Rebalance (Zero Guilt)</span>
             </button>
           </div>
         )}
@@ -133,7 +133,7 @@ export const VayuFlowStudioModal: React.FC<VayuFlowStudioModalProps> = ({
           </div>
 
           <div className="rounded-xl border border-amber-500/20 bg-surface/70 dark:bg-slate-900/50 p-3 flex flex-col">
-            <span className="text-[11px] text-muted-foreground">Vital Day Rate</span>
+            <span className="text-[11px] text-muted-foreground">Smart Rhythm Rate</span>
             <span className="text-base font-bold text-amber-600 dark:text-amber-300">
               {plan ? plan.overallCompletionRate : 0}%
             </span>
@@ -150,15 +150,19 @@ export const VayuFlowStudioModal: React.FC<VayuFlowStudioModalProps> = ({
         </div>
 
         {/* Prompt Directive Bar */}
-        <form onSubmit={handleRegenerate} className="flex gap-2 my-2">
+        <form onSubmit={handleRegenerate} className="flex gap-2 my-2 flex-col sm:flex-row">
           <input
             type="text"
             value={promptText}
             maxLength={300}
             onChange={(e) => setPromptText(e.target.value)}
             placeholder="Give Flow Engine a directive (e.g. 'Prioritize DSA and system design today')..."
+            aria-invalid={!promptText.trim()}
             className="flex-1 rounded-xl border border-border/80 bg-surface dark:bg-slate-900/80 px-3.5 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-cyan-400 focus:outline-none"
           />
+          {!promptText.trim() && (
+            <p className="text-xs text-destructive mt-1 sm:mt-0 sm:ml-2">This field is required</p>
+          )}
           <button
             type="submit"
             className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 hover:from-cyan-400 hover:to-emerald-400 transition-all shrink-0 cursor-pointer"
@@ -171,13 +175,13 @@ export const VayuFlowStudioModal: React.FC<VayuFlowStudioModalProps> = ({
         {/* Timeline Blocks */}
         <div className="space-y-2 mt-3">
           <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground px-1">
-            <span>Ultradian Sequence (08:00 – 22:00 Curfew)</span>
+            <span>Smart Rhythm Sequence (08:00 – 22:00 Curfew)</span>
             <button
               onClick={onRebalance}
               className="flex items-center gap-1 text-cyan-500 dark:text-cyan-400 hover:text-cyan-400 transition-colors cursor-pointer"
             >
               <RefreshCw className="h-3 w-3" />
-              <span>Fluid Rebalance</span>
+              <span>Smart Rebalance</span>
             </button>
           </div>
 
@@ -210,22 +214,22 @@ export const VayuFlowStudioModal: React.FC<VayuFlowStudioModalProps> = ({
 
                         {/* Energy Level Badge */}
                         {block.energyLevel === "peak" && (
-                          <span className="text-[10px] rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.2 border border-amber-500/30 font-medium">
-                            ⚡ Peak
+                          <span className="text-[10px] rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 border border-amber-500/30 font-medium">
+                             <Zap className="inline w-3 h-3" /> Peak
                           </span>
                         )}
                         {block.energyLevel === "medium" && (
-                          <span className="text-[10px] rounded-md bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.2 border border-cyan-500/30 font-medium">
-                            🎯 Tactical
+                          <span className="text-[10px] rounded-md bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.5 border border-cyan-500/30 font-medium">
+                             <Target className="inline w-3 h-3" /> Tactical
                           </span>
                         )}
                         {block.energyLevel === "recharge" && (
-                          <span className="text-[10px] rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.2 border border-emerald-500/30 font-medium">
-                            🌿 Recharge
+                          <span className="text-[10px] rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 border border-emerald-500/30 font-medium">
+                             <Coffee className="inline w-3 h-3" /> Recharge
                           </span>
                         )}
 
-                        <span className="text-[10px] rounded-md bg-surface px-1.5 py-0.2 text-muted-foreground border border-border/70">
+                        <span className="text-[10px] rounded-md bg-surface px-1.5 py-0.5 text-muted-foreground border border-border/70">
                           {block.category}
                         </span>
                       </div>
@@ -283,7 +287,7 @@ export const VayuFlowStudioModal: React.FC<VayuFlowStudioModalProps> = ({
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                Initialize 45/15 Circadian Flow
+                Initialize 45/15 Smart Rhythm
               </button>
             </div>
           )}

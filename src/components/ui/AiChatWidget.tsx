@@ -37,7 +37,7 @@ import {
   setActivePersonaId,
   type CoachPersonaId,
 } from "@/lib/ai/coachPersonas";
-import { Sparkles, Trash2, X, Send, Zap, Plus, Shield, Bell, Clock, CheckCircle2 } from "lucide-react";
+import { Sparkles, Trash2, X, Send, Zap, Plus, Shield, Bell, Clock, CheckCircle2, Bot } from "lucide-react";
 import { toast } from "sonner";
 
 /**
@@ -125,7 +125,7 @@ export default function AiChatWidget() {
             toast.error(err);
             return;
           }
-          toast.success(`🛡️ Streak Shield activated for "${p.habitName}"!`);
+          toast.success(`Streak Shield activated for "${p.habitName}"!`);
         }
       } else if (action.actionType === "SCHEDULE_REMINDER") {
         const p = action.parameters;
@@ -148,7 +148,7 @@ export default function AiChatWidget() {
         if (p.habitId) setLinkedHabitId(p.habitId);
         changeTimerMode("custom", p.durationMinutes);
         startTimer();
-        toast.success(`🎯 Launched ${p.durationMinutes}-minute focus session!`);
+        toast.success(`Launched ${p.durationMinutes}-minute focus session!`);
       }
 
       // Mark action as executed in state
@@ -263,7 +263,7 @@ export default function AiChatWidget() {
   ];
 
   return (
-    <motion.div drag dragMomentum={false} className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end select-none">
+    <motion.div drag dragMomentum={false} className="fixed bottom-20 md:bottom-6 right-6 z-[9999] flex flex-col items-end select-none">
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -276,8 +276,8 @@ export default function AiChatWidget() {
             {/* Header */}
             <div className="bg-gradient-to-r from-primary/20 via-card to-secondary/20 border-b border-border/40 p-4 flex justify-between items-center">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-xl flex-shrink-0 shadow-inner">
-                  🤖
+                <div className="w-9 h-9 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary flex-shrink-0 shadow-inner">
+                  <Bot className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-foreground flex items-center gap-1.5 font-mono">
@@ -287,12 +287,12 @@ export default function AiChatWidget() {
                     <span className="w-1.5 h-1.5 rounded-full bg-pps-green animate-pulse" />
                     <span className="text-[10px] text-muted-foreground font-mono font-bold">Online</span>
                     {isPro ? (
-                      <span className="text-[9.5px] bg-gradient-to-r from-amber-500/20 to-primary/20 text-amber-400 border border-amber-500/30 px-2 py-0.2 rounded-full font-mono font-bold flex items-center gap-1">
+                      <span className="text-[9.5px] bg-gradient-to-r from-amber-500/20 to-primary/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
                         <Sparkles className="w-2.5 h-2.5 text-amber-400" />
                         <span>Gemini 2.0 Pro</span>
                       </span>
                     ) : (
-                      <span className="text-[9.5px] bg-primary/15 text-primary border border-primary/30 px-2 py-0.2 rounded-full font-mono font-bold flex items-center gap-1">
+                      <span className="text-[9.5px] bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
                         <Zap className="w-2.5 h-2.5 text-primary" />
                         <span>Smart Local AI</span>
                       </span>
@@ -484,6 +484,7 @@ export default function AiChatWidget() {
                 />
                 <button
                   type="submit"
+                  aria-label="Send message"
                   disabled={!input.trim() || isTyping}
                   className="absolute right-1.5 w-7 h-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 cursor-pointer hover:bg-primary/90 transition-colors shadow-xs"
                 >
@@ -495,14 +496,18 @@ export default function AiChatWidget() {
         )}
       </AnimatePresence>
 
-      {/* Floating Widget Trigger Button */}
+      {/* Floating Widget Trigger Button with Hover Elevation & Emerald Pulse Ring */}
       <motion.button
-        whileHover={{ scale: 1.08 }}
+        whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary via-secondary to-accent text-primary-foreground shadow-2xl flex items-center justify-center relative border border-white/20 cursor-pointer"
+        className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary via-secondary to-accent text-primary-foreground shadow-2xl flex items-center justify-center relative border border-white/20 cursor-pointer hover:scale-105 transition-transform group"
+        aria-label="Open AI Performance Coach"
       >
-        <span className="text-2xl drop-shadow-md">{isOpen ? "✕" : "🤖"}</span>
+        {/* Subtle emerald pulse ring */}
+        <span className="absolute -inset-1 rounded-2xl bg-emerald-400/25 animate-ping pointer-events-none opacity-75" />
+        <span className="absolute inset-0 rounded-2xl ring-2 ring-emerald-400/40 pointer-events-none" />
+        <span className="relative z-10 flex items-center justify-center">{isOpen ? <X className="w-6 h-6 text-white" /> : <Bot className="w-6 h-6 text-white" />}</span>
       </motion.button>
     </motion.div>
   );

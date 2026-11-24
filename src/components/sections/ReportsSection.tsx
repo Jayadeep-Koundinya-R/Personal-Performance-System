@@ -373,7 +373,7 @@ const ReportsSection = () => {
           {report.habitMatrix.length === 0 ? (
             <div className="bg-card border border-border/80 rounded-3xl p-4">
               <EmptyState
-                icon="📈"
+                icon={<TrendingUp className="w-8 h-8" />}
                 title="No Performance Data Yet"
                 description="Start completing habits to generate executive performance analytics and downloadable PDF reports!"
               />

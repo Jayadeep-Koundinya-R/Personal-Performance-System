@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useHabits } from '@/hooks/use-habits';
 import {
@@ -78,7 +78,7 @@ export const SyllabusDecomposerModal: React.FC<SyllabusDecomposerModalProps> = (
         injectedCount++;
       }
 
-      toast.success(`🚀 Injected ${injectedCount} sequential syllabus habits into your daily checklist!`, {
+      toast.success(`Injected ${injectedCount} sequential syllabus habits into your daily checklist!`, {
         description: `Spaced repetition sequence active for "${mode === 'blueprint' ? activeBlueprint.title : 'Custom Syllabus'}"`,
       });
 
@@ -94,11 +94,25 @@ export const SyllabusDecomposerModal: React.FC<SyllabusDecomposerModalProps> = (
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+      <div 
+        className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="syllabus-decomposer-title"
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -109,11 +123,11 @@ export const SyllabusDecomposerModal: React.FC<SyllabusDecomposerModalProps> = (
           <div className="bg-gradient-to-r from-primary/25 via-card to-cyan-500/20 border-b border-border/80 px-6 py-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-xl shadow-inner">
-                📚
+                <BookOpen className="w-5 h-5 text-cyan-400" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-foreground tracking-tight">
+                  <h3 id="syllabus-decomposer-title" className="text-base font-black text-foreground tracking-tight">
                     Syllabus-to-Habit Decomposer
                   </h3>
                   <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">

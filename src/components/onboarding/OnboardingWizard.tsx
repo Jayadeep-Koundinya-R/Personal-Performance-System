@@ -236,7 +236,7 @@ export const OnboardingWizard: React.FC<Props> = ({ initialState, onComplete }) 
       </div>
 
       {/* Screen Render Container */}
-      <Card className="p-4 sm:p-8 shadow-xl border-border/80 bg-card/95 backdrop-blur-sm">
+      <Card className="p-4 sm:p-6 shadow-xl border-border/80 bg-card/95 backdrop-blur-sm">
         {step === 1 && (
           <ScreenTrackSelection
             state={wizardState}

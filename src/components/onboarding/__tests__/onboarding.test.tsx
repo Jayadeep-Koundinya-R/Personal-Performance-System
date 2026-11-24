@@ -220,7 +220,7 @@ describe('Onboarding Domain & UI Catalog Tests', () => {
       expect(screen.getByText('Onboarding Route')).toBeInTheDocument();
     });
 
-    it('redirects expired guest trial user to /pricing', async () => {
+    it('redirects expired guest trial user to /login?tab=demo&expired=true', async () => {
       const { useAuth } = await import('@/hooks/use-auth');
       (useAuth as any).mockReturnValueOnce({
         user: { email: null, isGuest: true },
@@ -240,12 +240,17 @@ describe('Onboarding Domain & UI Catalog Tests', () => {
                 </OnboardingGuard>
               }
             />
-            <Route path="/pricing" element={<div>Pricing Page</div>} />
+            <Route path="/login" element={<div>Login Page</div>} />
           </Routes>
         </MemoryRouter>
       );
 
-      expect(screen.getByText('Pricing Page')).toBeInTheDocument();
+      // Guard should redirect expired guest to login with demo+expired params
+      await waitFor(() => {
+        expect(screen.getByText('Login Page')).toBeInTheDocument();
+      });
+      // Verify dashboard content is no longer shown
+      expect(screen.queryByText('Dashboard Page')).not.toBeInTheDocument();
     });
   });
 });

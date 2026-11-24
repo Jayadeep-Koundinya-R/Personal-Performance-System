@@ -1,11 +1,12 @@
 /*
-  💡 REACT LESSON: Celebration Overlay
+  Celebration Overlay
   Shows a full-screen animation when you level up or unlock a badge.
   Uses framer-motion for smooth entrance/exit and confetti-like particles.
 */
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
+import { ReactNode } from "react";
 
 interface CelebrationOverlayProps {
   show: boolean;
@@ -13,7 +14,7 @@ interface CelebrationOverlayProps {
   type: "levelup" | "badge";
   title: string;
   subtitle: string;
-  icon: string;
+  icon: ReactNode;
 }
 
 const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
@@ -91,7 +92,7 @@ const CelebrationOverlay = ({ show, onClose, type, title, subtitle, icon }: Cele
               transition={{ delay: 0.3 }}
             >
               <div className="text-[11px] uppercase tracking-wider text-primary font-semibold font-mono mb-1">
-                {type === "levelup" ? "🎉 Level Up!" : "🏅 Badge Unlocked!"}
+                {type === "levelup" ? "Level Up!" : "Badge Unlocked!"}
               </div>
               <h2 className="text-xl font-bold mb-1">{title}</h2>
               <p className="text-[13px] text-muted-foreground">{subtitle}</p>

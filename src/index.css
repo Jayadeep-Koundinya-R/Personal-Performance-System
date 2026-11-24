@@ -27,7 +27,7 @@
     --secondary-foreground: 0 0% 100%;
 
     --muted: 220 14% 93%;
-    --muted-foreground: 220 9% 45%;
+    --muted-foreground: 220 14% 38%;
 
     --accent: 239 84% 67%;
     --accent-foreground: 239 84% 35%;
@@ -279,6 +279,29 @@
   /* When virtual keyboard is open on mobile devices */
   body.keyboard-open .hide-on-keyboard {
     display: none !important;
+  }
+
+  /* 🌌 3D Spatial Geometry Floating Animation */
+  @keyframes float-3d {
+    0% {
+      transform: translateZ(85px) perspective(800px) rotateX(16deg) rotateY(-20deg) translateY(0px);
+    }
+    50% {
+      transform: translateZ(95px) perspective(800px) rotateX(22deg) rotateY(-14deg) translateY(-10px);
+    }
+    100% {
+      transform: translateZ(85px) perspective(800px) rotateX(14deg) rotateY(-24deg) translateY(6px);
+    }
+  }
+
+  .animate-float-3d {
+    animation: float-3d 6s ease-in-out infinite alternate;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-float-3d {
+      animation: none !important;
+    }
   }
 }
 

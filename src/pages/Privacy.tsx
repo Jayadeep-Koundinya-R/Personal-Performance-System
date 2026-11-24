@@ -15,10 +15,10 @@ export default function PrivacyPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative selection:bg-primary selection:text-white transition-colors duration-500 overflow-x-hidden flex flex-col justify-between">
-      {/* 🌌 Dynamic 3D Ambient Background Layer */}
+      {/* Dynamic 3D Ambient Background Layer */}
       <ThreeDBackground />
 
-      {/* 📊 Top Scroll Progress Bar */}
+      {/* Top Scroll Progress Bar */}
       <ScrollProgressBar />
 
       {/* Top Global Navigation Bar */}
@@ -125,7 +125,7 @@ export default function PrivacyPage() {
           <section className="space-y-2">
             <h2 className="text-lg font-bold text-foreground">4. Data Export, Portability & Deletion Rights</h2>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              You maintain full ownership of your data. You may download a complete backup of your habits and reflections in JSON or CSV format at any time directly from the Settings page. You may also request complete deletion of your account and cloud data by contacting <span className="font-mono text-primary font-bold">privacy@upalakshya.com</span>.
+              You maintain full ownership of your data. You may download a complete backup of your habits and reflections in JSON or CSV format at any time directly from the Settings page. You may also request complete deletion of your account and cloud data by contacting <span className="font-mono text-primary font-bold">upalakshyasupport@gmail.com</span>.
             </p>
           </section>
 
@@ -145,7 +145,7 @@ export default function PrivacyPage() {
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
               If you have questions, concerns, or requests regarding this Privacy Policy or your data, please contact our Data Protection Officer at:
               <br />
-              <span className="font-mono text-primary font-bold">privacy@upalakshya.com</span>
+              <span className="font-mono text-primary font-bold">upalakshyasupport@gmail.com</span>
             </p>
           </section>
         </article>
@@ -165,7 +165,7 @@ export default function PrivacyPage() {
         <div>PPS v2.0 • Personal Performance System • UpaLakshya Labs</div>
       </footer>
 
-      {/* 🚀 Floating Scroll to Top */}
+      {/* Floating Scroll to Top */}
       <ScrollToTop />
     </div>
   );

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Bell, Volume2, Shield } from "lucide-react";
 import { UserSettings } from "@/hooks/use-user-settings";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface AutomationTabProps {
   settings: UserSettings | null;
@@ -29,13 +30,13 @@ export const AutomationTab: React.FC<AutomationTabProps> = ({
             <Bell className="w-4 h-4 text-secondary" />
             <span>Circadian Alerts & Automated Shield Preferences</span>
           </h3>
-          <Button
-            onClick={onTestAlarmTone}
-            className="text-xs bg-surface border border-border/80 text-foreground px-3 py-1.5 rounded-xl font-bold hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5"
-          >
-            <Volume2 className="w-3.5 h-3.5 text-primary" />
-            <span>Test Tone 🔊</span>
-          </Button>
+            <Button
+              onClick={onTestAlarmTone}
+              className="text-xs bg-surface border border-border/80 text-foreground px-3 py-1.5 rounded-xl font-bold hover:bg-muted/40 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-primary" />
+              <span>Test Tone</span>
+            </Button>
         </div>
 
         <div className="space-y-3">
@@ -50,14 +51,15 @@ export const AutomationTab: React.FC<AutomationTabProps> = ({
 
             <button
               type="button"
-              onClick={() =>
-                updateSettings({
+              onClick={async () => {
+                await updateSettings({
                   notificationPrefs: {
                     email: !settings?.notificationPrefs?.email,
                     push: !!settings?.notificationPrefs?.push,
                   },
-                })
-              }
+                });
+                toast.success(settings?.notificationPrefs?.email ? "Email notifications disabled" : "Email notifications enabled");
+              }}
               className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${
                 settings?.notificationPrefs?.email ? "bg-primary" : "bg-border"
               }`}
@@ -81,14 +83,15 @@ export const AutomationTab: React.FC<AutomationTabProps> = ({
 
             <button
               type="button"
-              onClick={() =>
-                updateSettings({
+              onClick={async () => {
+                await updateSettings({
                   notificationPrefs: {
                     email: !!settings?.notificationPrefs?.email,
                     push: !settings?.notificationPrefs?.push,
                   },
-                })
-              }
+                });
+                toast.success(settings?.notificationPrefs?.push ? "In-app notifications disabled" : "In-app notifications enabled");
+              }}
               className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${
                 settings?.notificationPrefs?.push ? "bg-primary" : "bg-border"
               }`}
@@ -115,11 +118,12 @@ export const AutomationTab: React.FC<AutomationTabProps> = ({
 
             <button
               type="button"
-              onClick={() =>
-                updateSettings({
+              onClick={async () => {
+                await updateSettings({
                   autoStreakFreeze: !settings?.autoStreakFreeze,
-                })
-              }
+                });
+                toast.success(settings?.autoStreakFreeze ? "Auto Streak Shield disabled" : "Auto Streak Shield enabled");
+              }}
               className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${
                 settings?.autoStreakFreeze ? "bg-primary" : "bg-border"
               }`}

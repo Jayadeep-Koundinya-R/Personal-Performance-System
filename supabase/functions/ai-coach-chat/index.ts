@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1. PRO-ONLY GATING: Check if user is active Pro subscriber BEFORE calling Gemini
+    // 1. PRO & FREE-TIER QUOTA GATING: Check if user is active Pro or has free daily prompts remaining
     const { data: sub } = await supabase
       .from("subscriptions")
       .select("plan, status")
@@ -77,19 +77,54 @@ Deno.serve(async (req) => {
       isProUser = profile?.plan_tier === "pro";
     }
 
+    const FREE_DAILY_QUOTA = 3;
+    let freeQueriesRemaining = FREE_DAILY_QUOTA;
+
     if (!isProUser) {
-      return new Response(
-        JSON.stringify({
-          error: "PRO_REQUIRED",
-          isPro: false,
-          fallback: true,
-          message: "Gemini 2.0 Pro AI coaching requires an active Pro subscription.",
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const today = new Date().toISOString().split("T")[0];
+      try {
+        const { data: settings } = await supabase
+          .from("user_settings")
+          .select("notification_prefs")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const prefs = settings?.notification_prefs || {};
+        const aiUsage = prefs.ai_usage || { date: today, count: 0 };
+        const currentCount = aiUsage.date === today ? (Number(aiUsage.count) || 0) : 0;
+
+        if (currentCount >= FREE_DAILY_QUOTA) {
+          return new Response(
+            JSON.stringify({
+              error: "PRO_REQUIRED",
+              isPro: false,
+              fallback: true,
+              message: `You have reached your limit of ${FREE_DAILY_QUOTA} free daily AI prompts. Upgrade to Pro for unlimited coaching!`,
+              remainingFreeQueries: 0,
+            }),
+            {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
         }
-      );
+
+        freeQueriesRemaining = Math.max(0, FREE_DAILY_QUOTA - currentCount - 1);
+
+        // Update quota count in user_settings notification_prefs
+        await supabase
+          .from("user_settings")
+          .update({
+            notification_prefs: {
+              ...prefs,
+              ai_usage: { date: today, count: currentCount + 1 },
+            },
+          })
+          .eq("user_id", user.id);
+      } catch (quotaErr) {
+        console.warn("Failed to check free quota, defaulting to allow:", quotaErr);
+        // Default allow if counter fails so authenticated users are not blocked on DB error
+      }
     }
 
     const { message, habits, reflections, chatHistory } = await req.json();
@@ -162,7 +197,9 @@ If they ask you to create a habit, schedule an alarm, freeze a streak, or start 
       JSON.stringify({
         text: responseText,
         model: "gemini-2.0-flash",
-        isPro: true,
+        isPro: isProUser,
+        freeQuotaUsed: !isProUser,
+        remainingFreeQueries: isProUser ? -1 : freeQueriesRemaining,
       }),
       {
         status: 200,

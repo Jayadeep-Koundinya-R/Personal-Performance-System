@@ -1,5 +1,5 @@
 /*
-  🎯 Global Focus Timer Context with Cross-Device Cloud Persistence
+  Global Focus Timer Context with Cross-Device Cloud Persistence
   
   Features:
   - Timestamp-based calculation: Eliminates setInterval drift across devices, lid closures, and tab throttling.
@@ -12,13 +12,16 @@
   - Session history log & daily analytics
 */
 
-import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useHabits } from "@/hooks/use-habits";
 import { ambientSound } from "@/lib/ambient-sound";
 import { toast } from "sonner";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { canFireGlobalShortcut } from "@/lib/utils/keyboard";
+import { scheduleNativeLocalNotification, cancelNativeNotification } from "@/lib/native-notifications";
+
+const FOCUS_TIMER_NOTIFICATION_ID = 9001;
 
 export type TimerMode = "pomodoro" | "shortBreak" | "longBreak" | "custom";
 
@@ -44,9 +47,9 @@ export interface ActiveFocusSessionPayload {
 }
 
 export const TIMER_PRESETS: Record<TimerMode, { label: string; minutes: number; icon: string }> = {
-  pomodoro: { label: "Pomodoro", minutes: 25, icon: "🎯" },
+  pomodoro: { label: "Pomodoro", minutes: 25, icon: "⏱" },
   shortBreak: { label: "Short Break", minutes: 5, icon: "☕" },
-  longBreak: { label: "Long Break", minutes: 15, icon: "🌴" },
+  longBreak: { label: "Long Break", minutes: 15, icon: "🌿" },
   custom: { label: "Custom", minutes: 30, icon: "⚙️" },
 };
 
@@ -97,15 +100,32 @@ interface FocusTimerActions {
   dismissSuggestion: () => void;
 
   // Derived
-  progressRatio: number;
-  strokeDashoffset: number;
   formatTimerTime: (sec: number) => string;
   TIMER_PRESETS: typeof TIMER_PRESETS;
 }
 
-type FocusTimerContextValue = FocusTimerState & FocusTimerActions;
+/**
+ * High-frequency tick slice. Kept in a SEPARATE context so that only leaf
+ * components that render the live countdown re-render every second, instead of
+ * every consumer of useFocusTimer() (and the whole dashboard subtree).
+ */
+export interface FocusTimerTickValue {
+  remainingSec: number;
+  progressRatio: number;
+  strokeDashoffset: number;
+}
+
+type FocusTimerContextValue = FocusTimerState &
+  FocusTimerActions & {
+    progressRatio: number;
+    strokeDashoffset: number;
+  };
 
 const FocusTimerContext = createContext<FocusTimerContextValue | null>(null);
+const FocusTimerTickContext = createContext<FocusTimerTickValue | null>(null);
+
+/** Idle tick fallback so presentational leaves (and isolated tests) render safely without a provider. */
+const IDLE_TICK: FocusTimerTickValue = { remainingSec: 0, progressRatio: 0, strokeDashoffset: 565 };
 
 export function useFocusTimer() {
   const ctx = useContext(FocusTimerContext);
@@ -113,6 +133,10 @@ export function useFocusTimer() {
     throw new Error("useFocusTimer must be used within a FocusTimerProvider");
   }
   return ctx;
+}
+
+export function useFocusTimerTick(): FocusTimerTickValue {
+  return useContext(FocusTimerTickContext) ?? IDLE_TICK;
 }
 
 const LOCAL_SESSION_KEY = (email: string | null) => `pps_active_focus_session_${email || "guest"}`;
@@ -152,14 +176,16 @@ export function FocusTimerProvider({
   // ── Analytics State ──
   const [todayFocusMinutes, setTodayFocusMinutes] = useState<number>(() => {
     try {
-      return Number(localStorage.getItem(`pps_focus_minutes_${todayStr}`) || "0");
+      const stored = Number(localStorage.getItem(`pps_focus_minutes_${todayStr}`) || "0");
+      return isNaN(stored) ? 0 : stored;
     } catch {
       return 0;
     }
   });
   const [completedSessions, setCompletedSessions] = useState<number>(() => {
     try {
-      return Number(localStorage.getItem(`pps_focus_sessions_${todayStr}`) || "0");
+      const stored = Number(localStorage.getItem(`pps_focus_sessions_${todayStr}`) || "0");
+      return isNaN(stored) ? 0 : stored;
     } catch {
       return 0;
     }
@@ -216,6 +242,15 @@ export function FocusTimerProvider({
       customMinutes,
     };
   }, [totalSec, todayFocusMinutes, completedSessions, linkedHabitId, activeTaskName, timerMode, sessionHistory, todayStr, customMinutes]);
+
+  // Ref mirror of remainingSec so timer actions can read the latest value
+  // WITHOUT taking it as a dependency (keeps their identity stable across ticks,
+  // which in turn keeps the main context value stable and avoids per-second
+  // re-renders of every useFocusTimer() consumer).
+  const remainingSecRef = useRef(remainingSec);
+  useEffect(() => {
+    remainingSecRef.current = remainingSec;
+  }, [remainingSec]);
 
   // ── Cloud / Local State Synchronizer ──
   const syncSessionState = useCallback(
@@ -296,12 +331,12 @@ export function FocusTimerProvider({
       const targetHabit = habitsRef.current.find((h) => h.id === s.linkedHabitId);
       if (targetHabit && !targetHabit.completedDates.includes(s.todayStr)) {
         toggleCompletionRef.current(s.linkedHabitId);
-        toast.success(`🎉 Focus complete! "${targetHabit.name}" marked done! (+10 XP + ${elapsedMins * 2} Focus XP)`);
+        toast.success(`Focus complete! "${targetHabit.name}" marked done! (+10 XP + ${elapsedMins * 2} Focus XP)`);
       } else {
-        toast.success(`🎉 Focus session complete! +${elapsedMins * 2} Focus XP earned!`);
+        toast.success(`Focus session complete! +${elapsedMins * 2} Focus XP earned!`);
       }
     } else {
-      toast.success(`🎉 Focus session complete! +${elapsedMins * 2} Focus XP earned!`);
+      toast.success(`Focus session complete! +${elapsedMins * 2} Focus XP earned!`);
     }
 
     setShowFlowExtend(true);
@@ -310,6 +345,9 @@ export function FocusTimerProvider({
     try {
       Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
     } catch {}
+
+    // Cancel pending background alarm if any
+    cancelNativeNotification(FOCUS_TIMER_NOTIFICATION_ID).catch(() => {});
 
     // ── Vayu Autonomous Real-Time Flow Notification ──
     if (typeof window !== "undefined") {
@@ -471,7 +509,7 @@ export function FocusTimerProvider({
       const m = Math.floor(remainingSec / 60);
       const s = remainingSec % 60;
       const timeStr = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-      document.title = `(${timeStr}) 🎯 ${activeTaskName} - PPS`;
+      document.title = `(${timeStr}) ${activeTaskName} - PPS`;
     } else {
       document.title = "Personal Performance System";
     }
@@ -483,12 +521,22 @@ export function FocusTimerProvider({
   // ── Actions ──
   const startTimer = useCallback(() => {
     const now = Date.now();
-    const duration = remainingSec > 0 ? remainingSec : totalSec;
-    const target = new Date(now + duration * 1000).toISOString();
+    const duration = remainingSecRef.current > 0 ? remainingSecRef.current : totalSec;
+    const targetDate = new Date(now + duration * 1000);
+    const target = targetDate.toISOString();
 
     setTargetEndAt(target);
     setIsRunning(true);
     setShowFlowExtend(false);
+
+    // Schedule native background alarm for mobile lock screen
+    scheduleNativeLocalNotification({
+      id: FOCUS_TIMER_NOTIFICATION_ID,
+      title: "Focus Session Finished!",
+      body: `Great job on ${activeTaskName || "your focus session"}! Tap to log your streak and claim XP.`,
+      scheduleAt: targetDate,
+      extra: { type: "FOCUS_COMPLETE", habitId: linkedHabitId },
+    }).catch(() => {});
 
     const payload: ActiveFocusSessionPayload = {
       isRunning: true,
@@ -503,18 +551,19 @@ export function FocusTimerProvider({
       lastUpdated: new Date().toISOString(),
     };
     syncSessionState(payload);
-  }, [remainingSec, totalSec, timerMode, activeTaskName, linkedHabitId, customMinutes, syncSessionState]);
+  }, [totalSec, timerMode, activeTaskName, linkedHabitId, customMinutes, syncSessionState]);
 
   const pauseTimer = useCallback(() => {
     setIsRunning(false);
     setTargetEndAt(null);
+    cancelNativeNotification(FOCUS_TIMER_NOTIFICATION_ID).catch(() => {});
 
     const payload: ActiveFocusSessionPayload = {
       isRunning: false,
       startedAt: null,
       targetEndAt: null,
       totalSec,
-      pausedRemainingSec: remainingSec,
+      pausedRemainingSec: remainingSecRef.current,
       timerMode,
       activeTaskName,
       linkedHabitId,
@@ -522,7 +571,7 @@ export function FocusTimerProvider({
       lastUpdated: new Date().toISOString(),
     };
     syncSessionState(payload);
-  }, [remainingSec, totalSec, timerMode, activeTaskName, linkedHabitId, customMinutes, syncSessionState]);
+  }, [totalSec, timerMode, activeTaskName, linkedHabitId, customMinutes, syncSessionState]);
 
   const toggleTimer = useCallback(() => {
     if (isRunning) {
@@ -536,6 +585,7 @@ export function FocusTimerProvider({
     setIsRunning(false);
     setTargetEndAt(null);
     setShowFlowExtend(false);
+    cancelNativeNotification(FOCUS_TIMER_NOTIFICATION_ID).catch(() => {});
 
     const mins = timerMode === "custom" ? customMinutes : TIMER_PRESETS[timerMode].minutes;
     const sec = mins * 60;
@@ -555,8 +605,22 @@ export function FocusTimerProvider({
       lastUpdated: new Date().toISOString(),
     };
     syncSessionState(payload);
-    toast.info("🔄 Timer Reset");
+    toast.info("Timer Reset");
   }, [timerMode, customMinutes, activeTaskName, linkedHabitId, syncSessionState]);
+
+  const handleSetCustomMinutes = useCallback(
+    (mins: number) => {
+      const safeMins = Math.max(1, Math.min(180, isNaN(mins) ? 25 : mins));
+      setCustomMinutes(safeMins);
+      if (!isRunning) {
+        setTimerMode("custom");
+        const sec = safeMins * 60;
+        setTotalSec(sec);
+        setRemainingSec(sec);
+      }
+    },
+    [isRunning]
+  );
 
   const changeTimerMode = useCallback(
     (mode: TimerMode, customMins?: number) => {
@@ -606,10 +670,20 @@ export function FocusTimerProvider({
       setRemainingSec(sec);
 
       const now = Date.now();
-      const target = new Date(now + sec * 1000).toISOString();
+      const targetDate = new Date(now + sec * 1000);
+      const target = targetDate.toISOString();
       setTargetEndAt(target);
       setIsRunning(true);
       setShowFlowExtend(false);
+
+      // Schedule native background alarm for mobile lock screen
+      scheduleNativeLocalNotification({
+        id: FOCUS_TIMER_NOTIFICATION_ID,
+        title: "Focus Session Finished!",
+        body: `Great job on ${habit.name}! Tap to log your streak and claim XP.`,
+        scheduleAt: targetDate,
+        extra: { type: "FOCUS_COMPLETE", habitId: habit.id },
+      }).catch(() => {});
 
       const payload: ActiveFocusSessionPayload = {
         isRunning: true,
@@ -625,7 +699,7 @@ export function FocusTimerProvider({
       };
       syncSessionState(payload);
 
-      toast.info(`🎯 Loaded "${habit.name}" into Focus Studio! ${duration}m timer started.`);
+      toast.info(`Loaded "${habit.name}" into Focus Studio! ${duration}m timer started.`);
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
     [syncSessionState]
@@ -635,13 +709,23 @@ export function FocusTimerProvider({
     (extraMinutes: number) => {
       const sec = extraMinutes * 60;
       const now = Date.now();
-      const target = new Date(now + sec * 1000).toISOString();
+      const targetDate = new Date(now + sec * 1000);
+      const target = targetDate.toISOString();
 
       setTotalSec(sec);
       setRemainingSec(sec);
       setTargetEndAt(target);
       setIsRunning(true);
       setShowFlowExtend(false);
+
+      // Reschedule native background alarm for extended focus session
+      scheduleNativeLocalNotification({
+        id: FOCUS_TIMER_NOTIFICATION_ID,
+        title: "Extended Focus Finished!",
+        body: `You completed your extra ${extraMinutes}m sprint on ${activeTaskName || "your focus session"}!`,
+        scheduleAt: targetDate,
+        extra: { type: "FOCUS_COMPLETE", habitId: linkedHabitId },
+      }).catch(() => {});
 
       const payload: ActiveFocusSessionPayload = {
         isRunning: true,
@@ -657,7 +741,7 @@ export function FocusTimerProvider({
       };
       syncSessionState(payload);
 
-      toast.info(`🌊 Extended focus by ${extraMinutes} more minutes!`);
+      toast.info(`Extended focus by ${extraMinutes} more minutes!`);
     },
     [timerMode, activeTaskName, linkedHabitId, customMinutes, syncSessionState]
   );
@@ -692,8 +776,9 @@ export function FocusTimerProvider({
   }, [todayStr]);
 
   const formatTimerTime = useCallback((sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
+    const safeSec = typeof sec === "number" && !isNaN(sec) ? Math.max(0, sec) : 0;
+    const m = Math.floor(safeSec / 60);
+    const s = safeSec % 60;
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   }, []);
 
@@ -727,49 +812,95 @@ export function FocusTimerProvider({
     };
   }, []);
 
-  // Derived Values
+  // Derived Values (tick slice)
   const progressRatio = totalSec > 0 ? (totalSec - remainingSec) / totalSec : 0;
   const strokeDashoffset = 565 - 565 * progressRatio;
 
-  const value: FocusTimerContextValue = {
-    timerMode,
-    customMinutes,
-    activeTaskName,
-    linkedHabitId,
-    totalSec,
-    remainingSec,
-    isRunning,
-    isFullscreen,
-    showFlowExtend,
-    activeSound,
-    soundVolume,
-    todayFocusMinutes,
-    completedSessions,
-    sessionHistory,
-    suggestionDismissed,
+  // Stable context value: identity is preserved across per-second ticks so that
+  // consumers of useFocusTimer() (e.g. the large DashboardSection tree) do not
+  // re-render every second. Only the tick slice below changes each second.
+  const value = useMemo<FocusTimerContextValue>(
+    () => ({
+      timerMode,
+      customMinutes,
+      activeTaskName,
+      linkedHabitId,
+      totalSec,
+      remainingSec,
+      progressRatio,
+      strokeDashoffset,
+      isRunning,
+      isFullscreen,
+      showFlowExtend,
+      activeSound,
+      soundVolume,
+      todayFocusMinutes,
+      completedSessions,
+      sessionHistory,
+      suggestionDismissed,
 
-    setTimerMode,
-    setCustomMinutes,
-    setActiveTaskName,
-    setLinkedHabitId,
-    setIsFullscreen,
-    changeTimerMode,
-    startHabitFocus,
-    startTimer,
-    pauseTimer,
-    toggleTimer,
-    resetTimer,
-    handleFlowExtend,
-    dismissFlowExtend,
-    handleSoundToggle,
-    handleVolumeChange,
-    dismissSuggestion,
+      setTimerMode,
+      setCustomMinutes: handleSetCustomMinutes,
+      setActiveTaskName,
+      setLinkedHabitId,
+      setIsFullscreen,
+      changeTimerMode,
+      startHabitFocus,
+      startTimer,
+      pauseTimer,
+      toggleTimer,
+      resetTimer,
+      handleFlowExtend,
+      dismissFlowExtend,
+      handleSoundToggle,
+      handleVolumeChange,
+      dismissSuggestion,
 
-    progressRatio,
-    strokeDashoffset,
-    formatTimerTime,
-    TIMER_PRESETS,
-  };
+      formatTimerTime,
+      TIMER_PRESETS,
+    }),
+    [
+      timerMode,
+      customMinutes,
+      activeTaskName,
+      linkedHabitId,
+      totalSec,
+      remainingSec,
+      progressRatio,
+      strokeDashoffset,
+      isRunning,
+      isFullscreen,
+      showFlowExtend,
+      activeSound,
+      soundVolume,
+      todayFocusMinutes,
+      completedSessions,
+      sessionHistory,
+      suggestionDismissed,
+      handleSetCustomMinutes,
+      changeTimerMode,
+      startHabitFocus,
+      startTimer,
+      pauseTimer,
+      toggleTimer,
+      resetTimer,
+      handleFlowExtend,
+      dismissFlowExtend,
+      handleSoundToggle,
+      handleVolumeChange,
+      dismissSuggestion,
+      formatTimerTime,
+    ]
+  );
 
-  return <FocusTimerContext.Provider value={value}>{children}</FocusTimerContext.Provider>;
+  const tickValue = useMemo<FocusTimerTickValue>(
+    () => ({ remainingSec, progressRatio, strokeDashoffset }),
+    [remainingSec, progressRatio, strokeDashoffset]
+  );
+
+  return (
+    <FocusTimerContext.Provider value={value}>
+      <FocusTimerTickContext.Provider value={tickValue}>{children}</FocusTimerTickContext.Provider>
+    </FocusTimerContext.Provider>
+  );
 }

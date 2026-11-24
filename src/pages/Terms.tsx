@@ -14,10 +14,10 @@ export default function TermsPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative selection:bg-primary selection:text-white transition-colors duration-500 overflow-x-hidden flex flex-col justify-between">
-      {/* 🌌 Dynamic 3D Ambient Background Layer */}
+      {/* Dynamic 3D Ambient Background Layer */}
       <ThreeDBackground />
 
-      {/* 📊 Top Scroll Progress Bar */}
+      {/* Top Scroll Progress Bar */}
       <ScrollProgressBar />
 
       {/* Top Global Navigation Bar */}
@@ -104,7 +104,7 @@ export default function TermsPage() {
               <li>You must provide accurate, complete information when creating an account.</li>
               <li>You are responsible for maintaining the confidentiality of your credentials and for all activities under your account.</li>
               <li>Guest mode operates strictly via local browser storage (localStorage). Data created in Guest mode is un-synced until you register an account.</li>
-              <li>You must notify us immediately at <span className="font-mono text-primary font-bold">security@upalakshya.com</span> upon discovering any unauthorized use of your account.</li>
+              <li>You must notify us immediately at <span className="font-mono text-primary font-bold">upalakshyasupport@gmail.com</span> upon discovering any unauthorized use of your account.</li>
             </ul>
           </section>
 
@@ -114,7 +114,7 @@ export default function TermsPage() {
               <li><strong>Billing Cycle:</strong> Pro subscriptions are billed in advance on a recurring monthly or annual basis depending on your selection.</li>
               <li><strong>Regional Pricing:</strong> We offer localized purchasing power parity (PPP) pricing (e.g. ₹199/month in India) and standard international pricing ($9.99/month). Billing is processed securely via Stripe.</li>
               <li><strong>Auto-Renewal:</strong> Your subscription automatically renews at the end of each billing period unless cancelled prior to renewal through your Settings page billing portal.</li>
-              <li><strong>30-Day Money-Back Guarantee:</strong> If you are dissatisfied with PPS Pro within 30 days of initial purchase, contact support at <span className="font-mono text-primary font-bold">billing@upalakshya.com</span> for a full, no-questions-asked refund.</li>
+              <li><strong>30-Day Money-Back Guarantee:</strong> If you are dissatisfied with PPS Pro within 30 days of initial purchase, contact support at <span className="font-mono text-primary font-bold">upalakshyasupport@gmail.com</span> for a full, no-questions-asked refund.</li>
               <li><strong>Price Changes:</strong> We reserve the right to adjust pricing upon 30 days' advance notice to active subscribers.</li>
             </ul>
           </section>
@@ -145,7 +145,7 @@ export default function TermsPage() {
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
               For questions regarding these Terms or billing inquiries, please contact us at:
               <br />
-              <span className="font-mono text-primary font-bold">legal@upalakshya.com</span> | <span className="font-mono text-primary font-bold">support@upalakshya.com</span>
+              <span className="font-mono text-primary font-bold">upalakshyasupport@gmail.com</span>
             </p>
           </section>
         </article>
@@ -165,7 +165,7 @@ export default function TermsPage() {
         <div>PPS v2.0 • Personal Performance System • UpaLakshya Labs</div>
       </footer>
 
-      {/* 🚀 Floating Scroll to Top */}
+      {/* Floating Scroll to Top */}
       <ScrollToTop />
     </div>
   );

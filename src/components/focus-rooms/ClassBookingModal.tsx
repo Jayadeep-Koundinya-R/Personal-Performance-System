@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Masterclass } from "@/hooks/use-classes";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -31,6 +31,15 @@ export const ClassBookingModal: React.FC<ClassBookingModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<"UPI" | "Card" | "NetBanking">("UPI");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !masterclass) return null;
 
   const handlePay = async () => {
@@ -55,21 +64,26 @@ export const ClassBookingModal: React.FC<ClassBookingModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="booking-modal-title"
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="relative w-full max-w-lg overflow-hidden border border-border/80 rounded-3xl bg-card/95 shadow-2xl backdrop-blur-2xl"
+          className="relative w-full max-w-lg overflow-hidden border border-border/80 rounded-3xl bg-card/95 shadow-xl backdrop-blur-2xl"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-5 border-b border-border/50 bg-gradient-to-r from-amber-500/10 via-card to-primary/10">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center text-xl shadow-xs">
-                🎓
+                <GraduationCap className="w-5 h-5 text-amber-300" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-foreground font-mono">
+                <h3 id="booking-modal-title" className="text-sm font-black text-foreground font-mono">
                   Enroll in Masterclass
                 </h3>
                 <p className="text-[11px] text-muted-foreground">
@@ -96,7 +110,7 @@ export const ClassBookingModal: React.FC<ClassBookingModalProps> = ({
                 <span>{masterclass.mentorAvatar}</span>
                 <span className="font-bold text-foreground">{masterclass.mentorName}</span>
                 <span>•</span>
-                <span className="text-[10px] font-mono bg-amber-500/15 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30">
+                <span className="text-[10px] font-mono bg-amber-500/15 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
                   {masterclass.mentorBadge === "master" ? "👑 Master Teacher" : "🌟 Verified Mentor"}
                 </span>
               </div>

@@ -15,9 +15,11 @@ import {
   AlertCircle,
   Play,
   Pause,
+  Star,
 } from "lucide-react";
 import { formatDisplayTime } from "@/lib/vayu/vayuPlanner";
 import { VayuTimeBlock, VayuDailyPlan } from "@/lib/vayu/types";
+import { useFocusTimerTick } from "@/hooks/use-focus-timer";
 
 interface VayuPulseBannerProps {
   plan: VayuDailyPlan | null;
@@ -31,7 +33,6 @@ interface VayuPulseBannerProps {
   onStartSprint?: (block: VayuTimeBlock) => void;
   activeTimer?: {
     isRunning: boolean;
-    remainingSec: number;
     activeTaskName?: string;
     linkedHabitId?: string | null;
   };
@@ -53,6 +54,8 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
 }) => {
   const [inputText, setInputText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Live countdown slice (isolated so only this banner re-renders each second).
+  const { remainingSec } = useFocusTimerTick();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +110,7 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold tracking-wide text-foreground uppercase">
-                  Adaptive Circadian Flow
+                  Smart Rhythm
                 </h3>
                 <span
                   className="rounded-full bg-cyan-500/15 dark:bg-cyan-500/20 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:text-cyan-300 border border-cyan-500/30"
@@ -126,7 +129,7 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-end">
               <span className="text-[11px] font-medium text-muted-foreground" title="Daily planned focus time completed">
-                Daily Focus Flow
+                Daily Flow
               </span>
               <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-emerald-600 dark:from-cyan-400 dark:to-emerald-400">
                 {completionRate}% Achieved
@@ -156,7 +159,7 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
                 className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 transition-all border border-cyan-500/30 cursor-pointer"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Flow Studio</span>
+                <span className="hidden sm:inline">Smart Rhythm Studio</span>
               </button>
             </div>
           </div>
@@ -213,23 +216,23 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-600 dark:text-cyan-400">
-                    Active Vital Focus
+                    Active Smart Focus
                   </span>
                   
                   {/* Energy Level Badge */}
                   {currentBlock?.energyLevel === "peak" && (
                     <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                      ⚡ Peak Energy (45m)
+                      <Zap className="w-3 h-3" /> Peak Energy (45m)
                     </span>
                   )}
                   {currentBlock?.energyLevel === "medium" && (
                     <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
-                      🎯 Tactical Drill
+                      <Flame className="w-3 h-3" /> Tactical Drill
                     </span>
                   )}
                   {currentBlock?.energyLevel === "recharge" && (
                     <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                      🌿 Vital Recharge
+                      <Coffee className="w-3 h-3" /> Vital Recharge
                     </span>
                   )}
 
@@ -241,7 +244,7 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
                   )}
                 </div>
                 <h4 className="text-sm sm:text-base font-semibold text-foreground truncate mt-1">
-                  {currentBlock ? currentBlock.title : "All scheduled blocks completed for today! 🌟"}
+                   {currentBlock ? currentBlock.title : (<>All scheduled blocks completed for today! <Star className="inline w-4 h-4" /></>)}
                 </h4>
                 {currentBlock?.description && (
                   <p className="text-xs text-muted-foreground truncate mt-0.5">{currentBlock.description}</p>
@@ -269,8 +272,8 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
                     const isRecharge = currentBlock.energyLevel === "recharge";
 
                     if (isBlockTimerActive) {
-                      const mins = Math.floor((activeTimer?.remainingSec || 0) / 60);
-                      const secs = ((activeTimer?.remainingSec || 0) % 60).toString().padStart(2, "0");
+                      const mins = Math.floor(remainingSec / 60);
+                      const secs = (remainingSec % 60).toString().padStart(2, "0");
                       return (
                         <button
                           onClick={() => onToggleTimer ? onToggleTimer() : handleLaunchSprint(currentBlock)}
@@ -330,10 +333,14 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
                 {nextBlock ? `${formatDisplayTime(nextBlock.startTime)} • ${nextBlock.durationMinutes}m` : "Wind-down at 22:00"}
               </span>
               {nextBlock?.energyLevel === "peak" && (
-                <span className="text-[10px] text-amber-500 dark:text-amber-400 font-semibold">⚡ Peak</span>
+                <span className="text-[10px] text-amber-500 dark:text-amber-400 font-semibold flex items-center gap-1">
+                  <Zap className="w-3 h-3" /> Peak
+                </span>
               )}
               {nextBlock?.energyLevel === "recharge" && (
-                <span className="text-[10px] text-emerald-500 dark:text-emerald-400 font-semibold">🌿 Recharge</span>
+                <span className="text-[10px] text-emerald-500 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                  <Coffee className="w-3 h-3" /> Recharge
+                </span>
               )}
             </div>
           </div>
@@ -346,7 +353,7 @@ export const VayuPulseBanner: React.FC<VayuPulseBannerProps> = ({
             value={inputText}
             maxLength={300}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Tell Flow Engine: 'Finished 45m DSA', 'Done with workout 50%', 'Start sprint', 'Push schedule 30m'..."
+            placeholder="Tell Smart Rhythm: 'Finished 45m DSA', 'Done with workout 50%', 'Start sprint', 'Push schedule 30m'..."
             className="w-full rounded-xl border border-border/80 dark:border-cyan-500/20 bg-surface dark:bg-slate-950/70 py-2.5 pl-3.5 pr-24 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/50 transition-all"
           />
           <button

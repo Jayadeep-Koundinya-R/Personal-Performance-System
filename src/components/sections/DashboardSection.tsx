@@ -3,18 +3,33 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
   AlertTriangle,
+  Award,
   Briefcase,
+  Bandage,
+  Battery,
+  BookOpen,
   CheckCircle2,
   ChevronDown,
+  Circle,
+  CloudRain,
   Clock,
+  Coffee,
   Flame,
   Headphones,
+  Hourglass,
   Layers,
+  Moon,
+  Music,
   MoreHorizontal,
+  Pin,
+  Rocket,
   Search,
   Shield,
   Sidebar,
   Sparkles,
+  Sun,
+  Sunrise,
+  Target,
   Volume2,
   VolumeX,
   Wrench,
@@ -31,6 +46,7 @@ import { useVayu } from "@/hooks/use-vayu";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
 import { TaskSection } from "@/components/dashboard/TaskSection";
 import { VayuPulseBanner } from "@/components/vayu/VayuPulseBanner";
+import { LiveCountdown } from "@/components/dashboard/LiveCountdown";
 import { VayuFlowStudioModal } from "@/components/vayu/VayuFlowStudioModal";
 import { MiniPomodoroCard } from "@/components/dashboard/MiniPomodoroCard";
 import { MomentumCommandDeck } from "@/components/dashboard/v2/MomentumCommandDeck";
@@ -124,6 +140,20 @@ interface DashboardSectionProps {
   userEmail?: string | null;
 }
 
+const MOOD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  zap: Zap,
+  target: Target,
+  coffee: Coffee,
+  battery: Battery,
+};
+
+const AMBIENCE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  "cloud-rain": CloudRain,
+  music: Music,
+  coffee: Coffee,
+  "book-open": BookOpen,
+};
+
 export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProps) => {
   const {
     habits,
@@ -196,7 +226,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
       if (detail.taskName) focusTimer.setActiveTaskName(detail.taskName);
       if (detail.linkedHabitId) focusTimer.setLinkedHabitId(detail.linkedHabitId);
       focusTimer.startTimer();
-      toast.success(`⚡ Focus Sprint Launched (${duration}m)`);
+      toast.success(`Focus Sprint Launched (${duration}m)`);
     };
 
     window.addEventListener("pps_start_focus_timer", handleStartTimer);
@@ -292,7 +322,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     if (currentHour >= 20 && currentHour < 22) {
       sessionStorage.setItem(sessionKey, "true");
       setTimeout(() => {
-        toast("🛡️ AI Streak Guardian Alert", {
+        toast("AI Streak Guardian Alert", {
           description: `10 PM Agni Curfew approaching! You have ${uncompleted.length} habit(s) pending. Tap to scale them to 2m micro-habits.`,
           action: {
             label: "Open Copilot",
@@ -346,16 +376,16 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
       const check = canClaimRecoveryXP(todayStr);
       if (check.allowed) {
         claimRecoveryXP(todayStr);
-        toast.info(`Habit marked as ${reason} 🛡️`, {
-          description: "Rest Day Honored! Recovery fuels high performance. +5 Recovery XP! 🌿",
+        toast.info(`Habit marked as ${reason}`, {
+          description: "Rest Day Honored! Recovery fuels high performance. +5 Recovery XP!",
         });
       } else {
-        toast.info(`Habit marked as ${reason} 🛡️`, {
+        toast.info(`Habit marked as ${reason}`, {
           description: check.reason || "Rest Day noted.",
         });
       }
     } else {
-      toast.info(`Habit marked as ${reason} 🛡️`, {
+      toast.info(`Habit marked as ${reason}`, {
         description: "Schedule adjusted with zero guilt.",
       });
     }
@@ -437,7 +467,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     setSoundscape(next);
     ambientAudio.play(next);
     if (next !== "none") {
-      toast.success(`🎧 Ambient Soundscape: ${next.toUpperCase()}`, {
+      toast.success(`Ambient Soundscape: ${next.toUpperCase()}`, {
         description: "Native Web Audio procedural focus soundscape.",
       });
     }
@@ -516,9 +546,9 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
     feedbackSounds.setMuted(next);
     if (!next) {
       feedbackSounds.playClick();
-      toast.success("Sound Effects: Enabled 🔊");
+      toast.success("Sound Effects: Enabled");
     } else {
-      toast.info("Sound Effects: Muted 🔇");
+      toast.info("Sound Effects: Muted");
     }
   };
 
@@ -540,7 +570,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
 
       setTimeout(() => {
         setShowCelebration(true);
-        toast.success("🏆 Perfect Day Bonus: +25 XP!", {
+        toast.success("Perfect Day Bonus: +25 XP!", {
           description: "You completed every habit due today. Incredible discipline!",
           duration: 5000,
         });
@@ -632,7 +662,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         s.window_end
       );
     }
-    toast.success("Starter Habit Stack installed! 🚀");
+    toast.success("Starter Habit Stack installed!");
   }, [addHabit, todayStr]);
 
   // Keyboard shortcuts (Space: Launch Sprint, M: Mark All Done, Z: Toggle Zen, V: Cycle Views)
@@ -662,7 +692,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         if (nba) {
           e.preventDefault();
           focusTimer.startHabitFocus(nba, 25);
-          toast.success(`⏱️ 25m Deep Work Sprint launched for "${nba.name}"!`);
+          toast.success(`25m Deep Work Sprint launched for "${nba.name}"!`);
         }
         return;
       }
@@ -899,7 +929,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     : "border-border/60 hover:border-primary/20"
             }`}
         >
-          <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden truncate">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
             <label
               aria-label={`Mark ${habit.name} ${isCompletedToday ? "incomplete" : "complete"}`}
               className="min-w-[40px] min-h-[40px] sm:min-w-[32px] sm:min-h-[32px] -ml-2 -my-2 flex items-center justify-center cursor-pointer touch-manipulation select-none shrink-0"
@@ -912,11 +942,11 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 className="accent-primary w-3.5 h-3.5 cursor-pointer"
               />
             </label>
-            <span className={`truncate font-medium ${isCompletedToday ? "line-through text-muted-foreground" : "text-foreground"}`}>
+            <span className={`font-medium min-w-[90px] shrink-0 sm:shrink truncate ${isCompletedToday ? "line-through text-muted-foreground" : "text-foreground"}`}>
               {habit.name}
             </span>
             {habit.category && (
-              <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold border flex-shrink-0 ${getCategoryColor(habit.category).bg} ${getCategoryColor(habit.category).text} ${getCategoryColor(habit.category).border}`}>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold border flex-shrink-0 ${getCategoryColor(habit.category).bg} ${getCategoryColor(habit.category).text} ${getCategoryColor(habit.category).border}`}>
                 {formatCategoryName(habit.category)}
               </span>
             )}
@@ -927,10 +957,10 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                   e.stopPropagation();
                   setTimerLockModalHabit(habit);
                 }}
-                className="text-[9px] bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-0.5 flex-shrink-0 cursor-pointer hover:bg-amber-500/25 transition-all"
-                title={`⚡ Timer-Locked: Requires ${habit.focus_duration_minutes || 25}m focus session`}
+                className="text-[9px] bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono font-bold flex items-center gap-0.5 flex-shrink-0 cursor-pointer hover:bg-amber-500/25 transition-all"
+                title={`Timer-Locked: Requires ${habit.focus_duration_minutes || 25}m focus session`}
               >
-                ⚡ Timer-Locked
+                <Zap className="w-3 h-3 inline" /> <span className="hidden sm:inline">Timer-Locked</span>
               </span>
             )}
             {/* Task 1.3: Circadian Status Badge */}
@@ -938,38 +968,40 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               const c = isWithinCircadianWindow(habit.window_start, habit.window_end);
               if (c.status === "upcoming") {
                 return (
-                  <span className="text-[9px] bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
-                    {c.label}
+                  <span className="text-[9px] bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono flex-shrink-0" title={c.label}>
+                    <span className="hidden xl:inline">{c.label}</span>
+                    <span className="xl:hidden">Opens Soon</span>
                   </span>
                 );
               }
               if (c.status === "closed") {
                 return (
-                  <span className="text-[9px] bg-zinc-500/15 text-zinc-700 dark:text-zinc-400 border border-zinc-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
-                    {c.label}
+                  <span className="text-[9px] bg-zinc-500/15 text-zinc-700 dark:text-zinc-400 border border-zinc-500/30 px-1.5 py-0.5 rounded font-mono flex-shrink-0" title={c.label}>
+                    <span className="hidden xl:inline">{c.label}</span>
+                    <span className="xl:hidden">Closed</span>
                   </span>
                 );
               }
               return (
-                <span className="text-[9px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono flex-shrink-0" title={c.label}>
-                  🟢 In Window
+                <span className="text-[9px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono flex-shrink-0" title={c.label}>
+                  <Circle className="w-2.5 h-2.5 text-emerald-500 inline" /> <span className="hidden xl:inline">In Window</span>
                 </span>
               );
             })()}
             {habit.streak > 0 && (
-              <span className="text-[10px] text-amber-800 dark:text-amber-400 font-mono font-bold flex items-center gap-0.5 flex-shrink-0 bg-amber-50 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/20 px-1.5 py-0.2 rounded-md shadow-2xs" title={`Streak: ${habit.streak}d`}>
+              <span className="text-[10px] text-amber-800 dark:text-amber-400 font-mono font-bold flex items-center gap-0.5 flex-shrink-0 bg-amber-50 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/20 px-1.5 py-0.5 rounded-md shadow-2xs" title={`Streak: ${habit.streak}d`}>
                 <Flame className="w-3 h-3 text-amber-500 fill-amber-500/20 inline" />
                 <span>{habit.streak}</span>
               </span>
             )}
             {isSkipped && (
-              <span className="text-[10px] bg-surface/80 border border-border/60 px-1.5 py-0.2 rounded font-mono text-muted-foreground flex items-center gap-0.5 flex-shrink-0">
+              <span className="text-[10px] bg-surface/80 border border-border/60 px-1.5 py-0.5 rounded font-mono text-muted-foreground flex items-center gap-0.5 flex-shrink-0">
                 <Shield className="w-2.5 h-2.5 inline" />
                 <span>{skipReason}</span>
               </span>
             )}
             {habit.startTime && (
-              <span className="text-[10px] font-mono text-muted-foreground bg-surface border px-1.5 py-0.2 rounded flex-shrink-0">
+              <span className="text-[10px] font-mono text-muted-foreground bg-surface border px-1.5 py-0.5 rounded flex-shrink-0">
                 {formatTime12(habit.startTime)}
               </span>
             )}
@@ -985,14 +1017,14 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     title="Session in progress - click to pause/resume"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    <span>{Math.floor(focusTimer.remainingSec / 60)}:{(focusTimer.remainingSec % 60).toString().padStart(2, "0")}</span>
+                    <LiveCountdown />
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => {
                       focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
-                      toast.success(`⏱️ ${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
+                      toast.success(`${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
                     }}
                     className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-primary text-indigo-700 hover:text-white border border-indigo-200/90 hover:border-primary dark:bg-primary/15 dark:hover:bg-primary/30 dark:text-primary dark:hover:text-white dark:border-primary/30 text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-0.5 shadow-2xs hover:scale-105 shrink-0"
                     title="Launch Pomodoro Focus Session"
@@ -1067,7 +1099,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 </DropdownMenu>
               </>
             )}
-            <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold font-mono whitespace-nowrap shrink-0 shadow-xs ${tagClass}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-mono whitespace-nowrap shrink-0 shadow-xs ${tagClass}`}>
               {tagNode}
             </span>
           </div>
@@ -1097,7 +1129,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     : "border-border/60 hover:border-primary/20"
           }`}
       >
-        <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-hidden truncate">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
           <label
             aria-label={`Mark ${habit.name} ${isCompletedToday ? "incomplete" : "complete"}`}
             className="min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] -ml-2 -my-2 flex items-center justify-center cursor-pointer touch-manipulation select-none shrink-0"
@@ -1110,7 +1142,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               className="accent-primary w-4 h-4 cursor-pointer"
             />
           </label>
-          <span className={`truncate font-semibold tracking-tight ${isCompletedToday ? "line-through opacity-45 text-muted-foreground" : "text-slate-900 dark:text-slate-100"}`}>{habit.name}</span>
+          <span className={`font-semibold tracking-tight min-w-[110px] shrink-0 sm:shrink truncate ${isCompletedToday ? "line-through opacity-45 text-muted-foreground" : "text-foreground"}`}>{habit.name}</span>
           {habit.category && (
             <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold border flex-shrink-0 ${getCategoryColor(habit.category).bg} ${getCategoryColor(habit.category).text} ${getCategoryColor(habit.category).border}`}>
               {habit.category}
@@ -1124,9 +1156,9 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 setTimerLockModalHabit(habit);
               }}
               className="text-[10px] bg-accent/15 text-accent-foreground border border-accent/30 px-2 py-0.5 rounded-md font-mono font-bold flex items-center gap-1 flex-shrink-0 cursor-pointer hover:bg-accent/25 transition-all"
-              title={`⚡ Timer-Locked: Requires ${habit.focus_duration_minutes || 25}m focus sprint`}
+              title={`Timer-Locked: Requires ${habit.focus_duration_minutes || 25}m focus sprint`}
             >
-              ⚡ Timer-Locked
+              <Zap className="w-3 h-3 inline" /> <span className="hidden sm:inline">Timer-Locked</span>
             </span>
           )}
           {/* Task 1.3: Circadian Status Badge */}
@@ -1135,20 +1167,22 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             if (c.status === "upcoming") {
               return (
                 <span className="text-[10px] bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
-                  {c.label}
+                  <span className="hidden xl:inline">{c.label}</span>
+                  <span className="xl:hidden">Opens Soon</span>
                 </span>
               );
             }
             if (c.status === "closed") {
               return (
                 <span className="text-[10px] bg-zinc-500/15 text-zinc-700 dark:text-zinc-400 border border-zinc-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
-                  {c.label}
+                  <span className="hidden xl:inline">{c.label}</span>
+                  <span className="xl:hidden">Closed</span>
                 </span>
               );
             }
             return (
               <span className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md font-mono flex items-center gap-1 flex-shrink-0" title={c.label}>
-                🟢 In Window
+                <Circle className="w-3 h-3 text-emerald-500 inline" /> <span className="hidden xl:inline">In Window</span>
               </span>
             );
           })()}
@@ -1182,14 +1216,14 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                   title="Session in progress - click to pause/resume"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  <span>{Math.floor(focusTimer.remainingSec / 60)}:{(focusTimer.remainingSec % 60).toString().padStart(2, "0")}</span>
+                  <LiveCountdown />
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => {
                     focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
-                    toast.success(`⏱️ ${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
+                    toast.success(`${habit.focus_duration_minutes || 25}m Focus Sprint launched for "${habit.name}"!`);
                   }}
                   className="px-2 sm:px-2.5 py-1 min-h-[36px] sm:min-h-[32px] rounded-lg bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/30 hover:border-primary text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs hover:scale-105 shrink-0 touch-manipulation"
                   title="Launch Pomodoro Focus Session"
@@ -1312,19 +1346,8 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
       {/* ── 🚨 Active Emergency Triage Banner ── */}
       <TriageActiveBanner onOpenModal={() => setTriageModalOpen(true)} />
 
-      {/* ── ZONE 1: Context & Interactive Demo Experience Guide ── */}
-      {user?.isGuest ? (
-        <InteractiveDemoExperienceBanner
-          guestDaysRemaining={guestDaysRemaining}
-          onNavigate={onNavigate}
-          onStartSprint={(duration) => {
-            focusTimer.changeTimerMode("custom", duration);
-            focusTimer.setActiveTaskName("Demo Deep Work Sprint");
-            focusTimer.startTimer();
-            toast.success(`⚡ Demo Sprint Launched (${duration}m) with Ambient Soundscape`);
-          }}
-        />
-      ) : nudge && dismissedNudgeId !== nudge.id ? (
+      {/* ── ZONE 1: Context & Nudges ── */}
+      {!user?.isGuest && nudge && dismissedNudgeId !== nudge.id ? (
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1365,7 +1388,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         {/* Left: Greeting, Date & System Pulse */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/25 via-accent/20 to-primary/10 border border-primary/30 flex items-center justify-center text-lg shadow-inner flex-shrink-0">
-            ⚡
+            <Zap className="w-5 h-5 text-primary" />
           </div>
           <div>
             <div className="text-sm font-black text-foreground flex items-center gap-2">
@@ -1387,12 +1410,13 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               <Activity className="w-3 h-3 text-primary" /> State:
             </span>
             {[
-              { id: "high", icon: "⚡", label: "Peak", color: "bg-amber-500/20 text-amber-300 border-amber-500/40" },
-              { id: "flow", icon: "🎯", label: "Flow", color: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40" },
-              { id: "steady", icon: "☕", label: "Steady", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" },
-              { id: "low", icon: "🔋", label: "Low", color: "bg-rose-500/20 text-rose-300 border-rose-500/40" },
+              { id: "high", icon: "zap", label: "Peak", color: "bg-amber-500/20 text-amber-300 border-amber-500/40" },
+              { id: "flow", icon: "target", label: "Flow", color: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40" },
+              { id: "steady", icon: "coffee", label: "Steady", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" },
+              { id: "low", icon: "battery", label: "Low", color: "bg-rose-500/20 text-rose-300 border-rose-500/40" },
             ].map((m) => {
               const isActive = mood === m.id;
+              const MoodIcon = MOOD_ICONS[m.icon];
               return (
                 <button
                   key={m.id}
@@ -1402,7 +1426,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                       : "text-muted-foreground hover:text-foreground hover:bg-surface"
                     }`}
                 >
-                  <span>{m.icon}</span>
+                  {MoodIcon && <MoodIcon className="w-3 h-3 inline" />}
                   <span className="text-[11px]">{m.label}</span>
                 </button>
               );
@@ -1418,11 +1442,12 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               const isPlaying = soundscape === type;
               const labels: Record<AmbienceType, { icon: string; label: string }> = {
                 none: { icon: "Off", label: "Off" },
-                rain: { icon: "🌧️", label: "Rain" },
-                lofi: { icon: "🎵", label: "Lo-Fi" },
-                coffee: { icon: "☕", label: "Cafe" },
-                library: { icon: "📖", label: "Library" },
+                rain: { icon: "cloud-rain", label: "Rain" },
+                lofi: { icon: "music", label: "Lo-Fi" },
+                coffee: { icon: "coffee", label: "Cafe" },
+                library: { icon: "book-open", label: "Library" },
               };
+              const AmbienceIcon = AMBIENCE_ICONS[labels[type].icon];
               return (
                 <button
                   key={type}
@@ -1433,7 +1458,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     }`}
                   title={`Procedural ${type} focus soundscape`}
                 >
-                  <span>{labels[type].icon}</span>
+                  {AmbienceIcon && <AmbienceIcon className="w-3 h-3 inline" />}
                 </button>
               );
             })}
@@ -1552,7 +1577,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg flex-shrink-0 shadow-sm">
-              🔥
+              <Flame className="w-5 h-5 text-pps-orange" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-base font-black text-foreground leading-tight">
@@ -1579,7 +1604,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           <div className="flex items-center justify-between gap-1">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-lg flex-shrink-0 shadow-sm">
-                ⚡
+                <Zap className="w-5 h-5 text-primary" />
               </div>
               <div className="min-w-0">
                 <div className="text-base font-black text-foreground leading-tight">
@@ -1597,7 +1622,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 } else {
                   focusTimer.changeTimerMode("pomodoro", 25);
                   focusTimer.startTimer();
-                  toast.success("⚡ 25m Focus Sprint started!");
+                  toast.success("25m Focus Sprint started!");
                 }
               }}
               className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-xs ${focusTimer.isRunning
@@ -1637,7 +1662,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                   className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 text-xs font-bold font-mono hover:bg-emerald-500/30 transition-all cursor-pointer shadow-xs flex-shrink-0"
                   title="Pause active focus session"
                 >
-                  <span>{Math.floor(focusTimer.remainingSec / 60)}:{(focusTimer.remainingSec % 60).toString().padStart(2, "0")}</span>
+                  <LiveCountdown />
                 </button>
               </div>
               <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/60 text-[10px] text-muted-foreground font-mono">
@@ -1658,7 +1683,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 <button
                   onClick={() => {
                     focusTimer.startHabitFocus(nextBestAction, nextBestAction.focus_duration_minutes || 25);
-                    toast.success(`⚡ Sprint launched for "${nextBestAction.name}"!`);
+                    toast.success(`Sprint launched for "${nextBestAction.name}"!`);
                   }}
                   className="px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:bg-primary/90 transition-all cursor-pointer shadow-md shadow-primary/25 flex-shrink-0 flex items-center gap-1 hover:scale-105"
                 >
@@ -1700,7 +1725,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 focusTimer.changeTimerMode("pomodoro", duration);
                 focusTimer.setActiveTaskName(taskName);
                 focusTimer.startTimer();
-                toast.success(`⚡ Sprint launched for "${taskName}"!`);
+                toast.success(`Sprint launched for "${taskName}"!`);
               }}
               onNavigate={onNavigate}
             />
@@ -1743,12 +1768,12 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
-                      🚨
+                      <AlertTriangle className="w-5 h-5 text-rose-400" />
                     </span>
                     <div className="min-w-0">
                       <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
                         <span>Emergency Triage</span>
-                        <span className="text-[9px] font-mono uppercase bg-rose-500/25 text-rose-300 px-1.5 py-0.2 rounded-md font-bold">
+                        <span className="text-[9px] font-mono uppercase bg-rose-500/25 text-rose-300 px-1.5 py-0.5 rounded-md font-bold">
                           Panic Mode
                         </span>
                       </div>
@@ -1771,12 +1796,12 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
-                      ⏳
+                      <Hourglass className="w-5 h-5 text-amber-400" />
                     </span>
                     <div className="min-w-0">
                       <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
                         <span>Parkinson’s Slicer</span>
-                        <span className="text-[9px] font-mono uppercase bg-amber-500/25 text-amber-300 px-1.5 py-0.2 rounded-md font-bold">
+                        <span className="text-[9px] font-mono uppercase bg-amber-500/25 text-amber-300 px-1.5 py-0.5 rounded-md font-bold">
                           Anti-Procrastinate
                         </span>
                       </div>
@@ -1796,12 +1821,12 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 group-hover:scale-110 transition-transform flex-shrink-0">
-                      📚
+                      <BookOpen className="w-5 h-5 text-cyan-400" />
                     </span>
                     <div className="min-w-0">
                       <div className="text-xs font-black text-foreground flex items-center gap-1.5 flex-wrap">
                         <span>Syllabus Decomposer</span>
-                        <span className="text-[9px] font-mono uppercase bg-cyan-500/25 text-cyan-300 px-1.5 py-0.2 rounded-md font-bold">
+                        <span className="text-[9px] font-mono uppercase bg-cyan-500/25 text-cyan-300 px-1.5 py-0.5 rounded-md font-bold">
                           30-Day Track
                         </span>
                       </div>
@@ -1822,8 +1847,8 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
       {habits.length === 0 ? (
         <div className="p-8 sm:p-12 rounded-3xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-card via-surface/60 to-primary/10 shadow-xl space-y-8 text-center">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-20 h-20 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-4xl shadow-sm shadow-primary/20 flex-shrink-0">
-              🚀
+            <div className="w-20 h-20 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shadow-sm shadow-primary/20 flex-shrink-0">
+              <Rocket className="w-10 h-10" />
             </div>
             <h3 className="text-2xl font-black text-foreground font-mono tracking-tight">
               Welcome to Your Command Dashboard!
@@ -1837,7 +1862,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
               onClick={handleInstallStarterStack}
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground text-sm font-black transition-all hover:scale-105 shadow-lg shadow-primary/25 cursor-pointer flex items-center gap-2 group"
             >
-              <span>⚡</span>
+              <Zap className="w-4 h-4" />
               <span>Install Starter Stack (3 Habits)</span>
             </button>
           </div>
@@ -1869,7 +1894,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                       <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-white" : color.dot}`} />
                       <span>{c === "All" ? "All" : formatCategoryName(c)}</span>
                       <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${isSelected
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${isSelected
                             ? "bg-white/20 text-white"
                             : `${color.bg} ${color.text} border ${color.border}`
                           }`}
@@ -1920,7 +1945,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${viewMode === "priority" ? "bg-primary text-primary-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
                       }`}
                   >
-                    <span>🎯</span>
+                    <Target className="w-3 h-3 inline" />
                     <span>Priority</span>
                   </button>
                   <button
@@ -1928,7 +1953,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${viewMode === "timeblock" ? "bg-primary text-primary-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
                       }`}
                   >
-                    <span>⏰</span>
+                    <Clock className="w-3 h-3 inline" />
                     <span>Time Block</span>
                   </button>
                   <button
@@ -1936,7 +1961,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${viewMode === "zen" ? "bg-primary text-primary-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
                       }`}
                   >
-                    <span>⚡</span>
+                    <Zap className="w-3 h-3 inline" />
                     <span>Zen</span>
                   </button>
                 </div>
@@ -1962,8 +1987,8 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     className="bg-primary/15 text-primary border border-primary/30 hover:bg-primary hover:text-primary-foreground text-xs font-semibold py-1 px-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                     title="Press 'M' on keyboard"
                   >
-                    <span>⚡ All Done</span>
-                    <kbd className="text-[9px] bg-primary/20 px-1 py-0.2 rounded font-mono">M</kbd>
+                    <span><Zap className="w-3 h-3 inline" /> All Done</span>
+                    <kbd className="text-[9px] bg-primary/20 px-1 py-0.5 rounded font-mono">M</kbd>
                   </button>
                 )}
               </div>
@@ -1982,6 +2007,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
+                    aria-label="Clear search"
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer"
                   >
                     <X className="w-3 h-3" />
@@ -2011,12 +2037,12 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                   className="flex flex-col gap-3.5"
                 >
                   {[
-                    { title: "🔴 Critical Tasks", borderColor: "border-l-destructive", tasks: sortedCritical, emptyText: "No critical tasks 🎉" },
-                    { title: "🟠 High Priority", borderColor: "border-l-pps-orange", tasks: sortedHigh, emptyText: "No high priority tasks" },
-                    { title: "🟡 Medium Focus", borderColor: "border-l-pps-yellow", tasks: sortedMedium, emptyText: "No medium tasks" },
-                    { title: "🟢 Upcoming", borderColor: "border-l-pps-green", tasks: sortedUpcoming, emptyText: "No upcoming tasks" },
+                    { id: "critical", title: (<><Circle className="w-3 h-3 inline text-destructive" /> Critical Tasks</>), borderColor: "border-l-destructive", tasks: sortedCritical, emptyText: "No critical tasks" },
+                    { id: "high", title: (<><Circle className="w-3 h-3 inline text-pps-orange" /> High Priority</>), borderColor: "border-l-pps-orange", tasks: sortedHigh, emptyText: "No high priority tasks" },
+                    { id: "medium", title: (<><Circle className="w-3 h-3 inline text-pps-yellow" /> Medium Focus</>), borderColor: "border-l-pps-yellow", tasks: sortedMedium, emptyText: "No medium tasks" },
+                    { id: "upcoming", title: (<><Circle className="w-3 h-3 inline text-pps-green" /> Upcoming</>), borderColor: "border-l-pps-green", tasks: sortedUpcoming, emptyText: "No upcoming tasks" },
                   ].map((section, i) => (
-                    <motion.div key={section.title} variants={fadeUp} custom={i} initial="hidden" animate="visible">
+                    <motion.div key={section.id} variants={fadeUp} custom={i} initial="hidden" animate="visible">
                       <TaskSection {...section} renderTask={renderTask} renderEmptyList={renderEmptyList} />
                     </motion.div>
                   ))}
@@ -2031,17 +2057,17 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                   className="flex flex-col gap-3.5"
                 >
                   {[
-                    { key: "morning", title: "🌅 Morning Ritual (05:00 - 12:00)", borderColor: "border-l-secondary", tasks: morningHabits, emptyText: "No morning habits scheduled" },
-                    { key: "afternoon", title: "☀️ Afternoon Focus (12:00 - 17:00)", borderColor: "border-l-pps-orange", tasks: afternoonHabits, emptyText: "No afternoon habits scheduled" },
-                    { key: "evening", title: "🌙 Evening Wind-down (17:00 - 00:00)", borderColor: "border-l-primary", tasks: eveningHabits, emptyText: "No evening habits scheduled" },
-                    { key: "anytime", title: "⏰ Flexible & Anytime", borderColor: "border-l-pps-green", tasks: anytimeHabits, emptyText: "No flexible habits" },
+                    { key: "morning", title: (<><Sunrise className="w-3 h-3 inline" /> Morning Ritual (05:00 - 12:00)</>), borderColor: "border-l-secondary", tasks: morningHabits, emptyText: "No morning habits scheduled" },
+                    { key: "afternoon", title: (<><Sun className="w-3 h-3 inline" /> Afternoon Focus (12:00 - 17:00)</>), borderColor: "border-l-pps-orange", tasks: afternoonHabits, emptyText: "No afternoon habits scheduled" },
+                    { key: "evening", title: (<><Moon className="w-3 h-3 inline" /> Evening Wind-down (17:00 - 00:00)</>), borderColor: "border-l-primary", tasks: eveningHabits, emptyText: "No evening habits scheduled" },
+                    { key: "anytime", title: (<><Clock className="w-3 h-3 inline" /> Flexible & Anytime</>), borderColor: "border-l-pps-green", tasks: anytimeHabits, emptyText: "No flexible habits" },
                   ].map((section, i) => {
                     const isCurrent = section.key === getCurrentTimeBlock();
                     return (
-                      <motion.div key={section.title} variants={fadeUp} custom={i} initial="hidden" animate="visible" className={isCurrent ? "ring-2 ring-primary/40 rounded-xl" : ""}>
+                      <motion.div key={section.key} variants={fadeUp} custom={i} initial="hidden" animate="visible" className={isCurrent ? "ring-2 ring-primary/40 rounded-xl" : ""}>
                         <TaskSection
                           {...section}
-                          title={isCurrent ? `${section.title} — 📍 NOW` : section.title}
+                          title={isCurrent ? (<>{section.title} <Pin className="w-3 h-3 inline" /> NOW</>) : section.title}
                           renderTask={renderTask}
                           renderEmptyList={renderEmptyList}
                         />
@@ -2082,11 +2108,10 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     focusTimer.setLinkedHabitId(block.linkedHabitId || block.habitId || null);
                   }
                   focusTimer.startTimer();
-                  toast.success(`⚡ Launched ${block.durationMinutes}m focus sprint for "${block.title}"`);
+                  toast.success(`Launched ${block.durationMinutes}m focus sprint for "${block.title}"`);
                 }}
                 activeTimer={{
                   isRunning: focusTimer.isRunning,
-                  remainingSec: focusTimer.remainingSec,
                   activeTaskName: focusTimer.activeTaskName,
                   linkedHabitId: focusTimer.linkedHabitId,
                 }}
@@ -2134,7 +2159,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
             focusTimer.setLinkedHabitId(block.linkedHabitId || block.habitId || null);
           }
           focusTimer.startTimer();
-          toast.success(`⚡ Launched ${block.durationMinutes}m focus sprint for "${block.title}"`);
+          toast.success(`Launched ${block.durationMinutes}m focus sprint for "${block.title}"`);
         }}
       />
 
@@ -2145,7 +2170,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
         type="badge"
         title="All Habits Done!"
         subtitle="You crushed every single habit today. Keep this momentum going!"
-        icon="🎉"
+        icon={<Award className="w-16 h-16 mx-auto text-amber-500" />}
       />
 
       {/* ── 🎯 Phase 3: Dopamine & Motivation Modals ── */}
@@ -2175,7 +2200,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-xl shrink-0">
-                ⚡
+                <Zap className="w-5 h-5 text-amber-400" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-foreground">Focus Session Required</h3>
@@ -2213,11 +2238,11 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
                     const habit = timerLockModalHabit;
                     setTimerLockModalHabit(null);
                     focusTimer.startHabitFocus(habit, habit.focus_duration_minutes || 25);
-                    toast.success(`⏱️ Focus Sprint started for "${habit.name}"!`);
+                    toast.success(`Focus Sprint started for "${habit.name}"!`);
                   }}
                   className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20"
                 >
-                  <span>⚡</span>
+                  <Zap className="w-4 h-4 text-black" />
                   <span>Start Sprint ({timerLockModalHabit.focus_duration_minutes || 25}m)</span>
                 </button>
               </div>
@@ -2236,7 +2261,7 @@ export const DashboardSection = ({ onNavigate, userEmail }: DashboardSectionProp
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-xl shrink-0">
-                ⏳
+                <Hourglass className="w-5 h-5 text-blue-400" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-foreground">Circadian Time-Window Gating</h3>
@@ -2303,7 +2328,9 @@ function ZenFocusSpotlight({
         animate={{ opacity: 1, scale: 1 }}
         className="bg-card border border-primary/30 rounded-2xl p-8 text-center max-w-lg mx-auto shadow-xl my-6"
       >
-        <div className="text-6xl mb-3">🏆</div>
+        <div className="text-6xl mb-3">
+          <Award className="w-10 h-10 text-amber-500" />
+        </div>
         <h3 className="text-xl font-bold text-foreground">Zen Focus Complete!</h3>
         <p className="text-xs text-muted-foreground mt-1 mb-5">
           You completed all habits due for today. Rest up or celebrate your win!
@@ -2329,7 +2356,7 @@ function ZenFocusSpotlight({
     >
       <div className="flex justify-between items-center mb-6">
         <span className="text-[10px] uppercase font-mono tracking-widest bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full font-bold">
-          🎯 Zen Spotlight ({index + 1} of {uncompleted.length})
+          <Target className="w-3 h-3 inline" /> Zen Spotlight ({index + 1} of {uncompleted.length})
         </span>
         <button
           onClick={onExit}
@@ -2360,18 +2387,21 @@ function ZenFocusSpotlight({
               : "bg-gradient-to-br from-primary to-accent text-primary-foreground hover:shadow-lg hover:scale-[1.02]"
             }`}
         >
-          <span>{isDone ? "✅ Completed!" : "⚡ Mark Complete (+10 XP)"}</span>
+          <span>{isDone ? (<><CheckCircle2 className="w-3 h-3 inline" /> Completed!</>) : (<><Zap className="w-3 h-3 inline" /> Mark Complete (+10 XP)</>)}</span>
         </button>
 
         {!isDone && (
           <div className="flex items-center gap-1">
             <span className="text-[11px] text-muted-foreground font-mono mr-1">Skip:</span>
-            {["Rest Day 💤", "Sick 🤒", "Busy 💼"].map((r) => (
+            {["Rest Day", "Sick", "Busy"].map((r) => (
               <button
                 key={r}
                 onClick={() => onSkip(current.id, r.split(" ")[0])}
                 className="bg-surface border border-border/80 text-[11px] px-2.5 py-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer font-medium"
               >
+                {r === "Rest Day" && <Moon className="w-3 h-3 inline" />}
+                {r === "Sick" && <Bandage className="w-3 h-3 inline" />}
+                {r === "Busy" && <Briefcase className="w-3 h-3 inline" />}
                 {r}
               </button>
             ))}

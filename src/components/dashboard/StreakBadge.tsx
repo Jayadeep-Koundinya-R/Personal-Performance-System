@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
-import { Flame, Trophy, Zap, CheckCircle2, TrendingUp } from "lucide-react";
+import { Flame, Trophy, Zap, CheckCircle2, TrendingUp, AlertCircle } from "lucide-react";
 import { getTodayStr } from "@/lib/dashboard/recommendations";
 
 interface StreakBadgeProps {
@@ -35,8 +35,9 @@ export function StreakBadge({ className }: StreakBadgeProps) {
       <span>{tier.label}</span>
       <span className="font-black">{streak}d</span>
       {!activeToday && streak > 0 && (
-        <span className="ml-1 px-1 py-0.5 rounded text-[8px] bg-destructive/10 text-destructive border border-destructive/20">
-          ⚠️ Today
+        <span className="ml-1 px-1 py-0.5 rounded text-[8px] bg-destructive/10 text-destructive border border-destructive/20 flex items-center gap-1">
+          <AlertCircle className="w-2.5 h-2.5" />
+          <span>Today</span>
         </span>
       )}
     </motion.div>

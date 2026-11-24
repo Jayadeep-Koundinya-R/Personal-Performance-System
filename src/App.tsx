@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,22 +16,58 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import { useAuth, AuthProvider, User } from "@/hooks/use-auth";
 import { DashboardProviders } from "@/providers/AppProviders";
 import HomePage from "./pages/Home";
-import LoginPage from "./pages/Login";
-import DashboardPage from "./pages/Dashboard";
-import OnboardingPage from "./pages/Onboarding";
-import SettingsPage from "./pages/Settings";
 import { OnboardingGuard } from "./routes/OnboardingGuard";
-import ResetPasswordPage from "./pages/ResetPassword";
-import PricingPage from "./pages/Pricing";
-import PrivacyPage from "./pages/Privacy";
-import TermsPage from "./pages/Terms";
-import FocusCallWindow from "./pages/FocusCallWindow";
-import MeetingRoom from "./pages/MeetingRoom";
-import MarketplacePage from "./pages/Marketplace";
-import RoadmapPage from "./pages/Roadmap";
-import NotFound from "./pages/NotFound";
 import PwaUpdatePrompt from "@/components/ui/PwaUpdatePrompt";
 import { initNativeNotifications, sendWelcomeNotification } from "@/lib/native-notifications";
+import { AppLockModal } from "@/components/auth/AppLockModal";
+import { useAppLock, AppLockProvider } from "@/hooks/use-app-lock";
+
+const LoginPage = lazy(() => import("./pages/Login"));
+const DashboardPage = lazy(() => import("./pages/Dashboard"));
+const OnboardingPage = lazy(() => import("./pages/Onboarding"));
+const SettingsPage = lazy(() => import("./pages/Settings"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
+const PricingPage = lazy(() => import("./pages/Pricing"));
+const PrivacyPage = lazy(() => import("./pages/Privacy"));
+const TermsPage = lazy(() => import("./pages/Terms"));
+const FocusCallWindow = lazy(() => import("./pages/FocusCallWindow"));
+const MeetingRoom = lazy(() => import("./pages/MeetingRoom"));
+const MarketplacePage = lazy(() => import("./pages/Marketplace"));
+const RoadmapPage = lazy(() => import("./pages/Roadmap"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+const RouteFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="flex flex-col items-center gap-3 animate-in fade-in duration-300">
+      <div className="relative w-12 h-12">
+        <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+      </div>
+      <div className="h-2 w-24 bg-muted/60 rounded-full animate-pulse" />
+    </div>
+  </div>
+);
+
+const AppLockRootController = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+  const { isLocked, hasBiometrics, unlockWithPin, unlockWithBiometrics } = useAppLock();
+
+  // Public paths where App Lock should NEVER appear:
+  const publicPaths = ["/", "/login", "/pricing", "/privacy", "/terms", "/reset-password", "/roadmap"];
+  const isPublicRoute = publicPaths.includes(location.pathname.toLowerCase());
+
+  // Strictly gate lock overlay: only active for logged-in sessions on protected routes
+  const shouldShowLock = isLocked && Boolean(user) && !isPublicRoute;
+
+  return (
+    <AppLockModal
+      isOpen={shouldShowLock}
+      hasBiometrics={hasBiometrics}
+      onUnlock={unlockWithPin}
+      onBiometricPrompt={unlockWithBiometrics}
+    />
+  );
+};
 
 const NativeAppController = () => {
   const navigate = useNavigate();
@@ -140,7 +176,8 @@ function AppRoutes() {
 
   return (
     <DashboardProviders user={currentUser}>
-      <Routes>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -234,6 +271,7 @@ function AppRoutes() {
         )}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </DashboardProviders>
   );
 }
@@ -255,13 +293,16 @@ const App = () => {
         <ThemeProvider>
           <TooltipProvider>
             <Toaster />
-            <Sonner />
+            <Sonner position="top-center" />
             <HashRouter>
               <AuthProvider>
-                <NativeAppController />
-                <PerformanceMonitor />
-                <PwaUpdatePrompt />
-                <AppRoutes />
+                <AppLockProvider>
+                  <AppLockRootController />
+                  <NativeAppController />
+                  <PerformanceMonitor />
+                  <PwaUpdatePrompt />
+                  <AppRoutes />
+                </AppLockProvider>
               </AuthProvider>
             </HashRouter>
           </TooltipProvider>

@@ -20,6 +20,7 @@ import {
   Copy,
   PenTool,
   Sparkles,
+  Star,
   Shield,
   Radio,
   Settings,
@@ -34,6 +35,7 @@ import {
   CheckCircle2,
   ExternalLink,
   ArrowLeft,
+  Target
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -135,7 +137,7 @@ const MeetingRoomInner: React.FC = () => {
   const handleCopyMeetingLink = () => {
     const link = window.location.href;
     navigator.clipboard.writeText(link);
-    toast.success("Meeting link copied to clipboard! 📋", {
+    toast.success("Meeting link copied to clipboard!", {
       description: "Share this link with your classmates or study partners to join instantly.",
     });
   };
@@ -181,8 +183,8 @@ const MeetingRoomInner: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#090b10] text-foreground flex flex-col justify-between p-4 sm:p-8 relative overflow-hidden select-none">
         {/* 3D Animated Space Lighting */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/15 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-2xl pointer-events-none animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/15 rounded-full blur-2xl pointer-events-none" />
 
         {/* Top Header */}
         <div className="flex items-center justify-between z-10">
@@ -221,9 +223,9 @@ const MeetingRoomInner: React.FC = () => {
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center space-y-2">
-                  <div className="w-20 h-20 rounded-3xl bg-surface border border-border flex items-center justify-center text-4xl shadow-lg">
-                    {profile?.avatarEmoji || "🌟"}
-                  </div>
+                      <div className="w-20 h-20 rounded-3xl bg-surface border border-border flex items-center justify-center text-4xl shadow-lg">
+                        {profile?.avatarEmoji || <Star className="w-10 h-10" />}
+                      </div>
                   <span className="text-xs font-bold text-muted-foreground">Camera is off</span>
                 </div>
               )}
@@ -327,7 +329,7 @@ const MeetingRoomInner: React.FC = () => {
       <div className="p-3 px-5 bg-card/80 border-b border-border/60 backdrop-blur-2xl flex items-center justify-between z-20 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center font-bold text-lg text-primary shadow-xs">
-            🎯
+            <Target className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -436,7 +438,7 @@ const MeetingRoomInner: React.FC = () => {
                           muted
                           className="w-full h-full object-cover transform -scale-x-100"
                         />
-                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[9px] font-mono font-bold text-primary border border-primary/40 flex items-center gap-1.5 z-20 shadow-md">
+                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[10px] font-mono font-bold text-primary border border-primary/40 flex items-center gap-1.5 z-20 shadow-md">
                           <span className={`w-1.5 h-1.5 rounded-full ${isDailyConnected ? "bg-pps-green animate-pulse" : "bg-pps-orange"}`} />
                           <span>{isDailyConnected ? "Daily.co Live HD" : "Camera Active"}</span>
                         </span>
@@ -444,7 +446,7 @@ const MeetingRoomInner: React.FC = () => {
                     ) : !isYou && participantCameraOn && remoteStream ? (
                       <div className="absolute inset-0 bg-black z-0">
                         <RemotePeerVideo stream={remoteStream} />
-                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[9px] font-mono font-bold text-pps-green border border-pps-green/40 flex items-center gap-1.5 z-20 shadow-md">
+                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[10px] font-mono font-bold text-pps-green border border-pps-green/40 flex items-center gap-1.5 z-20 shadow-md">
                           <span className="w-1.5 h-1.5 rounded-full bg-pps-green animate-pulse" />
                           <span>Peer Live HD</span>
                         </span>
@@ -462,7 +464,7 @@ const MeetingRoomInner: React.FC = () => {
                       <span className="text-xs font-bold text-foreground bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/10 flex items-center gap-1">
                         <span>{p.name}</span>
                         {p.role === "admin" && (
-                          <span className="text-[9px] font-mono text-primary uppercase font-black">
+                          <span className="text-[10px] font-mono text-primary uppercase font-black">
                             (Host)
                           </span>
                         )}
@@ -489,7 +491,7 @@ const MeetingRoomInner: React.FC = () => {
                     <div className="relative z-10 mt-auto pt-2">
                       <div className="bg-black/75 backdrop-blur-md border border-white/10 rounded-xl p-2 flex items-center justify-between gap-2">
                         <div className="overflow-hidden">
-                          <div className="text-[9px] font-mono font-black uppercase text-primary tracking-wider">
+                          <div className="text-[10px] font-mono font-black uppercase text-primary tracking-wider">
                             Current Goal
                           </div>
                           <div className="text-xs font-semibold text-white/90 truncate">
@@ -512,7 +514,7 @@ const MeetingRoomInner: React.FC = () => {
               initial={{ opacity: 0, x: 80 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 80 }}
-              className="w-80 sm:w-96 bg-card border-l border-border/80 flex flex-col h-full z-20 shadow-2xl"
+              className="w-80 sm:w-96 bg-card border-l border-border/80 flex flex-col h-full z-20 shadow-xl"
             >
               {/* Drawer Header */}
               <div className="p-4 border-b border-border/60 flex items-center justify-between">
@@ -547,7 +549,7 @@ const MeetingRoomInner: React.FC = () => {
                         <div className="flex items-center gap-1.5 text-[11px]">
                           <span>{m.avatar}</span>
                           <span className="font-bold text-foreground">{m.sender}</span>
-                          <span className="text-[9px] text-muted-foreground font-mono">{m.time}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">{m.time}</span>
                         </div>
                         <div className="p-2.5 rounded-2xl bg-surface border border-border/60 text-xs text-foreground">
                           {m.text}
@@ -558,7 +560,7 @@ const MeetingRoomInner: React.FC = () => {
                   </div>
 
                   <div className="px-3 pt-2 flex items-center justify-between border-t border-border/40 text-[10.5px]">
-                    <span className="text-muted-foreground font-mono">🔒 E2EE Encrypted Room</span>
+                    <span className="text-muted-foreground font-mono flex items-center gap-1"><Lock className="w-3 h-3" /> E2EE Encrypted Room</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -744,7 +746,7 @@ export const MeetingRoom: React.FC = () => {
           <div className="relative w-14 h-14 mx-auto">
             <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
             <div className="absolute inset-1.5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <span className="text-xl">🎯</span>
+              <Target className="text-xl text-primary" />
             </div>
           </div>
           <div>

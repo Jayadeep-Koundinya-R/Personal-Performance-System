@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
+import { Target } from "lucide-react";
 
 export function LevelWidget() {
   const { calculateLevel, calculateTotalXP, habits, isHabitDueToday, getTodayStr } = useHabits();
@@ -48,7 +49,7 @@ export function LevelWidget() {
       <div className="p-2.5 bg-surface/60 border border-border/60 rounded-lg">
         <div className="flex justify-between items-center text-[11px] mb-1">
           <span className="font-semibold text-foreground flex items-center gap-1">
-            <span>🎯</span> Daily XP Goal
+            <Target className="w-3.5 h-3.5 text-primary" /> Daily XP Goal
           </span>
           <span className="font-mono text-primary font-bold">{todayXP} / {dailyGoalXP} XP</span>
         </div>

@@ -77,7 +77,7 @@ export const GroupDashboard: React.FC<GroupDashboardProps> = ({
             </div>
             <p className="text-xs text-muted-foreground font-medium">
               {group.studyTopic} • Invite Code:{" "}
-              <span className="font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.2 rounded">
+              <span className="font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                 {group.inviteCode}
               </span>
             </p>
@@ -203,7 +203,7 @@ export const GroupDashboard: React.FC<GroupDashboardProps> = ({
               >
                 <Check className="w-3 h-3" />
                 <span className="truncate max-w-[140px]">{h.name}</span>
-                <span className="text-[9px] font-mono font-extrabold text-amber-400 bg-black/20 px-1 py-0.2 rounded">
+                <span className="text-[9px] font-mono font-extrabold text-amber-400 bg-black/20 px-1 py-0.5 rounded">
                   +10 XP
                 </span>
               </button>

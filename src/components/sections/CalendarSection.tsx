@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useHabits } from "@/hooks/use-habits";
 import { useFocusTimer } from "@/hooks/use-focus-timer";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, ListFilter, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, ListFilter, Zap, Award, Flame, BarChart2, Sunrise, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
 
 type ViewMode = "month" | "weekly" | "agenda";
@@ -200,7 +200,8 @@ const CalendarSection = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
-            <span>📅 Performance Calendar</span>
+            <CalendarIcon className="w-4 h-4" />
+            <span>Performance Calendar</span>
             <span className="text-[11px] font-mono bg-primary/15 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full font-bold uppercase">
               Circadian Schedule & History
             </span>
@@ -318,7 +319,7 @@ const CalendarSection = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-card border border-border p-3.5 rounded-2xl shadow-xs flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-lg flex-shrink-0">
-            📊
+            <BarChart2 className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-bold">Total Completions</div>
@@ -328,7 +329,7 @@ const CalendarSection = () => {
 
         <div className="bg-card border border-border p-3.5 rounded-2xl shadow-xs flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-pps-yellow/15 border border-pps-yellow/30 flex items-center justify-center text-lg flex-shrink-0">
-            🏆
+            <Award className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-bold">Perfect Days</div>
@@ -338,7 +339,7 @@ const CalendarSection = () => {
 
         <div className="bg-card border border-border p-3.5 rounded-2xl shadow-xs flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-pps-green/15 border border-pps-green/30 flex items-center justify-center text-lg flex-shrink-0">
-            ⚡
+            <Zap className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-bold">Consistency Rate</div>
@@ -348,7 +349,7 @@ const CalendarSection = () => {
 
         <div className="bg-card border border-border p-3.5 rounded-2xl shadow-xs flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-secondary/15 border border-secondary/30 flex items-center justify-center text-lg flex-shrink-0">
-            🔥
+            <Flame className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-bold">Active Days</div>
@@ -397,7 +398,9 @@ const CalendarSection = () => {
                   <div className="flex justify-between items-center w-full text-[11px] font-mono font-bold">
                     <span>{day.dayNum}</span>
                     {day.completions > 0 && day.dueCount > 0 && day.completions >= day.dueCount && (
-                      <span className="text-[10px]" title="Perfect Day! 100% completed">🏆</span>
+                      <span className="text-[10px]" title="Perfect Day! 100% completed">
+                        <Award className="w-3 h-3 inline" />
+                      </span>
                     )}
                   </div>
 
@@ -436,10 +439,10 @@ const CalendarSection = () => {
               <div className="w-3.5 h-3.5 bg-primary/85 border border-primary/40 rounded-md" />
               <span>High</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3.5 h-3.5 bg-primary border border-primary/60 rounded-md shadow-xs" />
-              <span>100% Perfect 🏆</span>
-            </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3.5 h-3.5 bg-primary border border-primary/60 rounded-md shadow-xs" />
+                <span>100% Perfect </span><Award className="w-3 h-3 inline" />
+              </div>
           </div>
         </motion.div>
       )}
@@ -456,10 +459,11 @@ const CalendarSection = () => {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-border/40">
               <div>
                 <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-                  <span>⏰ Weekly Circadian Time-Block Schedule</span>
+                  <Clock className="w-3 h-3 inline" />
+                  <span>Weekly Circadian Time-Block Schedule</span>
                 </h3>
                 <p className="text-[11.5px] text-secondary font-medium mt-0.5">
-                  Align habits with biological energy peaks: 🌅 Morning (Focus) • ☀️ Afternoon (Execution) • 🌙 Evening (Wind-down)
+                  Align habits with biological energy peaks: <Sunrise className="w-3 h-3 inline" /> Morning (Focus) <Sun className="w-3 h-3 inline" /> Afternoon (Execution) <Moon className="w-3 h-3 inline" /> Evening (Wind-down)
                 </p>
               </div>
               <span className="text-xs text-muted-foreground font-mono font-bold bg-surface border border-border/80 px-2.5 py-1 rounded-xl">
@@ -495,9 +499,9 @@ const CalendarSection = () => {
 
                     {/* Circadian Time Blocks */}
 {([
-  { title: "MORNING 🌅", time: "6am–12pm", color: "text-secondary", habits: morningHabits },
-  { title: "AFTERNOON ☀️", time: "12pm–6pm", color: "text-pps-orange", habits: afternoonHabits },
-  { title: "EVENING 🌙", time: "6pm–12am", color: "text-accent", habits: eveningHabits },
+  { title: (<><Sunrise className="w-3 h-3 inline" /> MORNING</>), time: "6am–12pm", color: "text-secondary", habits: morningHabits },
+  { title: (<><Sun className="w-3 h-3 inline" /> AFTERNOON</>), time: "12pm–6pm", color: "text-pps-orange", habits: afternoonHabits },
+  { title: (<><Moon className="w-3 h-3 inline" /> EVENING</>), time: "6pm–12am", color: "text-accent", habits: eveningHabits },
 ]).map((block) => (
                       <div key={block.title} className="space-y-1.5">
                         <div className="flex items-center justify-between">
@@ -535,7 +539,8 @@ const CalendarSection = () => {
                                       </div>
                                       {h.requires_focus_timer && (
                                         <div className="text-[8.5px] font-mono text-pps-orange font-extrabold flex items-center gap-0.5">
-                                          <span>⚡{h.focus_duration_minutes || 25}m</span>
+                                          <Zap className="w-3 h-3 inline" />
+                                          <span>{h.focus_duration_minutes || 25}m</span>
                                         </div>
                                       )}
                                     </div>
@@ -575,7 +580,8 @@ const CalendarSection = () => {
           className="bg-card border border-border rounded-3xl p-5 shadow-xl space-y-3"
         >
           <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground mb-3 flex items-center gap-2">
-            <span>📋 Monthly Agenda Stream</span>
+            <ListFilter className="w-3 h-3 inline" />
+            <span>Monthly Agenda Stream</span>
           </h3>
 
           <div className="space-y-2">
@@ -596,11 +602,11 @@ const CalendarSection = () => {
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-foreground font-mono flex items-center gap-2">
                           <span>{d.dateStr}</span>
-                          {d.completions >= d.dueCount && <span className="text-xs" title="Perfect Day">🏆</span>}
+                          {d.completions >= d.dueCount && <span className="text-xs" title="Perfect Day"><Award className="w-3 h-3 inline" /></span>}
                         </div>
                         {note && (
-                          <div className="text-[11px] text-muted-foreground italic truncate mt-0.5 font-medium">
-                            💬 "{note}"
+                            <div className="text-[11px] text-muted-foreground italic truncate mt-0.5 font-medium">
+                              "{note}"
                           </div>
                         )}
                       </div>
@@ -638,7 +644,8 @@ const CalendarSection = () => {
               <div className="flex items-center justify-between pb-3 border-b border-border/40">
                 <div>
                   <h3 className="text-lg font-bold text-foreground flex items-center gap-2 font-mono">
-                    <span>📅 {selectedDayStr}</span>
+                    <CalendarIcon className="w-4 h-4" />
+                    <span>{selectedDayStr}</span>
                     {selectedDayStr === todayStr && (
                       <span className="text-[10px] bg-secondary/15 text-secondary border border-secondary/20 px-2 py-0.5 rounded-full font-sans font-bold">
                         Today
@@ -662,7 +669,7 @@ const CalendarSection = () => {
               {/* Day Note Display if any */}
               {getDayNote(selectedDayStr) && (
                 <div className="bg-surface/80 border border-amber-500/30 p-3 rounded-xl text-xs text-muted-foreground italic flex items-center gap-2 font-medium">
-                  <span>💬 Note:</span>
+                  <span>Note:</span>
                   <span>"{getDayNote(selectedDayStr)}"</span>
                 </div>
               )}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, Plus, Users, Hash, Shield } from "lucide-react";
 
@@ -29,6 +29,15 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,7 +65,12 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-group-title"
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -70,7 +84,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                 {selectedEmoji}
               </div>
               <div>
-                <h3 className="text-lg font-black tracking-tight text-foreground font-mono">
+                <h3 id="create-group-title" className="text-lg font-black tracking-tight text-foreground font-mono">
                   Create Study Group
                 </h3>
                 <p className="text-xs text-muted-foreground">
@@ -118,7 +132,7 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
             </div>
 
             {/* Group Name */}
-            <div>
+            <div className="space-y-1">
               <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
                 Group Name *
               </label>
@@ -127,9 +141,13 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. AI & Algorithms Sprint Lab"
-                className="w-full px-4 py-2.5 bg-surface border border-border/80 rounded-xl text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary"
+                aria-invalid={!name.trim()}
                 required
+                className="w-full px-4 py-2.5 bg-surface border border-border/80 rounded-xl text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary"
               />
+              {!name.trim() && (
+                <p className="text-xs text-destructive mt-1">This field is required</p>
+              )}
             </div>
 
             {/* Study Topic / Subject */}

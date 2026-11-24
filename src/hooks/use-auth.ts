@@ -1,3 +1,22 @@
+/**
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  ⚠️  CRITICAL AUTH CODE — DO NOT MODIFY WITHOUT TESTING  ⚠️   ║
+ * ╠══════════════════════════════════════════════════════════════════╣
+ * ║  This file handles user authentication for the entire app.      ║
+ * ║  Breaking changes here will lock users out or corrupt data.      ║
+ * ║                                                                ║
+ * ║  Before modifying:                                              ║
+ * ║  1. Read docs/AUTH_README.md for the full auth flow             ║
+ * ║  2. Run: npx vitest run src/hooks/__tests__/use-auth.test.ts  ║
+ * ║  3. Test all 4 login modes: Sign In, Sign Up, Demo, Google     ║
+ * ║  4. Test offline behavior (disconnect internet)                  ║
+ * ║  5. Test demo trial expiry flow                                  ║
+ * ║  6. Test mobile viewport (390px)                                 ║
+ * ║  7. Run: npm test && npm run build && npm run lint             ║
+ * ║                                                                ║
+ * ║  Auth bugs are P0 priority. When in doubt, ask before editing. ║
+ * ╚══════════════════════════════════════════════════════════════════╝
+ */
 import { useState, useCallback, useEffect, createContext, useContext, ReactNode, createElement } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +54,19 @@ export function clearUserSessionStorage(): void {
   }
 }
 
+/**
+ * One-time cleanup of legacy local-account artifacts.
+ * These were used by the old offline sandbox fallback which has been removed.
+ * We purge them on first load so no stale credentials linger in localStorage.
+ */
+function cleanupLegacyLocalAccounts(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("pps_local_accounts");
+    localStorage.removeItem("pps_local_session");
+  } catch {}
+}
+
 export interface User {
   email: string | null;
   isGuest: boolean;
@@ -43,9 +75,9 @@ export interface User {
 
 export interface AuthReturn {
   user: User | null;
-  login: (email: string, password: string) => Promise<string | null>;
+  login: (email: string, password: string, rememberDays?: number) => Promise<string | null>;
   signup: (email: string, password: string, confirm: string) => Promise<string | null>;
-  loginAsGuest: (name?: string, remember?: boolean) => void;
+  loginAsGuest: (name?: string) => void;
   logout: () => void;
   resetPassword: (email: string) => Promise<string | null>;
   updatePassword: (password: string) => Promise<string | null>;
@@ -60,24 +92,109 @@ const AuthContext = createContext<AuthReturn | null>(null);
 
 export const TRIAL_DURATION_DAYS = 5;
 
-async function hashPassword(password: string): Promise<string> {
-  if (typeof crypto !== "undefined" && crypto.subtle) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password + "_pps_secure_salt_v1");
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+/**
+ * Maps a Supabase auth error to a user-friendly message.
+ * Prefers error.code when available, falls back to message text matching.
+ */
+export function mapAuthError(error: { code?: string; message: string; status?: number }): string {
+  const code = (error.code || "").toLowerCase();
+  const msg = (error.message || "").toLowerCase();
+
+  if (code === "invalid_credentials" || msg.includes("invalid login credentials") || msg.includes("invalid password")) {
+    return "Email or password is incorrect. Please try again.";
   }
-  let hash = 0;
-  for (let i = 0; i < password.length; i++) {
-    hash = ((hash << 5) - hash) + password.charCodeAt(i);
-    hash |= 0;
+  if (code === "email_not_confirmed" || msg.includes("email not confirmed") || msg.includes("confirm your email")) {
+    return "Please check your email and click the confirmation link before logging in.";
   }
-  return `fallback_${Math.abs(hash)}`;
+  if (code === "user_already_exists" || msg.includes("user already registered") || msg.includes("already registered")) {
+    return "An account with this email may already exist. Try logging in, or use a different email.";
+  }
+  if (code === "weak_password" || msg.includes("password should be at least") || msg.includes("password is too weak")) {
+    return "Password must be at least 8 characters with 1 uppercase letter and 1 number.";
+  }
+  if (code === "over_request_rate_limit" || msg.includes("rate limit") || msg.includes("too many")) {
+    return "Too many attempts. Please wait a few minutes and try again.";
+  }
+  if (code === "over_email_send_rate_limit" || msg.includes("email rate limit")) {
+    return "Too many emails sent. Please wait a few minutes before trying again.";
+  }
+  if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("timeout") || msg.includes("unreachable") || msg.includes("connection")) {
+    return "Unable to connect. Please check your internet connection and try again.";
+  }
+  if (code === "unsupported_provider" || msg.includes("provider is not enabled") || msg.includes("unsupported provider")) {
+    return "Google Sign-In is not configured. Please use email login instead.";
+  }
+  // Fallback: return original message
+  return error.message || "An unexpected error occurred. Please try again.";
+}
+
+/**
+ * Checks whether an auth error is a network/connectivity failure (vs a real auth failure).
+ */
+function isNetworkError(error: { message: string }): boolean {
+  const msg = (error.message || "").toLowerCase();
+  return (
+    msg.includes("failed to fetch") ||
+    msg.includes("network") ||
+    msg.includes("timeout") ||
+    msg.includes("unreachable") ||
+    msg.includes("connection") ||
+    msg.includes("econnrefused") ||
+    msg.includes("enotfound")
+  );
+}
+
+/**
+ * Validates password strength against the app's password policy:
+ * - At least 8 characters
+ * - At least 1 uppercase letter
+ * - At least 1 number
+ * Returns an error message string if invalid, or null if valid.
+ */
+export function validatePasswordStrength(password: string): string | null {
+  if (password.length < 8) return "Password must be at least 8 characters.";
+  if (!/[A-Z]/.test(password)) return "Password must contain at least 1 uppercase letter.";
+  if (!/[0-9]/.test(password)) return "Password must contain at least 1 number.";
+  return null;
+}
+
+function getStoredGuestCreatedAt(): string | null {
+  if (typeof window === "undefined") return null;
+
+  // Primary key
+  const primary = localStorage.getItem("pps_guest_created_at");
+  if (primary) return primary;
+
+  // Cookie fallback (in case localStorage was cleared but cookie persists)
+  try {
+    if (typeof document !== "undefined" && document.cookie) {
+      const match = document.cookie.match(/(?:^|;\s*)pps_gt=([^;]+)/);
+      if (match && match[1]) {
+        const decoded = decodeURIComponent(match[1]);
+        try { localStorage.setItem("pps_guest_created_at", decoded); } catch {}
+        return decoded;
+      }
+    }
+  } catch {}
+
+  // Tamper detection: if an active guest session exists (guest markers present)
+  // but the timestamp and cookie were deleted to bypass the 5-day limit,
+  // treat as expired (epoch timestamp) to prevent unlimited trial resets.
+  const isGuestActive = localStorage.getItem("pps_guest") === "true";
+  const hasGuestHistory =
+    localStorage.getItem("pps_guest_onboarded") === "true" ||
+    localStorage.getItem("pps_onboarded_guest") === "true" ||
+    Boolean(localStorage.getItem("pps_guest_name"));
+
+  if (isGuestActive && hasGuestHistory) {
+    return new Date(0).toISOString();
+  }
+
+  return null;
 }
 
 function getGuestTrialDaysRemaining(): number {
-  const createdAtStr = localStorage.getItem("pps_guest_created_at");
+  const createdAtStr = getStoredGuestCreatedAt();
   if (!createdAtStr) return TRIAL_DURATION_DAYS;
   const createdAt = new Date(createdAtStr).getTime();
   const now = new Date().getTime();
@@ -87,7 +204,7 @@ function getGuestTrialDaysRemaining(): number {
 }
 
 function checkIsGuestTrialExpired(): boolean {
-  const createdAtStr = localStorage.getItem("pps_guest_created_at");
+  const createdAtStr = getStoredGuestCreatedAt();
   if (!createdAtStr) return false;
   const createdAt = new Date(createdAtStr).getTime();
   const now = new Date().getTime();
@@ -314,7 +431,7 @@ async function migrateGuestData(userId: string): Promise<void> {
       localStorage.removeItem("pps_guest");
       localStorage.removeItem("pps_guest_name");
       localStorage.removeItem("pps_guest_created_at");
-      localStorage.removeItem("pps_onboarded_guest");
+      localStorage.removeItem("pps_guest_onboarded");
       localStorage.removeItem("pps_ai_chat_guest");
       localStorage.removeItem("pps_ai_chat_history");
       try { sessionStorage.removeItem("pps_guest"); } catch {}
@@ -330,23 +447,12 @@ async function migrateGuestData(userId: string): Promise<void> {
   }
 }
 
-function getLocalSession(): User | null {
-  if (typeof window === "undefined") return null;
-  const localSess = localStorage.getItem("pps_local_session");
-  if (localSess) {
-    try {
-      return JSON.parse(localSess);
-    } catch {}
-  }
-  return null;
-}
-
 function useProvideAuth(): AuthReturn {
   const isGuestInitial = typeof window !== "undefined" && (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true");
 
   const [user, setUser] = useState<User | null>(() => {
     if (isGuestInitial) return { email: null, isGuest: true };
-    return getLocalSession();
+    return null;
   });
   const [loading, setLoading] = useState<boolean>(() => {
     // If guest session exists, render immediately in 0ms!
@@ -358,6 +464,38 @@ function useProvideAuth(): AuthReturn {
   useEffect(() => {
     let resolved = false;
 
+    // One-time cleanup of legacy local-account artifacts (pps_local_accounts / pps_local_session)
+    cleanupLegacyLocalAccounts();
+
+    // Check if the user's session duration has expired.
+    // This is a convenience check, not a security control — only signs out on explicit expiry.
+    // CRITICAL: Never sign out on network errors — only on real session expiry.
+    const checkSessionExpiry = () => {
+      try {
+        const loginTimestamp = localStorage.getItem("pps_login_timestamp");
+        const sessionDuration = localStorage.getItem("pps_session_duration");
+        if (loginTimestamp && sessionDuration) {
+          const elapsed = Date.now() - parseInt(loginTimestamp);
+          const maxMs = parseInt(sessionDuration) * 24 * 60 * 60 * 1000;
+          if (elapsed > maxMs) {
+            // Session expired by convenience check — sign out
+            supabase.auth.signOut().then(() => {
+              clearUserSessionStorage();
+              setUser(null);
+              queryClient.clear();
+            }).catch((err) => {
+              // Network error during signOut — do NOT force sign out locally.
+              // The user will be signed out on next successful auth check.
+              console.warn("Session expiry signOut notice:", err);
+            });
+          }
+        }
+      } catch {
+        // Storage access error — ignore, don't sign out
+      }
+    };
+    checkSessionExpiry();
+
     // Safety timeout: Never let placeholder/slow network stall app launch for more than 800ms
     const safetyTimer = setTimeout(() => {
       if (!resolved) {
@@ -365,7 +503,7 @@ function useProvideAuth(): AuthReturn {
         if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
           setUser({ email: null, isGuest: true });
         } else {
-          setUser(getLocalSession());
+          setUser(null);
         }
         setLoading(false);
       }
@@ -399,7 +537,7 @@ function useProvideAuth(): AuthReturn {
       } else if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
         setUser({ email: null, isGuest: true });
       } else {
-        setUser(getLocalSession());
+        setUser(null);
       }
       setLoading(false);
     });
@@ -415,19 +553,21 @@ function useProvideAuth(): AuthReturn {
           } else if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
             setUser({ email: null, isGuest: true });
           } else {
-            setUser(getLocalSession());
+            setUser(null);
           }
           setLoading(false);
         }
       })
       .catch(() => {
+        // Network error during getSession — do NOT sign out, just finish loading.
+        // The safety timer will have already handled guest detection.
         if (!resolved) {
           resolved = true;
           clearTimeout(safetyTimer);
           if (localStorage.getItem("pps_guest") === "true" || sessionStorage.getItem("pps_guest") === "true") {
             setUser({ email: null, isGuest: true });
           } else {
-            setUser(getLocalSession());
+            setUser(null);
           }
           setLoading(false);
         }
@@ -441,8 +581,10 @@ function useProvideAuth(): AuthReturn {
           if (session?.user) {
             setUser(mapUser(session.user));
           } else {
-            setUser(getLocalSession());
+            setUser(null);
           }
+        }).catch(() => {
+          // Network error — don't change state
         });
       } else {
         setUser({ email: null, isGuest: true });
@@ -460,17 +602,84 @@ function useProvideAuth(): AuthReturn {
     };
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<string | null> => {
+  const login = useCallback(async (email: string, password: string, rememberDays?: number): Promise<string | null> => {
     if (!email || !password) return "Please fill in all fields.";
     const cleanEmail = email.toLowerCase().trim();
+    const days = rememberDays || 7;
+
+    // Store session duration preference for app-load expiry check
+    try {
+      localStorage.setItem("pps_session_duration", String(days));
+      localStorage.setItem("pps_login_timestamp", String(Date.now()));
+    } catch {}
+
+    const MAX_RETRIES = 3;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        });
+
+        if (!error) {
+          sendLoginNotification(cleanEmail);
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("pps_auth_change"));
+          }
+          navigate("/dashboard");
+          return null;
+        }
+
+        // If network error and we have retries left, back off and retry
+        if (isNetworkError(error) && attempt < MAX_RETRIES - 1) {
+          const backoff = 1000 * Math.pow(2, attempt);
+          await new Promise((r) => setTimeout(r, backoff));
+          continue;
+        }
+
+        // Non-network error or retries exhausted — return mapped message
+        return mapAuthError(error);
+      } catch (err: any) {
+        if (attempt < MAX_RETRIES - 1) {
+          const backoff = 1000 * Math.pow(2, attempt);
+          await new Promise((r) => setTimeout(r, backoff));
+          continue;
+        }
+        return "Unable to connect. Please check your internet connection and try again.";
+      }
+    }
+
+    return "Unable to connect. Please check your internet connection and try again.";
+  }, [navigate]);
+
+  const signup = useCallback(async (email: string, password: string, confirm: string): Promise<string | null> => {
+    if (!email || !password || !confirm) return "Please fill in all fields.";
+    const cleanEmail = email.toLowerCase().trim();
+
+    // Password strength validation (client-side; Supabase also enforces server-side)
+    const pwError = validatePasswordStrength(password);
+    if (pwError) return pwError;
+    if (password !== confirm) return "Passwords do not match.";
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
       });
 
-      if (!error) {
+      if (error) {
+        // NO auto-retry for signup — could spam confirmation emails and hit rate limits
+        return mapAuthError(error);
+      }
+
+      // With email confirmation OFF (beta default), signUp returns a session immediately.
+      // Run demo data migration if we have a session.
+      if (data?.session?.user) {
+        localStorage.setItem("pps_login_timestamp", String(Date.now()));
+        localStorage.setItem("pps_session_duration", "7");
+        setUser(mapUser(data.user));
+        await migrateGuestData(data.user.id);
         sendLoginNotification(cleanEmail);
         if (typeof window !== "undefined") {
           window.dispatchEvent(new Event("pps_auth_change"));
@@ -479,169 +688,47 @@ function useProvideAuth(): AuthReturn {
         return null;
       }
 
-      const msg = error.message.toLowerCase();
-      if (msg.includes("email not confirmed") || msg.includes("confirm your email")) {
-        // In local/sandbox development without email provider, auto-grant access
-        console.warn("Email confirmation pending in cloud. Auto-activating local session for immediate access.");
-      }
-
-      const isInvalidCredentials = msg.includes("invalid login credentials") || msg.includes("invalid password");
-      const isNetworkOrOffline =
-        msg.includes("failed to fetch") ||
-        msg.includes("network") ||
-        msg.includes("timeout") ||
-        msg.includes("unreachable") ||
-        msg.includes("connection");
-
-      // Check local accounts registry (which stores salted SHA-256 hashes)
-      const rawAccounts = localStorage.getItem("pps_local_accounts");
-      let localAccounts: Record<string, string> = {};
-      if (rawAccounts) {
-        try { localAccounts = JSON.parse(rawAccounts); } catch {}
-      }
-
-      const hashedPassword = await hashPassword(password);
-
-      // If registered locally and password matches, log in
-      if (localAccounts[cleanEmail]) {
-        const stored = localAccounts[cleanEmail];
-        const isMatch = stored === hashedPassword || stored === password;
-        if (isMatch) {
-          // Auto-migrate legacy plaintext to hash if needed
-          if (stored !== hashedPassword) {
-            localAccounts[cleanEmail] = hashedPassword;
-            localStorage.setItem("pps_local_accounts", JSON.stringify(localAccounts));
-          }
-          const localId = `local_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
-          const localUser: User = { email: cleanEmail, isGuest: false, id: localId };
-          localStorage.setItem("pps_local_session", JSON.stringify(localUser));
-          localStorage.setItem("pps_onboarding_completed", "true");
-          setUser(localUser);
-          sendLoginNotification(cleanEmail);
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event("pps_auth_change"));
-          }
-          navigate("/dashboard");
-          return null;
-        } else {
-          return "Invalid password for this account. Please check your password.";
-        }
-      }
-
-      // If Supabase gave an explicit auth error (e.g. wrong password) and is not offline, report it
-      if (isInvalidCredentials || (!isNetworkOrOffline && !msg.includes("confirm"))) {
-        return error.message;
-      }
-
-      // If Supabase cloud is unreachable or user is testing offline, allow local sandbox with hashed credentials
-      localAccounts[cleanEmail] = hashedPassword;
-      localStorage.setItem("pps_local_accounts", JSON.stringify(localAccounts));
-
-      const localId = `local_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
-      const localUser: User = { email: cleanEmail, isGuest: false, id: localId };
-      localStorage.setItem("pps_local_session", JSON.stringify(localUser));
-      localStorage.setItem("pps_onboarding_completed", "true");
-      setUser(localUser);
-      sendLoginNotification(cleanEmail);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("pps_auth_change"));
-      }
-      navigate("/dashboard");
-      return null;
+      // No session returned — email confirmation is required
+      return "SUCCESS_CONFIRMATION_REQUIRED";
     } catch (err: any) {
-      console.warn("⚠️ Sign in exception. Fallback to Local Sandbox Session:", err);
-      const hashedPassword = await hashPassword(password);
-      const rawAccounts = localStorage.getItem("pps_local_accounts");
-      let localAccounts: Record<string, string> = {};
-      if (rawAccounts) {
-        try { localAccounts = JSON.parse(rawAccounts); } catch {}
+      // NO local fallback — block with clear error
+      const msg = (err?.message || "").toLowerCase();
+      if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("timeout")) {
+        return "Unable to connect. Please check your internet connection and try again.";
       }
-      localAccounts[cleanEmail] = hashedPassword;
-      localStorage.setItem("pps_local_accounts", JSON.stringify(localAccounts));
-
-      const localId = `local_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
-      const localUser: User = { email: cleanEmail, isGuest: false, id: localId };
-      localStorage.setItem("pps_local_session", JSON.stringify(localUser));
-      localStorage.setItem("pps_onboarding_completed", "true");
-      setUser(localUser);
-      sendLoginNotification(cleanEmail);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("pps_auth_change"));
-      }
-      navigate("/dashboard");
-      return null;
+      return "Unable to create account. Please try again later.";
     }
   }, [navigate]);
 
-  const signup = useCallback(async (email: string, password: string, confirm: string): Promise<string | null> => {
-    if (!email || !password || !confirm) return "Please fill in all fields.";
-    if (password.length < 6) return "Password must be at least 6 characters.";
-    if (password !== confirm) return "Passwords do not match.";
-    const cleanEmail = email.toLowerCase().trim();
-
-    // Store in local account registry as salted cryptographic hash (never plaintext)
-    const hashedPassword = await hashPassword(password);
-    const rawAccounts = localStorage.getItem("pps_local_accounts");
-    let localAccounts: Record<string, string> = {};
-    if (rawAccounts) {
-      try { localAccounts = JSON.parse(rawAccounts); } catch {}
-    }
-    localAccounts[cleanEmail] = hashedPassword;
-    localStorage.setItem("pps_local_accounts", JSON.stringify(localAccounts));
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password,
-      });
-
-      // Whether Supabase succeeded, required confirmation, or is offline:
-      // Provision the local session immediately so user enters dashboard without friction
-      const localId = data?.user?.id || `local_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
-      const localUser: User = { email: cleanEmail, isGuest: false, id: localId };
-      localStorage.setItem("pps_local_session", JSON.stringify(localUser));
-      localStorage.setItem("pps_onboarding_completed", "true");
-      setUser(localUser);
-      sendLoginNotification(cleanEmail);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("pps_auth_change"));
-      }
-      navigate("/dashboard");
-      return null;
-    } catch (err: any) {
-      console.warn("⚠️ Network exception during signup. Creating Local Sandbox Account:", err);
-      const localId = `local_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
-      const localUser: User = { email: cleanEmail, isGuest: false, id: localId };
-      localStorage.setItem("pps_local_session", JSON.stringify(localUser));
-      localStorage.setItem("pps_onboarding_completed", "true");
-      setUser(localUser);
-      sendLoginNotification(cleanEmail);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("pps_auth_change"));
-      }
-      navigate("/dashboard");
-      return null;
-    }
-  }, [navigate]);
-
-  const loginAsGuest = useCallback((name?: string, remember: boolean = true) => {
+  const loginAsGuest = useCallback((name?: string) => {
+    const existingTimestamp = getStoredGuestCreatedAt();
     const guestUser: User = { email: null, isGuest: true };
-    if (remember) {
-      localStorage.setItem("pps_guest", "true");
+
+    if (!existingTimestamp) {
+      const nowISO = new Date().toISOString();
+      localStorage.setItem("pps_guest_created_at", nowISO);
+      try {
+        if (typeof document !== "undefined") {
+          document.cookie = `pps_gt=${encodeURIComponent(nowISO)}; max-age=31536000; path=/`;
+        }
+      } catch {}
     } else {
-      sessionStorage.setItem("pps_guest", "true");
+      localStorage.setItem("pps_guest_created_at", existingTimestamp);
+      try {
+        if (typeof document !== "undefined") {
+          document.cookie = `pps_gt=${encodeURIComponent(existingTimestamp)}; max-age=31536000; path=/`;
+        }
+      } catch {}
     }
-    
+
+    // Always use localStorage for guest session (no sessionStorage)
+    localStorage.setItem("pps_guest", "true");
+
     if (name) {
       localStorage.setItem("pps_guest_name", name.trim());
     }
-    // Set trial start timestamp if not already set (preserves existing trial progress)
-    if (!localStorage.getItem("pps_guest_created_at")) {
-      localStorage.setItem("pps_guest_created_at", new Date().toISOString());
-    }
 
-    // Set onboarded keys so demo mode loads the dashboard instantly without blocking errors
-    localStorage.setItem("pps_onboarded_guest", "true");
+    // Set onboarded keys so demo mode loads the dashboard instantly
     localStorage.setItem("pps_guest_onboarded", "true");
     localStorage.setItem("pps_onboarding_completed", "true");
     if (!localStorage.getItem("pps_active_track")) {
@@ -700,14 +787,26 @@ function useProvideAuth(): AuthReturn {
   }, []);
 
   const updatePassword = useCallback(async (password: string): Promise<string | null> => {
-    if (!password || password.length < 6) return "Password must be at least 6 characters.";
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) return error.message;
-    return null;
+    const pwError = validatePasswordStrength(password);
+    if (pwError) return pwError;
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) return mapAuthError(error);
+      return null;
+    } catch (err: any) {
+      return "Unable to connect. Please check your internet connection and try again.";
+    }
   }, []);
 
   const loginWithGoogle = useCallback(async (): Promise<string | null> => {
     try {
+      // Check if Supabase is properly configured (not using placeholder URL)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl || supabaseUrl.includes("placeholder") || supabaseUrl === "https://your-project-id.supabase.co") {
+        console.warn("🔴 Google OAuth unavailable: VITE_SUPABASE_URL is not configured (placeholder detected).");
+        return "Google Sign-In requires a configured Supabase backend. Please use the Demo tab or Email Sign-In instead.";
+      }
+
       // P1: Sanitize redirect URL avoiding trailing hashes that break OAuth callback parsing
       const origin = window.location.origin.replace(/\/+$/, "");
       const basePath = (import.meta.env.BASE_URL || "").replace(/\/+$/, "");
@@ -728,7 +827,7 @@ function useProvideAuth(): AuthReturn {
 
       if (error) {
         console.warn("Google OAuth cloud provider error:", error.message);
-        return error.message || "Google Sign-In is currently unavailable. Please use email or guest login.";
+        return mapAuthError(error);
       }
 
       if (data?.url) {

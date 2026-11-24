@@ -20,6 +20,7 @@ import {
   MicroHabitValidationResult,
 } from "@/lib/habits/agniEngine";
 import { playHabitCompletionSound, audioEngine } from "@/lib/audio";
+import { enqueueOfflineMutation, flushOfflineQueue, initOfflineSyncListener } from "@/lib/sync/offlineQueue";
 
 export { canLogRestDay, canLogMicroHabit, isWithinCircadianWindow };
 
@@ -226,7 +227,7 @@ export function HabitsProvider({
             },
             {
               id: "demo-2",
-              name: "25-Min Deep Work Sprint 💻",
+              name: "25-Min Deep Work Sprint",
               category: "Productivity",
               priority: "High",
               period: "Daily",
@@ -243,7 +244,7 @@ export function HabitsProvider({
             },
             {
               id: "demo-3",
-              name: "Read 10 Pages of Growth 📚",
+              name: "Read 10 Pages of Growth",
               category: "Mindset",
               priority: "Medium",
               period: "Daily",
@@ -301,20 +302,37 @@ export function HabitsProvider({
       })
       .subscribe();
 
-    // Cross-device focus & visibility sync: when returning to tab/app, refresh habits
+    // Cross-device focus & visibility sync: when returning to tab/app, refresh habits and flush offline queue
     const handleVisibilityOrFocus = () => {
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        if (typeof navigator !== "undefined" && navigator.onLine) {
+          flushOfflineQueue().then((res) => {
+            if (res.processed > 0) fetchHabits();
+          });
+        }
         fetchHabits();
       }
     };
     window.addEventListener("focus", handleVisibilityOrFocus);
     document.addEventListener("visibilitychange", handleVisibilityOrFocus);
 
+    // Initial flush if online
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      flushOfflineQueue().then((res) => {
+        if (res.processed > 0) fetchHabits();
+      });
+    }
+
+    const cleanupOfflineListener = initOfflineSyncListener(() => {
+      return fetchHabits().then(() => true);
+    });
+
     return () => {
       try {
         channel.unsubscribe();
         supabase.removeChannel(channel);
       } catch {}
+      cleanupOfflineListener();
       window.removeEventListener("focus", handleVisibilityOrFocus);
       document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
     };
@@ -584,7 +602,7 @@ export function HabitsProvider({
 
     // ── Task 1.2: Anti-Cheat Proof-of-Focus Mechanical Lock ──
     if (!isCompleted && habit.requires_focus_timer && !forceBypass) {
-      toast.warning(`⚡ "${habit.name}" is Timer-Locked!`, {
+      toast.warning(`"${habit.name}" is Timer-Locked!`, {
         description: `This anchor habit requires a verified focus sprint (${habit.focus_duration_minutes || 25}m).`,
         action: {
           label: "Start Sprint",
@@ -610,7 +628,7 @@ export function HabitsProvider({
     if (!isCompleted && (habit.window_start || habit.window_end) && !forceBypass) {
       const windowCheck = isWithinCircadianWindow(habit.window_start, habit.window_end);
       if (!windowCheck.isOpen) {
-        toast.warning(`⏳ Outside Circadian Window for "${habit.name}"`, {
+        toast.warning(`Outside Circadian Window for "${habit.name}"`, {
           description: `${windowCheck.label}. Tap to log anyway with Grace Mode.`,
           action: {
             label: "Bypass (Grace)",
@@ -677,6 +695,23 @@ export function HabitsProvider({
 
     if (isGuest) return;
 
+    // Check offline status first: buffer directly into durable queue without failing
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      enqueueOfflineMutation("TOGGLE_HABIT", {
+        habitId: id,
+        dateStr: dateToToggle,
+        completed: !isCompleted,
+        userId: userId!,
+        streak: updatedStreak,
+        lastCompletedDate: updatedLastCompletedDate,
+        dueDate: updatedDueDate,
+      });
+      toast.info("Saved offline", {
+        description: "Your completion is queued locally and will sync automatically when back online.",
+      });
+      return;
+    }
+
     try {
       if (!isCompleted) {
         // Add completion - handle potential unique constraint error (code 23505) gracefully
@@ -721,44 +756,64 @@ export function HabitsProvider({
         dbError?.code === "PGRST301";
 
       if (isAuthError) {
+        enqueueOfflineMutation("TOGGLE_HABIT", {
+          habitId: id,
+          dateStr: dateToToggle,
+          completed: !isCompleted,
+          userId: userId!,
+          streak: updatedStreak,
+          lastCompletedDate: updatedLastCompletedDate,
+          dueDate: updatedDueDate,
+        });
         toast.error("Session expired — please log in again.", {
-          description: "Your change was saved locally, but could not sync to cloud.",
+          description: "Your completion was preserved locally and will sync once re-authenticated.",
           duration: 7000,
         });
       } else {
-        setHabits(previousHabits);
-        toast.error("Failed to sync completion with database. Reverting.");
-      }
+        // Network / Supabase error: buffer into durable offline queue instead of reverting!
+enqueueOfflineMutation("TOGGLE_HABIT", {
+        habitId: id,
+        dateStr: dateToToggle,
+        completed: !isCompleted,
+        userId: userId!,
+        streak: updatedStreak,
+        lastCompletedDate: updatedLastCompletedDate,
+        dueDate: updatedDueDate,
+      });
+      toast.info("Synced offline", {
+        description: "Database currently unreachable. Progress safely buffered locally.",
+      });
     }
-  }, [habits, isGuest, userId, fetchHabits]);
+  }
+}, [habits, isGuest, userId, fetchHabits]);
 
-  // ── Task 1.1: Multi-Tier Habit Completion Engine ──
-  const completeHabit = useCallback(
-    async (
-      id: string,
-      completionType: "full" | "micro" | "rest" = "full",
-      targetDateStr?: string
-    ) => {
-      const habit = habits.find((h) => h.id === id);
-      if (!habit && completionType !== "rest") return;
+// ── Task 1.1: Multi-Tier Habit Completion Engine ──
+const completeHabit = useCallback(
+  async (
+    id: string,
+    completionType: "full" | "micro" | "rest" = "full",
+    targetDateStr?: string
+  ) => {
+    const habit = habits.find((h) => h.id === id);
+    if (!habit && completionType !== "rest") return;
 
-      const dateToLog = targetDateStr || getTodayStr();
-      const habitCategory = habit?.category || "General";
+    const dateToLog = targetDateStr || getTodayStr();
+    const habitCategory = habit?.category || "General";
 
-      if (completionType === "rest") {
-        const recoveryDates = getRecoveryXPClaimedDates();
-        const check = canLogRestDay(dateToLog, recoveryDates);
-        if (!check.allowed) {
-          toast.warning(check.reason || "Maximum 2 rest days per week reached. Time to rebuild momentum!");
-          return;
-        }
-        saveRecoveryXPClaimedDates([...recoveryDates, dateToLog]);
-        playHabitCompletionSound("rest", habitCategory);
-        toast.success("🌿 Rest Day verified! (+5 Recovery XP)", {
-          description: "Streak protected. Recovery fuels long-term consistency.",
-        });
+    if (completionType === "rest") {
+      const recoveryDates = getRecoveryXPClaimedDates();
+      const check = canLogRestDay(dateToLog, recoveryDates);
+      if (!check.allowed) {
+        toast.warning(check.reason || "Maximum 2 rest days per week reached. Time to rebuild momentum!");
         return;
       }
+      saveRecoveryXPClaimedDates([...recoveryDates, dateToLog]);
+      playHabitCompletionSound("rest", habitCategory);
+      toast.success("Rest Day verified! (+5 Recovery XP)", {
+        description: "Streak protected. Recovery fuels long-term consistency.",
+      });
+      return;
+    }
 
       if (completionType === "micro") {
         const microMap = getMicroCompletionsMap();
@@ -769,7 +824,7 @@ export function HabitsProvider({
         }
         logMicroCompletion(id, dateToLog);
         playHabitCompletionSound("micro", habitCategory);
-        toast.success(`⚡ 2-Minute Micro-Habit logged: "${habit?.name}"!`, {
+        toast.success(`2-Minute Micro-Habit logged: "${habit?.name}"!`, {
           description: "+2 XP awarded. Streak protected!",
         });
         if (habit && !habit.completedDates.includes(dateToLog)) {
@@ -785,7 +840,7 @@ export function HabitsProvider({
         if (!habit.completedDates.includes(dateToLog)) {
           await toggleCompletion(id, dateToLog, true);
         }
-        toast.success(`🎉 Habit completed: "${habit.name}"! (+10 XP)`);
+        toast.success(`Habit completed: "${habit.name}"! (+10 XP)`);
       }
     },
     [habits, toggleCompletion]
@@ -804,7 +859,7 @@ export function HabitsProvider({
       const today = getTodayStr();
       if (!targetHabit.completedDates.includes(today)) {
         completeHabit(targetHabitId, "full", today);
-        toast.success(`⚡ Verified Focus Proof Accepted! (+10 XP)`, {
+        toast.success(`Verified Focus Proof Accepted! (+10 XP)`, {
           description: `Sprint completed for "${targetHabit.name}". Anti-cheat unlocked!`,
         });
       }

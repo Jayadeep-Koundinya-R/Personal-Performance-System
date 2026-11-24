@@ -1,12 +1,12 @@
 /*
-  🎯 Floating Mini-Timer Widget
+  Floating Mini-Timer Widget
   
   Glassmorphic floating pill rendered at the app shell level.
   Visible on ALL tabs when a focus session is active,
   EXCEPT when the user is already on the Focus Studio tab.
   
   Features:
-  - Compact countdown display with growth stage emoji
+  - Compact countdown display with growth stage indicator
   - Pause/Resume toggle
   - Task name (truncated)
   - Progress bar
@@ -17,14 +17,15 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useFocusTimer } from "@/hooks/use-focus-timer";
+import { Target } from "lucide-react";
+import { useFocusTimer, useFocusTimerTick } from "@/hooks/use-focus-timer";
 
 function getGrowthStage(ratio: number): string {
   if (ratio >= 1) return "🔥";
   if (ratio >= 0.75) return "🌳";
   if (ratio >= 0.5) return "🌿";
   if (ratio >= 0.25) return "🌱";
-  return "🎯";
+  return "⏱";
 }
 
 interface FloatingMiniTimerProps {
@@ -34,10 +35,11 @@ interface FloatingMiniTimerProps {
 
 const FloatingMiniTimer = ({ activeSection, onNavigate }: FloatingMiniTimerProps) => {
   const timer = useFocusTimer();
+  const tick = useFocusTimerTick();
   const [expanded, setExpanded] = useState(false);
 
   // Only show when timer is running or flow extend prompt is active, and NOT on Focus Studio tab
-  const shouldShow = (timer.isRunning || timer.showFlowExtend || timer.remainingSec < timer.totalSec && timer.remainingSec > 0) && activeSection !== "tracker";
+  const shouldShow = (timer.isRunning || timer.showFlowExtend || tick.remainingSec < timer.totalSec && tick.remainingSec > 0) && activeSection !== "tracker";
 
   return (
     <AnimatePresence>
@@ -72,7 +74,7 @@ const FloatingMiniTimer = ({ activeSection, onNavigate }: FloatingMiniTimerProps
 
               {/* Growth stage + pulsing indicator */}
               <div className="relative flex-shrink-0">
-                <span className="text-lg">{getGrowthStage(timer.progressRatio)}</span>
+                <span className="text-lg">{getGrowthStage(tick.progressRatio)}</span>
                 {timer.isRunning && (
                   <motion.div
                     animate={{ scale: [1, 1.5, 1], opacity: [1, 0.3, 1] }}
@@ -94,7 +96,7 @@ const FloatingMiniTimer = ({ activeSection, onNavigate }: FloatingMiniTimerProps
 
               {/* Countdown */}
               <div className="text-lg font-extrabold font-mono text-foreground tracking-tight flex-shrink-0">
-                {timer.formatTimerTime(timer.remainingSec)}
+                {timer.formatTimerTime(tick.remainingSec)}
               </div>
 
               {/* Play/Pause button */}
@@ -117,7 +119,7 @@ const FloatingMiniTimer = ({ activeSection, onNavigate }: FloatingMiniTimerProps
             <div className="h-1 bg-surface relative">
               <motion.div
                 className="h-full bg-gradient-to-r from-primary to-secondary rounded-r-full"
-                style={{ width: `${Math.round(timer.progressRatio * 100)}%` }}
+                style={{ width: `${Math.round(tick.progressRatio * 100)}%` }}
                 transition={{ duration: 0.5 }}
               />
             </div>
@@ -136,7 +138,7 @@ const FloatingMiniTimer = ({ activeSection, onNavigate }: FloatingMiniTimerProps
                     {/* Flow extension prompt */}
                     {timer.showFlowExtend && (
                       <div className="bg-primary/5 border border-primary/15 rounded-xl p-2.5 text-center space-y-1.5">
-                        <div className="text-[11px] font-bold text-foreground">🌊 Extend your flow?</div>
+                        <div className="text-[11px] font-bold text-foreground">Extend your flow?</div>
                         <div className="flex items-center gap-1 justify-center">
                           {[5, 10, 15].map((mins) => (
                             <button
@@ -173,7 +175,7 @@ const FloatingMiniTimer = ({ activeSection, onNavigate }: FloatingMiniTimerProps
                         </button>
                       ))}
                       {timer.activeSound && (
-                        <span className="text-[9px] text-pps-green font-mono font-bold animate-pulse ml-0.5">●</span>
+                        <span className="text-[10px] text-pps-green font-mono font-bold animate-pulse ml-0.5">●</span>
                       )}
                     </div>
 
@@ -182,7 +184,7 @@ const FloatingMiniTimer = ({ activeSection, onNavigate }: FloatingMiniTimerProps
                       onClick={() => onNavigate("tracker")}
                       className="w-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground text-[11px] font-bold py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      <span>🎯</span>
+                      <Target className="w-4 h-4" />
                       <span>Go to Focus Studio →</span>
                     </button>
                   </div>

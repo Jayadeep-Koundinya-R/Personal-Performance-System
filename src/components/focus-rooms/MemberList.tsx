@@ -43,12 +43,12 @@ export const MemberList: React.FC<MemberListProps> = ({ members, onNudge, onClos
               {m.displayName}
             </span>
             {m.role === "teacher" && (
-              <span className="text-[8px] font-extrabold uppercase px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5">
+              <span className="text-[8px] font-extrabold uppercase px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5">
                 <GraduationCap className="w-2 h-2" />
               </span>
             )}
             {m.role === "admin" && (
-              <span className="text-[8px] font-extrabold uppercase px-1 py-0.2 rounded bg-primary/20 text-primary border border-primary/30 flex items-center gap-0.5">
+              <span className="text-[8px] font-extrabold uppercase px-1 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 flex items-center gap-0.5">
                 <Shield className="w-2 h-2" />
               </span>
             )}

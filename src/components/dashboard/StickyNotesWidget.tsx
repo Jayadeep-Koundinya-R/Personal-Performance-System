@@ -13,6 +13,8 @@ import {
   Bell,
   Clock,
   Sparkles,
+  Moon,
+  Sun,
   Edit2,
   X,
   ChevronUp,
@@ -193,7 +195,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
     try {
       const err = await onAddHabit(item.text, "General", "Today", "Medium");
       if (!err) {
-        toast.success(`Converted "${item.text}" into Today's Habit! ⚡`, {
+        toast.success(`Converted "${item.text}" into Today's Habit!`, {
           description: "+10 XP attached. Added directly to your daily habit schedule!",
         });
         const updated = items.map((it) =>
@@ -245,7 +247,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
         const h12 = hh % 12 || 12;
         const formatted = `${h12}:${String(mm).padStart(2, "0")} ${ampm}`;
 
-        toast.success(`Reminder set for ${formatted}! 🔔`, {
+        toast.success(`Reminder set for ${formatted}!`, {
           description: `Alarm scheduled for "${reminderModalItem.text}".`,
         });
 
@@ -288,7 +290,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
     }
 
     navigator.clipboard.writeText(content);
-    toast.success("Sticky note copied to clipboard! 📋");
+    toast.success("Sticky note copied to clipboard!");
   };
 
   // Clear Note
@@ -298,7 +300,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
     } else {
       handleTextChange("");
     }
-    toast.info("Sticky note cleared 🧼");
+    toast.info("Sticky note cleared");
   };
 
   // Determine if card is actively filled (to trigger dynamic highlighting)
@@ -346,7 +348,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
           )}
 
           {mode === "checklist" && items.length > 0 && (
-            <span className="text-[10px] font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.2 rounded-md">
+            <span className="text-[10px] font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded-md">
               {completedCount}/{items.length}
             </span>
           )}
@@ -458,6 +460,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
                     <button
                       type="button"
                       onClick={() => handleToggleItem(item.id)}
+                      aria-label="Toggle item completion"
                       className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
                         item.done
                           ? "bg-amber-500 border-amber-500 text-black"
@@ -506,7 +509,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
                     {/* Converted Badges */}
                     {item.convertedToHabit && (
                       <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-md">
-                        ⚡ In Today
+                        <Zap className="w-2.5 h-2.5" /> In Today
                       </span>
                     )}
 
@@ -539,7 +542,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
 
             {items.length === 0 && (
               <div className="text-center py-3 text-muted-foreground text-xs font-medium">
-                ✨ All items clear! Add a quick task below.
+                <Sparkles className="w-3.5 h-3.5" /> All items clear! Add a quick task below.
               </div>
             )}
           </div>
@@ -594,7 +597,7 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
                   <div className="flex items-start justify-between gap-2 border-b border-border/40 pb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-9 h-9 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-base shadow-xs">
-                        🔔
+                         <Bell className="w-4 h-4" />
                       </div>
                       <div>
                         <h3 className="text-sm font-black text-foreground">Set Task Alarm</h3>
@@ -624,28 +627,28 @@ export const StickyNotesWidget: React.FC<StickyNotesWidgetProps> = ({
                         onClick={() => setQuickTime(15, "One-time")}
                         className="px-3 py-2 rounded-xl bg-surface border border-border/80 hover:border-primary/50 text-xs font-bold text-foreground hover:text-primary transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
                       >
-                        <span>⚡ In 15 min</span>
+                        <Zap className="w-3.5 h-3.5" /> In 15 min
                       </button>
                       <button
                         type="button"
                         onClick={() => setQuickTime(60, "One-time")}
                         className="px-3 py-2 rounded-xl bg-surface border border-border/80 hover:border-primary/50 text-xs font-bold text-foreground hover:text-primary transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
                       >
-                        <span>⏰ In 1 hour</span>
+                        <Clock className="w-3.5 h-3.5" /> In 1 hour
                       </button>
                       <button
                         type="button"
                         onClick={() => setSpecificTime(20, 0, "One-time")}
                         className="px-3 py-2 rounded-xl bg-surface border border-border/80 hover:border-primary/50 text-xs font-bold text-foreground hover:text-primary transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
                       >
-                        <span>🌙 Tonight (8 PM)</span>
+                        <Moon className="w-3.5 h-3.5" /> Tonight (8 PM)
                       </button>
                       <button
                         type="button"
                         onClick={() => setSpecificTime(9, 0, "Daily")}
                         className="px-3 py-2 rounded-xl bg-surface border border-border/80 hover:border-primary/50 text-xs font-bold text-foreground hover:text-primary transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
                       >
-                        <span>☀️ Morning (9 AM)</span>
+                        <Sun className="w-3.5 h-3.5" /> Morning (9 AM)
                       </button>
                     </div>
                   </div>

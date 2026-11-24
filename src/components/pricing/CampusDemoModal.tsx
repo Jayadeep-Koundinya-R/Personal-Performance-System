@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Building2, CheckCircle2, Send, X, Shield, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -21,20 +21,33 @@ export const CampusDemoModal: React.FC<CampusDemoModalProps> = ({
   const [studentCount, setStudentCount] = useState(defaultStudents);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(workEmail.trim());
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!instituteName.trim() || !contactName.trim() || !workEmail.trim()) {
-      toast.error("Please fill in your Institute Name, Contact Name, and Work Email.");
+    setHasSubmitted(true);
+    if (!instituteName.trim() || !contactName.trim() || !isEmailValid) {
+      toast.error("Please fill in all required fields with a valid work email.");
       return;
     }
 
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      toast.success("Enterprise Campus Proposal Request Submitted! 🎓", {
+      toast.success("Enterprise Campus Proposal Request Submitted!", {
         description: "Our Academic Institutional Director will contact you within 12 business hours.",
       });
       onClose();
@@ -43,7 +56,12 @@ export const CampusDemoModal: React.FC<CampusDemoModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="campus-demo-title"
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -51,11 +69,12 @@ export const CampusDemoModal: React.FC<CampusDemoModalProps> = ({
           className="relative w-full max-w-lg rounded-3xl bg-card border border-secondary/40 shadow-2xl p-6 sm:p-8 overflow-hidden text-foreground backdrop-blur-2xl"
         >
           {/* Top 3D Aura */}
-          <div className="absolute -top-20 -right-20 w-48 h-48 bg-secondary/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -top-20 -right-20 w-48 h-48 bg-secondary/20 rounded-full blur-2xl pointer-events-none" />
 
           {/* Close Button */}
           <button
             onClick={onClose}
+            aria-label="Close dialog"
             className="absolute top-5 right-5 p-2 rounded-xl bg-surface border border-border/80 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
           >
             <X className="w-4 h-4" />
@@ -67,7 +86,7 @@ export const CampusDemoModal: React.FC<CampusDemoModalProps> = ({
               <Building2 className="w-3.5 h-3.5" />
               <span>Campus & Institutional Licensing</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black font-mono">
+            <h2 id="campus-demo-title" className="text-xl sm:text-2xl font-black font-mono">
               Request Academic PO & Proposal
             </h2>
             <p className="text-xs text-muted-foreground">
@@ -76,7 +95,7 @@ export const CampusDemoModal: React.FC<CampusDemoModalProps> = ({
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4 text-xs font-medium">
+          <form onSubmit={handleSubmit} className="space-y-4 text-xs font-medium" noValidate>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-muted-foreground">Institution / College Name *</label>
@@ -86,8 +105,12 @@ export const CampusDemoModal: React.FC<CampusDemoModalProps> = ({
                   value={instituteName}
                   onChange={(e) => setInstituteName(e.target.value)}
                   placeholder="e.g. Stanford / IIT Madras / Allen Academy"
+                  aria-invalid={hasSubmitted && !instituteName.trim()}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-surface/80 border border-border/80 text-foreground outline-none focus:border-secondary transition-all"
                 />
+                {hasSubmitted && !instituteName.trim() && (
+                  <p className="text-xs text-destructive mt-1" role="alert">Institution name is required</p>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -98,8 +121,12 @@ export const CampusDemoModal: React.FC<CampusDemoModalProps> = ({
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   placeholder="Dean / Academic Director Name"
+                  aria-invalid={hasSubmitted && !contactName.trim()}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-surface/80 border border-border/80 text-foreground outline-none focus:border-secondary transition-all"
                 />
+                {hasSubmitted && !contactName.trim() && (
+                  <p className="text-xs text-destructive mt-1" role="alert">Contact person is required</p>
+                )}
               </div>
             </div>
 
@@ -112,8 +139,12 @@ export const CampusDemoModal: React.FC<CampusDemoModalProps> = ({
                   value={workEmail}
                   onChange={(e) => setWorkEmail(e.target.value)}
                   placeholder="dean@university.edu"
+                  aria-invalid={hasSubmitted && !isEmailValid}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-surface/80 border border-border/80 text-foreground outline-none focus:border-secondary transition-all"
                 />
+                {hasSubmitted && !isEmailValid && (
+                  <p className="text-xs text-destructive mt-1" role="alert">Please enter a valid official email</p>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -172,10 +203,10 @@ export const CampusDemoModal: React.FC<CampusDemoModalProps> = ({
               <p className="text-[11px] text-muted-foreground">
                 Direct Enterprise & Campus Negotiation:{" "}
                 <a
-                  href="mailto:enterprise@upalakshya.com?subject=PPS%20Campus%20Institutional%20License%20Negotiation&body=Hello%20UpaLakshya%20PPS%20Enterprise%20Team%2C%0A%0AWe%20would%20like%20to%20negotiate%20and%20deploy%20the%20Campus%20Institutional%20License%20for%20our%20organization.%0A%0AInstitution%20Name%3A%0AEstimated%20Students%2FFaculty%20Seats%3A%0AContact%20Person%3A%0APreferred%20Timeline%3A%0A%0AThank%20you!"
+                  href="mailto:upalakshyasupport@gmail.com?subject=PPS%20Campus%20Institutional%20License%20Negotiation&body=Hello%20UpaLakshya%20PPS%20Enterprise%20Team%2C%0A%0AWe%20would%20like%20to%20negotiate%20and%20deploy%20the%20Campus%20Institutional%20License%20for%20our%20organization.%0A%0AInstitution%20Name%3A%0AEstimated%20Students%2FFaculty%20Seats%3A%0AContact%20Person%3A%0APreferred%20Timeline%3A%0A%0AThank%20you!"
                   className="font-mono font-bold text-primary hover:underline"
                 >
-                  enterprise@upalakshya.com
+                  upalakshyasupport@gmail.com
                 </a>
               </p>
               <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground font-mono">

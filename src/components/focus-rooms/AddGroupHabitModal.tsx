@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, BookOpen, Sparkles, Clock, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -20,10 +20,10 @@ interface AddGroupHabitModalProps {
 }
 
 const PRESET_HABITS = [
-  { name: "📚 1-Hour Focus Session in Squad", category: "Learning", period: "Daily", priority: "High" },
-  { name: "💻 Solve 2 LeetCode / Coding Tasks", category: "Productivity", period: "Daily", priority: "High" },
-  { name: "🔬 Review Formula Sheet & Notes", category: "Learning", period: "Daily", priority: "Medium" },
-  { name: "📝 Complete Daily Assignment / Project", category: "Work", period: "Daily", priority: "High" },
+  { name: "1-Hour Focus Session in Squad", category: "Learning", period: "Daily", priority: "High" },
+  { name: "Solve 2 LeetCode / Coding Tasks", category: "Productivity", period: "Daily", priority: "High" },
+  { name: "Review Formula Sheet & Notes", category: "Learning", period: "Daily", priority: "Medium" },
+  { name: "Complete Daily Assignment / Project", category: "Work", period: "Daily", priority: "High" },
 ];
 
 export const AddGroupHabitModal: React.FC<AddGroupHabitModalProps> = ({
@@ -37,6 +37,15 @@ export const AddGroupHabitModal: React.FC<AddGroupHabitModalProps> = ({
   const [period, setPeriod] = useState("Daily");
   const [priority, setPriority] = useState("High");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -59,7 +68,7 @@ export const AddGroupHabitModal: React.FC<AddGroupHabitModalProps> = ({
     setLoading(false);
 
     if (!err) {
-      toast.success(`Added "${habitName}" to your Daily Habit Tracker! 🎉`);
+      toast.success(`Added "${habitName}" to your Daily Habit Tracker!`);
       setHabitName("");
       onClose();
     } else {
@@ -69,7 +78,12 @@ export const AddGroupHabitModal: React.FC<AddGroupHabitModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-group-habit-title"
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -83,7 +97,7 @@ export const AddGroupHabitModal: React.FC<AddGroupHabitModalProps> = ({
                 <BookOpen className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-foreground font-mono">
+                <h3 id="add-group-habit-title" className="text-sm font-black text-foreground font-mono">
                   Add Study Habit
                 </h3>
                 <p className="text-[11px] text-muted-foreground">

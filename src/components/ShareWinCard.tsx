@@ -48,8 +48,8 @@ export default function ShareWinCard({ streak, level, name }: ShareWinCardProps)
         ref={cardRef}
         className="rounded-3xl p-7 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 border border-primary/40 text-center relative overflow-hidden text-white shadow-2xl space-y-3"
       >
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-4xl mx-auto shadow-lg animate-bounce">
-          🏆
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto shadow-lg">
+          <Trophy className="w-8 h-8 text-amber-400" />
         </div>
 
         <div className="text-2xl font-extrabold text-foreground tracking-tight">{displayName}</div>

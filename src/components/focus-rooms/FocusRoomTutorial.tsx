@@ -35,25 +35,25 @@ export const FocusRoomTutorial: React.FC<FocusRoomTutorialProps> = ({
 
   const steps = [
     {
-      icon: "👥",
+      icon: Users,
       title: "1. Create or Join a Squad",
       desc: "Permanent study groups with 6-character invite codes. No temporary disappearing links.",
       highlight: "Persistent Communities",
     },
     {
-      icon: "🎙️",
+      icon: Video,
       title: "2. Drop-In Focus Rooms",
       desc: "Always-on audio & video co-working rooms. Experience the body-doubling effect to destroy procrastination.",
       highlight: "Body Doubling Co-Study",
     },
     {
-      icon: "📚",
+      icon: BookOpen,
       title: "3. Notes & Video Library",
       desc: "Dedicated #resources channels. Pin lecture recordings, formula cheat-sheets, and ArXiv PDFs forever.",
       highlight: "Organized Resources",
     },
     {
-      icon: "⚡",
+      icon: Zap,
       title: "4. In-Group Habit Tracking",
       desc: "Assign and check off daily study habits directly inside your squad. Earn XP and protect squad streaks.",
       highlight: "Habit Integration",
@@ -101,7 +101,8 @@ export const FocusRoomTutorial: React.FC<FocusRoomTutorialProps> = ({
               onClick={onLoadSample}
               className="px-5 py-3 rounded-2xl bg-surface border border-border hover:border-primary/50 text-foreground font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-2 hover:bg-card"
             >
-              <span>✨ Load Starter Demo Squad</span>
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span>Load Starter Demo Squad</span>
             </button>
           </div>
 
@@ -137,8 +138,8 @@ export const FocusRoomTutorial: React.FC<FocusRoomTutorialProps> = ({
             transition={{ delay: idx * 0.1 }}
             className="p-5 rounded-3xl bg-card/60 border border-border/70 hover:border-primary/40 backdrop-blur-xl shadow-lg space-y-2.5 transition-all group"
           >
-            <div className="w-12 h-12 rounded-2xl bg-surface border border-border/60 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-              {step.icon}
+            <div className="w-12 h-12 rounded-2xl bg-surface border border-border/60 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+              <step.icon className="w-6 h-6" />
             </div>
             <div className="text-[10px] font-mono font-extrabold uppercase text-primary tracking-wider">
               {step.highlight}

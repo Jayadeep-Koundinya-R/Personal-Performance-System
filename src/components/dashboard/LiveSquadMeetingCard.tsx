@@ -149,7 +149,7 @@ export const LiveSquadMeetingCard: React.FC<LiveSquadMeetingCardProps> = ({ onNa
             </div>
             <span className="text-xs font-bold text-foreground truncate">{group.name}</span>
           </div>
-          <span className="text-[9.5px] font-mono uppercase bg-primary/10 text-primary px-1.5 py-0.2 rounded font-bold">
+          <span className="text-[9.5px] font-mono uppercase bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">
             Chat
           </span>
         </div>
@@ -234,7 +234,7 @@ export const LiveSquadMeetingCard: React.FC<LiveSquadMeetingCardProps> = ({ onNa
           </div>
           <span className="text-xs font-bold text-foreground">Study Squads</span>
         </div>
-        <span className="text-[9px] font-mono uppercase bg-primary/15 text-primary border border-primary/20 px-1.5 py-0.2 rounded font-bold">
+        <span className="text-[9px] font-mono uppercase bg-primary/15 text-primary border border-primary/20 px-1.5 py-0.5 rounded font-bold">
           Co-Study
         </span>
       </div>

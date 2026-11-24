@@ -34,10 +34,10 @@ export const ScrollToTop: React.FC = () => {
     });
   };
 
-  const size = 52;
+  const size = 48;
   const strokeWidth = 2.5;
   const center = size / 2;
-  const radius = 22;
+  const radius = 22.5;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (scrollProgress / 100) * circumference;
 
@@ -57,10 +57,10 @@ export const ScrollToTop: React.FC = () => {
             title="Scroll to Top (Press to return to header)"
             aria-label="Scroll to top"
           >
-            {/* SVG Circular Progress Ring - unclipped with dedicated viewBox & overflow-visible */}
+            {/* SVG Circular Progress Ring - origin-center viewBox matching 48px button geometry */}
             <svg
-              className="absolute -inset-[2px] w-[52px] h-[52px] -rotate-90 pointer-events-none overflow-visible"
-              viewBox="0 0 52 52"
+              className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none overflow-visible"
+              viewBox="0 0 48 48"
             >
               <circle
                 cx={center}

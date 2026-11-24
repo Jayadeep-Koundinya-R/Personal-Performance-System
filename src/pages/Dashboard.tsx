@@ -26,8 +26,9 @@ import { Navigate, Link, useLocation } from "react-router-dom";
 import AiChatWidget from "@/components/ui/AiChatWidget";
 import VoiceControlModal from "@/components/ui/VoiceControlModal";
 import {
-  Mic, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, X, Flame, Layers, Bell, Trash2,
-  LayoutDashboard, Sliders, Calendar, Target, Users, BarChart3, Award, BookOpen, FileText, Settings
+  Mic, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, X, Menu, Flame, Layers, Bell, Trash2,
+  LayoutDashboard, Sliders, Calendar, Target, Users, BarChart3, Award, BookOpen, FileText, Settings,
+  Clock, Check, Moon, Sun, Zap, GraduationCap, Route, TrendingUp, AlarmClock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -79,7 +80,8 @@ const NAV_ITEMS: NavItemConfig[] = [
   
   // Focus & Social
   { key: "tracker", icon: Target, label: "Focus Studio", category: "Focus & Social" },
-  { key: "social", icon: Users, label: "Study Squads", category: "Focus & Social" },
+  // V2 Feature: Social tab shelved for December 31 rollout
+  // { key: "social", icon: Users, label: "Study Squads", category: "Focus & Social" },
   { key: "streak", icon: Flame, label: "Streak Engine", category: "Focus & Social" },
 
   // Growth & Intelligence
@@ -112,22 +114,26 @@ function AlarmOverlay({ alarm, onDismiss, onSnooze, onComplete }: {
         className="bg-card border-2 border-destructive/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden"
       >
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-destructive animate-pulse" />
-        <div className="text-6xl mb-4 animate-bounce">⏰</div>
+        <div className="text-6xl mb-4">
+          <AlarmClock className="w-16 h-16 mx-auto text-destructive" />
+        </div>
         <h2 className="text-2xl font-bold text-destructive mb-2">Habit Alarm!</h2>
         <p className="text-sm font-semibold mb-6 text-foreground">{alarm.message}</p>
         <div className="flex flex-col gap-3">
           <button
             onClick={onComplete}
-            className="w-full bg-pps-green text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-pps-green/90 transition-colors"
+            className="w-full bg-pps-green text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-pps-green/90 transition-colors flex items-center justify-center gap-2"
           >
-            ✓ Complete Habit Now
+            <Check className="w-4 h-4" />
+            <span>Complete Habit Now</span>
           </button>
           <div className="flex gap-3">
             <button
               onClick={onSnooze}
-              className="flex-1 bg-surface border border-border py-2.5 rounded-xl text-sm font-semibold hover:bg-muted transition-colors text-foreground"
+              className="flex-1 bg-surface border border-border py-2.5 rounded-xl text-sm font-semibold hover:bg-muted transition-colors text-foreground flex items-center justify-center gap-2"
             >
-              💤 Snooze (10m)
+              <Moon className="w-4 h-4" />
+              <span>Snooze (10m)</span>
             </button>
             <button
               onClick={onDismiss}
@@ -302,11 +308,11 @@ function DashboardInner({ user }: { user: User }) {
       setCelebration({
         show: true,
         type: "levelup",
-        title: "Welcome to PPS Pro! 👑",
+        title: "Welcome to PPS Pro!",
         subtitle: "Your subscription is active. All premium features, unlimited habits & AI insights are unlocked!",
-        icon: "👑",
+        icon: <Award className="w-12 h-12 text-pps-yellow mx-auto" />,
       });
-      toast.success("Welcome to PPS Pro! 👑 All premium features unlocked.");
+      toast.success("Welcome to PPS Pro! All premium features unlocked.");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [refreshSub]);
@@ -423,8 +429,8 @@ function DashboardInner({ user }: { user: User }) {
     type: "levelup" | "badge";
     title: string;
     subtitle: string;
-    icon: string;
-  }>({ show: false, type: "levelup", title: "", subtitle: "", icon: "" });
+    icon: React.ReactNode;
+  }>({ show: false, type: "levelup", title: "", subtitle: "", icon: null });
 
   const isInitializedRef = useRef(false);
   const prevLevelRef = useRef<number | null>(null);
@@ -511,7 +517,7 @@ function DashboardInner({ user }: { user: User }) {
         type: "levelup",
         title: `Level ${currentLevel} — ${levelTitle}`,
         subtitle: `You've earned ${calculateTotalXP()} XP total!`,
-        icon: "⬆️",
+        icon: <TrendingUp className="w-16 h-16 mx-auto text-primary" />,
       });
 
       prevLevelRef.current = currentLevel;
@@ -531,7 +537,7 @@ function DashboardInner({ user }: { user: User }) {
         type: "badge",
         title: "New Badge Unlocked!",
         subtitle: `You now have ${currentCount} badges. Keep going!`,
-        icon: "🏅",
+        icon: <Award className="w-12 h-12 text-pps-yellow mx-auto" />,
       });
 
       prevBadgeCountRef.current = currentCount;
@@ -564,16 +570,29 @@ function DashboardInner({ user }: { user: User }) {
 
   const renderSection = () => {
     const LoadingFallback = () => (
-      <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in duration-300">
-        <div className="relative w-12 h-12">
-          <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-          <div className="absolute inset-2 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-primary text-base font-mono font-black">⚡</span>
-          </div>
+      <div className="space-y-4 animate-in fade-in duration-300">
+        <div className="h-8 w-56 bg-surface/80 rounded-xl animate-pulse" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-3.5 rounded-2xl bg-card border border-border/80 shadow-sm animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-surface flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="h-4 w-3/4 rounded bg-surface mb-2" />
+                  <div className="h-3 w-1/2 rounded bg-surface" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="space-y-2 text-center">
-          <div className="h-2 w-32 bg-muted/60 rounded-full animate-pulse mx-auto" />
-          <div className="h-2 w-24 bg-muted/40 rounded-full animate-pulse mx-auto" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="p-5 rounded-3xl bg-card border border-border/80 space-y-3">
+              <div className="h-5 w-2/5 bg-surface rounded animate-pulse" />
+              <div className="h-3 w-full bg-surface/60 rounded animate-pulse" />
+              <div className="h-3 w-4/5 bg-surface/60 rounded animate-pulse" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -644,14 +663,14 @@ function DashboardInner({ user }: { user: User }) {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             title="Toggle Sidebar"
           >
-            <span className="text-base leading-none">{sidebarOpen ? "✕" : "☰"}</span>
+            <span className="text-base leading-none">{sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}</span>
           </button>
 
           <Link to="/" title="PPS Home" className="flex items-center">
             <BrandLogo size="xs" showText={false} variant="square" iconClassName="w-6 h-6" />
           </Link>
 
-          {/* 🎯 Interactive Native Module Dropdown Selector */}
+          {/* Interactive Native Module Dropdown Selector */}
           <div className="relative">
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
@@ -694,7 +713,7 @@ function DashboardInner({ user }: { user: User }) {
                           <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
                           <span>{item.label}</span>
                         </span>
-                        {activeSection === item.key && <span>✓</span>}
+                        {activeSection === item.key && <Check className="w-4 h-4 text-primary" />}
                       </button>
                     ))}
                   </motion.div>
@@ -706,7 +725,7 @@ function DashboardInner({ user }: { user: User }) {
 
         <div className="flex items-center gap-1.5">
           <button onClick={toggleTheme} className="p-1.5 rounded-xl bg-surface border border-border text-foreground hover:bg-muted transition-colors cursor-pointer text-sm" title="Toggle theme">
-            {theme === "dark" ? "☀️" : "🌙"}
+            {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           <div ref={mobileNotifRef} className="relative z-[1010]">
             <button
@@ -778,7 +797,7 @@ function DashboardInner({ user }: { user: User }) {
       </AnimatePresence>
 
       <div className="flex h-screen overflow-hidden bg-background relative selection:bg-primary selection:text-white transition-colors duration-500">
-        {/* 🌌 Dynamic 3D Ambient Background Layer */}
+        {/* Dynamic 3D Ambient Background Layer */}
         <ThreeDBackground />
 
         {/* Sidebar */}
@@ -814,6 +833,7 @@ function DashboardInner({ user }: { user: User }) {
             {/* Mobile Close Button */}
             <button
               onClick={() => setSidebarOpen(false)}
+              aria-label="Close sidebar"
               className="md:hidden p-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:bg-surface cursor-pointer text-xs"
             >
               <X className="w-3.5 h-3.5" />
@@ -890,9 +910,10 @@ function DashboardInner({ user }: { user: User }) {
             {!isPro && !user.isGuest && !sidebarCollapsed && (
               <Link
                 to="/pricing"
-                className="block mb-2.5 text-center text-[11px] font-bold bg-primary/10 text-primary border border-primary/25 py-1.5 rounded-xl hover:bg-primary/20 transition-all shadow-2xs"
+                className="flex items-center justify-center gap-1.5 mb-2.5 text-center text-[11px] font-bold bg-primary/10 text-primary border border-primary/25 py-1.5 px-3 rounded-xl hover:bg-primary/20 transition-all shadow-2xs"
               >
-                Upgrade to Pro ✨
+                <span>Upgrade to Pro</span>
+                <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
               </Link>
             )}
             <div className={`flex items-center gap-2.5 ${sidebarCollapsed ? "justify-center" : "px-1"}`}>
@@ -936,7 +957,7 @@ function DashboardInner({ user }: { user: User }) {
                 className="bg-surface border border-border/80 rounded-xl px-2.5 py-1.5 text-xs cursor-pointer hover:bg-surface/80 transition-colors flex items-center gap-1.5 text-foreground"
                 title="Toggle theme"
               >
-                {theme === "dark" ? "☀️" : "🌙"}
+                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
 
               {/* GitHub-Style Notification Center */}
@@ -1094,6 +1115,7 @@ function DashboardInner({ user }: { user: User }) {
                 </div>
                 <button
                   onClick={() => setShowMobileMoreSheet(false)}
+                  aria-label="Close menu"
                   className="p-1 text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-4 h-4" />
@@ -1103,14 +1125,14 @@ function DashboardInner({ user }: { user: User }) {
               {/* Grid of Power Tools */}
               <div className="grid grid-cols-3 gap-2.5">
                 {[
-                  { key: "calendar", icon: "📅", label: "Calendar" },
-                  { key: "streak", icon: "🔥", label: "Streak Engine" },
-                  { key: "achievements", icon: "🏅", label: "Achievements" },
-                  { key: "social", icon: "👥", label: "Study Rooms" },
-                  { key: "reflections", icon: "📝", label: "Reflections" },
-                  { key: "reports", icon: "📈", label: "Reports" },
-                  { key: "reminders", icon: "🔔", label: "Circadian" },
-                  { key: "settings", icon: "🛠️", label: "Settings" },
+                  { key: "calendar", icon: Calendar, label: "Calendar" },
+                  { key: "streak", icon: Flame, label: "Streak Engine" },
+                  { key: "achievements", icon: Award, label: "Achievements" },
+                  { key: "social", icon: Users, label: "Study Rooms" },
+                  { key: "reflections", icon: BookOpen, label: "Reflections" },
+                  { key: "reports", icon: FileText, label: "Reports" },
+                  { key: "reminders", icon: Bell, label: "Circadian" },
+                  { key: "settings", icon: Settings, label: "Settings" },
                 ].map((tool) => (
                   <button
                     key={tool.key}
@@ -1124,7 +1146,7 @@ function DashboardInner({ user }: { user: User }) {
                         : "bg-surface/80 border-border/80 text-foreground hover:bg-card"
                     }`}
                   >
-                    <span className="text-xl">{tool.icon}</span>
+                    <tool.icon className="w-6 h-6" />
                     <span className="text-[11px] font-bold truncate max-w-full">{tool.label}</span>
                   </button>
                 ))}
@@ -1135,16 +1157,18 @@ function DashboardInner({ user }: { user: User }) {
                 <Link
                   to="/marketplace"
                   onClick={() => setShowMobileMoreSheet(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-center font-mono hover:bg-amber-500/25"
+                  className="flex-1 py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-center font-mono hover:bg-amber-500/25 flex items-center justify-center gap-1.5"
                 >
-                  🎓 Mentors Hub
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>Mentors Hub</span>
                 </Link>
                 <Link
                   to="/roadmap"
                   onClick={() => setShowMobileMoreSheet(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-center font-mono hover:bg-cyan-500/25"
+                  className="flex-1 py-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-center font-mono hover:bg-cyan-500/25 flex items-center justify-center gap-1.5"
                 >
-                  🚀 Roadmap
+                  <Route className="w-3.5 h-3.5" />
+                  <span>Roadmap</span>
                 </Link>
               </div>
             </motion.div>
@@ -1170,7 +1194,7 @@ function DashboardInner({ user }: { user: User }) {
         onNavigate={(s) => setActiveSection(s as any)}
       />
 
-      {/* ⌨️ Power User Keyboard Shortcuts (?) */}
+      {/* Power User Keyboard Shortcuts (?) */}
       <KeyboardShortcutsModal onNavigate={(s) => setActiveSection(s as any)} />
     </>
   );
@@ -1187,7 +1211,7 @@ const DashboardPage = () => {
           <div className="relative w-16 h-16 mx-auto">
             <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
             <div className="absolute inset-1.5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <span className="text-2xl">⚡</span>
+              <Zap className="w-6 h-6 text-primary" />
             </div>
           </div>
           <div>

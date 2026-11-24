@@ -32,9 +32,9 @@ export const OnboardingGuard: React.FC<Props> = ({ children, profile }) => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  // Rule 1b: If guest trial has expired, redirect to /pricing
+  // Rule 1b: If guest trial has expired, redirect to login with expired flag
   if (user.isGuest && isGuestTrialExpired) {
-    return <Navigate to="/pricing" replace state={{ trialExpired: true }} />;
+    return <Navigate to="/login?tab=demo&expired=true" replace state={{ trialExpired: true }} />;
   }
 
   const isGuestUser = Boolean(user.isGuest);

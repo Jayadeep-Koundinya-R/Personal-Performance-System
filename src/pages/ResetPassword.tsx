@@ -11,8 +11,8 @@ import { toast } from "sonner";
 function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
   if (!pw) return { score: 0, label: "", color: "" };
   let score = 0;
-  if (pw.length >= 6) score++;
-  if (pw.length >= 10) score++;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
   if (/[A-Z]/.test(pw)) score++;
   if (/[0-9]/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
@@ -51,8 +51,16 @@ const ResetPasswordPage = () => {
       setMessage({ text: "Please fill in both fields.", type: "error" });
       return;
     }
-    if (password.length < 6) {
-      setMessage({ text: "Password must be at least 6 characters long.", type: "error" });
+    if (password.length < 8) {
+      setMessage({ text: "Password must be at least 8 characters long.", type: "error" });
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setMessage({ text: "Password must contain at least 1 uppercase letter.", type: "error" });
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setMessage({ text: "Password must contain at least 1 number.", type: "error" });
       return;
     }
     if (password !== confirm) {
@@ -83,7 +91,7 @@ const ResetPasswordPage = () => {
       className="min-h-screen flex flex-col justify-between bg-background text-foreground relative selection:bg-primary selection:text-white overflow-hidden transition-colors duration-500"
       onKeyDown={handleKeyDown}
     >
-      {/* 🌌 Dynamic 3D Ambient Background Layer */}
+      {/* Dynamic 3D Ambient Background Layer */}
       <ThreeDBackground />
 
       {/* Top Header */}
@@ -128,8 +136,9 @@ const ResetPasswordPage = () => {
           </div>
 
           {!isRecovery && (
-            <div className="text-xs text-muted-foreground bg-surface/80 border border-border/60 p-3 rounded-xl">
-              💡 This view is activated after clicking the secure password reset link sent to your email.
+            <div className="text-xs text-muted-foreground bg-surface/80 border border-border/60 p-3 rounded-xl flex items-center gap-2">
+              <Lock className="w-4 h-4 text-primary shrink-0" />
+              <span>This view is activated after clicking the secure password reset link sent to your email.</span>
             </div>
           )}
 

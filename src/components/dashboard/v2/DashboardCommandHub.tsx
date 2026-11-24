@@ -198,7 +198,7 @@ export const DashboardCommandHub: React.FC<DashboardCommandHubProps> = ({
             <FileText className="w-3.5 h-3.5" />
             <span>Scratchpad & Notes</span>
             {activeReminders.length > 0 && (
-              <span className="text-[9px] bg-secondary/20 text-secondary border border-secondary/30 px-1 py-0.2 rounded-full font-mono">
+              <span className="text-[9px] bg-secondary/20 text-secondary border border-secondary/30 px-1 py-0.5 rounded-full font-mono">
                 {activeReminders.length}
               </span>
             )}
@@ -286,7 +286,7 @@ export const DashboardCommandHub: React.FC<DashboardCommandHubProps> = ({
                   <Flame className="w-3.5 h-3.5 text-pps-orange" />
                   <span>30-Day Activity Heatmap</span>
                   {heatmapOffset > 0 && (
-                    <span className="text-[9px] bg-primary/15 text-primary border border-primary/20 px-1.5 py-0.2 rounded font-mono font-bold">
+                    <span className="text-[9px] bg-primary/15 text-primary border border-primary/20 px-1.5 py-0.5 rounded font-mono font-bold">
                       -{heatmapOffset * 30}d
                     </span>
                   )}
@@ -453,7 +453,7 @@ export const DashboardCommandHub: React.FC<DashboardCommandHubProps> = ({
                     <Bell className="w-3.5 h-3.5 text-primary" />
                     <span>Scheduled Reminders</span>
                     {activeReminders.length > 0 && (
-                      <span className="text-[9px] bg-secondary/15 text-secondary border border-secondary/30 px-1.5 py-0.2 rounded font-mono font-bold">
+                      <span className="text-[9px] bg-secondary/15 text-secondary border border-secondary/30 px-1.5 py-0.5 rounded font-mono font-bold">
                         {activeReminders.length} active
                       </span>
                     )}
@@ -514,7 +514,7 @@ export const DashboardCommandHub: React.FC<DashboardCommandHubProps> = ({
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>AI Coach Feed</span>
                     </h4>
-                    <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.2 rounded font-mono font-bold">
+                    <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono font-bold">
                       Insights
                     </span>
                   </div>
@@ -529,7 +529,7 @@ export const DashboardCommandHub: React.FC<DashboardCommandHubProps> = ({
                           <span className="font-bold text-foreground truncate">
                             {sugg.habit_name || "Habit Advice"}
                           </span>
-                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-primary/10 text-primary font-mono">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">
                             {sugg.type === "smart_timing" ? "Timing" : "Adjustment"}
                           </span>
                         </div>

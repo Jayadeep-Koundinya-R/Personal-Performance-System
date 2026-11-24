@@ -33,6 +33,15 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error("🚨 [PPS ErrorBoundary] Uncaught runtime exception:", error, errorInfo);
     this.setState({ errorInfo });
 
+    // Preserve dark theme on document root during error state
+    try {
+      const theme = localStorage.getItem("pps_theme") || "dark";
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+        document.documentElement.classList.remove("light");
+      }
+    } catch {}
+
     // Store last diagnostic error log for customer support
     try {
       const errorLog = {
@@ -125,7 +134,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <p className="text-[11px] text-muted-foreground mt-5">
-              If reloading does not resolve this, please email <span className="font-mono text-primary font-bold">support@upalakshya.com</span> with copied error details.
+              If reloading does not resolve this, please email <span className="font-mono text-primary font-bold">upalakshyasupport@gmail.com</span> with copied error details.
             </p>
           </div>
         </div>

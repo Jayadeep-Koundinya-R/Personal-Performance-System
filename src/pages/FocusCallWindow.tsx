@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { DashboardProviders } from "@/providers/AppProviders";
 import { FocusRoomStudio } from "@/components/focus-rooms/FocusRoomStudio";
+import { Zap } from "lucide-react";
 
 const FocusCallWindowInner: React.FC = () => {
   const { groupId = "default_group" } = useParams<{ groupId: string }>();
@@ -13,8 +14,8 @@ const FocusCallWindowInner: React.FC = () => {
     <div className="min-h-screen bg-[#0d0f17] text-foreground p-3 sm:p-4 flex flex-col justify-between overflow-hidden selection:bg-primary selection:text-white">
       {/* 3D Ambient Background Glows */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 animate-pulse" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-secondary/20 rounded-full blur-3xl opacity-50" />
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-primary/20 rounded-full blur-2xl opacity-50 animate-pulse" />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-secondary/20 rounded-full blur-2xl opacity-50" />
       </div>
 
       <div className="relative z-10 flex-1 flex flex-col h-full">
@@ -35,7 +36,7 @@ export const FocusCallWindow: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0d0f17] text-foreground">
         <div className="text-center space-y-3">
-          <div className="text-4xl animate-pulse">⚡</div>
+          <Zap className="text-4xl animate-pulse text-primary mx-auto" />
           <div className="text-xs font-mono text-muted-foreground">Initializing Focus Room Studio...</div>
         </div>
       </div>

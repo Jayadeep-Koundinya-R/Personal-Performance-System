@@ -17,10 +17,10 @@ export const RoadmapPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative selection:bg-primary selection:text-white transition-colors duration-500 overflow-x-hidden flex flex-col justify-between">
-      {/* 🌌 Dynamic 3D Ambient Background Layer */}
+      {/* Dynamic 3D Ambient Background Layer */}
       <ThreeDBackground />
 
-      {/* 📊 Top Scroll Progress Bar */}
+      {/* Top Scroll Progress Bar */}
       <ScrollProgressBar />
 
 
@@ -97,7 +97,7 @@ export const RoadmapPage: React.FC = () => {
         </div>
       </footer>
 
-      {/* 🚀 Floating Scroll to Top */}
+      {/* Floating Scroll to Top */}
       <ScrollToTop />
     </div>
   );

@@ -1,3 +1,23 @@
+/**
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  ⚠️  CRITICAL AUTH UI — DO NOT MODIFY WITHOUT TESTING  ⚠️     ║
+ * ╠══════════════════════════════════════════════════════════════════╣
+ * ║  This file handles user authentication UI for the entire app.   ║
+ * ║  Breaking changes here will lock users out or corrupt data.      ║
+ * ║                                                                ║
+ * ║  Before modifying:                                              ║
+ * ║  1. Read docs/AUTH_README.md for the full auth flow             ║
+ * ║  2. Run: npx vitest run src/hooks/__tests__/use-auth.test.ts  ║
+ * ║  3. Test all 4 login modes: Sign In, Sign Up, Demo, Google     ║
+ * ║  4. Test offline behavior (disconnect internet)                  ║
+ * ║  5. Test demo trial expiry flow                                  ║
+ * ║  6. Test mobile viewport (390px)                                 ║
+ * ║  7. Run: npm test && npm run build && npm run lint             ║
+ * ║                                                                ║
+ * ║  Auth bugs are P0 priority. When in doubt, ask before editing. ║
+ * ╚══════════════════════════════════════════════════════════════════╝
+ */
+
 /*
   🔐 Masterwork Split-Screen Auth & Workspace Login Studio
   
@@ -37,6 +57,11 @@ import {
   Clock,
   Flame,
   User,
+  Sun,
+  Moon,
+  AlertCircle,
+  CheckCircle,
+  Rocket
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,8 +69,8 @@ import { toast } from "sonner";
 function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
   if (!pw) return { score: 0, label: "", color: "" };
   let score = 0;
-  if (pw.length >= 6) score++;
-  if (pw.length >= 10) score++;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
   if (/[A-Z]/.test(pw)) score++;
   if (/[0-9]/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
@@ -55,6 +80,11 @@ function getPasswordStrength(pw: string): { score: number; label: string; color:
   if (score === 3) return { score: 60, label: "Good", color: "bg-yellow-500" };
   if (score === 4) return { score: 80, label: "Strong", color: "bg-pps-green" };
   return { score: 100, label: "Excellent", color: "bg-pps-green" };
+}
+
+/* ── Email Validation ────────────────────────────────── */
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 /* ── Powerhouse Modules Showcase ─────────────────────── */
@@ -76,15 +106,21 @@ const LoginPage = () => {
 
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   const [signinEmail, setSigninEmail] = useState("");
   const [signinPassword, setSigninPassword] = useState("");
+  const [signinEmailTouched, setSigninEmailTouched] = useState(false);
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
+  const [signupEmailTouched, setSignupEmailTouched] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [guestName, setGuestName] = useState(() => localStorage.getItem("pps_guest_name") || "");
-  const [guestRemember, setGuestRemember] = useState(true);
+  const [sessionDuration, setSessionDuration] = useState(() => {
+    const stored = localStorage.getItem("pps_session_duration");
+    return stored ? parseInt(stored) : 7;
+  });
 
   const [showSigninPw, setShowSigninPw] = useState(false);
   const [showSignupPw, setShowSignupPw] = useState(false);
@@ -95,6 +131,17 @@ const LoginPage = () => {
     if (t === "signup") setTab("signup");
     else if (t === "signin") setTab("signin");
     else if (t === "demo") setTab("demo");
+
+    // Handle demo expiry redirect
+    const expired = searchParams.get("expired");
+    if (expired === "true") {
+      setTab("signup");
+      setMessage({
+        text: "Your demo has expired. Create an account to keep your progress and continue building habits.",
+        type: "success",
+      });
+      return;
+    }
 
     const errDesc = searchParams.get("error_description") || searchParams.get("error");
     if (errDesc) {
@@ -151,8 +198,23 @@ const LoginPage = () => {
       return;
     }
 
-    const error = await login(emailToUse, pwToUse);
-    if (error) setMessage({ text: error, type: "error" });
+    if (!isValidEmail(emailToUse)) {
+      setMessage({ text: "Please enter a valid email address.", type: "error" });
+      setSubmitting(false);
+      return;
+    }
+
+    const error = await login(emailToUse, pwToUse, sessionDuration);
+    if (error) {
+      setMessage({ text: error, type: "error" });
+      // Offer retry for network errors
+      const isNetwork = error.toLowerCase().includes("unable to connect") || error.toLowerCase().includes("internet");
+      if (isNetwork && retryCount < 3) {
+        setRetryCount((prev) => prev + 1);
+      }
+    } else {
+      setRetryCount(0);
+    }
     setSubmitting(false);
   };
 
@@ -188,10 +250,25 @@ const LoginPage = () => {
       return;
     }
     setMessage(null);
-    localStorage.setItem("pps_onboarded_guest", "true");
+
+    // If previous demo trial expired, fully reset guest markers for a clean start
+    if (isGuestTrialExpired) {
+      localStorage.removeItem("pps_guest_created_at");
+      localStorage.removeItem("pps_guest");
+      localStorage.removeItem("pps_guest_onboarded");
+      localStorage.removeItem("pps_onboarding_completed");
+      try {
+        if (typeof document !== "undefined") {
+          document.cookie = "pps_gt=; max-age=0; path=/";
+        }
+      } catch {}
+    }
+
+    loginAsGuest(guestName.trim());
+
+    // Set onboarded keys
     localStorage.setItem("pps_guest_onboarded", "true");
     localStorage.setItem("pps_onboarding_completed", "true");
-    loginAsGuest(guestName.trim(), guestRemember);
     toast.success(`Welcome to PPS, ${guestName.trim()}! ${TRIAL_DURATION_DAYS}-Day Demo Active.`);
     navigate("/dashboard");
   };
@@ -237,7 +314,7 @@ const LoginPage = () => {
             className="bg-surface border border-border/80 rounded-2xl px-3 py-1.5 text-xs font-bold cursor-pointer hover:bg-primary/10 transition-colors flex items-center gap-1.5 text-foreground shadow-xs h-auto"
             title="Toggle theme"
           >
-            <span>{theme === "dark" ? "☀️" : "🌙"}</span>
+            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             <span className="text-[11px] hidden sm:inline">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
           </Button>
 
@@ -410,7 +487,7 @@ const LoginPage = () => {
                     }`}
                   >
                     <Zap className="w-3 h-3 text-pps-yellow" />
-                    <span>Demo ⚡</span>
+                    <span>Demo</span>
                   </Button>
                 </div>
               )}
@@ -426,7 +503,7 @@ const LoginPage = () => {
                       : "bg-pps-green/15 text-pps-green border-pps-green/30"
                   }`}
                 >
-                  <span className="text-sm flex-shrink-0 mt-0.5">{message.type === "error" ? "⚠️" : "✅"}</span>
+                  <span className="text-sm flex-shrink-0 mt-0.5">{message.type === "error" ? <AlertCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}</span>
                   <span className="leading-relaxed">{message.text}</span>
                 </motion.div>
               )}
@@ -449,8 +526,16 @@ const LoginPage = () => {
                         placeholder="you@email.com"
                         value={signinEmail}
                         onChange={(e) => setSigninEmail(e.target.value)}
+                        onBlur={() => setSigninEmailTouched(true)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleSignIn(); }}
+                        required
+                        autoComplete="email"
+                        aria-invalid={signinEmailTouched && !isValidEmail(signinEmail)}
                         className={inputCls}
                       />
+                      {signinEmailTouched && signinEmail && !isValidEmail(signinEmail) && (
+                        <span className="text-[10px] text-destructive font-bold mt-1 block">Please enter a valid email address.</span>
+                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -471,6 +556,10 @@ const LoginPage = () => {
                           placeholder="••••••••"
                           value={signinPassword}
                           onChange={(e) => setSigninPassword(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSignIn(); }}
+                          required
+                          autoComplete="current-password"
+                          aria-invalid={!signinPassword}
                           className={`${inputCls} pr-10`}
                         />
                         <Button
@@ -485,13 +574,42 @@ const LoginPage = () => {
                       </div>
                     </div>
 
+                    <div className="space-y-1">
+                      <label className={labelCls}>Remember Me For</label>
+                      <select
+                        value={sessionDuration}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          setSessionDuration(val);
+                          try { localStorage.setItem("pps_session_duration", String(val)); } catch {}
+                        }}
+                        className={inputCls}
+                      >
+                        <option value={1}>1 day</option>
+                        <option value={7}>7 days (Default)</option>
+                        <option value={30}>30 days</option>
+                      </select>
+                    </div>
+
                     <Button
                       onClick={() => handleSignIn()}
                       disabled={submitting}
+                      aria-busy={submitting}
                       className="w-full bg-primary text-primary-foreground font-black py-3 rounded-2xl hover:bg-primary/90 transition-all cursor-pointer shadow-md text-xs disabled:opacity-50 h-auto"
                     >
-                      {submitting ? "Signing in..." : "Sign In to Workspace 🚀"}
+                      {submitting ? "Signing in..." : "Sign In to Workspace"}
                     </Button>
+                    {message?.type === "error" && retryCount > 0 && retryCount <= 3 && message.text.includes("Unable to connect") && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleSignIn()}
+                        disabled={submitting}
+                        className="w-full py-2 rounded-2xl text-xs font-bold cursor-pointer h-auto"
+                      >
+                        Retry ({retryCount}/3)
+                      </Button>
+                    )}
                   </motion.div>
                 )}
 
@@ -512,8 +630,16 @@ const LoginPage = () => {
                         placeholder="you@email.com"
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
+                        onBlur={() => setSignupEmailTouched(true)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleSignUp(); }}
+                        required
+                        autoComplete="email"
+                        aria-invalid={signupEmailTouched && !isValidEmail(signupEmail)}
                         className={inputCls}
                       />
+                      {signupEmailTouched && signupEmail && !isValidEmail(signupEmail) && (
+                        <span className="text-[10px] text-destructive font-bold mt-1 block">Please enter a valid email address.</span>
+                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -521,9 +647,12 @@ const LoginPage = () => {
                       <div className="relative">
                         <input
                           type={showSignupPw ? "text" : "password"}
-                          placeholder="Min 6 characters"
+                          placeholder="Min 8 chars, 1 uppercase, 1 number"
                           value={signupPassword}
                           onChange={(e) => setSignupPassword(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSignUp(); }}
+                          required
+                          autoComplete="new-password"
                           className={`${inputCls} pr-10`}
                         />
                         <Button
@@ -557,6 +686,9 @@ const LoginPage = () => {
                           placeholder="Repeat password"
                           value={signupConfirm}
                           onChange={(e) => setSignupConfirm(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSignUp(); }}
+                          required
+                          autoComplete="new-password"
                           className={`${inputCls} pr-10`}
                         />
                         <Button
@@ -569,14 +701,22 @@ const LoginPage = () => {
                           {showSignupConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </Button>
                       </div>
+                      {signupConfirm && signupPassword !== signupConfirm && (
+                        <span className="text-[10px] text-destructive font-bold mt-1 block">Passwords do not match.</span>
+                      )}
                     </div>
 
                     <Button
                       onClick={handleSignUp}
                       disabled={submitting}
+                      aria-busy={submitting}
                       className="w-full bg-primary text-primary-foreground font-black py-3 rounded-2xl hover:bg-primary/90 transition-all cursor-pointer shadow-md text-xs disabled:opacity-50 h-auto"
                     >
-                      {submitting ? "Creating Workspace..." : `Create Account (Free ${TRIAL_DURATION_DAYS} Days) ✨`}
+                      {submitting ? "Creating Workspace..." : (
+                        <span className="flex items-center justify-center gap-1.5">
+                          Create Account (Free {TRIAL_DURATION_DAYS} Days) <Sparkles className="w-4 h-4" />
+                        </span>
+                      )}
                     </Button>
                   </motion.div>
                 )}
@@ -592,7 +732,7 @@ const LoginPage = () => {
                     className="space-y-4"
                   >
                     <div className="p-3.5 bg-pps-green/10 border border-pps-green/30 rounded-2xl flex items-center gap-3">
-                      <span className="text-2xl flex-shrink-0">⚡</span>
+                      <Zap className="w-6 h-6 text-pps-yellow flex-shrink-0" />
                       <div>
                         <div className="text-xs font-black text-pps-green">Zero-Friction {TRIAL_DURATION_DAYS}-Day Access</div>
                         <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
@@ -601,8 +741,69 @@ const LoginPage = () => {
                       </div>
                     </div>
 
+                    {/* Quick Demo Profiles — 1-Click Testing */}
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">Quick Start — Pick a Persona</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={() => {
+                            localStorage.removeItem("pps_guest_created_at");
+                            localStorage.removeItem("pps_guest");
+                            localStorage.removeItem("pps_guest_onboarded");
+                            localStorage.removeItem("pps_onboarding_completed");
+                            try { document.cookie = "pps_gt=; max-age=0; path=/"; } catch {}
+                            setGuestName("Alex");
+                            loginAsGuest("Alex");
+                            toast.success(`Welcome to PPS, Alex! ${TRIAL_DURATION_DAYS}-Day Demo Active.`);
+                            navigate("/dashboard");
+                          }}
+                          className="p-2.5 rounded-xl bg-primary/10 border border-primary/30 text-center hover:bg-primary/20 hover:border-primary/50 transition-all cursor-pointer group"
+                        >
+                          <Flame className="w-4 h-4 text-primary mx-auto mb-1" />
+                          <div className="text-[10px] font-bold text-foreground">Alex</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">Pro Student</div>
+                        </button>
+                        <button
+                          onClick={() => {
+                            localStorage.removeItem("pps_guest_created_at");
+                            localStorage.removeItem("pps_guest");
+                            localStorage.removeItem("pps_guest_onboarded");
+                            localStorage.removeItem("pps_onboarding_completed");
+                            try { document.cookie = "pps_gt=; max-age=0; path=/"; } catch {}
+                            setGuestName("Sarah");
+                            loginAsGuest("Sarah");
+                            toast.success(`Welcome to PPS, Sarah! ${TRIAL_DURATION_DAYS}-Day Demo Active.`);
+                            navigate("/dashboard");
+                          }}
+                          className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center hover:bg-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer group"
+                        >
+                          <Users className="w-4 h-4 text-amber-500 mx-auto mb-1" />
+                          <div className="text-[10px] font-bold text-foreground">Sarah</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">Mentor</div>
+                        </button>
+                        <button
+                          onClick={() => {
+                            localStorage.removeItem("pps_guest_created_at");
+                            localStorage.removeItem("pps_guest");
+                            localStorage.removeItem("pps_guest_onboarded");
+                            localStorage.removeItem("pps_onboarding_completed");
+                            try { document.cookie = "pps_gt=; max-age=0; path=/"; } catch {}
+                            setGuestName("Explorer");
+                            loginAsGuest("Explorer");
+                            toast.success(`Welcome to PPS, Explorer! ${TRIAL_DURATION_DAYS}-Day Demo Active.`);
+                            navigate("/dashboard");
+                          }}
+                          className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all cursor-pointer group"
+                        >
+                          <Compass className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
+                          <div className="text-[10px] font-bold text-foreground">Explorer</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">Free Tier</div>
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="space-y-1">
-                      <label className={labelCls}>Your Display Name</label>
+                      <label className={labelCls}>Or Enter Your Own Name</label>
                       <input
                         type="text"
                         placeholder="Enter your name (e.g. Alex)"
@@ -611,24 +812,17 @@ const LoginPage = () => {
                           setGuestName(e.target.value);
                           if (message?.type === "error") setMessage(null);
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && guestName.trim() && !submitting) handleGuestSubmit();
+                        }}
                         className={inputCls}
                         autoFocus
                       />
                     </div>
 
-                    <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors pt-1">
-                      <input
-                        type="checkbox"
-                        checked={guestRemember}
-                        onChange={(e) => setGuestRemember(e.target.checked)}
-                        className="w-4 h-4 rounded border-border text-primary accent-primary cursor-pointer"
-                      />
-                      <span>Remember demo session on this browser</span>
-                    </label>
-
                     <Button
                       onClick={handleGuestSubmit}
-                      disabled={!guestName.trim()}
+                      disabled={!guestName.trim() || submitting}
                       className="w-full bg-pps-green text-white font-black py-3 rounded-2xl hover:opacity-90 transition-all cursor-pointer shadow-md text-xs disabled:opacity-50 h-auto"
                     >
                       Enter {TRIAL_DURATION_DAYS}-Day Demo Dashboard →
@@ -653,6 +847,9 @@ const LoginPage = () => {
                         placeholder="you@email.com"
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !submitting) handleForgotPassword(); }}
+                        required
+                        autoComplete="email"
                         className={inputCls}
                       />
                     </div>
@@ -660,6 +857,7 @@ const LoginPage = () => {
                     <Button
                       onClick={handleForgotPassword}
                       disabled={submitting}
+                      aria-busy={submitting}
                       className="w-full bg-primary text-primary-foreground font-black py-3 rounded-2xl hover:bg-primary/90 transition-all cursor-pointer shadow-md text-xs disabled:opacity-50 h-auto"
                     >
                       {submitting ? "Sending Recovery Link..." : "Send Password Reset Link"}
@@ -713,7 +911,7 @@ const LoginPage = () => {
                 <span>•</span>
                 <Link to="/terms" className="hover:underline">Terms</Link>
                 <span>•</span>
-                <a href="mailto:enterprise@upalakshya.com" className="hover:underline text-secondary font-bold">Campus Sales</a>
+                <a href="mailto:upalakshyasupport@gmail.com" className="hover:underline text-secondary font-bold">Campus Sales</a>
               </div>
             </div>
           </motion.div>

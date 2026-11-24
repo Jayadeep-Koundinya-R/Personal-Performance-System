@@ -80,7 +80,7 @@ export const FocusRoomWhiteboard: React.FC<FocusRoomWhiteboardProps> = ({ groupI
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        toast.info("Whiteboard cleared by squad member 🧼");
+        toast.info("Whiteboard cleared by squad member");
       })
       .subscribe();
 
@@ -189,7 +189,7 @@ export const FocusRoomWhiteboard: React.FC<FocusRoomWhiteboardProps> = ({ groupI
     link.download = `pps_whiteboard_notes_${Date.now()}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
-    toast.success("Whiteboard snapshot saved to downloads! 📸");
+    toast.success("Whiteboard snapshot saved to downloads!");
   };
 
   return (

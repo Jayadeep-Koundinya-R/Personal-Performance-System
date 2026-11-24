@@ -195,73 +195,6 @@ const ALL_FEATURES: FeatureItem[] = [
   },
 ];
 
-/* ── Competitor Comparison Matrix ─────────────────────── */
-const COMPETITOR_ROWS = [
-  {
-    feature: "Low-Latency Mesh Video Focus Rooms",
-    pps: "Included (Unlimited)",
-    focusmate: "Limited to 3/wk free",
-    habitica: "Not Available",
-    notion: "Not Available",
-  },
-  {
-    feature: "Multi-User Real-Time Whiteboard",
-    pps: "Built-In Broadcast",
-    focusmate: "Not Available",
-    habitica: "Not Available",
-    notion: "Not Available",
-  },
-  {
-    feature: "0KB Procedural 432Hz Soundscapes",
-    pps: "Zero Download (Offline)",
-    focusmate: "Not Available",
-    habitica: "Not Available",
-    notion: "Not Available",
-  },
-  {
-    feature: "Dual AI Coach (Cloud + Local Ollama)",
-    pps: "100% Private Option",
-    focusmate: "Not Available",
-    habitica: "Not Available",
-    notion: "$10/mo Add-on",
-  },
-  {
-    feature: "Co-Op Squad Quests & Live Podium",
-    pps: "Live Realtime Sync",
-    focusmate: "Not Available",
-    habitica: "Basic Text Guilds",
-    notion: "Not Available",
-  },
-  {
-    feature: "Circadian Rhythm Habit Scheduling",
-    pps: "Peak Energy Aligned",
-    focusmate: "Not Available",
-    habitica: "Not Available",
-    notion: "Not Available",
-  },
-  {
-    feature: "Streak Auto-Shields & Freeze Credits",
-    pps: "Zero-Penalty Protection",
-    focusmate: "Not Available",
-    habitica: "Manual Inn Pause",
-    notion: "Not Available",
-  },
-  {
-    feature: "Deep Analytics & PDF Executive Reports",
-    pps: "1-Click Full Export",
-    focusmate: "Not Available",
-    habitica: "Basic Stats",
-    notion: "Manual Formulas",
-  },
-  {
-    feature: "100% Free Lifetime Tier Included",
-    pps: "Up to 15 Habits + Rooms",
-    focusmate: "3 sessions/wk cap",
-    habitica: "Limited Free",
-    notion: "Limited Free Blocks",
-  },
-];
-
 /* ── FAQ Items ────────────────────────────────────────── */
 const FAQS = [
   {
@@ -296,7 +229,7 @@ const fadeUp = {
 };
 
 export const HomePage: React.FC = () => {
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const { user, isLoggedIn } = useAuth();
@@ -358,7 +291,7 @@ export const HomePage: React.FC = () => {
   const [soundVolume, setSoundVolume] = useState(0.4);
 
   const handleToggleSound = (type: AmbienceType) => {
-    if (activeSound === type) {
+    if (type === "none" || activeSound === type) {
       ambientSynthesizer.stop();
       setActiveSound("none");
     } else {
@@ -430,13 +363,13 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary selection:text-white transition-colors duration-500">
-      {/* 🌌 Ambient 3D Dynamic Background */}
+      {/* Ambient 3D Dynamic Background */}
       <ThreeDBackground />
 
-      {/* 📊 Top Scroll Progress Bar */}
+      {/* Top Scroll Progress Bar */}
       <ScrollProgressBar />
 
-      {/* ═══════════ NAVBAR ═══════════ */}
+      {/* Navbar */}
       <nav className="sticky top-0 z-50 backdrop-blur-2xl bg-card/85 border-b border-border/50 transition-colors duration-500 shadow-xs">
         <div className="flex items-center justify-between px-6 py-3.5 max-w-7xl mx-auto">
           <Link to="/" className="group flex items-center">
@@ -475,12 +408,12 @@ export const HomePage: React.FC = () => {
             >
               Science
             </button>
-            <Link
+            {/* <Link
               to="/marketplace"
               className="text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-surface"
             >
               Mentors & Classes
-            </Link>
+            </Link> */}
             <Link
               to="/pricing"
               className="text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-surface"
@@ -590,13 +523,13 @@ export const HomePage: React.FC = () => {
               >
                 Science & Circadian Engine
               </button>
-              <Link
+              {/* <Link
                 to="/marketplace"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block p-2.5 rounded-xl hover:bg-surface text-foreground"
               >
                 Mentors & Classrooms
-              </Link>
+              </Link> */}
               <Link
                 to="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
@@ -807,8 +740,9 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
-            <div className="text-[11px] text-muted-foreground font-mono">
-              🛡️ Zero Penalty Freezes protect your hard-earned streak.
+            <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Zero Penalty Freezes protect your hard-earned streak.</span>
             </div>
           </div>
 
@@ -1627,58 +1561,86 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* ═══════════ COMPETITOR COMPARISON MATRIX ═══════════ */}
+      {/* ═══════════ CORE DISCIPLINE & STRUCTURED LIFESTYLE ARCHITECTURE ═══════════ */}
       <section className="relative z-10 max-w-7xl mx-auto px-6 py-16 space-y-8">
         <div className="text-center space-y-2 max-w-3xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-black font-mono">
-            How PPS Compares to Traditional Tools
+            Core Discipline & Structured Lifestyle Architecture
           </h2>
           <p className="text-xs text-muted-foreground">
-            Why high-performance squads and institutions choose PPS over fragmented apps.
+            PPS is not a tool stack — it's a unified operating system for personal performance.
           </p>
         </div>
 
-        <div className="overflow-x-auto rounded-3xl border border-border/80 bg-card/70 backdrop-blur-xl shadow-2xl">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border bg-surface/90 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                <th className="p-4 sm:p-5 font-bold text-foreground">Capability</th>
-                <th className="p-4 sm:p-5 text-center text-primary font-bold bg-primary/10">PPS Studio</th>
-                <th className="p-4 sm:p-5 text-center">Focusmate</th>
-                <th className="p-4 sm:p-5 text-center">Habitica</th>
-                <th className="p-4 sm:p-5 text-center">Notion</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {COMPETITOR_ROWS.map((c, i) => (
-                <tr key={i} className="hover:bg-surface/50 transition-colors">
-                  <td className="p-4 sm:p-5 font-bold text-foreground">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                      <span>{c.feature}</span>
-                    </div>
-                  </td>
-                  <td className="p-4 sm:p-5 text-center font-bold text-xs text-emerald-400 bg-emerald-500/5">
-                    {c.pps}
-                  </td>
-                  <td className="p-4 sm:p-5 text-center text-muted-foreground">
-                    {c.focusmate === "Not Available" ? <Minus className="w-3.5 h-3.5 mx-auto opacity-40" /> : c.focusmate}
-                  </td>
-                  <td className="p-4 sm:p-5 text-center text-muted-foreground">
-                    {c.habitica === "Not Available" ? <Minus className="w-3.5 h-3.5 mx-auto opacity-40" /> : c.habitica}
-                  </td>
-                  <td className="p-4 sm:p-5 text-center text-muted-foreground">
-                    {c.notion === "Not Available" ? <Minus className="w-3.5 h-3.5 mx-auto opacity-40" /> : c.notion}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Circadian Energy Blocks */}
+          <div className="p-6 rounded-3xl bg-card/85 backdrop-blur-xl border border-border/80 shadow-xl hover:border-primary/50 hover:scale-[1.01] hover:shadow-2xl hover:shadow-primary/8 transition-all duration-200 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              <span className="text-xs font-mono font-bold text-foreground">Circadian Energy Blocks</span>
+            </div>
+            <h3 className="text-lg font-black font-mono">Peak-Aligned Scheduling</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Habits automatically slot into your cortisol peak (9–11am), post-lunch dip shield, and evening wind-down windows. No manual guesswork — your biology drives the schedule.
+            </p>
+            <div className="flex items-center gap-2 text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+              <Zap className="w-3 h-3" />
+              <span>45/15 Flow Rhythms</span>
+            </div>
+          </div>
+
+          {/* 45/15 Flow Rhythms */}
+          <div className="p-6 rounded-3xl bg-card/85 backdrop-blur-xl border border-border/80 shadow-xl hover:border-primary/50 hover:scale-[1.01] hover:shadow-2xl hover:shadow-primary/8 transition-all duration-200 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+              <span className="text-xs font-mono font-bold text-foreground">45/15 Flow Rhythms</span>
+            </div>
+            <h3 className="text-lg font-black font-mono">Ultradian-Optimized Sprints</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              45-minute deep focus blocks followed by 15-minute recharge windows. Mirrors natural ultradian cycles. Built-in proof-of-effort: room presence + timer sync + ambient audio = anti-gaming verification.
+            </p>
+            <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <ShieldCheck className="w-3 h-3" />
+              <span>Anti-Gaming Proof</span>
+            </div>
+          </div>
+
+          {/* Anti-Gaming Proof-of-Effort */}
+          <div className="p-6 rounded-3xl bg-card/85 backdrop-blur-xl border border-border/80 shadow-xl hover:border-primary/50 hover:scale-[1.01] hover:shadow-2xl hover:shadow-primary/8 transition-all duration-200 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+              <span className="text-xs font-mono font-bold text-foreground">Anti-Gaming Proof-of-Effort</span>
+            </div>
+            <h3 className="text-lg font-black font-mono">Real Work, Real Rewards</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Streaks, XP, and badges only unlock when WebRTC room presence + Pomodoro completion + audio focus sync are all verified. No click-farming, no idle credit. Zero-trust discipline architecture.
+            </p>
+            <div className="flex items-center gap-2 text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Zero-Trust Verified</span>
+            </div>
+          </div>
+
+          {/* Zero-Distraction Focus */}
+          <div className="p-6 rounded-3xl bg-card/85 backdrop-blur-xl border border-border/80 shadow-xl hover:border-primary/50 hover:scale-[1.01] hover:shadow-2xl hover:shadow-primary/8 transition-all duration-200 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+              <span className="text-xs font-mono font-bold text-foreground">Zero-Distraction Focus</span>
+            </div>
+            <h3 className="text-lg font-black font-mono">Immersive Workspace</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Dark-mode bento grid, procedural 432Hz soundscapes (0 KB), synced multiplayer timer, and AI coach that never leaves the tab. Notification shielding, keyboard-first navigation, and biometric app lock for deep work integrity.
+            </p>
+            <div className="flex items-center gap-2 text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+              <Target className="w-3 h-3" />
+              <span>Keyboard-First</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ═══════════ MENTOR & EDUCATOR MARKETPLACE BANNER ═══════════ */}
-      <section className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+      {/* ═══════════ MENTOR & EDUCATOR MARKETPLACE BANNER — HIDDEN FOR V1 (V2 RE-ENABLE) ═══════════ */}
+      {/* <section className="relative z-10 max-w-7xl mx-auto px-6 py-12">
         <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-r from-amber-500/10 via-card to-primary/10 border border-border/80 flex flex-col lg:flex-row items-center justify-between gap-8 shadow-2xl">
           <div className="space-y-4 max-w-xl">
             <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold uppercase text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
@@ -1742,7 +1704,7 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* ═══════════ FAQ SECTION ═══════════ */}
       <section className="relative z-10 max-w-3xl mx-auto px-6 py-16 space-y-6">
@@ -1812,7 +1774,7 @@ export const HomePage: React.FC = () => {
           <div className="space-y-2">
             <div className="font-bold text-foreground uppercase tracking-wider text-[11px]">Ecosystem</div>
             <div className="space-y-1.5 flex flex-col">
-              <Link to="/marketplace" className="hover:text-foreground">Mentor Marketplace</Link>
+              {/* <Link to="/marketplace" className="hover:text-foreground">Mentor Marketplace</Link> */}
               <Link to="/roadmap" className="hover:text-foreground">Roadmap</Link>
               <Link to="/login" className="hover:text-foreground">Sign In</Link>
             </div>
@@ -1838,7 +1800,7 @@ export const HomePage: React.FC = () => {
         </div>
       </footer>
 
-      {/* 🚀 Floating Scroll to Top */}
+      {/* Floating Scroll to Top */}
       <ScrollToTop />
     </div>
   );

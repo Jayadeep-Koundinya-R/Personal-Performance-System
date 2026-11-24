@@ -16,6 +16,10 @@ import {
   BookOpen,
   Tag,
   Search,
+  BarChart3,
+  Bot,
+  Rocket,
+  Ticket,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -54,14 +58,14 @@ function parseLectureNotesToHabits(notes: string): { name: string; category: str
     }
     if (results.length < 2) {
       results.push({
-        name: `📝 Solve 3 Practice Problems on ${topic2}`,
+        name: `Solve 3 Practice Problems on ${topic2}`,
         category: "Productivity",
         period: "Daily",
       });
     }
     if (results.length < 3) {
       results.push({
-        name: `📚 Create 5 Flashcards from ${topic1}`,
+        name: `Create 5 Flashcards from ${topic1}`,
         category: "Learning",
         period: "Daily",
       });
@@ -111,7 +115,7 @@ export const TeacherMarketplace: React.FC = () => {
       setIsExtracting(false);
       const generated = parseLectureNotesToHabits(lectureNotes);
       setExtractedHabits(generated);
-      toast.success(`Generated ${generated.length} actionable habits from your lecture notes! ✨`);
+      toast.success(`Generated ${generated.length} actionable habits from your lecture notes!`);
     }, 400);
   };
 
@@ -125,7 +129,7 @@ export const TeacherMarketplace: React.FC = () => {
         priority: "medium",
       });
     });
-    toast.success(`Installed ${extractedHabits.length} habits directly into your Habit Architect! 🚀`);
+      toast.success(`Installed ${extractedHabits.length} habits directly into your Habit Architect!`);
   };
 
   // Export Attendance CSV Handler
@@ -147,7 +151,7 @@ export const TeacherMarketplace: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Exported Attendance CSV for ${className}! 📊`);
+    toast.success(`Exported Attendance CSV for ${className}!`);
   };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -168,7 +172,7 @@ export const TeacherMarketplace: React.FC = () => {
       setNewTitle("");
       setNewDesc("");
       setIsCreateModalOpen(false);
-      toast.success("Live Masterclass published to Marketplace! 🎓");
+      toast.success("Live Masterclass published to Marketplace!");
     }
   };
 
@@ -218,7 +222,7 @@ export const TeacherMarketplace: React.FC = () => {
             }`}
           >
             <span>My Enrolled Tickets</span>
-            <span className="text-[10px] bg-amber-400 text-black font-black px-1.5 py-0.2 rounded-full">
+            <span className="text-[10px] bg-amber-400 text-black font-black px-1.5 py-0.5 rounded-full">
               {enrolledClasses.length}
             </span>
           </button>
@@ -228,7 +232,7 @@ export const TeacherMarketplace: React.FC = () => {
               activeTab === "mentor_studio" ? "bg-amber-500 text-black font-black shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <span>🎓 Teacher Studio & Cohorts</span>
+            <span><GraduationCap className="w-3.5 h-3.5" /> Teacher Studio & Cohorts</span>
           </button>
           <button
             onClick={() => setActiveTab("ai_extractor")}
@@ -265,7 +269,7 @@ export const TeacherMarketplace: React.FC = () => {
         filteredClasses.length === 0 ? (
           <div className="p-12 rounded-3xl bg-card border border-border/80 text-center space-y-4 shadow-xl">
             <div className="w-14 h-14 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-3xl">
-              🎓
+              <GraduationCap className="w-8 h-8" />
             </div>
             <div>
               <h3 className="text-base font-bold text-foreground font-mono">No Live Masterclasses Scheduled Yet</h3>
@@ -410,7 +414,7 @@ export const TeacherMarketplace: React.FC = () => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-foreground">{c.title}</span>
-                      <span className="text-[10px] font-mono bg-primary/15 text-primary border border-primary/30 px-2 py-0.2 rounded-full font-bold">
+                      <span className="text-[10px] font-mono bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-bold">
                         {c.subject}
                       </span>
                     </div>
@@ -424,19 +428,19 @@ export const TeacherMarketplace: React.FC = () => {
                       onClick={() => handleExportAttendance(c.title)}
                       className="px-3 py-1.5 rounded-xl bg-surface border border-border/80 hover:bg-card text-foreground text-xs font-bold transition-all cursor-pointer"
                     >
-                      Export CSV 📊
+                      Export CSV <BarChart3 className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => toast.success(`Habit stack assigned to all ${c.enrolledStudents.length} enrolled students! 📚`)}
+                      onClick={() => toast.success(`Habit stack assigned to all ${c.enrolledStudents.length} enrolled students!`)}
                       className="px-3 py-1.5 rounded-xl bg-primary/15 border border-primary/30 text-primary text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer"
                     >
-                      Assign Habit Stack ✨
+                      Assign Habit Stack <Sparkles className="w-3.5 h-3.5" />
                     </button>
                     <a
                       href={`#/meet/${c.id}?name=${encodeURIComponent(c.title)}`}
                       className="px-3.5 py-1.5 rounded-xl bg-amber-500 text-black text-xs font-black hover:bg-amber-400 transition-all cursor-pointer shadow-xs"
                     >
-                      Launch Room 🎥
+                      Launch Room <Video className="w-3.5 h-3.5" />
                     </a>
                   </div>
                 </div>
@@ -449,12 +453,12 @@ export const TeacherMarketplace: React.FC = () => {
         <div className="p-6 sm:p-8 rounded-3xl bg-card border border-cyan-500/30 space-y-5 shadow-2xl">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-xl shadow-xs">
-              🤖
+              <Bot className="w-6 h-6" />
             </div>
             <div>
               <h3 className="text-base font-black font-mono text-foreground flex items-center gap-2">
                 <span>AI Lecture-to-Habit Extractor</span>
-                <span className="text-[10px] font-mono bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-2 py-0.2 rounded-full font-bold">
+                <span className="text-[10px] font-mono bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">
                   Gemini 2.0 Pro / Ollama
                 </span>
               </h3>
@@ -488,7 +492,7 @@ export const TeacherMarketplace: React.FC = () => {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>Extract Daily Habit Stack ✨</span>
+                  <span>Extract Daily Habit Stack <Sparkles className="w-3.5 h-3.5" /></span>
                 </>
               )}
             </button>
@@ -524,7 +528,7 @@ export const TeacherMarketplace: React.FC = () => {
         <div className="space-y-4">
           {enrolledClasses.length === 0 ? (
             <div className="p-10 text-center bg-card border border-border/80 rounded-3xl space-y-2">
-              <div className="text-3xl">🎫</div>
+              <div className="text-3xl"><Ticket /></div>
               <h3 className="text-sm font-bold text-foreground">No enrolled masterclasses yet</h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 Browse available live sessions above and reserve your seat to join interactive focus rooms with verified mentors.

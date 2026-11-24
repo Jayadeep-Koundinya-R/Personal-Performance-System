@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useAuth, AuthProvider } from "../use-auth";
+import { useAuth, AuthProvider, mapAuthError, validatePasswordStrength, TRIAL_DURATION_DAYS } from "../use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
 // Mock React Router useNavigate
@@ -25,6 +25,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     from: () => ({
       select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
       insert: () => Promise.resolve({ error: null }),
+      upsert: () => Promise.resolve({ error: null }),
     }),
   },
 }));
@@ -41,7 +42,7 @@ describe("useAuth Hook & Auth Flows", () => {
     const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
     act(() => {
-      result.current.loginAsGuest("Test User", true);
+      result.current.loginAsGuest("Test User");
     });
 
     expect(localStorage.getItem("pps_guest")).toBe("true");
@@ -70,10 +71,10 @@ describe("useAuth Hook & Auth Flows", () => {
     const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
     act(() => {
-      result.current.loginAsGuest("Demo Guest", true);
+      result.current.loginAsGuest("Demo Guest");
     });
 
-    expect(result.current.guestDaysRemaining).toBe(5);
+    expect(result.current.guestDaysRemaining).toBe(TRIAL_DURATION_DAYS);
     expect(result.current.isGuestTrialExpired).toBe(false);
   });
 
@@ -81,7 +82,7 @@ describe("useAuth Hook & Auth Flows", () => {
     const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
     act(() => {
-      result.current.loginAsGuest("Demo User", true);
+      result.current.loginAsGuest("Demo User");
     });
     expect(result.current.user?.isGuest).toBe(true);
     expect(localStorage.getItem("pps_guest")).toBe("true");
@@ -114,7 +115,7 @@ describe("useAuth Hook & Auth Flows", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
   });
 
-  it("handles offline fallback when Supabase cloud is unreachable during login", async () => {
+  it("blocks offline login with error instead of local fallback", async () => {
     (supabase.auth.signInWithPassword as any).mockResolvedValueOnce({
       error: { message: "Failed to fetch" },
     });
@@ -126,12 +127,13 @@ describe("useAuth Hook & Auth Flows", () => {
       err = await result.current.login("tester@example.com", "MyPassword123!");
     });
 
-    expect(err).toBeNull();
-    expect(result.current.user?.email).toBe("tester@example.com");
-    expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+    expect(err).toBeTruthy();
+    expect(err).toContain("Unable to connect");
+    expect(result.current.user).toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("handles offline fallback when signing up without cloud database", async () => {
+  it("blocks offline signup with error instead of local account creation", async () => {
     (supabase.auth.signUp as any).mockResolvedValueOnce({
       error: { message: "Failed to fetch" },
     });
@@ -143,39 +145,28 @@ describe("useAuth Hook & Auth Flows", () => {
       err = await result.current.signup("newuser@example.com", "Password123!", "Password123!");
     });
 
-    expect(err).toBeNull();
-    expect(result.current.user?.email).toBe("newuser@example.com");
-    expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
-
-    // Ensure password is never stored in plaintext
-    const rawAccounts = localStorage.getItem("pps_local_accounts");
-    expect(rawAccounts).toBeTruthy();
-    const accounts = JSON.parse(rawAccounts!);
-    expect(accounts["newuser@example.com"]).not.toBe("Password123!");
-    expect(accounts["newuser@example.com"].length).toBeGreaterThanOrEqual(16);
+    expect(err).toBeTruthy();
+    expect(err).toContain("Unable to connect");
+    expect(result.current.user).toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    // Verify no local account was created
+    expect(localStorage.getItem("pps_local_accounts")).toBeNull();
+    expect(localStorage.getItem("pps_local_session")).toBeNull();
   });
 
-  it("rejects login with invalid password for local accounts", async () => {
+  it("returns error message when login fails with invalid credentials", async () => {
     (supabase.auth.signInWithPassword as any).mockResolvedValueOnce({
-      error: { message: "Invalid login credentials" },
+      error: { message: "Invalid login credentials", code: "invalid_credentials" },
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
-    // First signup to seed local account
-    await act(async () => {
-      await result.current.signup("user1@example.com", "CorrectPassword1!", "CorrectPassword1!");
-    });
-
-    mockNavigate.mockClear();
-
-    // Now try logging in with wrong password
     let err: string | null = null;
     await act(async () => {
-      err = await result.current.login("user1@example.com", "WrongPassword99!");
+      err = await result.current.login("user@example.com", "WrongPassword1!");
     });
 
-    expect(err).toContain("Invalid password for this account");
+    expect(err).toContain("Email or password is incorrect");
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -191,8 +182,86 @@ describe("useAuth Hook & Auth Flows", () => {
       err = await result.current.loginWithGoogle();
     });
 
-    expect(err).toContain("Unsupported provider: provider is not enabled");
+    expect(err).toContain("Google Sign-In is not configured");
     expect(result.current.user).toBeNull();
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("cleans up legacy local account data on first load", async () => {
+    // Seed legacy data
+    localStorage.setItem("pps_local_accounts", JSON.stringify({ "test@example.com": "hash123" }));
+    localStorage.setItem("pps_local_session", JSON.stringify({ email: "test@example.com", isGuest: false }));
+
+    // Trigger the auth hook to run its cleanup effect
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+
+    await act(async () => {
+      // Wait for effect to run
+      await new Promise((r) => setTimeout(r, 100));
+    });
+
+    expect(localStorage.getItem("pps_local_accounts")).toBeNull();
+    expect(localStorage.getItem("pps_local_session")).toBeNull();
+  });
+});
+
+describe("mapAuthError", () => {
+  it("maps invalid_credentials to user-friendly message", () => {
+    expect(mapAuthError({ code: "invalid_credentials", message: "Invalid login credentials" }))
+      .toBe("Email or password is incorrect. Please try again.");
+  });
+
+  it("maps email_not_confirmed to user-friendly message", () => {
+    expect(mapAuthError({ code: "email_not_confirmed", message: "Email not confirmed" }))
+      .toContain("Please check your email");
+  });
+
+  it("maps user_already_exists to user-friendly message", () => {
+    expect(mapAuthError({ code: "user_already_exists", message: "User already registered" }))
+      .toContain("An account with this email may already exist");
+  });
+
+  it("maps weak_password to user-friendly message", () => {
+    expect(mapAuthError({ code: "weak_password", message: "Password is too weak" }))
+      .toContain("Password must be at least 8 characters");
+  });
+
+  it("maps rate limit errors to user-friendly message", () => {
+    expect(mapAuthError({ code: "over_request_rate_limit", message: "Email rate limit exceeded" }))
+      .toContain("Too many attempts");
+  });
+
+  it("maps network errors to user-friendly message", () => {
+    expect(mapAuthError({ message: "Failed to fetch" }))
+      .toContain("Unable to connect");
+  });
+
+  it("maps unsupported provider errors to user-friendly message", () => {
+    expect(mapAuthError({ code: "unsupported_provider", message: "provider is not enabled" }))
+      .toContain("Google Sign-In is not configured");
+  });
+
+  it("falls back to original message for unknown errors", () => {
+    expect(mapAuthError({ message: "Something unexpected happened" }))
+      .toBe("Something unexpected happened");
+  });
+});
+
+describe("validatePasswordStrength", () => {
+  it("rejects passwords shorter than 8 characters", () => {
+    expect(validatePasswordStrength("Pw1")).toBe("Password must be at least 8 characters.");
+  });
+
+  it("rejects passwords without uppercase letters", () => {
+    expect(validatePasswordStrength("password1")).toBe("Password must contain at least 1 uppercase letter.");
+  });
+
+  it("rejects passwords without numbers", () => {
+    expect(validatePasswordStrength("Password")).toBe("Password must contain at least 1 number.");
+  });
+
+  it("accepts valid passwords (8+ chars, 1 uppercase, 1 number)", () => {
+    expect(validatePasswordStrength("Password1")).toBeNull();
+    expect(validatePasswordStrength("MySecure99")).toBeNull();
   });
 });

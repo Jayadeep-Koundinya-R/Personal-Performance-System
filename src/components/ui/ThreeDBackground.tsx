@@ -118,17 +118,14 @@ export const ThreeDBackground: React.FC = () => {
 
         {/* ── 3D Geometric Object 1: Floating Prismatic Glass Cube (Top-Right) ── */}
         <div
-          className="absolute top-24 right-[10%] hidden md:block pointer-events-none transition-all duration-700 animate-pulse"
-          style={{
-            transform: "translateZ(85px) perspective(800px) rotateX(20deg) rotateY(-25deg)",
-            animationDuration: "6s",
-          }}
+          className="absolute top-16 right-12 hidden md:block pointer-events-none transition-all duration-700 animate-float-3d"
+          style={{ willChange: "transform" }}
         >
           <div
-            className={`w-24 h-24 rounded-2xl border-2 backdrop-blur-md transition-all duration-700 relative shadow-2xl ${
+            className={`w-24 h-24 rounded-2xl backdrop-blur-2xl bg-white/[0.03] border border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700 relative ${
               isDark
-                ? "border-primary/50 bg-gradient-to-br from-primary/25 via-indigo-600/15 to-transparent shadow-[0_0_35px_rgba(99,102,241,0.35)]"
-                : "border-indigo-400/50 bg-gradient-to-br from-white/90 via-indigo-100/60 to-transparent shadow-[0_8px_30px_rgba(99,102,241,0.18)]"
+                ? "bg-gradient-to-br from-white/[0.05] via-indigo-600/10 to-transparent"
+                : "bg-gradient-to-br from-white/40 via-indigo-100/30 to-transparent border-white/40 shadow-xl"
             }`}
           >
             {/* Inner 3D specular facet */}
@@ -143,22 +140,22 @@ export const ThreeDBackground: React.FC = () => {
 
         {/* ── 3D Geometric Object 2: Floating Concentric Cyber Torus Ring (Mid-Left) ── */}
         <div
-          className="absolute top-[45%] left-[5%] hidden lg:block pointer-events-none transition-all duration-700 animate-pulse"
+          className="absolute top-[42%] left-10 hidden lg:block pointer-events-none transition-all duration-700 animate-float-3d"
           style={{
-            transform: "translateZ(55px) perspective(900px) rotateX(55deg) rotateZ(30deg)",
-            animationDuration: "8s",
+            animationDelay: "-3s",
+            willChange: "transform",
           }}
         >
           <div
-            className={`w-28 h-28 rounded-full border-4 border-dashed backdrop-blur-sm transition-all duration-700 relative ${
+            className={`w-28 h-28 rounded-full border-2 border-white/15 backdrop-blur-2xl bg-white/[0.03] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700 relative ${
               isDark
-                ? "border-cyan-400/45 bg-gradient-to-tr from-cyan-500/15 to-transparent shadow-[0_0_40px_rgba(6,182,212,0.3)]"
-                : "border-sky-400/50 bg-gradient-to-tr from-sky-100/60 to-transparent shadow-[0_8px_25px_rgba(56,189,248,0.15)]"
+                ? "bg-gradient-to-tr from-cyan-500/10 via-transparent to-primary/10"
+                : "bg-gradient-to-tr from-sky-100/40 via-transparent to-indigo-100/40 border-white/40"
             }`}
           >
             {/* Concentric core pulse */}
             <div
-              className="absolute inset-4 rounded-full border-2 border-primary/30 animate-spin"
+              className="absolute inset-4 rounded-full border-2 border-dashed border-cyan-400/40 animate-spin"
               style={{ animationDuration: "20s" }}
             />
           </div>
@@ -166,17 +163,17 @@ export const ThreeDBackground: React.FC = () => {
 
         {/* ── 3D Geometric Object 3: Floating Pyramidal Octahedron Diamond (Bottom-Right) ── */}
         <div
-          className="absolute bottom-28 right-[7%] hidden md:block pointer-events-none transition-all duration-700 animate-pulse"
+          className="absolute bottom-20 right-12 hidden md:block pointer-events-none transition-all duration-700 animate-float-3d"
           style={{
-            transform: "translateZ(75px) perspective(800px) rotate(45deg) rotateX(15deg)",
-            animationDuration: "7s",
+            animationDelay: "-1.5s",
+            willChange: "transform",
           }}
         >
           <div
-            className={`w-20 h-20 border-2 rounded-2xl backdrop-blur-md transition-all duration-700 shadow-2xl ${
+            className={`w-20 h-20 rounded-2xl backdrop-blur-2xl bg-white/[0.03] border border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700 relative ${
               isDark
-                ? "border-amber-400/50 bg-gradient-to-br from-amber-500/20 via-transparent to-primary/20 shadow-[0_0_35px_rgba(251,191,36,0.3)]"
-                : "border-amber-400/60 bg-gradient-to-br from-amber-100/80 via-white/80 to-primary/20 shadow-[0_8px_25px_rgba(245,158,11,0.18)]"
+                ? "bg-gradient-to-br from-amber-500/15 via-transparent to-primary/15"
+                : "bg-gradient-to-br from-amber-100/50 via-white/50 to-primary/20 border-white/40"
             }`}
           >
             <div

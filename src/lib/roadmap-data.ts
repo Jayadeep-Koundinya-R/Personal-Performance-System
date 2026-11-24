@@ -27,7 +27,7 @@ export const ROADMAP_DATA: RoadmapMilestone[] = [
       "Hardware-accelerated 432Hz ambient soundscape synthesizer",
     ],
     techStack: ["WebRTC P2P", "Web Audio API", "HTML5 Canvas", "AES-256 GCM"],
-    icon: "🎥",
+    icon: "video",
   },
   {
     id: "m2",
@@ -44,7 +44,7 @@ export const ROADMAP_DATA: RoadmapMilestone[] = [
       "1-Click Cohort Habit Stack assignments for tutors and coaching batches",
     ],
     techStack: ["Stripe Connect", "Apple HealthKit", "Whoop API", "UPI Gateway"],
-    icon: "🎓",
+    icon: "graduation-cap",
   },
   {
     id: "m3",
@@ -61,7 +61,7 @@ export const ROADMAP_DATA: RoadmapMilestone[] = [
       "AI Quiz & Flashcard generation directly from whiteboard drawings",
     ],
     techStack: ["Gemini 2.0 Pro", "Local Ollama LLM", "Whisper Speech", "Web Speech API"],
-    icon: "🤖",
+    icon: "bot",
   },
   {
     id: "m4",
@@ -78,6 +78,6 @@ export const ROADMAP_DATA: RoadmapMilestone[] = [
       "FERPA & GDPR compliant institutional data residency guarantees",
     ],
     techStack: ["Canvas LTI 1.3", "SAML 2.0", "SCIM Provisioning", "PostgreSQL RLS"],
-    icon: "🏛️",
+    icon: "landmark",
   },
 ];

@@ -52,6 +52,11 @@ vi.mock("@/hooks/use-focus-timer", () => ({
     startTimer: vi.fn(),
     toggleTimer: vi.fn(),
   }),
+  useFocusTimerTick: () => ({
+    remainingSec: 1500,
+    progressRatio: 0,
+    strokeDashoffset: 565,
+  }),
 }));
 
 // Mock Audio & Feedback

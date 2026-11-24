@@ -16,14 +16,14 @@ import { useHabits, Habit } from "@/hooks/use-habits";
 import { useSubscription } from "@/hooks/use-subscription";
 import { HABIT_TEMPLATES, HabitTemplate } from "@/lib/habitTemplates";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Sparkles, Layers, Check, Edit2, Trash2, Archive, Bell, Clock, Calendar, Shield, Tag, Zap } from "lucide-react";
+import { Search, Plus, Sparkles, Layers, Check, Edit2, Trash2, Archive, Bell, Clock, Calendar, Shield, Tag, Zap, Settings2, Hourglass, Folder, Link, Rocket, Sunrise, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
 import EmptyState from "@/components/EmptyState";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 
 const ROUTINE_BUNDLES = [
   {
-    name: "Morning Hero Stack 🌅",
+    name: "Morning Hero Stack",
     category: "Health",
     desc: "Kickstart your day with hydration, mindfulness, and daily focus planning.",
     habits: [
@@ -33,7 +33,7 @@ const ROUTINE_BUNDLES = [
     ],
   },
   {
-    name: "Deep Work Beast ⚡",
+    name: "Deep Work Beast",
     category: "Productivity",
     desc: "Maximize cognitive stamina with structured deep-work sprints.",
     habits: [
@@ -43,7 +43,7 @@ const ROUTINE_BUNDLES = [
     ],
   },
   {
-    name: "Evening Wind-Down 🌙",
+    name: "Evening Wind-Down",
     category: "Wellness",
     desc: "Prepare body and mind for restorative sleep.",
     habits: [
@@ -249,7 +249,8 @@ const HabitManagerSection = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
-            <span>⚙️ Habit Architect</span>
+            <Settings2 className="w-4 h-4" />
+            <span>Habit Architect</span>
             <span className="text-[11px] font-mono bg-primary/15 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full font-bold uppercase">
               Atomic Stacking & Routines
             </span>
@@ -290,8 +291,9 @@ const HabitManagerSection = () => {
             className="bg-card border border-primary/30 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4 relative overflow-hidden"
           >
             <div className="flex items-center justify-between border-b border-border/40 pb-3">
-              <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
-                <span>⚡ Atomic Habit Architect Builder</span>
+                <h3 className="text-sm font-extrabold uppercase font-mono tracking-wider text-foreground flex items-center gap-2">
+                  <Zap className="w-3 h-3 inline" />
+                  <span>Atomic Habit Architect Builder</span>
               </h3>
               <span className="text-xs font-mono font-bold text-primary">Formula: Trigger ➔ Action</span>
             </div>
@@ -322,7 +324,7 @@ const HabitManagerSection = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Pour my morning coffee ☕"
+                  placeholder="e.g. Pour my morning coffee"
                   value={triggerEvent}
                   onChange={(e) => setTriggerEvent(e.target.value)}
                   className="w-full bg-surface border border-border/80 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none text-foreground focus:border-primary"
@@ -394,7 +396,7 @@ const HabitManagerSection = () => {
               <div className="sm:col-span-2 p-3.5 bg-surface/50 border border-border/70 rounded-2xl space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-pps-orange font-bold text-sm">⚡</span>
+                    <Zap className="w-3 h-3 text-pps-orange" />
                     <div>
                       <div className="text-xs font-extrabold text-foreground font-mono">Proof-of-Focus Sprint Lock (Agni 2.0)</div>
                       <div className="text-[10.5px] text-muted-foreground">Requires a verified focus sprint before this anchor habit can be marked done</div>
@@ -432,19 +434,19 @@ const HabitManagerSection = () => {
 
               {/* Circadian Biological Energy Window */}
               <div className="sm:col-span-2 p-3.5 bg-surface/50 border border-border/70 rounded-2xl space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-secondary font-bold text-sm">⏳</span>
-                    <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Hourglass className="w-3 h-3 text-secondary" />
+                      <div>
                       <div className="text-xs font-extrabold text-foreground font-mono">Circadian Biological Window</div>
                       <div className="text-[10.5px] text-muted-foreground">Align habit execution with your peak energy window</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {[
-                      { label: "🌅 Morning (08–12)", start: "08:00", end: "12:00" },
-                      { label: "☀️ Afternoon (13–16)", start: "13:00", end: "16:00" },
-                      { label: "🌙 Evening (17–21)", start: "17:00", end: "21:00" },
+                      { label: (<><Sunrise className="w-3 h-3 inline" /> Morning (08–12)</>), start: "08:00", end: "12:00" },
+                      { label: (<><Sun className="w-3 h-3 inline" /> Afternoon (13–16)</>), start: "13:00", end: "16:00" },
+                      { label: (<><Moon className="w-3 h-3 inline" /> Evening (17–21)</>), start: "17:00", end: "21:00" },
                     ].map((preset) => (
                       <Button
                         key={preset.label}
@@ -591,7 +593,7 @@ const HabitManagerSection = () => {
         {filteredHabits.length === 0 ? (
           <div className="col-span-3 bg-card border border-border/80 rounded-3xl p-4">
             <EmptyState
-              icon="⚙️"
+              icon={<Settings2 className="w-8 h-8" />}
               title="No Habits Found"
               description="Create your first habit or install a 1-click curated routine bundle below!"
               actionLabel="Add Habit"
@@ -615,7 +617,8 @@ const HabitManagerSection = () => {
                       <h3 className="text-sm font-extrabold text-foreground leading-snug">{h.name}</h3>
                       {isAtomic && (
                         <div className="text-[10.5px] font-mono text-secondary font-bold mt-0.5 flex items-center gap-1">
-                          <span>🔗 Atomic Stack</span>
+                          <Link className="w-3 h-3 inline" />
+                          <span>Atomic Stack</span>
                         </div>
                       )}
                     </div>
@@ -627,19 +630,19 @@ const HabitManagerSection = () => {
 
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono font-bold flex-wrap">
                     <span className="bg-surface border border-border/80 px-2 py-0.5 rounded-lg">
-                      📁 {h.category || "General"}
+                      <Folder className="w-3 h-3 inline" /> {h.category || "General"}
                     </span>
                     <span className="bg-surface border border-border/80 px-2 py-0.5 rounded-lg">
-                      ⏰ {h.period}
+                      <Clock className="w-3 h-3 inline" /> {h.period}
                     </span>
                     {h.requires_focus_timer && (
                       <span className="bg-pps-orange/15 text-pps-orange border border-pps-orange/30 px-2 py-0.5 rounded-lg">
-                        ⚡ Sprint ({h.focus_duration_minutes || 25}m)
+                        <Zap className="w-3 h-3 inline" /> Sprint ({h.focus_duration_minutes || 25}m)
                       </span>
                     )}
                     {(h.window_start || h.window_end) && (
                       <span className="bg-secondary/15 text-secondary border border-secondary/30 px-2 py-0.5 rounded-lg">
-                        ⏳ {h.window_start || "00:00"} – {h.window_end || "23:59"}
+                        <Hourglass className="w-3 h-3 inline" /> {h.window_start || "00:00"} – {h.window_end || "23:59"}
                       </span>
                     )}
                   </div>
@@ -662,7 +665,7 @@ const HabitManagerSection = () => {
                             },
                           })
                         );
-                        toast.success(`⚡ Focus Sprint launched for "${h.name}"!`);
+                        toast.success(`Focus Sprint launched for "${h.name}"!`);
                       }}
                       variant="outline"
                       size="sm"
@@ -735,7 +738,8 @@ const HabitManagerSection = () => {
               <div className="flex items-center justify-between pb-3 border-b border-border/40">
                 <div>
                   <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2 font-mono">
-                    <span>🚀 Curated Routine Starter Bundles</span>
+                    <Rocket className="w-4 h-4" />
+                    <span>Curated Routine Starter Bundles</span>
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5 font-medium">
                     1-click install high-performance habit stacks created by productivity scientists
@@ -803,7 +807,10 @@ const HabitManagerSection = () => {
               className="bg-card border border-primary/40 rounded-3xl p-6 shadow-2xl max-w-md w-full space-y-4 relative overflow-hidden"
             >
               <div className="flex items-center justify-between pb-3 border-b border-border/40">
-                <h3 className="text-base font-extrabold text-foreground font-mono">✏️ Edit Habit Architecture</h3>
+                <h3 className="text-base font-extrabold text-foreground font-mono flex items-center gap-2">
+                  <Edit2 className="w-4 h-4" />
+                  <span>Edit Habit Architecture</span>
+                </h3>
                       <Button
                         onClick={() => setEditHabit(null)}
                         className="text-muted-foreground hover:text-foreground text-sm font-bold"
@@ -866,9 +873,9 @@ const HabitManagerSection = () => {
                 {/* Edit Proof-of-Focus Lock */}
                 <div className="p-3 bg-surface/50 border border-border/70 rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-foreground flex items-center gap-1.5">
-                      <span className="text-pps-orange">⚡</span>
-                      <span>Proof-of-Focus Lock (Agni 2.0)</span>
+                  <span className="text-xs font-mono font-bold text-foreground flex items-center gap-1.5">
+                    <Zap className="w-3 h-3 text-pps-orange" />
+                    <span>Proof-of-Focus Lock (Agni 2.0)</span>
                     </span>
                     <input
                       type="checkbox"
@@ -903,9 +910,9 @@ const HabitManagerSection = () => {
                 {/* Edit Circadian Window */}
                 <div className="p-3 bg-surface/50 border border-border/70 rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-foreground flex items-center gap-1.5">
-                      <span className="text-secondary">⏳</span>
-                      <span>Circadian Window</span>
+                  <span className="text-xs font-mono font-bold text-foreground flex items-center gap-1.5">
+                    <Hourglass className="w-3 h-3 text-secondary" />
+                    <span>Circadian Window</span>
                     </span>
                     {(editWindowStart || editWindowEnd) && (
                       <Button

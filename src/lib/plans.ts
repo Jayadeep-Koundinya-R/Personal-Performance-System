@@ -99,7 +99,7 @@ export const REGIONAL_PRICING = {
   },
   GLOBAL: {
     regionName: "International / Global",
-    flag: "🌐",
+    flag: "Global",
     currencySymbol: "$",
     currencyCode: "USD",
     proMonthly: 9.99,

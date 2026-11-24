@@ -278,7 +278,7 @@ export function generateCircadianPlan(options: GeneratePlanOptions): VayuDailyPl
         slot.title,
         "Deep Work",
         "peak",
-        "Vayu Prana: Mindful Recharge & Hydration",
+        "Prana: Mindful Recharge & Hydration",
         morningQueue,
         slot.desc
       );
@@ -355,7 +355,7 @@ export function generateCircadianPlan(options: GeneratePlanOptions): VayuDailyPl
         trackTitles.morningDeep,
         "Deep Work",
         "peak",
-        "Vayu Prana: Mindful Recharge",
+        "Prana: Mindful Recharge",
         morningQueue
       );
       cursor += 60;
@@ -642,7 +642,7 @@ export async function parseVayuNaturalInput(
     return {
       action: "schedule_rebalanced",
       completionPercentage: 0,
-      feedback: sanitizeWithDOMPurify("Vayu schedule fluidly recalibrated starting from your current time."),
+      feedback: sanitizeWithDOMPurify("Daily Flow schedule fluidly recalibrated starting from your current time."),
       xpAwarded: 0,
     };
   }
@@ -652,7 +652,7 @@ export async function parseVayuNaturalInput(
     return {
       action: "plan_created",
       completionPercentage: 0,
-      feedback: sanitizeWithDOMPurify("Vayu circadian flow generated. 45/15 rhythms aligned with your biological windows."),
+      feedback: sanitizeWithDOMPurify("Daily Flow circadian flow generated. 45/15 rhythms aligned with your biological windows."),
       xpAwarded: 0,
     };
   }
@@ -831,7 +831,7 @@ export async function parseVayuNaturalInput(
     return {
       action: "schedule_rebalanced",
       completionPercentage: 0,
-      feedback: sanitizeWithDOMPurify("Vayu dynamic schedule fluidly recalibrated for the remaining hours."),
+      feedback: sanitizeWithDOMPurify("Daily Flow dynamic schedule fluidly recalibrated for the remaining hours."),
       xpAwarded: 0,
     };
   }

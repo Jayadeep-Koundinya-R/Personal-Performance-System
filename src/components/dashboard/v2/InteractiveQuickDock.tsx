@@ -13,13 +13,19 @@ import {
   Play,
   Pause,
   Sparkles,
+  Timer,
+  Target,
+  Mountain,
+  CloudRain,
+  Coffee,
+  BookOpen,
   Flame,
   CheckCircle2,
   X,
   Clock,
   Compass,
 } from "lucide-react";
-import { useFocusTimer } from "@/hooks/use-focus-timer";
+import { useFocusTimer, useFocusTimerTick } from "@/hooks/use-focus-timer";
 import { ambientAudio, AmbienceType } from "@/lib/audio/ambientSynthesizer";
 import { feedbackSounds } from "@/lib/audio/clickFeedback";
 import { toast } from "sonner";
@@ -46,6 +52,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
   hasAiRecommendation = false,
 }) => {
   const focusTimer = useFocusTimer();
+  const focusTick = useFocusTimerTick();
 
   // Ambient audio state
   const [isPlayingAudio, setIsPlayingAudio] = useState(() => {
@@ -80,7 +87,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
       ambientAudio.start(targetType);
       setCurrentAmbience(targetType);
       setIsPlayingAudio(true);
-      toast.success(`Playing ${targetType === "lofi" ? "Lo-Fi 432Hz" : targetType === "rain" ? "Soft Rain" : targetType === "binaural" ? "Binaural Alpha" : "Library Focus"} 🎧`);
+      toast.success(`Playing ${targetType === "lofi" ? "Lo-Fi 432Hz" : targetType === "rain" ? "Soft Rain" : targetType === "binaural" ? "Binaural Alpha" : "Library Focus"}`);
     }
   };
 
@@ -113,7 +120,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
               title="Focus Sprint active — click to pause/resume"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>{Math.floor(focusTimer.remainingSec / 60)}:{(focusTimer.remainingSec % 60).toString().padStart(2, "0")}</span>
+              <span>{Math.floor(focusTick.remainingSec / 60)}:{(focusTick.remainingSec % 60).toString().padStart(2, "0")}</span>
               <span className="text-[10px] text-muted-foreground uppercase hidden sm:inline">Pause</span>
             </button>
           ) : (
@@ -145,10 +152,10 @@ export const InteractiveQuickDock: React.FC<Props> = ({
                   <button onClick={() => setShowSprintMenu(false)} className="hover:text-foreground">✕</button>
                 </div>
                 {[
-                  { m: 15, label: "15m Micro Sprint", icon: "⚡", desc: "Beat procrastination fast" },
-                  { m: 25, label: "25m Classic Pomodoro", icon: "🍅", desc: "Gold standard focus cycle" },
-                  { m: 50, label: "50m Deep Flow Sprint", icon: "🌊", desc: "Complex coding or studying" },
-                  { m: 90, label: "90m Ultradian Marathon", icon: "🏔️", desc: "Maximum deep work capacity" },
+                  { m: 15, label: "15m Micro Sprint", icon: Zap, desc: "Beat procrastination fast" },
+                  { m: 25, label: "25m Classic Pomodoro", icon: Timer, desc: "Gold standard focus cycle" },
+                  { m: 50, label: "50m Deep Flow Sprint", icon: Target, desc: "Complex coding or studying" },
+                  { m: 90, label: "90m Ultradian Marathon", icon: Mountain, desc: "Maximum deep work capacity" },
                 ].map((s) => (
                   <button
                     key={s.m}
@@ -157,7 +164,7 @@ export const InteractiveQuickDock: React.FC<Props> = ({
                     className="w-full text-left p-2 rounded-xl hover:bg-primary/10 hover:border-primary/30 border border-transparent transition-all cursor-pointer flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-base">{s.icon}</span>
+                      {React.createElement(s.icon, { className: "w-4 h-4 text-primary shrink-0" })}
                       <div>
                         <div className="text-xs font-bold text-foreground group-hover:text-primary">{s.label}</div>
                         <div className="text-[10px] text-muted-foreground">{s.desc}</div>
@@ -244,10 +251,10 @@ export const InteractiveQuickDock: React.FC<Props> = ({
                     <button onClick={() => setShowAudioMenu(false)} className="hover:text-foreground">✕</button>
                   </div>
                   {[
-                    { id: "lofi" as AmbienceType, label: "Lo-Fi 432Hz", icon: "☕", desc: "Warm rhythmic acoustic" },
-                    { id: "rain" as AmbienceType, label: "Soft Rain", icon: "🌧️", desc: "Natural binaural rainfall" },
-                    { id: "binaural" as AmbienceType, label: "Alpha Waves (432Hz)", icon: "🧠", desc: "Deep flow state focus" },
-                    { id: "library" as AmbienceType, label: "Silent Library", icon: "📚", desc: "Subtle acoustic rustle" },
+                    { id: "lofi" as AmbienceType, label: "Lo-Fi 432Hz", icon: Coffee, desc: "Warm rhythmic acoustic" },
+                    { id: "rain" as AmbienceType, label: "Soft Rain", icon: CloudRain, desc: "Natural binaural rainfall" },
+                    { id: "binaural" as AmbienceType, label: "Alpha Waves (432Hz)", icon: Headphones, desc: "Deep flow state focus" },
+                    { id: "library" as AmbienceType, label: "Silent Library", icon: BookOpen, desc: "Subtle acoustic rustle" },
                   ].map((aud) => {
                     const isSelected = isPlayingAudio && currentAmbience === aud.id;
                     return (
@@ -260,10 +267,10 @@ export const InteractiveQuickDock: React.FC<Props> = ({
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <span>{aud.icon}</span>
+                          {React.createElement(aud.icon, { className: "w-4 h-4 text-amber-400 shrink-0" })}
                           <div>
                             <div className="text-xs">{aud.label}</div>
-                            <div className="text-[9px] text-muted-foreground">{aud.desc}</div>
+                            <div className="text-[10px] text-muted-foreground">{aud.desc}</div>
                           </div>
                         </div>
                         {isSelected && <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />}
@@ -274,9 +281,10 @@ export const InteractiveQuickDock: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => toggleAmbientAudio()}
-                      className="w-full text-center py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg font-bold transition-all cursor-pointer mt-1"
+                      className="w-full text-center py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg font-bold transition-all cursor-pointer mt-1 flex items-center justify-center gap-1.5"
                     >
-                      Mute Audio 🔇
+                      <VolumeX className="w-3.5 h-3.5" />
+                      <span>Mute Audio</span>
                     </button>
                   )}
                 </motion.div>

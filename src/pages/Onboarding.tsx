@@ -72,15 +72,15 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground py-10 px-4 sm:px-6 lg:px-8 flex flex-col justify-center relative overflow-x-hidden">
-      {/* 🌌 Dynamic 3D Ambient Background Layer */}
+    <div className="min-h-screen bg-background text-foreground py-6 sm:py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-center relative overflow-x-hidden">
+      {/* Dynamic 3D Ambient Background Layer */}
       <ThreeDBackground />
 
-      <div className="max-w-4xl mx-auto w-full space-y-8 relative z-10">
+      <div className="max-w-4xl mx-auto w-full space-y-5 sm:space-y-6 relative z-10">
         {/* Brand Logo Header */}
-        <div className="text-center space-y-3 flex flex-col items-center">
+        <div className="text-center space-y-2 flex flex-col items-center">
           <BrandLogo size="lg" variant="square" />
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Let's Build Your Routine</h1>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">Let's Build Your Routine</h1>
         </div>
 
         {/* Wizard Container */}

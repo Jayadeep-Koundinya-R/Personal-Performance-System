@@ -22,6 +22,11 @@ vi.mock('@/hooks/use-focus-timer', () => ({
     setActiveTaskName: mockSetActiveTaskName,
     setLinkedHabitId: mockSetLinkedHabitId,
   }),
+  useFocusTimerTick: () => ({
+    remainingSec: 0,
+    progressRatio: 0,
+    strokeDashoffset: 565,
+  }),
 }));
 
 const mockApplyStreakFreeze = vi.fn().mockResolvedValue(true);

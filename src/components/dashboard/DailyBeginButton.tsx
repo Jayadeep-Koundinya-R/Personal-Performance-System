@@ -103,7 +103,9 @@ export function DailyBeginButton({ onComplete }: DailyBeginButtonProps) {
           >
             <div>
               <div className="text-xs font-bold text-muted-foreground uppercase">Daily Goal</div>
-              <div className="text-lg font-black text-foreground">All habits done ✓</div>
+              <div className="text-lg font-black text-foreground flex items-center gap-2">
+                All habits done <Check className="w-5 h-5 text-pps-green" />
+              </div>
             </div>
             <Button variant="ghost" size="sm" className="text-xs font-bold text-primary">
               Close Day <ArrowRight className="w-3 h-3 ml-1" />

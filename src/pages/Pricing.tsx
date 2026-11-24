@@ -7,6 +7,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useSubscription, SubscriptionProvider } from "@/hooks/use-subscription";
 import { ThreeDBackground } from "@/components/ui/ThreeDBackground";
 import { CampusDemoModal } from "@/components/pricing/CampusDemoModal";
+import { CheckoutModal } from "@/components/pricing/CheckoutModal";
 import { ScrollProgressBar } from "@/components/ui/ScrollProgressBar";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -35,6 +36,10 @@ import {
   CheckCircle2,
   ExternalLink,
   Percent,
+  Sun,
+  Moon,
+  Settings,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -64,7 +69,7 @@ const FAQS = [
   { q: "How does the Teacher & Mentor Studio plan work?", a: "Teachers, tutors, and mentors can host live classes with zero upfront platform cost. You set your ticket price, students book with UPI/Card, and PPS takes a 10% platform commission on tickets sold (first 5 classes every month are 100% commission-free!)." },
   { q: "How does Institutional Campus licensing work?", a: "Colleges and coaching institutes receive a flat semester license (₹2,000 per enrolled student). This includes unlimited classroom habits, faculty assignment portals, student attendance audit reports, and campus leaderboards." },
   { q: "Can a student start free and upgrade later?", a: "Yes! The Personal Free plan includes up to 15 habits, 3 study squads, daily Pomodoro, and streak tracking with no time limit." },
-  { q: "What payment methods are supported?", a: "In India, we support UPI (Google Pay, PhonePe, Paytm, BHIM), NetBanking, and all major Credit/Debit cards. Internationally, we support Stripe, Visa, Mastercard, American Express, and Apple Pay." },
+  { q: "What payment methods are supported?", a: "We support direct UPI payments (Google Pay, PhonePe, Paytm, BHIM), QR code scan, and Bank Transfer. Once you request an upgrade via email (upalakshyasupport@gmail.com), we reply immediately with the official payment QR code / mobile number and activate your Pro plan upon screenshot verification." },
   { q: "Is there a money-back guarantee?", a: "Yes — 30-day no-questions-asked refund guarantee on all Pro and Institutional semester subscriptions." },
   { q: "Can I use the AI Coach with local Ollama models?", a: "Yes! PPS Pro supports both cloud AI (Google Gemini / DeepSeek) and 100% private local Ollama LLM execution on your own machine." },
 ];
@@ -82,7 +87,7 @@ function PricingContent() {
 
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
-  const [isProModalOpen, setIsProModalOpen] = useState(false);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
 
   // Teacher Earnings Calculator State
   const [teacherStudents, setTeacherStudents] = useState(20);
@@ -109,16 +114,6 @@ function PricingContent() {
   // Campus Cost Calculation
   const campusCost = campusStudents * (region === "IN" ? 2000 : 49);
 
-  // Close Pro modal on Escape key
-  useEffect(() => {
-    if (!isProModalOpen) return;
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsProModalOpen(false);
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isProModalOpen]);
-
   // Close demo modal on Escape key
   useEffect(() => {
     if (!isDemoModalOpen) return;
@@ -131,12 +126,11 @@ function PricingContent() {
 
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary selection:text-white transition-colors duration-500">
-      {/* 🌌 Animated 3D Floating Background */}
+      {/* Animated 3D Floating Background */}
       <ThreeDBackground />
 
-      {/* 📊 Top Scroll Progress Bar */}
+      {/* Top Scroll Progress Bar */}
       <ScrollProgressBar />
-
 
       {/* Enterprise Campus Demo Modal */}
       <CampusDemoModal
@@ -145,58 +139,28 @@ function PricingContent() {
         defaultStudents={campusStudents}
       />
 
-      {/* Pro Early Access Modal */}
-      {isProModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-card border border-border/80 rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full relative animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center text-2xl mb-4 text-primary">
-              ⭐
-            </div>
-            <h3 className="text-xl font-black font-mono text-foreground">
-              Student Pro Early Access
-            </h3>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              We are currently in public beta! Live payment gateways (UPI & Stripe) will be enabled for the commercial release.
-            </p>
-
-            <div className="my-5 p-4 rounded-2xl bg-surface/80 border border-border/70 space-y-2 text-xs">
-              <div className="font-bold text-foreground flex items-center gap-1.5 text-[11px] font-mono uppercase text-primary">
-                <span>🎁 Beta Perks Included (₹0):</span>
-              </div>
-              <ul className="space-y-1.5 text-muted-foreground text-[11.5px]">
-                <li className="flex items-center gap-2">✓ Unlimited habits & custom time windows</li>
-                <li className="flex items-center gap-2">✓ 24/7 Drop-in Study Squad focus rooms</li>
-                <li className="flex items-center gap-2">✓ Unlimited AI Coach conversations</li>
-                <li className="flex items-center gap-2">✓ Full historical analytics & reports</li>
-              </ul>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              <Button
-                variant="outline"
-                onClick={() => setIsProModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border/80 bg-surface hover:bg-surface/80 text-foreground font-bold text-xs cursor-pointer transition-colors h-auto"
-              >
-                Close
-              </Button>
-              <Link
-                to="/dashboard"
-                onClick={() => setIsProModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-black text-xs text-center hover:opacity-90 transition-all shadow-md"
-              >
-                Open Dashboard →
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Live / Sandbox Pro Checkout Modal (Razorpay INR ₹199 / Stripe USD $9) */}
+      <CheckoutModal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        region={region}
+        interval={interval}
+      />
 
       {/* ── Top Navigation Bar ── */}
       <header className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between border-b border-border/40 backdrop-blur-md">
-        <Link to="/" className="flex items-center gap-2 group">
-          <BrandLogo size="md" variant="square" />
-          <span className="text-xs font-mono font-normal text-muted-foreground ml-1">/ Pricing</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-2 group">
+            <BrandLogo size="md" variant="square" />
+            <span className="text-xs font-mono font-normal text-muted-foreground ml-1">/ Pricing</span>
+          </Link>
+          <Link
+            to="/"
+            className="text-xs font-semibold text-muted-foreground hover:text-foreground px-2.5 py-1 rounded-lg hover:bg-surface transition-colors"
+          >
+            ← Home
+          </Link>
+        </div>
 
         <div className="flex items-center gap-3">
           {/* Region Switcher */}
@@ -218,7 +182,7 @@ function PricingContent() {
             className="p-1.5 px-2.5 rounded-xl bg-surface/80 border border-border/80 text-foreground hover:border-primary/40 transition-colors cursor-pointer text-xs h-8 w-8"
             title="Toggle Light / Dark Mode"
           >
-            {theme === "dark" ? "☀️" : "🌙"}
+            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
 
           <Link
@@ -345,8 +309,8 @@ function PricingContent() {
             </div>
 
             <Button
-              onClick={() => startCheckout(interval)}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary via-secondary to-accent text-white font-black text-xs shadow-xl shadow-primary/30 hover:opacity-95 transition-all cursor-pointer h-auto"
+              onClick={() => setIsCheckoutModalOpen(true)}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary via-secondary to-accent text-white font-black text-xs shadow-xl shadow-primary/30 hover:opacity-95 transition-all cursor-pointer h-auto hover:scale-[1.01]"
             >
               {isPro ? "Current Plan Active (Pro)" : `Upgrade to Pro (${interval === "yearly" ? "Annual" : "Monthly"}) →`}
             </Button>
@@ -359,9 +323,9 @@ function PricingContent() {
                 <div className="w-12 h-12 rounded-2xl bg-pps-orange/20 text-pps-orange border border-pps-orange/30 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                   <GraduationCap className="w-6 h-6 text-pps-orange" />
                 </div>
-                <span className="text-[10px] font-mono font-black text-pps-orange bg-pps-orange/10 px-2.5 py-1 rounded-full border border-pps-orange/30 uppercase">
-                  🏗️ Beta
-                </span>
+                <span className="text-[10px] font-mono font-black text-pps-orange bg-pps-orange/10 px-2.5 py-1 rounded-full border border-pps-orange/30 uppercase flex items-center gap-1">
+                    <Settings className="w-3 h-3" /> Beta
+                  </span>
               </div>
               <div>
                 <h3 className="text-lg font-black text-foreground font-mono">Teacher Studio</h3>
@@ -395,8 +359,8 @@ function PricingContent() {
                 <div className="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/30 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                   <Building2 className="w-6 h-6 text-secondary" />
                 </div>
-                <span className="text-[10px] font-mono font-black text-pps-orange bg-pps-orange/10 px-2.5 py-1 rounded-full border border-pps-orange/30 uppercase">
-                  🏗️ Planned
+                <span className="text-[10px] font-mono font-black text-pps-orange bg-pps-orange/10 px-2.5 py-1 rounded-full border border-pps-orange/30 uppercase flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> Planned
                 </span>
               </div>
               <div>
@@ -436,8 +400,8 @@ function PricingContent() {
                   <Calculator className="w-3.5 h-3.5" />
                   <span>Mentor & Creator Revenue Engine</span>
                 </div>
-                <span className="text-[10px] font-mono font-black text-pps-orange bg-pps-orange/10 px-2.5 py-1 rounded-full border border-pps-orange/30 uppercase">
-                  🏗️ Beta Preview
+                <span className="text-[10px] font-mono font-black text-pps-orange bg-pps-orange/10 px-2.5 py-1 rounded-full border border-pps-orange/30 uppercase flex items-center gap-1">
+                  <Settings className="w-3 h-3" /> Beta Preview
                 </span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-foreground font-mono">
@@ -592,8 +556,8 @@ function PricingContent() {
                   <th className="p-4 sm:p-5 font-bold text-foreground">Feature</th>
                   <th className="p-4 sm:p-5 text-center">Personal Free</th>
                   <th className="p-4 sm:p-5 text-center text-primary font-bold bg-primary/5">Student Pro</th>
-                  <th className="p-4 sm:p-5 text-center text-pps-orange font-bold">Teacher Studio <span className="text-[9px] text-pps-orange font-mono">(Beta)</span></th>
-                  <th className="p-4 sm:p-5 text-center text-secondary font-bold">Campus License <span className="text-[9px] text-pps-orange font-mono">(Planned)</span></th>
+                  <th className="p-4 sm:p-5 text-center text-pps-orange font-bold">Teacher Studio <span className="text-[10px] text-pps-orange font-mono">(Beta)</span></th>
+                  <th className="p-4 sm:p-5 text-center text-secondary font-bold">Campus License <span className="text-[10px] text-pps-orange font-mono">(Planned)</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -685,7 +649,7 @@ function PricingContent() {
         © 2026 Personal Performance System • All Rights Reserved
       </footer>
 
-      {/* 🚀 Floating Scroll to Top */}
+      {/* Floating Scroll to Top */}
       <ScrollToTop />
     </div>
   );

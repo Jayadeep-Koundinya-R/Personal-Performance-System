@@ -60,7 +60,7 @@ export const ImmediateRemindersStrip: React.FC<ImmediateRemindersStripProps> = (
     const snoozeUntil = Date.now() + 15 * 60 * 1000;
     setDismissedMap((prev) => ({ ...prev, [r.id]: snoozeUntil }));
     onSnooze?.(r.id, 15);
-    toast.info(`Snoozed "${r.label}" for +15m! 💤`, {
+    toast.info(`Snoozed "${r.label}" for +15m!`, {
       description: "You'll be alerted again shortly.",
     });
   };
@@ -112,7 +112,7 @@ export const ImmediateRemindersStrip: React.FC<ImmediateRemindersStripProps> = (
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span
-                      className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.2 rounded-md border ${
+                      className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded-md border ${
                         isOverdue
                           ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
                           : "bg-amber-500/20 text-amber-400 border-amber-500/30"

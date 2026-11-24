@@ -166,7 +166,7 @@ export const ChannelChat: React.FC<ChannelChatProps> = ({
                         {msg.senderName}
                       </span>
                       {msg.senderRole && (
-                        <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-primary/15 text-primary border border-primary/25">
+                        <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/25">
                           {msg.senderRole}
                         </span>
                       )}

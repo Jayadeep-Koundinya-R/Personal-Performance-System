@@ -78,6 +78,15 @@ export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
     }
   }, [pendingHabits, selectedHabitId]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
+
   const selectedHabit = useMemo(() => {
     return activeHabits.find((h) => h.id === selectedHabitId) || null;
   }, [activeHabits, selectedHabitId]);
@@ -132,7 +141,7 @@ export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
     }
     changeTimerMode('custom', durationMins);
     startTimer();
-    toast.success(`⚡ Sprint ${sprintNumber} (${durationMins}m) launched!`);
+    toast.success(`Sprint ${sprintNumber} (${durationMins}m) launched!`);
     onClose();
   };
 
@@ -146,7 +155,7 @@ export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
     saveTriageState(updated);
 
     if (updated.sprint1Done && updated.sprint2Done && updated.sprint3Done) {
-      toast.success('🎉 ALL 3 SPRINT OBJECTIVES COMPLETED! Emergency conquered!');
+      toast.success('ALL 3 SPRINT OBJECTIVES COMPLETED! Emergency conquered!');
     }
   };
 
@@ -171,22 +180,27 @@ export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+      <div 
+        className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="triage-modal-title"
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="relative w-full max-w-lg bg-card border border-rose-500/40 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+          className="relative w-full max-w-lg bg-card border border-rose-500/40 rounded-3xl shadow-xl overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-rose-500/25 via-card to-amber-500/20 border-b border-border/80 px-6 py-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 text-xl shadow-inner animate-pulse">
-                🚨
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 text-xl shadow-inner">
+                <AlertTriangle className="w-5 h-5 text-rose-400" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-foreground tracking-tight">
+                  <h3 id="triage-modal-title" className="text-base font-black text-foreground tracking-tight">
                     Emergency Triage Mode
                   </h3>
                   <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
@@ -200,6 +214,7 @@ export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
             </div>
             <button
               onClick={onClose}
+              aria-label="Close triage modal"
               className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -213,8 +228,9 @@ export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
               <div className="space-y-4">
                 <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono uppercase font-black text-rose-400">
-                      🚨 Quarantined Single Target
+                    <span className="text-[11px] font-mono uppercase font-black text-rose-400 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>Quarantined Single Target</span>
                     </span>
                     <span className="text-[10px] font-mono text-muted-foreground">Streaks Shielded</span>
                   </div>
@@ -237,6 +253,7 @@ export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => handleToggleSprintDone('sprint1Done')}
+                        aria-label="Toggle Sprint 1 done"
                         className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-colors cursor-pointer ${
                           triageState.sprint1Done
                             ? 'bg-emerald-500 border-emerald-500 text-white'
@@ -274,6 +291,7 @@ export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => handleToggleSprintDone('sprint2Done')}
+                        aria-label="Toggle Sprint 2 done"
                         className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-colors cursor-pointer ${
                           triageState.sprint2Done
                             ? 'bg-emerald-500 border-emerald-500 text-white'
@@ -311,6 +329,7 @@ export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => handleToggleSprintDone('sprint3Done')}
+                        aria-label="Toggle Sprint 3 done"
                         className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-colors cursor-pointer ${
                           triageState.sprint3Done
                             ? 'bg-emerald-500 border-emerald-500 text-white'
@@ -409,7 +428,7 @@ export const EmergencyTriageModal: React.FC<EmergencyTriageModalProps> = ({
                     className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-rose-500/25 hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <AlertTriangle className="w-4 h-4 fill-current" />
-                    <span>🚨 Engage Emergency Triage Protocol</span>
+                    <span>Engage Emergency Triage Protocol</span>
                   </button>
                 </div>
               </div>

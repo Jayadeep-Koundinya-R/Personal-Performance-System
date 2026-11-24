@@ -753,7 +753,7 @@ export const MomentumCommandDeck: React.FC<MomentumCommandDeckProps> = ({
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>Sprint (25m)</span>
-                <kbd className="hidden sm:inline-block text-[9px] bg-primary-foreground/20 px-1 py-0.2 rounded font-mono group-hover:scale-105 transition-transform">
+                <kbd className="hidden sm:inline-block text-[9px] bg-primary-foreground/20 px-1 py-0.5 rounded font-mono group-hover:scale-105 transition-transform">
                   Space
                 </kbd>
               </button>

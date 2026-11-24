@@ -16,7 +16,7 @@ export const HABIT_TEMPLATES: HabitTemplate[] = [
     id: "morning-routine",
     name: "Morning Routine",
     description: "Start your day with intention and energy",
-    icon: "🌅",
+    icon: "sunrise",
     habits: [
       { name: "Morning meditation", category: "Mindfulness", period: "Daily", priority: "High" },
       { name: "Morning stretch/workout", category: "Health", period: "Daily", priority: "High" },
@@ -28,7 +28,7 @@ export const HABIT_TEMPLATES: HabitTemplate[] = [
     id: "student-study",
     name: "Student Study Habits",
     description: "Ace your exams and build academic consistency",
-    icon: "🎓",
+    icon: "graduation-cap",
     habits: [
       { name: "Review lecture notes", category: "Learning", period: "Daily", priority: "High" },
       { name: "1 hour study block", category: "Learning", period: "Daily", priority: "High" },
@@ -40,7 +40,7 @@ export const HABIT_TEMPLATES: HabitTemplate[] = [
     id: "fitness-starter",
     name: "Fitness Starter",
     description: "Build a consistent exercise routine",
-    icon: "💪",
+    icon: "dumbbell",
     habits: [
       { name: "30 min movement", category: "Health", period: "Daily", priority: "High" },
       { name: "Strength training", category: "Health", period: "Weekly", priority: "High" },
@@ -52,7 +52,7 @@ export const HABIT_TEMPLATES: HabitTemplate[] = [
     id: "developer-productivity",
     name: "Developer Productivity",
     description: "Optimize coding workflow and engineering standards",
-    icon: "💻",
+    icon: "laptop",
     habits: [
       { name: "Deep work coding (2 hours)", category: "Productivity", period: "Daily", priority: "High" },
       { name: "Review a pull request", category: "Productivity", period: "Daily", priority: "Medium" },
@@ -64,7 +64,7 @@ export const HABIT_TEMPLATES: HabitTemplate[] = [
     id: "mindfulness",
     name: "Mindfulness Practice",
     description: "Cultivate mental clarity and peace",
-    icon: "🧘",
+    icon: "flower",
     habits: [
       { name: "Mindful breathing (10m)", category: "Wellness", period: "Daily", priority: "High" },
       { name: "Gratitude journal", category: "Personal Growth", period: "Daily", priority: "Medium" },

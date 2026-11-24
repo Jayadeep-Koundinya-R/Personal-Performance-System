@@ -3,11 +3,11 @@ import * as React from "react";
 import { ChevronDown, ChevronRight, Sparkles, Layers } from "lucide-react";
 
 interface TaskSectionProps {
-  title: string;
+  title: React.ReactNode;
   borderColor: string;
   tasks: any[];
   renderTask: (h: any, i: number) => React.ReactNode;
-  emptyText: string;
+  emptyText: React.ReactNode;
   renderEmptyList: (t: string) => React.ReactNode;
   initialLimit?: number;
 }
@@ -90,7 +90,9 @@ export function TaskSection({
                       <span>
                         {showAll
                           ? "▲ Show top 10 only (fold backlog)"
-                          : `▼ Show ${hiddenCount} more tasks in ${title.replace(/^[^a-zA-Z0-9]+/, "")}`}
+                          : typeof title === "string"
+                            ? `▼ Show ${hiddenCount} more tasks in ${title.replace(/^[^a-zA-Z0-9]+/, "")}`
+                            : `▼ Show ${hiddenCount} more tasks`}
                       </span>
                     </button>
                   </div>

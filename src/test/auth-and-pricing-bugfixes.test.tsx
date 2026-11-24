@@ -85,7 +85,7 @@ describe("Authentication & Pricing Bugfixes Verification", () => {
       // Verify that the login form IS rendered and dashboard is NOT auto-navigated to
       expect(screen.queryByTestId("dashboard-screen")).toBeNull();
       expect(screen.getByText(/browsing in/i)).toBeInTheDocument();
-      expect(screen.getByText(/7-Day Demo Mode/i)).toBeInTheDocument();
+      expect(screen.getByText(/Demo Mode/i)).toBeInTheDocument();
       expect(screen.getByText(/Exit Demo/i)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /^sign in$/i })).toBeInTheDocument();
     });

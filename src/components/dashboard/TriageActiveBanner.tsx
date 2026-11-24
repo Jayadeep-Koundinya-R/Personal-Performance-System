@@ -32,7 +32,7 @@ export const TriageActiveBanner: React.FC<TriageActiveBannerProps> = ({ onOpenMo
     }
     changeTimerMode('custom', durationMins);
     startTimer();
-    toast.success(`⚡ Sprint ${sprintNum} (${durationMins}m) launched!`);
+    toast.success(`Sprint ${sprintNum} (${durationMins}m) launched!`);
   };
 
   const handleToggleSprintDone = (key: 'sprint1Done' | 'sprint2Done' | 'sprint3Done') => {
@@ -40,7 +40,7 @@ export const TriageActiveBanner: React.FC<TriageActiveBannerProps> = ({ onOpenMo
     setTriage(updated);
     saveTriageState(updated);
     if (updated.sprint1Done && updated.sprint2Done && updated.sprint3Done) {
-      toast.success('🎉 ALL 3 EMERGENCY SPRINTS COMPLETED! You conquered the day!');
+      toast.success('ALL 3 EMERGENCY SPRINTS COMPLETED! You conquered the day!');
     }
   };
 
@@ -67,8 +67,8 @@ export const TriageActiveBanner: React.FC<TriageActiveBannerProps> = ({ onOpenMo
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl shadow-inner animate-pulse flex-shrink-0">
-            🚨
+          <div className="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl shadow-inner flex-shrink-0">
+            <AlertTriangle className="w-5 h-5 text-rose-400" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">

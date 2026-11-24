@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Lock, Sparkles, CheckCircle2 } from "lucide-react";
+import { Lock, Sparkles, CheckCircle2, Zap } from "lucide-react";
 import { useAuth, TRIAL_DURATION_DAYS } from "@/hooks/use-auth";
 
 export default function GuestTrialExpiredModal() {
@@ -13,20 +13,23 @@ export default function GuestTrialExpiredModal() {
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-card border-2 border-primary/50 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl space-y-6 relative overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="trial-expired-title"
+        className="bg-card border-2 border-primary/50 rounded-3xl p-8 max-w-md w-full text-center shadow-xl space-y-6 relative overflow-hidden"
         style={{ boxShadow: "0 25px 60px -15px rgba(99, 102, 241, 0.4)" }}
       >
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-primary/20 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="w-16 h-16 rounded-3xl bg-primary/20 border border-primary/40 text-primary flex items-center justify-center text-3xl mx-auto shadow-inner">
-          🔒
+        <div className="w-16 h-16 rounded-3xl bg-primary/20 border border-primary/40 text-primary flex items-center justify-center mx-auto shadow-inner">
+          <Lock className="w-8 h-8 text-primary" />
         </div>
 
         <div>
           <span className="text-[10.5px] font-mono font-extrabold text-primary uppercase tracking-widest bg-primary/10 border border-primary/20 px-3 py-1 rounded-full">
             {TRIAL_DURATION_DAYS}-Day Demo Period Ended
           </span>
-          <h2 className="text-2xl font-extrabold text-foreground mt-3">
+          <h2 id="trial-expired-title" className="text-2xl font-extrabold text-foreground mt-3">
             Your Demo Trial Has Expired
           </h2>
           <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
@@ -68,14 +71,15 @@ export default function GuestTrialExpiredModal() {
             }}
             className="w-full bg-pps-green text-white font-extrabold py-3 px-6 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md hover:opacity-90 transition-all cursor-pointer"
           >
-            <span>⚡ Reset {TRIAL_DURATION_DAYS}-Day Demo Session</span>
+            <Zap className="w-4 h-4" />
+            <span>Reset {TRIAL_DURATION_DAYS}-Day Demo Session</span>
           </button>
 
           <Link
             to="/pricing"
             className="w-full bg-surface border border-border text-foreground font-bold py-3 px-6 rounded-2xl text-xs block hover:border-primary/50 transition-colors"
           >
-            Explore Pro Plans ✦
+            Explore Pro Plans <Sparkles className="inline w-3.5 h-3.5" />
           </Link>
 
           <button
