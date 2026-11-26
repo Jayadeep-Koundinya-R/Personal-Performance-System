@@ -162,7 +162,7 @@ export default function PrivacyPage() {
           <span>•</span>
           <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
         </div>
-        <div>PPS v2.0 • Personal Performance System • UpaLakshya Labs</div>
+        <div>PPS v1.0 • Personal Performance System • UpaLakshya Labs</div>
       </footer>
 
       {/* Floating Scroll to Top */}

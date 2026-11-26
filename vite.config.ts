@@ -4,10 +4,11 @@ import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
 const isCapacitor = process.env.CAPACITOR_BUILD === "true";
+const isVercel = process.env.VERCEL === "1" || process.env.VERCEL === "true";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: isCapacitor ? "./" : "/Personal-Performance-System/",
+  base: isCapacitor ? "./" : isVercel ? "/" : "/Personal-Performance-System/",
   server: {
     host: "::",
     port: 8080,

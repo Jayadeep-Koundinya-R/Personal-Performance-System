@@ -302,7 +302,7 @@ const LoginPage = () => {
 
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center group">
-            <BrandLogo size="md" variant="square" badge="v2.0 OS" />
+            <BrandLogo size="md" variant="square" badge="v1.0 OS" />
           </Link>
         </div>
 

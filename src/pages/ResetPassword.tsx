@@ -240,7 +240,7 @@ const ResetPasswordPage = () => {
 
       {/* Footer */}
       <footer className="w-full py-4 text-center relative z-20 text-[11px] text-muted-foreground font-mono">
-        PPS v2.0 • Personal Performance System
+        PPS v1.0 • Personal Performance System
       </footer>
     </div>
   );
