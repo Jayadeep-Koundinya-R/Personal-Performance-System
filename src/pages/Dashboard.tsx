@@ -48,6 +48,7 @@ import { NotificationDropdown } from "@/components/dashboard/NotificationDropdow
 import { NotificationBar } from "@/components/dashboard/NotificationBar";
 import { InteractiveOnboardingModal } from "@/components/onboarding/InteractiveOnboardingModal";
 import { BrandLogo } from "@/components/BrandLogo";
+import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
 
 
 
@@ -1021,7 +1022,9 @@ function DashboardInner({ user }: { user: User }) {
           <main className="flex-1 px-4 py-3.5 md:px-7 md:py-4 md:pb-8 overflow-y-auto overflow-x-hidden max-w-full" style={{ paddingBottom: 'max(7rem, calc(7rem + env(safe-area-inset-bottom)))' }}>
             <NotificationBar onNavigate={navigateToSection} />
             <AnimatedSection sectionKey={activeSection}>
-              {renderSection()}
+              <SectionErrorBoundary key={activeSection} sectionName={activeSection} onGoHome={() => setActiveSection("dashboard")}>
+                {renderSection()}
+              </SectionErrorBoundary>
             </AnimatedSection>
           </main>
         </div>

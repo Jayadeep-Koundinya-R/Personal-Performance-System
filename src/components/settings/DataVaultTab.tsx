@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Download, Upload, Trash2, HelpCircle } from "lucide-react";
+import { Download, Upload, Trash2, HelpCircle, MessageSquare, Send, AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Habit } from "@/hooks/use-habits";
 import { ReflectionEntry } from "@/hooks/use-reflections";
 import { exportToCSV, exportToJSON, parseAndValidateBackup } from "@/lib/dataExport";
@@ -163,6 +165,68 @@ export const DataVaultTab: React.FC<DataVaultTabProps> = ({
             >
               <HelpCircle className="w-3.5 h-3.5 text-primary" />
               <span>Restart Tour</span>
+            </Button>
+          </div>
+
+          {/* Beta Feedback Card */}
+          <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                <span>Beta Tester Feedback & Bug Reports</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                Have an idea, found a bug, or need help? Share your feedback directly with our team.
+              </div>
+            </div>
+
+            <Button
+              onClick={() => {
+                const subject = encodeURIComponent("PPS Beta Feedback / Bug Report");
+                const body = encodeURIComponent("Hello UpaLakshya PPS Team,\n\nFeedback / Bug Description:\n\nSteps to reproduce (if bug):\n\nDevice / OS:\n\nThank you!");
+                window.location.href = `mailto:upalakshyasupport@gmail.com?subject=${subject}&body=${body}`;
+              }}
+              className="text-xs bg-primary text-primary-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-primary/90 transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Send Feedback</span>
+            </Button>
+          </div>
+
+          {/* Danger Zone: Permanent Account Deletion */}
+          <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-2xl flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="text-xs font-extrabold text-destructive flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+                <span>Permanent Account Deletion (GDPR & Google Play Compliant)</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                Permanently purge your account, login credentials, and all data from our servers.
+              </div>
+            </div>
+
+            <Button
+              onClick={async () => {
+                const confirmation = window.prompt("⚠️ WARNING: This will permanently purge your user account, habits, reflections, and subscriptions from the cloud.\n\nType 'DELETE' to confirm permanent deletion:");
+                if (confirmation === "DELETE") {
+                  try {
+                    const { error } = await supabase.functions.invoke("delete-account");
+                    if (error) {
+                      await supabase.auth.signOut();
+                    }
+                    localStorage.clear();
+                    toast.success("Account permanently purged.");
+                    window.location.href = "/#/login";
+                  } catch (err) {
+                    localStorage.clear();
+                    window.location.href = "/#/login";
+                  }
+                }
+              }}
+              className="text-xs bg-destructive text-destructive-foreground font-extrabold px-4 py-2 rounded-xl hover:bg-destructive/90 transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete My Account</span>
             </Button>
           </div>
 

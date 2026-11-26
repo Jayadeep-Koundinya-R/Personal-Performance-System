@@ -8,7 +8,7 @@ const isVercel = process.env.VERCEL === "1" || process.env.VERCEL === "true";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: isCapacitor ? "./" : isVercel ? "/" : "/Personal-Performance-System/",
+  base: isCapacitor ? "./" : (process.env.VITE_BASE_PATH || "/"),
   server: {
     host: "::",
     port: 8080,

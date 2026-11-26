@@ -693,6 +693,20 @@ export function HabitsProvider({
       dueDate: updatedDueDate
     } : h));
 
+    if (!isCompleted) {
+      toast.success(`"${habit.name}" marked complete! 🎉`, {
+        description: `Current streak: ${updatedStreak} ${updatedStreak === 1 ? "day" : "days"}`,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            toggleCompletion(id, dateToToggle, true);
+          },
+        },
+      });
+    } else {
+      toast.info(`"${habit.name}" unmarked.`);
+    }
+
     if (isGuest) return;
 
     // Check offline status first: buffer directly into durable queue without failing

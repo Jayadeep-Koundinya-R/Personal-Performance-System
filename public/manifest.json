@@ -2,7 +2,7 @@
   "name": "PPS - Personal Performance System",
   "short_name": "PPS",
   "description": "Gamified habit tracker and personal performance system by UpaLakshya Labs",
-  "start_url": "/Personal-Performance-System/",
+  "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0f0f14",
@@ -12,23 +12,23 @@
   "categories": ["productivity", "lifestyle", "education"],
   "icons": [
     {
-      "src": "/Personal-Performance-System/favicon.ico",
+      "src": "/favicon.ico",
       "sizes": "64x64",
       "type": "image/x-icon"
     },
     {
-      "src": "/Personal-Performance-System/favicon.png",
+      "src": "/favicon.png",
       "sizes": "64x64",
       "type": "image/png"
     },
     {
-      "src": "/Personal-Performance-System/pwa-192x192.png",
+      "src": "/pwa-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/Personal-Performance-System/pwa-512x512.png",
+      "src": "/pwa-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -39,22 +39,15 @@
       "name": "Dashboard",
       "short_name": "Dashboard",
       "description": "Open your daily performance dashboard",
-      "url": "/Personal-Performance-System/#/dashboard",
-      "icons": [{ "src": "/Personal-Performance-System/pwa-192x192.png", "sizes": "192x192" }]
+      "url": "/#/dashboard",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
     },
     {
       "name": "Focus Timer",
       "short_name": "Focus",
       "description": "Start a focus sprint",
-      "url": "/Personal-Performance-System/#/dashboard?section=tracker",
-      "icons": [{ "src": "/Personal-Performance-System/pwa-192x192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Settings",
-      "short_name": "Settings",
-      "description": "Open app settings",
-      "url": "/Personal-Performance-System/#/settings",
-      "icons": [{ "src": "/Personal-Performance-System/pwa-192x192.png", "sizes": "192x192" }]
+      "url": "/#/dashboard?section=tracker",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
     }
   ]
 }
